@@ -1,32 +1,19 @@
-# Prerequisites
-*.d
+build/
+src/rpc/fam_rpc.grpc.pb.cc
+src/rpc/fam_rpc.grpc.pb.h
+src/rpc/fam_rpc.pb.cc
+src/rpc/fam_rpc.pb.h
+third-party/build/
+third-party/grpc/
+third-party/libfabric/
+third-party/nvmm
+third-party/pmix-3.1.2/
+third-party/prrte/
+third-party/openmpi-4.0.1/
+third-party/pmix-3.0.2/
+third-party/googletest/
+third-party/radixtree/
+third-party/release-2.1.6-beta.tar.gz
+third-party/libevent-release-2.1.6-beta
+third-party/openmpi-4.0.1.tar.gz
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
