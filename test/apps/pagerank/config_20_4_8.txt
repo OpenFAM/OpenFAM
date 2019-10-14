@@ -1,0 +1,3 @@
+1048576 /*mat row count*/
+8 /* segments */
+/home/abdulla/work/OpenFAM_SpMV/graph500/src/out_20_4_8

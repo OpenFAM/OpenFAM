@@ -1,0 +1,98 @@
+/*
+ * fam_test_config.h.in
+ * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * reserved. Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holder nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * See https://spdx.org/licenses/BSD-3-Clause
+ *
+ */
+#ifndef FAM_TEST_CONFIG_H
+#define FAM_TEST_CONFIG_H
+
+#include <sstream>
+#include <stdlib.h>
+#include <sys/time.h>
+
+#include <fam/fam.h>
+
+using namespace std;
+using namespace openfam;
+
+// Fam_Options
+#cmakedefine TEST_DEFAULT_REGION "${TEST_DEFAULT_REGION}"
+#cmakedefine TEST_MEMORY_SERVER "${TEST_MEMORY_SERVER}"
+#cmakedefine TEST_GRPC_PORT "${TEST_GRPC_PORT}"
+#cmakedefine TEST_LIBFABRIC_PORT "${TEST_LIBFABRIC_PORT}"
+#cmakedefine TEST_LIBFABRIC_PROVIDER "${TEST_LIBFABRIC_PROVIDER}"
+#cmakedefine TEST_FAM_THREAD_MODEL "${TEST_FAM_THREAD_MODEL}"
+#cmakedefine TEST_ALLOCATOR "${TEST_ALLOCATOR}"
+#cmakedefine TEST_FAM_CONTEXT_MODEL "${TEST_FAM_CONTEXT_MODEL}"
+#cmakedefine TEST_RUNTIME "${TEST_RUNTIME}"
+#cmakedefine TEST_NUM_CONSUMER "${TEST_NUM_CONSUMER}"
+
+// Runtime configuration
+#cmakedefine TEST_NPE "${TEST_NPE}"
+
+void init_fam_options(Fam_Options *famOpts) {
+    memset((void *)famOpts, 0, sizeof(Fam_Options));
+
+    famOpts->memoryServer = strdup(TEST_MEMORY_SERVER);
+    famOpts->grpcPort = strdup(TEST_GRPC_PORT);
+    famOpts->libfabricPort = strdup(TEST_LIBFABRIC_PORT);
+    famOpts->libfabricProvider = strdup(TEST_LIBFABRIC_PROVIDER);
+    famOpts->famThreadModel = strdup(TEST_FAM_THREAD_MODEL);
+    famOpts->allocator = strdup(TEST_ALLOCATOR);
+    famOpts->famContextModel = strdup(TEST_FAM_CONTEXT_MODEL);
+    famOpts->runtime = strdup(TEST_RUNTIME);
+}
+
+// This function return uniq string per pe, by appending pe_id to base string
+// If RUNTIME is set to NONE, Then it will append random number to the base
+// string. Use this function after fam initialziation.
+const char *get_uniq_str(const char *base_str, fam *famObj) {
+    char *rtOptValue;
+    char *rtOpt;
+    char *peIdOpt;
+    int *peId;
+    std::ostringstream uniq_str;
+
+    rtOpt = strdup("RUNTIME");
+    rtOptValue = (char *)famObj->fam_get_option(rtOpt);
+    if (strcmp(rtOptValue, "NONE") == 0) {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        srandom((unsigned int)(tv.tv_sec + tv.tv_usec));
+        uniq_str << base_str << "_" << random();
+    } else {
+        peIdOpt = strdup("PE_ID");
+        peId = (int *)famObj->fam_get_option(peIdOpt);
+        uniq_str << base_str << "_" << *peId;
+        free(peIdOpt);
+        free(peId);
+    }
+    free(rtOpt);
+    free(rtOptValue);
+    return (strdup(uniq_str.str().c_str()));
+}
+#endif
