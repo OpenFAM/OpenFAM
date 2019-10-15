@@ -31,7 +31,7 @@ add_subdirectory(rpc)
 
 add_library(openfam SHARED ${LIBOPENFAM_SRC})
 
-target_link_libraries(openfam fabric fammetadata grpc++ grpc++_reflection nvmm boost_fiber boost_context pmix pmi2 fambitmap)
+target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_fiber boost_context pmix pmi2 fambitmap)
 
 add_executable (memoryserver ${MEMORYSERVER_SRC})
 

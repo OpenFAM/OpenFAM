@@ -20,44 +20,96 @@ $ cd $OpenFAM
 ```
 
 3. Build third-party dependencies as described in the [README](https://github.com/OpenFAM/OpenFAM/tree/master/third-party) under the third-party directory.
-4. Build and Test. Note that testing will build and run unit tests and regression tests.
- 
+
+
+4. Build and Test with the script.
+   Note that this script will build OpenFAM under build/build-rpc directory and run unit tests and regression tests.
+
  ```
  $ ./build_and_run.sh
  ```
 
-5. If you only wish to test code coverage, change directory to build/build-rpc.
 
-```
-# run cmake with coverage enabled
-$ cmake .. -DCMAKE_BUILD_TYPE=Coverage
+5. (Optional) Build and Test manually.
 
-$ make -j
+   a. Create and change into a build directory under the source directory ```$OpenFAM```.
 
-# clean previous coverage information
-$ make cov-clean
+    ```
+    $ cd $OpenFAM
+    $ mkdir build
+    $ cd build
+    ```
 
-# Run unit-test and reg-test
-$ make cov-run-tests
+   b. Run cmake.
 
-# If required, run other other tests to improve coverage results before generating report.
+    ```
+    $ cmake ..
+    ```
 
-# generate code coverage reports
-$ make cov-report
-```
+    The default build type is Release. To switch between Release, Debug and Coverage, use one of the below command:
 
-All the above three targets can be executed at once using:
+    ```
+    $ cmake .. -DCMAKE_BUILD_TYPE=Release
+    $ cmake .. -DCMAKE_BUILD_TYPE=Debug
+    $ cmake .. -DCMAKE_BUILD_TYPE=Coverage
+    ```
 
-```
-$ make coverage
-```
+   c. make and install OpenFAM under the current build directory.
 
-The default build type is Release. To switch between Release and Coverage:
+    ```
+    $ make -j
+    $ make install
+    ```
 
-```
-$ cmake .. -DCMAKE_BUILD_TYPE=Release  
-$ cmake .. -DCMAKE_BUILD_TYPE=Coverage
-```
+   d. Start the memoryserver on localhost(127.0.0.1) as a background process on the current terminal.
+
+    ```
+    $ ./src/memoryserver -m 127.0.0.1 &
+    ```
+
+   e. Run the unit tests and regresssion tests.
+
+    ```
+    $ make unit-test
+    $ make reg-test
+    ```
+
+   f. Stop the memoryserver running locally on the current terminal.
+
+    ```
+    $ pkill memoryserver
+    ```
+
+
+6. (Optional) If you only wish to test code coverage.
+
+   a. Perform steps 5-a to 5-d using build type as Coverage in step 5-a
+
+    ```
+    $ cmake .. -DCMAKE_BUILD_TYPE=Coverage
+    ```
+
+   b. Clean previous coverage information
+
+    ```
+    $ make cov-clean
+    ```
+
+   c. Run unit-test and reg-test
+
+    ```
+    $ make cov-run-tests
+    ```
+
+    If required, run other tests to improve coverage results before generating report.
+
+   d. Generate code coverage reports
+
+    ```
+    $ make cov-report
+    ```
+    A summary report is displayed on the terminal, while the details coverage results in html format is placed under build/test/coverage directory.
+    To collect additional coverage information of memoryserver, repeat this step after stopping memoryserver instance(5-f).
+
 
 Note: cmake command should be re-run if fam\_rpc.proto file is modified to generate updated fam\_rpc.grpc.pb.cc and fam_rpc.pb.cc files
-
