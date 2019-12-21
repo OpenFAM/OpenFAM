@@ -49,6 +49,8 @@ using namespace std;
 
 #define MAX_RETRY_CNT 1024
 #define FABRIC_TIMEOUT 10 // 10 milliseconds
+#define TOTAL_TIMEOUT 3600000 // 1 hour
+#define TIMEOUT_WAIT_RETRY (TOTAL_TIMEOUT / FABRIC_TIMEOUT)
 #define TIMEOUT_RETRY INT_MAX
 
 namespace openfam {
@@ -553,13 +555,18 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
     ssize_t ret = 0;
     struct fi_cq_data_entry entry;
     int timeout_retry_cnt = 0;
+    int timeout_wait_retry_cnt = 0;
 
     do {
         memset(&entry, 0, sizeof(entry));
         FI_CALL(ret, fi_cq_read, famCtx->get_txcq(), &entry, 1);
         if (ret == -FI_ETIMEDOUT || ret == -FI_EAGAIN) {
-            timeout_retry_cnt++;
-            if (timeout_retry_cnt <= TIMEOUT_RETRY) {
+            if (timeout_retry_cnt < TIMEOUT_RETRY) {
+                timeout_retry_cnt++;
+                continue;
+            } else if (timeout_wait_retry_cnt < TIMEOUT_WAIT_RETRY) {
+                timeout_wait_retry_cnt++;
+                usleep(FABRIC_TIMEOUT * 1000);
                 continue;
             } else {
                 throw Fam_Timeout_Exception(
@@ -590,13 +597,18 @@ int fabric_completion_wait_multictx(Fam_Context *famCtx, fi_context *ctx,
     struct fi_cq_data_entry entry;
     int timeout_retry_cnt = 0;
     int64_t completion = 0;
+    int timeout_wait_retry_cnt = 0;
 
     do {
         memset(&entry, 0, sizeof(entry));
         FI_CALL(ret, fi_cq_read, famCtx->get_txcq(), &entry, 1);
         if (ret == -FI_ETIMEDOUT || ret == -FI_EAGAIN) {
-            timeout_retry_cnt++;
-            if (timeout_retry_cnt <= TIMEOUT_RETRY) {
+            if (timeout_retry_cnt < TIMEOUT_RETRY) {
+                timeout_retry_cnt++;
+                continue;
+            } else if (timeout_wait_retry_cnt < TIMEOUT_WAIT_RETRY) {
+                timeout_wait_retry_cnt++;
+                usleep(FABRIC_TIMEOUT * 1000);
                 continue;
             } else {
                 throw Fam_Timeout_Exception(
@@ -1310,6 +1322,7 @@ void fabric_put_quiet(Fam_Context *famCtx) {
     struct fi_cq_data_entry entry;
     ssize_t ret = 0;
     uint64_t txLastFailCnt = famCtx->get_num_tx_fail_cnt();
+    int timeout_wait_retry_cnt = 0;
 
     txcnt = famCtx->get_num_tx_ops();
 
@@ -1339,8 +1352,12 @@ void fabric_put_quiet(Fam_Context *famCtx) {
                      ((ret == -FI_EAGAIN) || (ret == -FI_ETIMEDOUT)));
         }
 
-        timeout_retry_cnt++;
-        if (timeout_retry_cnt >= TIMEOUT_RETRY) {
+        if (timeout_retry_cnt < TIMEOUT_RETRY) {
+            timeout_retry_cnt++;
+        } else if (timeout_wait_retry_cnt < TIMEOUT_WAIT_RETRY) {
+            timeout_wait_retry_cnt++;
+            usleep(FABRIC_TIMEOUT * 1000);
+        } else {
             throw Fam_Timeout_Exception("Timeout retry count exceeded INT_MAX");
         }
     } while ((txsuccess + txfail) < txcnt);
@@ -1358,6 +1375,7 @@ void fabric_get_quiet(Fam_Context *famCtx) {
     struct fi_cq_data_entry entry;
     ssize_t ret = 0;
     uint64_t rxLastFailCnt = famCtx->get_num_rx_fail_cnt();
+    int timeout_wait_retry_cnt = 0;
 
     rxcnt = famCtx->get_num_rx_ops();
 
@@ -1387,8 +1405,12 @@ void fabric_get_quiet(Fam_Context *famCtx) {
                      ((ret == -FI_EAGAIN) || (ret == -FI_ETIMEDOUT)));
         }
 
-        timeout_retry_cnt++;
-        if (timeout_retry_cnt >= TIMEOUT_RETRY) {
+        if (timeout_retry_cnt < TIMEOUT_RETRY) {
+            timeout_retry_cnt++;
+        } else if (timeout_wait_retry_cnt < TIMEOUT_WAIT_RETRY) {
+            timeout_wait_retry_cnt++;
+            usleep(FABRIC_TIMEOUT * 1000);
+        } else {
             throw Fam_Timeout_Exception("Timeout retry count exceeded INT_MAX");
         }
     } while ((rxsuccess + rxfail) < rxcnt);
