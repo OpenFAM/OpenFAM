@@ -39,11 +39,21 @@ The clone can be created and worked on using the following commands:
       
 [More info](https://help.github.com/en/enterprise/2.18/user/articles/fork-a-repo)  
 
+All the development activities happen on devel branch. Please create a devel branch in our cloned repository for pushing your code:
+
+    $ git checkout -b devel upstream/devel
+
 ## Sync your working repository with upstream regularly  
 Before you push the change to github make sure that your repository is synced with the latest changes. This can be achieved by running the following:
  
     $ git fetch upstream  
     $ git rebase upstream/master  
+
+Before you push the change to devel branch on github make sure that your repository is synced with latest changes on devel branch:
+    
+    $ git fetch upstream  
+    $ git rebase upstream/devel
+
 
 [More info](https://help.github.com/enterprise/2.18/user/articles/syncing-a-fork/)  
 Note: we have used *rebase* instead of *merge* as this will create better log.  
@@ -58,11 +68,16 @@ You can push the changes to your repository on github using the command.
   
     $ git push origin master  
 
+As a developer, you can push the changes from your devel branch to your repository on github:
+
+    $ git push origin devel
+
 Note that push will only push the changes to your forked repository in github.  
 
 ## Submit the changes to the mainline  
 When your changes in forked repository are ready to be committed to the mainline initiate a pull request.  
-This can be triggered by clicking on the green button on the left top corner in [your repository](https://github.com/your-user-name/OpenFAM)  
+This can be triggered by clicking on the green button on the left top corner in [your repository](https://github.com/your-user-name/OpenFAM)
+As a developer, Please make sure that you select the devel branch as your "base:" branch to push your change.
 
 [More info](https://help.github.com/enterprise/2.18/user/articles/using-pull-requests/)
 
