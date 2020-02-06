@@ -176,6 +176,7 @@ configure_file( ${PROJECT_SOURCE_DIR}/test/common/fam_test_config.h.in ${PROJECT
 add_subdirectory(src)
 add_subdirectory(test/unit-test)
 add_subdirectory(test/reg-test)
+add_subdirectory(test/multi-memnode-test)
 add_subdirectory(test/maxconfig)
 add_subdirectory(test/coverage)
 add_subdirectory(test/microbench)
