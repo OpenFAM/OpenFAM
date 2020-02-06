@@ -144,9 +144,19 @@ if (${TEST_ALLOCATOR} STREQUAL "NVMM")
 	add_definitions(-DSHM)
 endif()
 
+if (USE_FAM_PERSIST)
+	message(STATUS "Using FAM persist")
+	add_definitions(-DUSE_FAM_PERSIST)
+endif()
+
 if (USE_FAM_INVALIDATE)
 	message(STATUS "Using FAM invalidate")
 	add_definitions(-DUSE_FAM_INVALIDATE)
+endif()
+
+if (USE_BOOST_FIBER)
+	message(STATUS "Using Boost Fiber")
+	add_definitions(-DUSE_BOOST_FIBER)
 endif()
 
 # Use native atomics

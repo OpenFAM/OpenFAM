@@ -104,7 +104,9 @@ namespace openfam {
 #define DATAITEMID_SHIFT 1
 
 inline void openfam_persist(void *addr, uint64_t size) {
+#ifdef USE_FAM_PERSIST
     fam_persist(addr, size);
+#endif
 }
 
 inline void openfam_invalidate(void *addr, uint64_t size) {
