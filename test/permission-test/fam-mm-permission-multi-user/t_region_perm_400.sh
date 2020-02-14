@@ -22,10 +22,10 @@ echo "Tests APIs with 400 permission"
 
 
 # As user1:user1 Create a region with permission 400 of size 100MB
-su -c "./fam_create_region myRegion  400 100" user1 || test_failed "Create Region failed: $?" 1
+su -c "./fam_create_region myRegion  100 400" user1 || test_failed "Create Region failed: $?" 1
 
 # As user1 : Allocate DataItem
-su -c "./fam_allocate_data myRegion myData 666 512" user1 || test_failed "Allocate DataItem user1 failed: $?"
+su -c "./fam_allocate_data myRegion myData 50 666" user1 || test_failed "Allocate DataItem user1 failed: $?"
 
 # As user1 : Lookup Region
 su -c "./fam_lookup_region myRegion" user1 2>&1 1>/dev/null || test_failed "Lookup Region user1 failed: $?" 1
@@ -40,7 +40,7 @@ su -c "./fam_deallocate_data myRegion myData" user1 || test_failed "Deallocate D
 ! su -c "./fam_lookup_region myRegion" user2 2>&1 1>/dev/null 2>/dev/null || test_failed "Lookup Region user2 expected to fail: $?"
 
 # As user2 : Allocate DataItem
-! su -c "./fam_allocate_data myRegion myData 666 512" user2 2>&1 1>/dev/null 2>/dev/null || test_failed "Allocate DataItem user2 expected to fail: $?"
+! su -c "./fam_allocate_data myRegion myData 50 666" user2 2>&1 1>/dev/null 2>/dev/null || test_failed "Allocate DataItem user2 expected to fail: $?"
 
 # As user2 : Change Region permission
 ! su -c "./fam_changepermission_region myRegion 600" user2 2>&1 1>/dev/null 2>/dev/null || test_failed "Change Region permission user2 expected to fail: $?"
@@ -52,7 +52,7 @@ su -c "./fam_deallocate_data myRegion myData" user1 || test_failed "Deallocate D
 ! su -c "./fam_lookup_region myRegion" user3 2>&1 1>/dev/null 2>/dev/null || test_failed "Lookup Region user3 expected to fail: $?"
 
 # As user3 : Allocate DataItem
-! su -c "./fam_allocate_data myRegion myData 666 512" user3 2>&1 1>/dev/null 2>/dev/null || test_failed "Allocate DataItem user3 expected to fail: $?"
+! su -c "./fam_allocate_data myRegion myData 50 666" user3 2>&1 1>/dev/null 2>/dev/null || test_failed "Allocate DataItem user3 expected to fail: $?"
 
 # As user3 : Change Region permission
 ! su -c "./fam_changepermission_region myRegion 600" user3 2>&1 1>/dev/null 2>/dev/null || test_failed "Change Region permission user3 expected to fail: $?"
@@ -64,7 +64,7 @@ su -c "./fam_deallocate_data myRegion myData" user1 || test_failed "Deallocate D
 ! su -c "./fam_lookup_region myRegion" user4 2>&1 1>/dev/null 2>/dev/null || test_failed "Lookup Region user4 expected to fail: $?"
 
 # As user4 : Allocate DataItem
-! su -c "./fam_allocate_data myRegion myData 666 512" user4 2>&1 1>/dev/null 2>/dev/null || test_failed "Allocate DataItem user4 expected to fail: $?"
+! su -c "./fam_allocate_data myRegion myData 50 666" user4 2>&1 1>/dev/null 2>/dev/null || test_failed "Allocate DataItem user4 expected to fail: $?"
 
 # As user4 : Change Region permission
 ! su -c "./fam_changepermission_region myRegion 600" user4 2>&1 1>/dev/null 2>/dev/null || test_failed "Change Region permission user4 expected to fail: $?"
