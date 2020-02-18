@@ -181,6 +181,7 @@ add_subdirectory(test/maxconfig)
 add_subdirectory(test/coverage)
 add_subdirectory(test/microbench)
 add_subdirectory(test/apps)
+add_subdirectory(test/permission-test)
 #
 # find src include -regex '.*\.\(c\|cpp\|h\)$' -print | xargs clang-format -i -style="{BasedOnStyle: llvm, IndentWidth: 4}"
 #
