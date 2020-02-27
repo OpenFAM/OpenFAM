@@ -38,6 +38,12 @@
 #include <mutex>
 #endif
 
+#ifdef USE_BOOST_FIBER
+#define AQUIRE_MUTEX(mtx) std::unique_lock<boost::fibers::mutex> lk(mtx);
+#else
+#define AQUIRE_MUTEX(mtx) std::unique_lock<std::mutex> lk(mtx);
+#endif
+
 #include <iostream>
 
 #include "common/fam_async_qhandler.h"
@@ -72,16 +78,27 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         while (run) {
             if (queue->pop(opsInfo))
                 decode_and_execute(opsInfo);
+            {
+                AQUIRE_MUTEX(queueMtx);
+                while (queue->empty())
+                    queueCond.wait(lk);
+            }
         }
     }
 
     void initiate_operation(Fam_Ops_Info opsInfo) {
         queue->push(opsInfo);
+        {
+            AQUIRE_MUTEX(queueMtx);
+            queueCond.notify_one();
+        }
         return;
     }
 
     void quiet(Fam_Context *famCtx) {
 
+        qreadCtr = famCtx->get_num_rx_ops();
+        qwriteCtr = famCtx->get_num_tx_ops();
         write_quiet(famCtx->get_num_tx_ops());
         read_quiet(famCtx->get_num_rx_ops());
 
@@ -90,11 +107,7 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
 
     void write_quiet(uint64_t ctr) {
         {
-#ifdef USE_BOOST_FIBER
-            std::unique_lock<boost::fibers::mutex> lk(writeMtx);
-#else
-            std::unique_lock<std::mutex> lk(writeMtx);
-#endif
+            AQUIRE_MUTEX(writeMtx);
             while (!(ctr == writeCtr.load(boost::memory_order_seq_cst))) {
                 writeCond.wait(lk);
             }
@@ -114,11 +127,7 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
 
     void read_quiet(uint64_t ctr) {
         {
-#ifdef USE_BOOST_FIBER
-            std::unique_lock<boost::fibers::mutex> lk(readMtx);
-#else
-            std::unique_lock<std::mutex> lk(readMtx);
-#endif
+            AQUIRE_MUTEX(readMtx);
             while (!(ctr == readCtr.load(boost::memory_order_seq_cst))) {
                 readCond.wait(lk);
             }
@@ -139,11 +148,7 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
     void wait_for_copy(void *waitObj) {
         Copy_Tag *tag = static_cast<Copy_Tag *>(waitObj);
         {
-#ifdef USE_BOOST_FIBER
-            std::unique_lock<boost::fibers::mutex> lk(copyMtx);
-#else
-            std::unique_lock<std::mutex> lk(copyMtx);
-#endif
+            AQUIRE_MUTEX(copyMtx);
             while (!tag->copyDone.load(boost::memory_order_seq_cst)) {
                 copyCond.wait(lk);
             }
@@ -203,14 +208,11 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         }
 
         {
-#ifdef USE_BOOST_FIBER
-            std::unique_lock<boost::fibers::mutex> lk(writeMtx);
-#else
-            std::unique_lock<std::mutex> lk(writeMtx);
-#endif
+            AQUIRE_MUTEX(writeMtx);
             writeCtr++;
         }
-        writeCond.notify_one();
+        if (qwriteCtr == writeCtr)
+            writeCond.notify_one();
         return;
     }
 
@@ -239,14 +241,11 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         }
 
         {
-#ifdef USE_BOOST_FIBER
-            std::unique_lock<boost::fibers::mutex> lk(readMtx);
-#else
-            std::unique_lock<std::mutex> lk(readMtx);
-#endif
+            AQUIRE_MUTEX(readMtx);
             readCtr++;
         }
-        readCond.notify_one();
+        if (qreadCtr == readCtr)
+            readCond.notify_one();
         return;
     }
 
@@ -255,11 +254,7 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         openfam_persist(dest, nbytes);
 
         {
-#ifdef USE_BOOST_FIBER
-            std::unique_lock<boost::fibers::mutex> lk(copyMtx);
-#else
-            std::unique_lock<std::mutex> lk(copyMtx);
-#endif
+            AQUIRE_MUTEX(copyMtx)
             tag->copyDone.store(true, boost::memory_order_seq_cst);
         }
         copyCond.notify_one();
@@ -271,13 +266,14 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
     boost::lockfree::queue<Fam_Async_Err *> *readCQ, *writeCQ;
     boost::thread_group consumerThreads;
 #ifdef USE_BOOST_FIBER
-    boost::fibers::condition_variable readCond, writeCond, copyCond;
-    boost::fibers::mutex readMtx, writeMtx, copyMtx;
+    boost::fibers::condition_variable readCond, writeCond, copyCond, queueCond;
+    boost::fibers::mutex readMtx, writeMtx, copyMtx, queueMtx;
 #else
-    std::condition_variable readCond, writeCond, copyCond;
-    std::mutex readMtx, writeMtx, copyMtx;
+    std::condition_variable readCond, writeCond, copyCond, queueCond;
+    std::mutex readMtx, writeMtx, copyMtx, queueMtx;
 #endif
-    boost::atomic_uint64_t readCtr, writeCtr, readErrCtr, writeErrCtr;
+    boost::atomic_uint64_t readCtr, writeCtr, readErrCtr, writeErrCtr,
+        qwriteCtr, qreadCtr;
     boost::atomic<bool> run;
 };
 
