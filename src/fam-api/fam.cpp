@@ -867,9 +867,7 @@ int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
         itemInfo = famAllocator->check_permission_get_info(descriptor);
         descriptor->bind_key(itemInfo.key);
         descriptor->set_size(itemInfo.size);
-        if (strcmp(famOptions.allocator, FAM_OPTIONS_NVMM_STR) == 0) {
-            descriptor->set_base_address(itemInfo.base);
-        }
+        descriptor->set_base_address(itemInfo.base);
     }
 
     if (key == FAM_KEY_INVALID) {

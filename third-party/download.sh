@@ -43,7 +43,7 @@ echo "Downloading LIBFABRIC source"
 git clone https://github.com/ofiwg/libfabric.git
 cd libfabric
 git fetch --all --tags --prune
-git checkout tags/v1.7.2 -b openfam
+git checkout tags/v1.9.1rc1 -b openfam
 
 #PMIX v3.0.2
 cd $CURRENT_DIR

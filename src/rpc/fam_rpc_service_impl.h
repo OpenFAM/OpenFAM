@@ -175,7 +175,7 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
 
     int deregister_memory(uint64_t regionId, uint64_t offset);
 
-    int register_memory(Fam_DataItem_Metadata dataitem, void *localPointer,
+    int register_memory(Fam_DataItem_Metadata dataitem, void *&localPointer,
                         uint32_t uid, uint32_t gid, uint64_t &key);
 
     int register_fence_memory();

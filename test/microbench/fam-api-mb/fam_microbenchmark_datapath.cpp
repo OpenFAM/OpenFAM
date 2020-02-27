@@ -60,6 +60,9 @@ TEST(FamPutGet, BlockingFamPutGet) {
     for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_put_blocking(local, item, offset, gDataSize));
+    }
+
+    for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_get_blocking(local, item, offset, gDataSize));
     }
@@ -106,6 +109,8 @@ TEST(FamScatter, BlockingScatterGatherIndex) {
     for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_scatter_blocking(local, item, count, indexes, size));
+    }
+    for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_gather_blocking(local, item, count, indexes, size));
     }
@@ -163,6 +168,8 @@ TEST(FamScatter, BlockingScatterGatherIndexSize) {
     for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_scatter_blocking(local, item, count, indexes, size));
+    }
+    for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_gather_blocking(local, item, count, indexes, size));
     }

@@ -361,6 +361,10 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         return serverAddrName;
     };
 
+    char *get_provider() {
+        return provider;
+    };
+
   protected:
     MemServerMap name;
     char *service;

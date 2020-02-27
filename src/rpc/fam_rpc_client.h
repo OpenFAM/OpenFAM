@@ -286,6 +286,7 @@ class Fam_Rpc_Client {
                 Fam_Descriptor *dataItem =
                     new Fam_Descriptor(globalDescriptor, nbytes);
                 dataItem->bind_key(res.key());
+                dataItem->set_base_address((void *)res.base());
                 return dataItem;
             }
         } else {
@@ -513,6 +514,7 @@ class Fam_Rpc_Client {
             } else {
                 itemInfo.key = res.key();
                 itemInfo.size = res.size();
+                itemInfo.base = (void *)res.base();
                 return itemInfo;
             }
         } else {
@@ -566,6 +568,7 @@ class Fam_Rpc_Client {
                 destGlobalDescriptor.offset = res.offset();
                 *dest = new Fam_Descriptor(destGlobalDescriptor, res.size());
                 (*dest)->bind_key(res.key());
+                (*dest)->set_base_address((void *)res.base());
             }
         } else {
             throw Fam_Allocator_Exception(FAM_ERR_GRPC,

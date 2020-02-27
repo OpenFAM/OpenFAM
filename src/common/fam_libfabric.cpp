@@ -30,8 +30,8 @@
 
 #include "common/fam_libfabric.h"
 #include "common/fam_context.h"
-#include "common/fam_options.h"
 #include "common/fam_internal.h"
+#include "common/fam_options.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 #include <limits.h>
@@ -47,8 +47,8 @@ using namespace chrono;
 
 using namespace std;
 
-#define MAX_RETRY_CNT 1024
-#define FABRIC_TIMEOUT 10 // 10 milliseconds
+#define MAX_RETRY_CNT INT_MAX
+#define FABRIC_TIMEOUT 10     // 10 milliseconds
 #define TOTAL_TIMEOUT 3600000 // 1 hour
 #define TIMEOUT_WAIT_RETRY (TOTAL_TIMEOUT / FABRIC_TIMEOUT)
 #define TIMEOUT_RETRY INT_MAX
@@ -275,14 +275,29 @@ int fabric_initialize(const char *name, const char *service, bool source,
             (struct fi_ep_attr *)calloc(1, sizeof(struct fi_ep_attr));
     hints->ep_attr->type = FI_EP_RDM;
 
-    hints->caps = FI_MSG | FI_RMA | FI_RMA_EVENT | FI_ATOMICS;
+    if (!hints->tx_attr)
+        hints->tx_attr =
+            (struct fi_tx_attr *)calloc(1, sizeof(struct fi_tx_attr));
+    hints->tx_attr->op_flags = FI_DELIVERY_COMPLETE;
+
+    hints->caps = FI_MSG | FI_RMA | FI_ATOMICS;
+    if ((strncmp(provider, "verbs", 5) != 0))
+        hints->caps |= FI_RMA_EVENT;
     hints->mode = FI_CONTEXT;
 
     if (!hints->domain_attr)
         hints->domain_attr =
             (struct fi_domain_attr *)calloc(1, sizeof(struct fi_domain_attr));
     hints->domain_attr->av_type = FI_AV_MAP;
-    hints->domain_attr->mr_mode = FI_MR_SCALABLE;
+
+    if ((strncmp(provider, "verbs", 5) == 0)) {
+        hints->domain_attr->mr_mode =
+            FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR;
+        if (!source)
+            hints->domain_attr->data_progress = FI_PROGRESS_AUTO;
+    } else
+        hints->domain_attr->mr_mode = FI_MR_SCALABLE;
+
     if (famTM == FAM_THREAD_SERIALIZE)
         hints->domain_attr->threading = FI_THREAD_DOMAIN;
     if (famTM == FAM_THREAD_MULTIPLE)
@@ -381,15 +396,16 @@ int fabric_initialize_av(struct fi_info *fi, struct fid_domain *domain,
         return -1;
     }
 
-    if (eq) {
-        FI_CALL(ret, fi_av_bind, *av, &eq->fid, 0);
-        if (ret < 0) {
-            // print_fierr("fi_av_bind", ret);
-            FI_CALL_NO_RETURN(fi_close, &(*av)->fid);
-            *av = NULL;
-            return -1;
+    if (strncmp(fi->fabric_attr->prov_name, "verbs", 5) != 0)
+        if (eq) {
+            FI_CALL(ret, fi_av_bind, *av, &eq->fid, 0);
+            if (ret < 0) {
+                // print_fierr("fi_av_bind", ret);
+                FI_CALL_NO_RETURN(fi_close, &(*av)->fid);
+                *av = NULL;
+                return -1;
+            }
         }
-    }
 
     return 0;
 }
@@ -537,6 +553,7 @@ int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
             } else if (ret && ret != -FI_EAGAIN) {
                 throw Fam_Datapath_Exception("Reading from fabric CQ failed");
             }
+
             (*retry_cnt)++;
             if ((*retry_cnt) <= MAX_RETRY_CNT) {
                 return 1;
@@ -547,6 +564,7 @@ int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
             throw Fam_Datapath_Exception(fabric_strerror((int)ret));
         }
     }
+
     return 0;
 }
 
@@ -587,7 +605,6 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
             }
         }
     } while (entry.op_context != (void *)ctx);
-
     return 0;
 }
 
@@ -769,14 +786,15 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
     flags = (block ? FI_COMPLETION : 0);
     flags |= ((block && write) ? FI_DELIVERY_COMPLETE : 0);
 
-    struct fi_context *ctx = new struct fi_context[iteration];
+    struct fi_context *ctx = (block ? new struct fi_context[iteration] : NULL);
 
     // Take Fam_Context read lock
     famCtx->aquire_RDLock();
 
     for (int64_t j = 0; j < iteration; j++) {
 
-        ctx[j].internal[0] = (void *)j;
+        if (block)
+            ctx[j].internal[0] = (void *)j;
 
         struct fi_msg_rma msg = {.msg_iov = &iov[j * iov_limit],
                                  .desc = 0,
@@ -784,7 +802,7 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
                                  .addr = fiAddr,
                                  .rma_iov = &rma_iov[j * iov_limit],
                                  .rma_iov_count = MIN(iov_limit, count_remain),
-                                 .context = &ctx[j],
+                                 .context = (block ? &ctx[j] : NULL),
                                  .data = 0};
 
         uint32_t retry_cnt = 0;
@@ -827,7 +845,8 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
     // Release Fam_Context read lock
     famCtx->release_lock();
 
-    delete[] ctx;
+    if (block)
+        delete[] ctx;
     return (int)ret;
 }
 /*
@@ -841,13 +860,14 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
  *  @param stride - stride size in element
  *  @param fiAddr - fi_addr_t address
  *  @param famCtx - Pointer to Fam_Context
+ *  @param base - base address of remote memory
  *  @return - {true(0), false(1), errNo(<0)}
  */
 int fabric_scatter_stride_blocking(uint64_t key, const void *local,
                                    size_t nbytes, uint64_t first,
                                    uint64_t count, uint64_t stride,
                                    fi_addr_t fiAddr, Fam_Context *famCtx,
-                                   size_t iov_limit) {
+                                   size_t iov_limit, uint64_t base) {
 
     struct iovec *iov = new iovec[count];
     struct fi_rma_iov *rma_iov = new fi_rma_iov[count];
@@ -858,7 +878,7 @@ int fabric_scatter_stride_blocking(uint64_t key, const void *local,
         iov[i].iov_base = (void *)((uint64_t)local + (i * nbytes));
         iov[i].iov_len = nbytes;
 
-        rma_iov[i].addr = first * nbytes + (i * stride) * nbytes;
+        rma_iov[i].addr = base + first * nbytes + (i * stride) * nbytes;
         rma_iov[i].len = nbytes;
         rma_iov[i].key = key;
     }
@@ -884,13 +904,15 @@ int fabric_scatter_stride_blocking(uint64_t key, const void *local,
  *  @param offset - offset to the local memory address
  *  @param fiAddr - fi_addr_t address
  *  @param famCtx - Pointer to Fam_Context
+ *  @param base - base address of remote memory
  *  @return - {true(0), false(1), errNo(<0)}
  */
 
 int fabric_gather_stride_blocking(uint64_t key, const void *local,
                                   size_t nbytes, uint64_t first, uint64_t count,
                                   uint64_t stride, fi_addr_t fiAddr,
-                                  Fam_Context *famCtx, size_t iov_limit) {
+                                  Fam_Context *famCtx, size_t iov_limit,
+                                  uint64_t base) {
 
     struct iovec *iov = new iovec[count];
     struct fi_rma_iov *rma_iov = new fi_rma_iov[count];
@@ -901,7 +923,7 @@ int fabric_gather_stride_blocking(uint64_t key, const void *local,
         iov[i].iov_base = (void *)((uint64_t)local + (i * nbytes));
         iov[i].iov_len = nbytes;
 
-        rma_iov[i].addr = first * nbytes + (i * stride) * nbytes;
+        rma_iov[i].addr = base + first * nbytes + (i * stride) * nbytes;
         rma_iov[i].len = nbytes;
         rma_iov[i].key = key;
     }
@@ -925,12 +947,14 @@ int fabric_gather_stride_blocking(uint64_t key, const void *local,
  *  @param index - An array containing element indexes.
  *  @param fiAddr - fi_addr_t address
  *  @param famCtx - Pointer to Fam_Context
+ *  @param base - base address of remote memory
  *  @return - {true(0), false(1), errNo(<0)}
  */
 int fabric_scatter_index_blocking(uint64_t key, const void *local,
                                   size_t nbytes, uint64_t *index,
                                   uint64_t count, fi_addr_t fiAddr,
-                                  Fam_Context *famCtx, size_t iov_limit) {
+                                  Fam_Context *famCtx, size_t iov_limit,
+                                  uint64_t base) {
 
     struct iovec *iov = new iovec[count];
     struct fi_rma_iov *rma_iov = new fi_rma_iov[count];
@@ -940,7 +964,7 @@ int fabric_scatter_index_blocking(uint64_t key, const void *local,
     for (uint64_t i = 0; i < count; i++) {
         iov[i].iov_base = (void *)((uint64_t)local + (i * nbytes));
         iov[i].iov_len = nbytes;
-        rma_iov[i].addr = index[i] * nbytes;
+        rma_iov[i].addr = base + index[i] * nbytes;
         rma_iov[i].len = nbytes;
         rma_iov[i].key = key;
     }
@@ -964,12 +988,13 @@ int fabric_scatter_index_blocking(uint64_t key, const void *local,
  *  @param index - An array containing element indexes.
  *  @param fiAddr - fi_addr_t address
  *  @param famCtx - Pointer to Fam_Context
+ *  @param base - base address of remote memory
  *  @return - {true(0), false(1), errNo(<0)}
  */
 int fabric_gather_index_blocking(uint64_t key, const void *local, size_t nbytes,
                                  uint64_t *index, uint64_t count,
                                  fi_addr_t fiAddr, Fam_Context *famCtx,
-                                 size_t iov_limit) {
+                                 size_t iov_limit, uint64_t base) {
 
     struct iovec *iov = new iovec[count];
     struct fi_rma_iov *rma_iov = new fi_rma_iov[count];
@@ -980,7 +1005,7 @@ int fabric_gather_index_blocking(uint64_t key, const void *local, size_t nbytes,
         iov[i].iov_base = (void *)((uint64_t)local + (i * nbytes));
         iov[i].iov_len = nbytes;
 
-        rma_iov[i].addr = index[i] * nbytes;
+        rma_iov[i].addr = base + index[i] * nbytes;
         rma_iov[i].len = nbytes;
         rma_iov[i].key = key;
     }
@@ -1013,14 +1038,13 @@ void fabric_write_nonblocking(uint64_t key, const void *local, size_t nbytes,
 
     struct fi_rma_iov rma_iov = {.addr = offset, .len = nbytes, .key = key};
 
-    struct fi_context *ctx = new struct fi_context();
     struct fi_msg_rma msg = {.msg_iov = &iov,
                              .desc = 0,
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
                              .rma_iov_count = 1,
-                             .context = ctx,
+                             .context = NULL,
                              .data = 0};
 
     // Take Fam_Context read lock
@@ -1064,14 +1088,13 @@ void fabric_read_nonblocking(uint64_t key, const void *local, size_t nbytes,
 
     struct fi_rma_iov rma_iov = {.addr = offset, .len = nbytes, .key = key};
 
-    struct fi_context *ctx = new struct fi_context();
     struct fi_msg_rma msg = {.msg_iov = &iov,
                              .desc = 0,
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
                              .rma_iov_count = 1,
-                             .context = ctx,
+                             .context = NULL,
                              .data = 0};
 
     // Take Fam_Context read lock
@@ -1107,13 +1130,14 @@ void fabric_read_nonblocking(uint64_t key, const void *local, size_t nbytes,
  *  @param stride - stride size in element
  *  @param fiAddr - fi_addr_t address
  *  @param famCtx - Pointer to Fam_Context
+ *  @param base - base address of remote memory
  *  @return - {true(0), false(1), errNo(<0)}
  */
 void fabric_scatter_stride_nonblocking(uint64_t key, const void *local,
                                        size_t nbytes, uint64_t first,
                                        uint64_t count, uint64_t stride,
                                        fi_addr_t fiAddr, Fam_Context *famCtx,
-                                       size_t iov_limit) {
+                                       size_t iov_limit, uint64_t base) {
 
     struct iovec *iov = new iovec[count];
     struct fi_rma_iov *rma_iov = new fi_rma_iov[count];
@@ -1122,7 +1146,7 @@ void fabric_scatter_stride_nonblocking(uint64_t key, const void *local,
         iov[i].iov_base = (void *)((uint64_t)local + (i * nbytes));
         iov[i].iov_len = nbytes;
 
-        rma_iov[i].addr = first * nbytes + (i * stride) * nbytes;
+        rma_iov[i].addr = base + first * nbytes + (i * stride) * nbytes;
         rma_iov[i].len = nbytes;
         rma_iov[i].key = key;
     }
@@ -1149,6 +1173,7 @@ void fabric_scatter_stride_nonblocking(uint64_t key, const void *local,
  *  @param offset - offset to the local memory address
  *  @param fiAddr - fi_addr_t address
  *  @param famCtx - Pointer to Fam_Context
+ *  @param base - base address of remote memory
  *  @return - {true(0), false(1), errNo(<0)}
  */
 
@@ -1156,7 +1181,7 @@ void fabric_gather_stride_nonblocking(uint64_t key, const void *local,
                                       size_t nbytes, uint64_t first,
                                       uint64_t count, uint64_t stride,
                                       fi_addr_t fiAddr, Fam_Context *famCtx,
-                                      size_t iov_limit) {
+                                      size_t iov_limit, uint64_t base) {
 
     struct iovec *iov = new iovec[count];
     struct fi_rma_iov *rma_iov = new fi_rma_iov[count];
@@ -1165,7 +1190,7 @@ void fabric_gather_stride_nonblocking(uint64_t key, const void *local,
         iov[i].iov_base = (void *)((uint64_t)local + (i * nbytes));
         iov[i].iov_len = nbytes;
 
-        rma_iov[i].addr = first * nbytes + (i * stride) * nbytes;
+        rma_iov[i].addr = base + first * nbytes + (i * stride) * nbytes;
         rma_iov[i].len = nbytes;
         rma_iov[i].key = key;
     }
@@ -1189,12 +1214,14 @@ void fabric_gather_stride_nonblocking(uint64_t key, const void *local,
  *  @param index - An array containing element indexes.
  *  @param fiAddr - fi_addr_t address
  *  @param famCtx - Pointer to Fam_Context
+ *  @param base - base address of remote memory
  *  @return - {true(0), false(1), errNo(<0)}
  */
 void fabric_scatter_index_nonblocking(uint64_t key, const void *local,
                                       size_t nbytes, uint64_t *index,
                                       uint64_t count, fi_addr_t fiAddr,
-                                      Fam_Context *famCtx, size_t iov_limit) {
+                                      Fam_Context *famCtx, size_t iov_limit,
+                                      uint64_t base) {
 
     struct iovec *iov = new iovec[count];
     struct fi_rma_iov *rma_iov = new fi_rma_iov[count];
@@ -1202,7 +1229,7 @@ void fabric_scatter_index_nonblocking(uint64_t key, const void *local,
     for (uint64_t i = 0; i < count; i++) {
         iov[i].iov_base = (void *)((uint64_t)local + (i * nbytes));
         iov[i].iov_len = nbytes;
-        rma_iov[i].addr = index[i] * nbytes;
+        rma_iov[i].addr = base + index[i] * nbytes;
         rma_iov[i].len = nbytes;
         rma_iov[i].key = key;
     }
@@ -1226,12 +1253,14 @@ void fabric_scatter_index_nonblocking(uint64_t key, const void *local,
  *  @param index - An array containing element indexes.
  *  @param fiAddr - fi_addr_t address
  *  @param famCtx - Pointer to Fam_Context
+ *  @param base - base address of remote memory
  *  @return - {true(0), false(1), errNo(<0)}
  */
 void fabric_gather_index_nonblocking(uint64_t key, const void *local,
                                      size_t nbytes, uint64_t *index,
                                      uint64_t count, fi_addr_t fiAddr,
-                                     Fam_Context *famCtx, size_t iov_limit) {
+                                     Fam_Context *famCtx, size_t iov_limit,
+                                     uint64_t base) {
 
     struct iovec *iov = new iovec[count];
     struct fi_rma_iov *rma_iov = new fi_rma_iov[count];
@@ -1240,7 +1269,7 @@ void fabric_gather_index_nonblocking(uint64_t key, const void *local,
         iov[i].iov_base = (void *)((uint64_t)local + (i * nbytes));
         iov[i].iov_len = nbytes;
 
-        rma_iov[i].addr = index[i] * nbytes;
+        rma_iov[i].addr = base + index[i] * nbytes;
         rma_iov[i].len = nbytes;
         rma_iov[i].key = key;
     }
