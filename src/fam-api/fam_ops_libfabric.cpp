@@ -177,6 +177,18 @@ int Fam_Ops_Libfabric::initialize() {
                 throw Fam_Allocator_Exception(FAM_ERR_ALLOCATOR,
                                               message.str().c_str());
             }
+
+            // Initialize defaultCtx
+            if (famContextModel == FAM_CONTEXT_DEFAULT) {
+                Fam_Context *defaultCtx =
+                    new Fam_Context(fi, domain, famThreadModel);
+                defContexts->insert({nodeId, defaultCtx});
+                ret = fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
+                if (ret < 0) {
+                    // TODO: Log error
+                    return ret;
+                }
+            }
             ret = fabric_insert_av((char *)serverAddrName, av, fiAddrs);
             if (ret < 0) {
                 // TODO: Log error
@@ -209,19 +221,8 @@ int Fam_Ops_Libfabric::initialize() {
                 throw Fam_Datapath_Exception(message.str().c_str());
             }
 
-            delete tmpCtx;
-        }
-
-        // Initialize defaultCtx
-        if (famContextModel == FAM_CONTEXT_DEFAULT) {
-            Fam_Context *defaultCtx =
-                new Fam_Context(fi, domain, famThreadModel);
-            defContexts->insert({nodeId, defaultCtx});
-            ret = fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
-            if (ret < 0) {
-                // TODO: Log error
-                return ret;
-            }
+            // Save this context to defContexts on memoryserver
+            defContexts->insert({nodeId, tmpCtx});
         }
     }
     fabric_iov_limit = fi->tx_attr->rma_iov_limit;
@@ -331,6 +332,7 @@ int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,
     // Write data into memory region with this key
     uint64_t key;
     key = descriptor->get_key();
+    offset += (uint64_t)descriptor->get_base_address();
     uint64_t nodeId = descriptor->get_memserver_id();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int ret = fabric_write(key, local, nbytes, offset, (*fiAddr)[nodeId],
@@ -344,6 +346,7 @@ int Fam_Ops_Libfabric::get_blocking(void *local, Fam_Descriptor *descriptor,
     // Write data into memory region with this key
     uint64_t key;
     key = descriptor->get_key();
+    offset += (uint64_t)descriptor->get_base_address();
     uint64_t nodeId = descriptor->get_memserver_id();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int ret = fabric_read(key, local, nbytes, offset, (*fiAddr)[nodeId],
@@ -364,7 +367,8 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int ret = fabric_gather_stride_blocking(
         key, local, elementSize, firstElement, nElements, stride,
-        (*fiAddr)[nodeId], get_context(descriptor), fabric_iov_limit);
+        (*fiAddr)[nodeId], get_context(descriptor), fabric_iov_limit,
+        (uint64_t)descriptor->get_base_address());
     return ret;
 }
 
@@ -379,7 +383,8 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int ret = fabric_gather_index_blocking(
         key, local, elementSize, elementIndex, nElements, (*fiAddr)[nodeId],
-        get_context(descriptor), fabric_iov_limit);
+        get_context(descriptor), fabric_iov_limit,
+        (uint64_t)descriptor->get_base_address());
     return ret;
 }
 
@@ -395,7 +400,8 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int ret = fabric_scatter_stride_blocking(
         key, local, elementSize, firstElement, nElements, stride,
-        (*fiAddr)[nodeId], get_context(descriptor), fabric_iov_limit);
+        (*fiAddr)[nodeId], get_context(descriptor), fabric_iov_limit,
+        (uint64_t)descriptor->get_base_address());
     return ret;
 }
 
@@ -410,7 +416,8 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int ret = fabric_scatter_index_blocking(
         key, local, elementSize, elementIndex, nElements, (*fiAddr)[nodeId],
-        get_context(descriptor), fabric_iov_limit);
+        get_context(descriptor), fabric_iov_limit,
+        (uint64_t)descriptor->get_base_address());
     return ret;
 }
 
@@ -420,6 +427,7 @@ void Fam_Ops_Libfabric::put_nonblocking(void *local, Fam_Descriptor *descriptor,
     uint64_t key;
 
     key = descriptor->get_key();
+    offset += (uint64_t)descriptor->get_base_address();
     uint64_t nodeId = descriptor->get_memserver_id();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_write_nonblocking(key, local, nbytes, offset, (*fiAddr)[nodeId],
@@ -432,6 +440,7 @@ void Fam_Ops_Libfabric::get_nonblocking(void *local, Fam_Descriptor *descriptor,
     uint64_t key;
 
     key = descriptor->get_key();
+    offset += (uint64_t)descriptor->get_base_address();
     uint64_t nodeId = descriptor->get_memserver_id();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_read_nonblocking(key, local, nbytes, offset, (*fiAddr)[nodeId],
@@ -450,7 +459,8 @@ void Fam_Ops_Libfabric::gather_nonblocking(
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_gather_stride_nonblocking(key, local, elementSize, firstElement,
                                      nElements, stride, (*fiAddr)[nodeId],
-                                     get_context(descriptor), fabric_iov_limit);
+                                     get_context(descriptor), fabric_iov_limit,
+                                     (uint64_t)descriptor->get_base_address());
     return;
 }
 
@@ -466,7 +476,8 @@ void Fam_Ops_Libfabric::gather_nonblocking(void *local,
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_gather_index_nonblocking(key, local, elementSize, elementIndex,
                                     nElements, (*fiAddr)[nodeId],
-                                    get_context(descriptor), fabric_iov_limit);
+                                    get_context(descriptor), fabric_iov_limit,
+                                    (uint64_t)descriptor->get_base_address());
     return;
 }
 
@@ -481,7 +492,8 @@ void Fam_Ops_Libfabric::scatter_nonblocking(
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_scatter_stride_nonblocking(
         key, local, elementSize, firstElement, nElements, stride,
-        (*fiAddr)[nodeId], get_context(descriptor), fabric_iov_limit);
+        (*fiAddr)[nodeId], get_context(descriptor), fabric_iov_limit,
+        (uint64_t)descriptor->get_base_address());
     return;
 }
 
@@ -497,7 +509,8 @@ void Fam_Ops_Libfabric::scatter_nonblocking(void *local,
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_scatter_index_nonblocking(key, local, elementSize, elementIndex,
                                      nElements, (*fiAddr)[nodeId],
-                                     get_context(descriptor), fabric_iov_limit);
+                                     get_context(descriptor), fabric_iov_limit,
+                                     (uint64_t)descriptor->get_base_address());
     return;
 }
 
@@ -608,6 +621,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_ATOMIC_WRITE, FI_INT32,
@@ -620,6 +634,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_ATOMIC_WRITE, FI_INT64,
@@ -632,6 +647,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_ATOMIC_WRITE, FI_UINT32,
@@ -644,6 +660,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_ATOMIC_WRITE, FI_UINT64,
@@ -656,6 +673,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_ATOMIC_WRITE, FI_FLOAT,
@@ -668,6 +686,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_ATOMIC_WRITE, FI_DOUBLE,
@@ -680,6 +699,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_SUM, FI_INT32,
@@ -692,6 +712,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_SUM, FI_INT64,
@@ -704,6 +725,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_SUM, FI_UINT32,
@@ -716,6 +738,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_SUM, FI_UINT64,
@@ -728,6 +751,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_SUM, FI_FLOAT,
@@ -740,6 +764,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_SUM, FI_DOUBLE,
@@ -788,6 +813,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MIN, FI_INT32,
@@ -800,6 +826,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MIN, FI_INT64,
@@ -812,6 +839,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MIN, FI_UINT32,
@@ -824,6 +852,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MIN, FI_UINT64,
@@ -836,6 +865,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MIN, FI_FLOAT,
@@ -848,6 +878,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MIN, FI_DOUBLE,
@@ -860,6 +891,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MAX, FI_INT32,
@@ -872,6 +904,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MAX, FI_INT64,
@@ -884,6 +917,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MAX, FI_UINT32,
@@ -896,6 +930,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MAX, FI_UINT64,
@@ -908,6 +943,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MAX, FI_FLOAT,
@@ -920,6 +956,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_MAX, FI_DOUBLE,
@@ -932,6 +969,7 @@ void Fam_Ops_Libfabric::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_BAND, FI_UINT32,
@@ -944,6 +982,7 @@ void Fam_Ops_Libfabric::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_BAND, FI_UINT64,
@@ -956,6 +995,7 @@ void Fam_Ops_Libfabric::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_BOR, FI_UINT32,
@@ -968,6 +1008,7 @@ void Fam_Ops_Libfabric::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_BOR, FI_UINT64,
@@ -980,6 +1021,7 @@ void Fam_Ops_Libfabric::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_BXOR, FI_UINT32,
@@ -992,6 +1034,7 @@ void Fam_Ops_Libfabric::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     fabric_atomic(key, (void *)&value, offset, FI_BXOR, FI_UINT64,
@@ -1004,6 +1047,7 @@ int32_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -1018,6 +1062,7 @@ int64_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -1032,6 +1077,7 @@ uint32_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -1046,6 +1092,7 @@ uint64_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -1060,6 +1107,7 @@ float Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float old;
@@ -1074,6 +1122,7 @@ double Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double old;
@@ -1089,6 +1138,7 @@ int32_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -1104,6 +1154,7 @@ int64_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -1119,6 +1170,7 @@ uint32_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -1134,6 +1186,7 @@ uint64_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -1149,6 +1202,7 @@ int128_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
 
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int128_t local;
@@ -1180,6 +1234,7 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_int32(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t result;
@@ -1194,6 +1249,7 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_int64(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t result;
@@ -1208,6 +1264,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_uint32(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t result;
@@ -1222,6 +1279,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_uint64(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t result;
@@ -1236,6 +1294,7 @@ float Fam_Ops_Libfabric::atomic_fetch_float(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float result;
@@ -1250,6 +1309,7 @@ double Fam_Ops_Libfabric::atomic_fetch_double(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double result;
@@ -1264,6 +1324,7 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -1277,6 +1338,7 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -1290,6 +1352,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -1303,6 +1366,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -1316,6 +1380,7 @@ float Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float old;
@@ -1329,6 +1394,7 @@ double Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double old;
@@ -1376,6 +1442,7 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -1389,6 +1456,7 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -1402,6 +1470,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -1415,6 +1484,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -1428,6 +1498,7 @@ float Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float old;
@@ -1441,6 +1512,7 @@ double Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double old;
@@ -1454,6 +1526,7 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -1467,6 +1540,7 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -1480,6 +1554,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -1493,6 +1568,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -1506,6 +1582,7 @@ float Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float old;
@@ -1519,6 +1596,7 @@ double Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double old;
@@ -1532,6 +1610,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_and(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -1545,6 +1624,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_and(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -1558,6 +1638,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_or(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -1571,6 +1652,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_or(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -1584,6 +1666,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_xor(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -1597,6 +1680,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_xor(Fam_Descriptor *descriptor,
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -1611,6 +1695,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                                    int128_t value) {
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     famAllocator->acquire_CAS_lock(descriptor);
@@ -1628,6 +1713,7 @@ int128_t Fam_Ops_Libfabric::atomic_fetch_int128(Fam_Descriptor *descriptor,
                                                 uint64_t offset) {
     uint64_t key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
+    offset += (uint64_t)descriptor->get_base_address();
 
     int128_t local;
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();

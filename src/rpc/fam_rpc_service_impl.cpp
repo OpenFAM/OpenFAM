@@ -259,6 +259,10 @@ Fam_Rpc_Service_Impl::allocate(::grpc::ServerContext *context,
     response->set_key(key);
     response->set_regionid(request->regionid());
     response->set_offset(offset);
+    if (strncmp(famOps->get_provider(), "verbs", 5) == 0)
+        response->set_base((uint64_t)localPointer);
+    else
+        response->set_base((uint64_t)0);
 
     // Return status OK
     return ::grpc::Status::OK;
@@ -507,6 +511,10 @@ response->set_key(key);
     response->set_regionid(dataitem.regionId);
     response->set_offset(dataitem.offset);
     response->set_key(key);
+    if (strncmp(famOps->get_provider(), "verbs", 5) == 0)
+        response->set_base((uint64_t)localPointer);
+    else
+        response->set_base((uint64_t)0);
     response->set_size(dataitem.size);
 
     // Return status OK
@@ -566,24 +574,25 @@ int Fam_Rpc_Service_Impl::register_fence_memory() {
 }
 
 int Fam_Rpc_Service_Impl::register_memory(Fam_DataItem_Metadata dataitem,
-                                          void *localPointer, uint32_t uid,
+                                          void *&localPointer, uint32_t uid,
                                           uint32_t gid, uint64_t &key) {
     uint64_t dataitemId = dataitem.offset / MIN_OBJ_SIZE;
     fiMrs = famOps->get_fiMrs();
     fid_mr *mr = 0;
     int ret = 0;
+    uint64_t mrkey = 0;
     if (!localPointer) {
         localPointer =
             allocator->get_local_pointer(dataitem.regionId, dataitem.offset);
     }
 
     if (allocator->check_dataitem_permission(dataitem, 1, uid, gid)) {
-        key = generate_access_key(dataitem.regionId, dataitemId, 1);
+        key = mrkey = generate_access_key(dataitem.regionId, dataitemId, 1);
         // register the data item with required permission with libfabric
         pthread_mutex_lock(famOps->get_mr_lock());
         auto mrObj = fiMrs->find(key);
         if (mrObj == fiMrs->end()) {
-            ret = fabric_register_mr(localPointer, dataitem.size, &key,
+            ret = fabric_register_mr(localPointer, dataitem.size, &mrkey,
                                      famOps->get_domain(), 1, mr);
             if (ret < 0) {
                 pthread_mutex_unlock(famOps->get_mr_lock());
@@ -592,17 +601,21 @@ int Fam_Rpc_Service_Impl::register_memory(Fam_DataItem_Metadata dataitem,
             }
 
             fiMrs->insert({key, mr});
+        } else {
+            mrkey = fi_mr_key(mrObj->second);
         }
+        // Always return mrkey, which might be different than key.
+        key = mrkey;
         pthread_mutex_unlock(famOps->get_mr_lock());
         // Return status OK
         return 0;
     } else if (allocator->check_dataitem_permission(dataitem, 0, uid, gid)) {
-        key = generate_access_key(dataitem.regionId, dataitemId, 0);
+        key = mrkey = generate_access_key(dataitem.regionId, dataitemId, 0);
         // register the data item with required permission with libfabric
         pthread_mutex_lock(famOps->get_mr_lock());
         auto mrObj = fiMrs->find(key);
         if (mrObj == fiMrs->end()) {
-            ret = fabric_register_mr(localPointer, dataitem.size, &key,
+            ret = fabric_register_mr(localPointer, dataitem.size, &mrkey,
                                      famOps->get_domain(), 0, mr);
             if (ret < 0) {
                 pthread_mutex_unlock(famOps->get_mr_lock());
@@ -611,7 +624,11 @@ int Fam_Rpc_Service_Impl::register_memory(Fam_DataItem_Metadata dataitem,
             }
 
             fiMrs->insert({key, mr});
+        } else {
+            mrkey = fi_mr_key(mrObj->second);
         }
+        // Always return mrkey, which might be different than key.
+        key = mrkey;
         pthread_mutex_unlock(famOps->get_mr_lock());
         // Return status OK
         return 0;

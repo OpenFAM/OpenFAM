@@ -63,18 +63,36 @@ TEST(FamArithmaticAtomicmicrobench, FetchALLInt64) {
 
     for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_fetch_int64(item, testOffset));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_fetch_add(item, testOffset, operand2Value));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_fetch_subtract(item, testOffset, operand2Value));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_fetch_and(item, testOffset, operand2UValue));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_fetch_or(item, testOffset, operand2UValue));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_fetch_xor(item, testOffset, operand2UValue));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_fetch_min(item, testOffset, operand2Value));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_fetch_max(item, testOffset, operand2Value));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_compare_swap(item, testOffset,
                                                  operand1Value, operand2Value));
+    }
+    for (i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_swap(item, testOffset, operand2Value));
     }
 }
@@ -210,6 +228,21 @@ int main(int argc, char **argv) {
     EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem, test_item_size,
                                                 test_perm_mode, desc));
     EXPECT_NE((void *)NULL, item);
+    int64_t *local = (int64_t *)malloc(test_item_size);
+
+    for (int i = 0; i < 10; i++) {
+        EXPECT_NO_THROW(
+            my_fam->fam_put_blocking(local, item, 0, test_item_size));
+    }
+
+    // Need to disbale profiling code for fam_fetch_int32, so that
+    // the profiling does not capture data for this dummy fetch_int32 call.
+    // We do not profile for this APIs in the above test cases.
+    uint64_t testOffset = 0;
+    for (int i = 0; i < 10; i++) {
+        EXPECT_NO_THROW(my_fam->fam_fetch_int32(item, testOffset));
+    }
+
     my_fam->fam_barrier_all();
     ret = RUN_ALL_TESTS();
 
