@@ -9,4 +9,8 @@ endfunction()
 
 #add tests
 add_fam_test(fam_multi_memnode_tests)
+add_fam_test(fam_datapath_for_random_regions)
+add_fam_test(fam_microbenchmark_datapath_multiple_memnodes)
+add_fam_test(fam_datapath_for_memnode_regions)
+add_fam_test(fam_microbenchmark_atomic_multiple_memnodes)
 
