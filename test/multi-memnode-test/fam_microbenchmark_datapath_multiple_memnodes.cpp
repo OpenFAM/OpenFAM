@@ -28,10 +28,10 @@
  *
  */
 /* Test Case Description: Test Program in which a region is created in each
- * memory server and each PE will create a data item in these regions.
- * Each PE will do put/getscatter/gather operations on these regions.
- * Based on number of memory servers, first half of PEs will create regions, and
- * other PEs lookup for created regions.
+ * memory server and each PE will create a data item in one of these regions.
+ * Each PE will do put/getscatter/gather operations on the data items they have
+ * created. Based on number of memory servers, first half of PEs will create 
+ * regions, and other PEs lookup for created regions.
  */
 
 #include <fam/fam_exception.h>

@@ -28,8 +28,8 @@
  *
  */
 /* Test Case Description: Test Program in which a region is created in each
- * memory server and each PE will create a data item in these regions.
- * Each PE will do atomic operations on these regions.
+ * memory server and each PE will create a data item in one of these regions.
+ * Each PE will do atomic operations on data items crated by them in a region.
  * Based on number of memory servers, first half of PEs will create regions, and 
  * other PEs lookup for created regions.
  */
