@@ -28,14 +28,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #
-# default system include and link directories
-#
-link_directories(/usr/lib)
-include_directories(/usr/include)
-link_directories(/usr/local/lib)
-include_directories(/usr/local/include)
-
-#
 # build type: Release (default) or Debug
 #
 message(STATUS "====================")
@@ -120,6 +112,14 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
 # library directories
 #
 link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib) # third-party libraries
+
+#
+# default system include and link directories
+#
+link_directories(/usr/lib)
+include_directories(/usr/include)
+link_directories(/usr/local/lib)
+include_directories(/usr/local/include)
 
 #
 # Set openFAM options to be used only by test. Some individual test cases might override these options. 
