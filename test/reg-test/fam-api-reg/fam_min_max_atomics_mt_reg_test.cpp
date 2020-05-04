@@ -30,6 +30,9 @@
 
 /* Test Case Description: Tests for non-fetching operations like fam_set,
  * fam_min, fam_max for multithreaded model.
+ * (test case has been commented as there are some issues with negative test
+ * scenarios with non-blocking calls.
+ *
  */
 
 #include <fam/fam.h>
@@ -94,7 +97,6 @@ void *thrd_min_max_int32(void *arg) {
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
                               offset +
                                   (test_item_size[sm] - sizeof(int32_t) - 1)};
-
 
     for (ofs = 0; ofs < 3; ofs++) {
         for (i = 0; i < 5; i++) {

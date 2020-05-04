@@ -29,6 +29,8 @@
  */
 /* Test Case Description: Tests fam_compare_swap operations for multithreaded
  * model.
+ * (test case has been commented as there are some issues with negative test
+ * scenarios with non-blocking calls.
  */
 
 #include <fam/fam.h>

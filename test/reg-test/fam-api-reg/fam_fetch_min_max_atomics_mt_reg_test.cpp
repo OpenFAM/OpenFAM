@@ -27,6 +27,10 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
+/*
+ *   (test case has been commented as there are some issues with negative test
+ * scenarios with non-blocking calls.
+ */
 #include <fam/fam_exception.h>
 #include <gtest/gtest.h>
 #include <iostream>

@@ -29,6 +29,9 @@
  */
 /* Test Case Description: Tests fetching logical operations for multithreaded
  * model.
+ * (test case has been commented as there are some issues with negative test
+ * scenarios with non-blocking calls.)
+ *
  */
 #include <fam/fam_exception.h>
 #include <gtest/gtest.h>
