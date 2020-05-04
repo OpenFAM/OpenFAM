@@ -27,7 +27,8 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-/* Test Case Description: Tests fam_add/fam_sub and certain fam_atomic operations for multithreaded model.
+/* Test Case Description: Tests fam_add/fam_sub and certain fam_atomic
+ * operations for multithreaded model.
  */
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
@@ -66,42 +67,38 @@ void *thr_add_sub_int32_nonblocking(void *arg) {
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(int32_t);
 
-    //int tid =  addInfo->tid;
+    // int tid =  addInfo->tid;
     uint64_t sm = (addInfo->offset);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     int i, ofs;
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int32_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(int32_t) - 1)};
     int32_t baseValue[5] = {0x0, 0x1234, 0x54321, 0x7ffffffe, 0x7fffffff};
     int32_t testAddValue[5] = {0x1, 0x1234, 0x54321, 0x1, 0x1};
     int32_t testExpectedValue[5] = {0x1, 0x2468, 0xA8642, 0x7fffffff, INT_MIN};
-//    //cout << "THRD " << addInfo->tid << ", offset is " << offset <<  " testOffset: " << testOffset[0] << "," << testOffset[1] << "," << testOffset[2] << " for data item " << sm << endl;
     EXPECT_NE((void *)NULL, item);
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-               int32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int32(item, testOffset[ofs]));
-                EXPECT_EQ(testExpectedValue[i], result);
-               EXPECT_NO_THROW(my_fam->fam_subtract(item, testOffset[ofs],
-                                                     testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int32(item, testOffset[ofs]));
-                EXPECT_EQ(baseValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            int32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int32(item, testOffset[ofs]));
+            EXPECT_EQ(testExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_subtract(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int32(item, testOffset[ofs]));
+            EXPECT_EQ(baseValue[i], result);
         }
+    }
     pthread_exit(NULL);
 }
 
@@ -112,36 +109,37 @@ TEST(FamArithmaticAtomics, AddSubInt32NonBlock) {
     pthread_t thr[NUM_THREADS];
 
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 1; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(int32_t) ,
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(int32_t),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-        tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_int32_nonblocking, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(
+                     &thr[i], NULL, thr_add_sub_int32_nonblocking, &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-         }
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
     free(info);
 }
-
 
 void *thr_add_sub_uint32_nonblocking(void *arg) {
 
@@ -153,40 +151,36 @@ void *thr_add_sub_uint32_nonblocking(void *arg) {
 
     int i, ofs;
 
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint32_t))};
-                                  //offset + (test_item_size[sm] - sizeof(uint32_t) - 1)};
+                              offset + (test_item_size[sm] - sizeof(uint32_t))};
+    // offset + (test_item_size[sm] - sizeof(uint32_t) - 1)};
 
     uint32_t baseValue[5] = {0x0, 0x1234, 0x54321, 0x7ffffffe, 0x7fffffff};
     uint32_t testAddValue[5] = {0x1, 0x1234, 0x54321, 0x1, 0x1};
     uint32_t testExpectedValue[5] = {0x1, 0x2468, 0xA8642, 0x7fffffff,
                                      0x80000000};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing fam_add: for ofs " << ofs << " and i: " << " sm: " << sm << i << "  item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                uint32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
-                EXPECT_EQ(testExpectedValue[i], result);
-                EXPECT_NO_THROW(my_fam->fam_subtract(item, testOffset[ofs],
-                                                     testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
-                EXPECT_EQ(baseValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            uint32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
+            EXPECT_EQ(testExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_subtract(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
+            EXPECT_EQ(baseValue[i], result);
+        }
     }
     pthread_exit(NULL);
 }
@@ -197,47 +191,51 @@ TEST(FamArithmaticAtomics, AddSubUInt32NonBlock) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(uint32_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(uint32_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-	tid = i ;
-	info[i] = {item[sm], (uint64_t)sm,tid, 0};
-        if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_uint32_nonblocking, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
-    //        return -1;
-        }
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL,
+                                     thr_add_sub_uint32_nonblocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
+                //        return -1;
+            }
         }
 
-	for (i = 0; i < NUM_THREADS; ++i) {
-		pthread_join(thr[i], NULL);
-	}
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
 }
-
 
 void *thr_add_sub_int64_nonblocking(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    //int tid =  addInfo->tid;
+    // int tid =  addInfo->tid;
     uint64_t sm = (addInfo->offset);
     uint64_t offset = addInfo->tid * sizeof(int64_t);
 
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int64_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
     int64_t baseValue[5] = {0x0, 0x1234, 0x1111222233334321, 0x7ffffffffffffffe,
                             0x7fffffffffffffff};
     int64_t testAddValue[5] = {0x1, 0x1234, 0x1111222233334321, 0x1, 0x1};
@@ -246,30 +244,25 @@ void *thr_add_sub_int64_nonblocking(void *arg) {
 
     int i, ofs;
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                int64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testExpectedValue[i], result);
-                EXPECT_NO_THROW(my_fam->fam_subtract(item, testOffset[ofs],
-                                                     testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(baseValue[i], result);
-            }
+        for (i = 0; i < 5; i++) {
+            int64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_subtract(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(baseValue[i], result);
         }
+    }
 
     pthread_exit(NULL);
 }
@@ -279,24 +272,26 @@ TEST(FamArithmaticAtomics, AddSubInt64NonBlock) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(int64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(int64_t),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
 
         for (i = 0; i < NUM_THREADS; ++i) {
-	    tid = i;
-            info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_int64_nonblocking, &info[i]))) {
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(
+                     &thr[i], NULL, thr_add_sub_int64_nonblocking, &info[i]))) {
                 fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
                 exit(1);
             }
@@ -305,24 +300,24 @@ TEST(FamArithmaticAtomics, AddSubInt64NonBlock) {
         for (i = 0; i < NUM_THREADS; ++i) {
             pthread_join(thr[i], NULL);
         }
-    	EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
-    }    
-free(info);
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
+    }
+    free(info);
 }
-
-
 
 void *thr_add_sub_uint64_nonblocking(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    //int tid =  addInfo->tid;
+    // int tid =  addInfo->tid;
     uint64_t offset = addInfo->tid * sizeof(uint64_t);
 
     uint64_t sm = (addInfo->offset);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint64_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
 
     int i, ofs;
 
@@ -333,31 +328,26 @@ void *thr_add_sub_uint64_nonblocking(void *arg) {
                                      0x7fffffffffffffff, 0x8000000000000000};
 
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
-                // testAddValue[i], testExpectedValue[i], INT32);
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                uint64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
-                EXPECT_EQ(testExpectedValue[i], result);
-                EXPECT_NO_THROW(my_fam->fam_subtract(item, testOffset[ofs],
-                                                     testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
-                EXPECT_EQ(baseValue[i], result);
-            }
+        for (i = 0; i < 5; i++) {
+            // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
+            // testAddValue[i], testExpectedValue[i], INT32);
+            uint64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+            EXPECT_EQ(testExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_subtract(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+            EXPECT_EQ(baseValue[i], result);
+        }
     }
 
     pthread_exit(NULL);
@@ -370,36 +360,37 @@ TEST(FamArithmaticAtomics, AddSubUInt64NonBlock) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(uint64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(uint64_t),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-        tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_uint64_nonblocking, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL,
+                                     thr_add_sub_uint64_nonblocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-         }
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
-
 }
-
 
 void *thr_add_sub_float_nonblocking(void *arg) {
 
@@ -408,45 +399,39 @@ void *thr_add_sub_float_nonblocking(void *arg) {
     uint64_t sm = (addInfo->offset);
     uint64_t offset = addInfo->tid * sizeof(float);
 
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(float) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(float) - 1)};
     int i, ofs;
-
-
 
     float baseValue[5] = {0.0f, 1234.12f, 54321.87f, 8888.33f, 99999.99f};
     float testAddValue[5] = {0.1f, 1234.12f, 0.12f, 1111.22f, 0.01f};
     float testExpectedValue[5] = {0.1f, 2468.24f, 54321.99f, 9999.55f,
                                   100000.00f};
 
-
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
-                // testAddValue[i], testExpectedValue[i], INT32);
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                float result = 0.0f;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_float(item, testOffset[ofs]));
-                EXPECT_FLOAT_EQ(testExpectedValue[i], result);
-                EXPECT_NO_THROW(my_fam->fam_subtract(item, testOffset[ofs],
-                                                     testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_float(item, testOffset[ofs]));
-                EXPECT_FLOAT_EQ(baseValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
+            // testAddValue[i], testExpectedValue[i], INT32);
+            float result = 0.0f;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_float(item, testOffset[ofs]));
+            EXPECT_FLOAT_EQ(testExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_subtract(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_float(item, testOffset[ofs]));
+            EXPECT_FLOAT_EQ(baseValue[i], result);
+        }
     }
 
     pthread_exit(NULL);
@@ -457,45 +442,48 @@ TEST(FamArithmaticAtomics, AddSubFloatNonBlock) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(float),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(float),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
 
         for (i = 0; i < NUM_THREADS; ++i) {
-	        tid = i;
-        	info[i] = {item[sm], (uint64_t)sm,tid, 0};		
-        	if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_float_nonblocking, &info[i]))) {
-	            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        	    exit(1);
-        	}
-	}
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(
+                     &thr[i], NULL, thr_add_sub_float_nonblocking, &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
+            }
+        }
 
         for (i = 0; i < NUM_THREADS; ++i) {
             pthread_join(thr[i], NULL);
         }
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
-    }  
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
+    }
 }
-
 
 void *thr_add_sub_double_nonblocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(double);
     uint64_t sm = (addInfo->offset);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(double) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(double) - 1)};
     int i, ofs;
 
     double baseValue[5] = {0.0, 1234.123, 987654321.8765, 2222555577778888.3333,
@@ -505,32 +493,27 @@ void *thr_add_sub_double_nonblocking(void *arg) {
                                    2222555577779999.5555, DBL_MAX};
 
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
-                // testAddValue[i], testExpectedValue[i], INT32);
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                double result = 0.0;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_double(item, testOffset[ofs]));
-                EXPECT_DOUBLE_EQ(testExpectedValue[i], result);
-                EXPECT_NO_THROW(my_fam->fam_subtract(item, testOffset[ofs],
-                                                     testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_double(item, testOffset[ofs]));
-                EXPECT_DOUBLE_EQ(baseValue[i], result);
-            }
+        for (i = 0; i < 5; i++) {
+            // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
+            // testAddValue[i], testExpectedValue[i], INT32);
+            double result = 0.0;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_double(item, testOffset[ofs]));
+            EXPECT_DOUBLE_EQ(testExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_subtract(item, testOffset[ofs], testAddValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_double(item, testOffset[ofs]));
+            EXPECT_DOUBLE_EQ(baseValue[i], result);
         }
+    }
 
     pthread_exit(NULL);
 }
@@ -540,31 +523,34 @@ TEST(FamArithmaticAtomics, AddSubDoubleNonBlock) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(double),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(double),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-        tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_double_nonblocking, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL,
+                                     thr_add_sub_double_nonblocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
-	
-        for (i = 0; i < NUM_THREADS; ++i) 
-		pthread_join(thr[i], NULL);
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
+
+        for (i = 0; i < NUM_THREADS; ++i)
+            pthread_join(thr[i], NULL);
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
 }
 
@@ -574,37 +560,33 @@ void *thr_add_sub_int32_blocking(void *arg) {
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(int32_t);
     uint64_t sm = (addInfo->offset);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(double) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(double) - 1)};
 
     int i, ofs;
-
 
     int32_t baseValue[5] = {0x0, 0x1234, 0x54321, 0x7ffffffe, 0x7fffffff};
     int32_t testAddValue[5] = {0x1, 0x1234, 0x54321, 0x1, 0x1};
     int32_t testExpectedValue[5] = {0x1, 0x2468, 0xA8642, 0x7fffffff, INT_MIN};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                int32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_EQ(baseValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_EQ(testExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            int32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_EQ(baseValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_EQ(testExpectedValue[i], result);
         }
-    
+    }
+
     pthread_exit(NULL);
 }
 
@@ -613,36 +595,37 @@ TEST(FamArithmaticAtomics, AddSubInt32Blocking) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(int32_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(int32_t),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-		tid = i;
-		info[i] = {item[sm], (uint64_t)sm,tid, 0};
-		if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_int32_blocking, &info[i]))) {
-		    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-		    exit(1);
-	    //        return -1;
-		}
-    	}
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_int32_blocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
+                //        return -1;
+            }
+        }
 
-	    for (i = 0; i < NUM_THREADS; ++i) {
-		pthread_join(thr[i], NULL);
-	    }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
-	}
+    }
 }
-
 
 void *thr_add_sub_uint32_blocking(void *arg) {
 
@@ -650,9 +633,11 @@ void *thr_add_sub_uint32_blocking(void *arg) {
     Fam_Descriptor *item = addInfo->item;
     uint64_t sm = (addInfo->offset);
     uint64_t offset = addInfo->tid * sizeof(uint32_t);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint32_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(uint32_t) - 1)};
     int i, ofs;
 
     uint32_t baseValue[5] = {0x0, 0x1234, 0x54321, 0x7ffffffe, 0x7fffffff};
@@ -662,22 +647,17 @@ void *thr_add_sub_uint32_blocking(void *arg) {
 
     for (ofs = 0; ofs < 3; ofs++) {
         for (i = 0; i < 5; i++) {
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                uint32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_EQ(baseValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_EQ(testExpectedValue[i], result);
-            }
+            uint32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_EQ(baseValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_EQ(testExpectedValue[i], result);
+        }
     }
 
     pthread_exit(NULL);
@@ -689,32 +669,34 @@ TEST(FamArithmaticAtomics, AddSubUInt32Blocking) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(uint32_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(uint32_t),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-		tid = i;
-		info[i] = {item[sm], (uint64_t)sm,tid, 0};
-		if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_uint32_blocking, &info[i]))) {
-		    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-		    exit(1);
-		}
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_uint32_blocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
+            }
         }
 
-	for (i = 0; i < NUM_THREADS; ++i) {
-		pthread_join(thr[i], NULL);
-	}
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
 }
 void *thr_add_sub_int64_blocking(void *arg) {
@@ -722,9 +704,11 @@ void *thr_add_sub_int64_blocking(void *arg) {
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(int64_t);
     uint64_t sm = (addInfo->offset);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int64_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
     int i, ofs;
 
     int64_t baseValue[5] = {0x0, 0x1234, 0x1111222233334321, 0x7ffffffffffffffe,
@@ -733,25 +717,19 @@ void *thr_add_sub_int64_blocking(void *arg) {
     int64_t testExpectedValue[5] = {0x1, 0x2468, 0x2222444466668642,
                                     0x7fffffffffffffff, LONG_MIN};
 
-
-     for (ofs = 0; ofs < 3; ofs++) {
-	    for (i = 0; i < 5; i++) {
-		cout << "Testing fam_add: item=" << item
-		     << ", offset=" << testOffset[ofs]
-		     << ", baseValue=" << baseValue[i]
-		     << ", incr=" << testAddValue[i]
-		     << ", expected=" << testExpectedValue[i] << endl;
-		int64_t result;
-		EXPECT_NO_THROW(
-		    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-		EXPECT_NO_THROW(my_fam->fam_quiet());
-		EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
-				    item, testOffset[ofs], testAddValue[i]));
-		EXPECT_EQ(baseValue[i], result);
-		EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
-				    item, testOffset[ofs], testAddValue[i]));
-		EXPECT_EQ(testExpectedValue[i], result);
-	    }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            int64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_EQ(baseValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_EQ(testExpectedValue[i], result);
+        }
     }
 
     pthread_exit(NULL);
@@ -762,26 +740,28 @@ TEST(FamArithmaticAtomics, AddSubInt64Blocking) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(int64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(int64_t),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-		tid = i;
-		info[i] = {item[sm], (uint64_t)sm,tid, 0};
-		if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_int64_blocking, &info[i]))) {
-		    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-		    exit(1);
-		}
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_int64_blocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
+            }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
@@ -796,9 +776,11 @@ void *thr_add_sub_uint64_blocking(void *arg) {
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(uint64_t);
     uint64_t sm = (addInfo->offset);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint64_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
 
     int i, ofs;
 
@@ -809,25 +791,20 @@ void *thr_add_sub_uint64_blocking(void *arg) {
                                      0x7fffffffffffffff, 0x8000000000000000};
 
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
-                // testAddValue[i], testExpectedValue[i], INT32);
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                uint64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_EQ(baseValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_EQ(testExpectedValue[i], result);
-            }
+        for (i = 0; i < 5; i++) {
+            // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
+            // testAddValue[i], testExpectedValue[i], INT32);
+            uint64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_EQ(baseValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_EQ(testExpectedValue[i], result);
+        }
     }
 
     pthread_exit(NULL);
@@ -838,45 +815,48 @@ TEST(FamArithmaticAtomics, AddSubUInt64Blocking) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(uint64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(uint64_t),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-		tid = i;
-		info[i] = {item[sm], (uint64_t)sm,tid, 0};
-		if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_uint64_blocking, &info[i]))) {
-		    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-		    exit(1);
-	    //        return -1;
-		}
-	    }
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_uint64_blocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
+                //        return -1;
+            }
+        }
 
-	    for (i = 0; i < NUM_THREADS; ++i) {
-		pthread_join(thr[i], NULL);
-	    }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
-	}
+    }
 }
-
 
 void *thr_add_sub_float_blocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     uint64_t sm = (addInfo->offset);
     uint64_t offset = addInfo->tid * sizeof(float);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(float) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(float) - 1)};
 
     int i, ofs;
     float baseValue[5] = {0.0f, 1234.12f, 54321.87f, 8888.33f, 99999.99f};
@@ -884,27 +864,21 @@ void *thr_add_sub_float_blocking(void *arg) {
     float testExpectedValue[5] = {0.1f, 2468.24f, 54321.99f, 9999.55f,
                                   100000.00f};
 
-
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
-                // testAddValue[i], testExpectedValue[i], INT32);
-                cout << "Testing fam_add: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                float result = 0.0f;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_FLOAT_EQ(baseValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_FLOAT_EQ(testExpectedValue[i], result);
-            }
+        for (i = 0; i < 5; i++) {
+            // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
+            // testAddValue[i], testExpectedValue[i], INT32);
+            float result = 0.0f;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_FLOAT_EQ(baseValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_FLOAT_EQ(testExpectedValue[i], result);
+        }
     }
     pthread_exit(NULL);
 }
@@ -914,31 +888,33 @@ TEST(FamArithmaticAtomics, AddSubFloatBlocking) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
-		// Allocating data items in the created region
-		EXPECT_NO_THROW(
-		    item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(float),
-						test_perm_mode[sm], testRegionDesc));
+        // Allocating data items in the created region
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(float),
+                            test_perm_mode[sm], testRegionDesc));
 
-		EXPECT_NE((void *)NULL, item[sm]);
-		for (i = 0; i < NUM_THREADS; ++i) {
-		tid = i;
-		info[i] = {item[sm], (uint64_t)sm,tid, 0};
-		if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_float_blocking,&info[i] ))) {
-		    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-		    exit(1);
-		}
-	    }
+        EXPECT_NE((void *)NULL, item[sm]);
+        for (i = 0; i < NUM_THREADS; ++i) {
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_float_blocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
+            }
+        }
 
-	    for (i = 0; i < NUM_THREADS; ++i) {
-		pthread_join(thr[i], NULL);
-	    }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
 }
@@ -947,11 +923,13 @@ void *thr_add_sub_double_blocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(double);
-    int tid =  addInfo->tid;
+    int tid = addInfo->tid;
     uint64_t sm = (addInfo->offset);
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(double) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(double) - 1)};
 
     int i, ofs;
 
@@ -961,30 +939,24 @@ void *thr_add_sub_double_blocking(void *arg) {
     double testExpectedValue[5] = {0.1, 2468.246, 987654321.9999,
                                    2222555577779999.5555, DBL_MAX};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
-                // testAddValue[i], testExpectedValue[i], INT32);
-                cout << "Testing fam_add for thread " << tid << ": item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", baseValue=" << baseValue[i]
-                     << ", incr=" << testAddValue[i]
-                     << ", expected=" << testExpectedValue[i] << endl;
-                double result = 0.0;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_DOUBLE_EQ(baseValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
-                                    item, testOffset[ofs], testAddValue[i]));
-                EXPECT_DOUBLE_EQ(testExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            // run_add_test<int32_t>(item, testOffset[ofs], baseValue[i],
+            // testAddValue[i], testExpectedValue[i], INT32);
+            double result = 0.0;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_DOUBLE_EQ(baseValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
+                                item, testOffset[ofs], testAddValue[i]));
+            EXPECT_DOUBLE_EQ(testExpectedValue[i], result);
         }
+    }
 
     pthread_exit(NULL);
-
 }
 // Test case 12 - AddSubDoubleBlocking
 TEST(FamArithmaticAtomics, AddSubDoubleBlocking) {
@@ -992,34 +964,35 @@ TEST(FamArithmaticAtomics, AddSubDoubleBlocking) {
     pthread_t thr[NUM_THREADS];
     Fam_Descriptor *item[3];
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ,tid;
+    int i, sm, tid;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                                8192 * NUM_THREADS};
     ValueInfo *info;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(double),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(double),
+                            test_perm_mode[sm], testRegionDesc));
 
         EXPECT_NE((void *)NULL, item[sm]);
         for (i = 0; i < NUM_THREADS; ++i) {
-	tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_double_blocking, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thr_add_sub_double_blocking,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
-        	pthread_join(thr[i], NULL);
-         }
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
+            pthread_join(thr[i], NULL);
+        }
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
-
 }
 
 int main(int argc, char **argv) {

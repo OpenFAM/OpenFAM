@@ -27,7 +27,8 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-/* Test Case Description: Tests blocking scatter/gather operations for multithreaded model.
+/* Test Case Description: Tests blocking scatter/gather operations for
+ * multithreaded model.
  */
 
 #include <fam/fam_exception.h>
@@ -48,14 +49,12 @@ fam *my_fam;
 Fam_Options fam_opts;
 Fam_Region_Descriptor *testRegionDesc;
 
-
 typedef struct {
     Fam_Descriptor *item;
     uint64_t offset;
     int32_t tid;
     int32_t deltaValue;
 } ValueInfo;
-
 
 void *thr_func_index(void *arg) {
     ValueInfo *valInfo = (ValueInfo *)arg;
@@ -74,13 +73,10 @@ void *thr_func_index(void *arg) {
         my_fam->fam_gather_blocking(local2, item, 5, indexes, sizeof(int)));
 
     for (int i = 0; i < 5; i++) {
-        //cout << "Expected : " << newLocal[i] << " and got : " << local2[i] << endl;
         EXPECT_EQ(local2[i], newLocal[i]);
     }
     free((void *)local2);
     pthread_exit(NULL);
-
-
 }
 void *thr_func_stride(void *arg) {
     ValueInfo *valInfo = (ValueInfo *)arg;
@@ -98,33 +94,31 @@ void *thr_func_stride(void *arg) {
         my_fam->fam_gather_blocking(local2, item, 5, 2, 3, sizeof(int)));
 
     for (int i = 0; i < 5; i++) {
-//      cout << "Expected : " << newLocal[i] << " and got : " << local2[i] << endl;
         EXPECT_EQ(local2[i], newLocal[i]);
     }
     free((void *)local2);
     pthread_exit(NULL);
-
 }
-
 
 // Test case 1 - put get test.
 TEST(FamScatterGatherIndexBlockMT, ScatterGatherIndexBlockSuccess) {
 
     Fam_Descriptor *item;
-    int i ,rc;
+    int i, rc;
     pthread_t thr[NUM_THREADS];
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, (1024 * NUM_THREADS), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, (1024 * NUM_THREADS),
+                                                0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
-    ValueInfo info = {item,0, 0, 0};
+    ValueInfo info = {item, 0, 0, 0};
 
     for (i = 0; i < NUM_THREADS; ++i) {
         if ((rc = pthread_create(&thr[i], NULL, thr_func_index, &info))) {
@@ -150,19 +144,20 @@ TEST(FamScatterGatherIndexBlockMT, ScatterGatherIndexBlockSuccess) {
 TEST(FamScatterGatherStrideBlockMT, ScatterGatherStrideBlockSuccess) {
     Fam_Region_Descriptor *testRegionDesc;
     Fam_Descriptor *item;
-    int i ,rc;
+    int i, rc;
     pthread_t thr[NUM_THREADS];
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, (1024 * NUM_THREADS), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, (1024 * NUM_THREADS),
+                                                0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
-    ValueInfo info = {item,0, 0, 0};
+    ValueInfo info = {item, 0, 0, 0};
 
     for (i = 0; i < NUM_THREADS; ++i) {
         if ((rc = pthread_create(&thr[i], NULL, thr_func_stride, &info))) {
@@ -203,4 +198,3 @@ int main(int argc, char **argv) {
 
     return ret;
 }
-

@@ -27,7 +27,8 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-/* Test Case Description: Tests fetching logical operations for multithreaded model.
+/* Test Case Description: Tests fetching logical operations for multithreaded
+ * model.
  */
 #include <fam/fam_exception.h>
 #include <gtest/gtest.h>
@@ -68,13 +69,14 @@ void *thrd_logical_uint32(void *arg) {
     uint32_t valueUint32 = 0xAAAAAAAA;
     uint64_t offset = addInfo->tid * sizeof(valueUint32);
 
-    EXPECT_NO_THROW(my_fam->fam_set(item,offset , valueUint32));
+    EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
 
     EXPECT_NO_THROW(my_fam->fam_quiet());
 
     valueUint32 = 0x12345678;
 
-    EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_and(item, offset, valueUint32));
+    EXPECT_NO_THROW(valueUint32 =
+                        my_fam->fam_fetch_and(item, offset, valueUint32));
 
     EXPECT_EQ(valueUint32, 0xAAAAAAAA);
 
@@ -84,13 +86,14 @@ void *thrd_logical_uint32(void *arg) {
 
     valueUint32 = 0xAAAAAAAA;
 
-    EXPECT_NO_THROW(my_fam->fam_set(item,offset, valueUint32));
+    EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
 
     EXPECT_NO_THROW(my_fam->fam_quiet());
 
     valueUint32 = 0x12345678;
 
-    EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_or(item,offset, valueUint32));
+    EXPECT_NO_THROW(valueUint32 =
+                        my_fam->fam_fetch_or(item, offset, valueUint32));
 
     EXPECT_EQ(valueUint32, 0xAAAAAAAA);
 
@@ -106,7 +109,8 @@ void *thrd_logical_uint32(void *arg) {
 
     valueUint32 = 0x12345678;
 
-    EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_xor(item, offset, valueUint32));
+    EXPECT_NO_THROW(valueUint32 =
+                        my_fam->fam_fetch_xor(item, offset, valueUint32));
 
     EXPECT_EQ(valueUint32, 0xAAAAAAAA);
 
@@ -115,8 +119,6 @@ void *thrd_logical_uint32(void *arg) {
     EXPECT_EQ(valueUint32, 0xB89EFCD2);
 
     pthread_exit(NULL);
-
-
 }
 TEST(FamLogicalAtomicUint32, LogicalAtomicUint32Success) {
     Fam_Descriptor *item;
@@ -127,24 +129,27 @@ TEST(FamLogicalAtomicUint32, LogicalAtomicUint32Success) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegionStr, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegionStr, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024  * NUM_THREADS * sizeof(uint32_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(uint32_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_logical_uint32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_logical_uint32,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
@@ -173,7 +178,8 @@ void *thrd_logical_uint64(void *arg) {
 
     valueUint64 = 0x1234567890ABCDEF;
 
-    EXPECT_NO_THROW(valueUint64 = my_fam->fam_fetch_and(item,offset, valueUint64));
+    EXPECT_NO_THROW(valueUint64 =
+                        my_fam->fam_fetch_and(item, offset, valueUint64));
 
     EXPECT_EQ(valueUint64, 0xAAAAAAAAAAAAAAAA);
 
@@ -189,7 +195,8 @@ void *thrd_logical_uint64(void *arg) {
 
     valueUint64 = 0x1234567890ABCDEF;
 
-    EXPECT_NO_THROW(valueUint64 = my_fam->fam_fetch_or(item, offset, valueUint64));
+    EXPECT_NO_THROW(valueUint64 =
+                        my_fam->fam_fetch_or(item, offset, valueUint64));
 
     EXPECT_EQ(valueUint64, 0xAAAAAAAAAAAAAAAA);
 
@@ -205,7 +212,8 @@ void *thrd_logical_uint64(void *arg) {
 
     valueUint64 = 0x1234567890ABCDEF;
 
-    EXPECT_NO_THROW(valueUint64 = my_fam->fam_fetch_xor(item, offset, valueUint64));
+    EXPECT_NO_THROW(valueUint64 =
+                        my_fam->fam_fetch_xor(item, offset, valueUint64));
 
     EXPECT_EQ(valueUint64, 0xAAAAAAAAAAAAAAAA);
 
@@ -223,24 +231,27 @@ TEST(FamLogicalAtomicUint64, LogicalAtomicUint64Success) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegionStr, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegionStr, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * NUM_THREADS * sizeof(uint32_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(uint32_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_logical_uint32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_logical_uint32,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));

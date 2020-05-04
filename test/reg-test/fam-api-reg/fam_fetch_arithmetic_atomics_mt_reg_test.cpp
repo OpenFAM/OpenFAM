@@ -27,7 +27,8 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-/* Test Case Description: Tests fetching arithmetic operations for multithreaded model.
+/* Test Case Description: Tests fetching arithmetic operations for multithreaded
+ * model.
  */
 
 #include <fam/fam_exception.h>
@@ -44,7 +45,7 @@ using namespace std;
 using namespace openfam;
 
 #define NUM_THREADS 10
-#define REGION_SIZE ( 1024 * 1024 * NUM_THREADS)
+#define REGION_SIZE (1024 * 1024 * NUM_THREADS)
 fam *my_fam;
 Fam_Options fam_opts;
 int rc;
@@ -55,7 +56,6 @@ typedef struct {
     int32_t tid;
     int32_t msg_size;
 } ValueInfo;
-
 
 // Test case 1 - test for atomic fetch_add.
 void *thrd_add_subtract_int32(void *arg) {
@@ -71,7 +71,8 @@ void *thrd_add_subtract_int32(void *arg) {
 
     valueInt32 = 0x1;
 
-    EXPECT_NO_THROW(valueInt32 = my_fam->fam_fetch_add(item, offset, valueInt32));
+    EXPECT_NO_THROW(valueInt32 =
+                        my_fam->fam_fetch_add(item, offset, valueInt32));
 
     EXPECT_EQ(valueInt32, 0xAAAA);
 
@@ -106,21 +107,24 @@ TEST(FamArithAtomicInt32, ArithAtomicInt32Success) {
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * NUM_THREADS * sizeof(int32_t), 0777, desc));
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(
+            firstItem, 1024 * NUM_THREADS * sizeof(int32_t), 0777, desc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_int32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_int32,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete item;
@@ -143,7 +147,8 @@ void *thrd_add_subtract_int64(void *arg) {
 
     valueInt64 = 0x1;
 
-    EXPECT_NO_THROW(valueInt64 = my_fam->fam_fetch_add(item, offset, valueInt64));
+    EXPECT_NO_THROW(valueInt64 =
+                        my_fam->fam_fetch_add(item, offset, valueInt64));
 
     EXPECT_EQ(valueInt64, (int64_t)0xBBBBBBBBBBBBBBBB);
 
@@ -179,21 +184,24 @@ TEST(FamArithAtomicInt64, ArithAtomicInt64Success) {
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * NUM_THREADS * sizeof(int64_t), 0777, desc));
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(
+            firstItem, 1024 * NUM_THREADS * sizeof(int64_t), 0777, desc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_int64, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_int64,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete item;
@@ -217,7 +225,8 @@ void *thrd_add_subtract_uint32(void *arg) {
 
     valueUint32 = 0x1;
 
-    EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_add(item, offset, valueUint32));
+    EXPECT_NO_THROW(valueUint32 =
+                        my_fam->fam_fetch_add(item, offset, valueUint32));
 
     EXPECT_EQ(valueUint32, 0xBBBBBBBB);
 
@@ -258,21 +267,24 @@ TEST(FamArithAtomicUint32, ArithAtomicUint32Success) {
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * NUM_THREADS * sizeof(uint32_t), 0777, desc));
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(
+            firstItem, 1024 * NUM_THREADS * sizeof(uint32_t), 0777, desc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_uint32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_uint32,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete item;
@@ -287,7 +299,7 @@ void *thrd_add_subtract_uint64(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(uint64_t);
-	// Atomic tests for uint64
+    // Atomic tests for uint64
     uint64_t valueUint64 = 0xBBBBBBBBBBBBBBBB;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
@@ -296,7 +308,8 @@ void *thrd_add_subtract_uint64(void *arg) {
 
     valueUint64 = 0x1;
 
-    EXPECT_NO_THROW(valueUint64 = my_fam->fam_fetch_add(item, offset, valueUint64));
+    EXPECT_NO_THROW(valueUint64 =
+                        my_fam->fam_fetch_add(item, offset, valueUint64));
 
     EXPECT_EQ(valueUint64, 0xBBBBBBBBBBBBBBBB);
 
@@ -337,21 +350,24 @@ TEST(FamArithAtomicUint64, ArithAtomicUint64Success) {
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * NUM_THREADS * sizeof(uint64_t), 0777, desc));
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(
+            firstItem, 1024 * NUM_THREADS * sizeof(uint64_t), 0777, desc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_int32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_int32,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete item;
@@ -375,7 +391,8 @@ void *thrd_add_subtract_float(void *arg) {
 
     valueFloat = 1.2f;
 
-    EXPECT_NO_THROW(valueFloat = my_fam->fam_fetch_add(item, offset, valueFloat));
+    EXPECT_NO_THROW(valueFloat =
+                        my_fam->fam_fetch_add(item, offset, valueFloat));
 
     EXPECT_EQ(valueFloat, 4.3f);
 
@@ -410,21 +427,24 @@ TEST(FamArithAtomicFloat, ArithAtomiciFloatSuccess) {
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * NUM_THREADS * sizeof(float), 0777, desc));
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(
+            firstItem, 1024 * NUM_THREADS * sizeof(float), 0777, desc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_float, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_float,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete item;
@@ -448,7 +468,8 @@ void *thrd_add_subtract_double(void *arg) {
 
     valueDouble = 1.2e+38;
 
-    EXPECT_NO_THROW(valueDouble = my_fam->fam_fetch_add(item, offset, valueDouble));
+    EXPECT_NO_THROW(valueDouble =
+                        my_fam->fam_fetch_add(item, offset, valueDouble));
 
     EXPECT_EQ(valueDouble, 4.4e+38);
 
@@ -483,21 +504,24 @@ TEST(FamArithAtomiciDouble, ArithAtomicDoubleSuccess) {
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * NUM_THREADS * sizeof(double), 0777, desc));
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(
+            firstItem, 1024 * NUM_THREADS * sizeof(double), 0777, desc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_double, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_add_subtract_double,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete item;

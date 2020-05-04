@@ -27,8 +27,9 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-/* Test Case Description: Tests fam_compare_swap operations for multithreaded model.
-*/
+/* Test Case Description: Tests fam_compare_swap operations for multithreaded
+ * model.
+ */
 
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
@@ -50,12 +51,13 @@ Fam_Options fam_opts;
 Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 int rc;
-#define NUM_THREADS  10
-#define REGION_SIZE ( 32 * 1024 * 1024 * NUM_THREADS)
+#define NUM_THREADS 10
+#define REGION_SIZE (32 * 1024 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
 
 mode_t test_perm_mode[3] = {0777, 0644, 0600};
-size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+size_t test_item_size[3] = {1024 * NUM_THREADS, 4096 * NUM_THREADS,
+                            8192 * NUM_THREADS};
 
 typedef struct {
     Fam_Descriptor *item;
@@ -63,8 +65,6 @@ typedef struct {
     int32_t tid;
     int32_t deltaValue;
 } ValueInfo;
-
-
 
 void *thrd_cas_int32(void *arg) {
 
@@ -80,28 +80,22 @@ void *thrd_cas_int32(void *arg) {
     int32_t expValue[5] = {0x1, 0x4321, 0x54321, 0x7fffffff, 0x7fffffff};
 
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int32_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(int32_t) - 1)};
 
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                //cout //<< "Testing fam_compare_and_swap: item=" //<< item
-                     //<< ", offset=" //<< hex //<< testOffset[ofs]
-                     //<< ", oldValue=" //<< hex //<< oldValue[i]
-                     //<< ", cmpValue=" //<< hex //<< cmpValue[i]
-                     //<< ", newValue=" //<< hex //<< newValue[i]
-                     //<< ", expected=" //<< hex //<< expValue[i] //<< endl;
-
-                int32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(my_fam->fam_compare_swap(
-                    item, testOffset[ofs], cmpValue[i], newValue[i]));
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int32(item, testOffset[ofs]));
-                EXPECT_EQ(expValue[i], result);
-            }
+        for (i = 0; i < 5; i++) {
+            int32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(my_fam->fam_compare_swap(item, testOffset[ofs],
+                                                     cmpValue[i], newValue[i]));
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int32(item, testOffset[ofs]));
+            EXPECT_EQ(expValue[i], result);
         }
+    }
     pthread_exit(NULL);
 }
 
@@ -116,27 +110,28 @@ TEST(FamCASAtomics, CASInt32) {
     int i, sm, tid;
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(int32_t) * NUM_THREADS,
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem,
+                            test_item_size[sm] * sizeof(int32_t) * NUM_THREADS,
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-        tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int32, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc =
+                     pthread_create(&thr[i], NULL, thrd_cas_int32, &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-         }
-
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
-    //delete item[sm];
+    // delete item[sm];
     free((void *)info);
     free((void *)dataItem);
 }
@@ -154,28 +149,22 @@ void *thrd_cas_uint32(void *arg) {
     uint32_t expValue[5] = {0x1, 0x4321, 0x54321, 0x80000000, 0xefffffff};
 
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint32_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(uint32_t) - 1)};
 
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                //cout //<< "Testing fam_compare_and_swap: item=" //<< item
-                     //<< ", offset=" //<< hex //<< testOffset[ofs]
-                     //<< ", oldValue=" //<< hex //<< oldValue[i]
-                     //<< ", cmpValue=" //<< hex //<< cmpValue[i]
-                     //<< ", newValue=" //<< hex //<< newValue[i]
-                     //<< ", expected=" //<< hex //<< expValue[i] //<< endl;
-
-                uint32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(my_fam->fam_compare_swap(
-                    item, testOffset[ofs], cmpValue[i], newValue[i]));
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int32(item, testOffset[ofs]));
-                EXPECT_EQ(expValue[i], result);
-            }
+        for (i = 0; i < 5; i++) {
+            uint32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(my_fam->fam_compare_swap(item, testOffset[ofs],
+                                                     cmpValue[i], newValue[i]));
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int32(item, testOffset[ofs]));
+            EXPECT_EQ(expValue[i], result);
         }
+    }
     pthread_exit(NULL);
 }
 // Test case 2 - Compare And Swap UInt32
@@ -189,25 +178,27 @@ TEST(FamCASAtomics, CASUInt32) {
     int i, sm, tid;
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * NUM_THREADS * sizeof(uint32_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem,
+                            test_item_size[sm] * NUM_THREADS * sizeof(uint32_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-        tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thrd_cas_uint32, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thrd_cas_uint32,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-         }
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
-    //delete item[sm];
+    // delete item[sm];
     free((void *)info);
     free((void *)dataItem);
 }
@@ -230,28 +221,22 @@ void *thrd_cas_int64(void *arg) {
                            0x7fffffffffffffff};
 
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int64_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
 
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                //cout //<< "Testing fam_compare_and_swap: item=" //<< item
-                     //<< ", offset=" //<< hex //<< testOffset[ofs]
-                     //<< ", oldValue=" //<< hex //<< oldValue[i]
-                     //<< ", cmpValue=" //<< hex //<< cmpValue[i]
-                     //<< ", newValue=" //<< hex //<< newValue[i]
-                     //<< ", expected=" //<< hex //<< expValue[i] //<< endl;
-
-                int64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(my_fam->fam_compare_swap(
-                    item, testOffset[ofs], cmpValue[i], newValue[i]));
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(expValue[i], result);
-            }
+        for (i = 0; i < 5; i++) {
+            int64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(my_fam->fam_compare_swap(item, testOffset[ofs],
+                                                     cmpValue[i], newValue[i]));
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(expValue[i], result);
         }
+    }
     pthread_exit(NULL);
 }
 TEST(FamCASAtomics, CASInt64) {
@@ -264,32 +249,32 @@ TEST(FamCASAtomics, CASInt64) {
     int i, sm, tid;
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * NUM_THREADS * sizeof(int64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem,
+                            test_item_size[sm] * NUM_THREADS * sizeof(int64_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-        tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int64, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc =
+                     pthread_create(&thr[i], NULL, thrd_cas_int64, &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-         }
-
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
-    //delete item[sm];
+    // delete item[sm];
     free((void *)info);
 
     free((void *)dataItem);
 }
-
 
 // Test case 4 - Compare And Swap UInt64
 void *thrd_cas_uint64(void *arg) {
@@ -308,30 +293,24 @@ void *thrd_cas_uint64(void *arg) {
     uint64_t expValue[5] = {0x1, 0x4321, 0x1111222233334444, 0x8000000000000000,
                             0xefffffffffffffff};
 
-
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint64_t) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
 
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                //cout //<< "Testing fam_compare_and_swap: item=" //<< item
-                     //<< ", offset=" //<< hex //<< testOffset[ofs]
-                     //<< ", oldValue=" //<< hex //<< oldValue[i]
-                     //<< ", cmpValue=" //<< hex //<< cmpValue[i]
-                     //<< ", newValue=" //<< hex //<< newValue[i]
-                     //<< ", expected=" //<< hex //<< expValue[i] //<< endl;
+        for (i = 0; i < 5; i++) {
 
-                uint64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(my_fam->fam_compare_swap(
-                    item, testOffset[ofs], cmpValue[i], newValue[i]));
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
-                EXPECT_EQ(expValue[i], result);
-            }
+            uint64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(my_fam->fam_compare_swap(item, testOffset[ofs],
+                                                     cmpValue[i], newValue[i]));
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+            EXPECT_EQ(expValue[i], result);
         }
+    }
     pthread_exit(NULL);
 }
 TEST(FamCASAtomics, CASUInt64) {
@@ -344,31 +323,31 @@ TEST(FamCASAtomics, CASUInt64) {
     int i, sm, tid;
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * NUM_THREADS * sizeof(uint64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem,
+                            test_item_size[sm] * NUM_THREADS * sizeof(uint64_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-        tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thrd_cas_uint64, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thrd_cas_uint64,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-         }
-
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
-//    delete item[sm];
+    //    delete item[sm];
     free((void *)info);
     free((void *)dataItem);
 }
-
 
 // Test case 5 - Compare And Swap Int128
 void *thrd_cas_int128(void *arg) {
@@ -379,8 +358,8 @@ void *thrd_cas_int128(void *arg) {
     int i, ofs;
     uint64_t offset = addInfo->tid * 2 * sizeof(int64_t);
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - 2 * sizeof(int64_t))};
-
+                              offset +
+                                  (test_item_size[sm] - 2 * sizeof(int64_t))};
 
     union int128store {
         struct {
@@ -421,35 +400,24 @@ void *thrd_cas_int128(void *arg) {
     cmpValue[4].i64[0] = 0x123123123123;
     cmpValue[4].i64[1] = 0xAAAA222233334444;
 
-
     for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                //cout //<< "Testing fam_compare_and_swap: item=" //<< item
-                     //<< ", offset=" //<< hex //<< testOffset[ofs]
-                     //<< ", oldValue=" //<< hex //<< oldValue[i].i64[0]
-                     //<< oldValue[i].i64[1] //<< ", cmpValue=" //<< hex
-                     //<< cmpValue[i].i64[0] //<< cmpValue[i].i64[1]
-                     //<< ", newValue=" //<< hex //<< newValue[i].i64[0]
-                     //<< newValue[i].i64[1] //<< ", expected=" //<< hex
-                     //<< expValue[i].i64[0] //<< expValue[i].i64[1] //<< endl;
-
-                int64_t result0, result1;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], oldValue[i].i64[0]));
-                EXPECT_NO_THROW(my_fam->fam_set(item, testOffset[ofs] + 8,
-                                                oldValue[i].i64[1]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(my_fam->fam_compare_swap(
-                    item, testOffset[ofs], cmpValue[i].i128, newValue[i].i128));
-                EXPECT_NO_THROW(
-                    result0 = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(expValue[i].i64[0], result0);
-                EXPECT_NO_THROW(result1 = my_fam->fam_fetch_int64(
-                                    item, testOffset[ofs] + 8));
-                EXPECT_EQ(expValue[i].i64[1], result1);
-
-            }
+        for (i = 0; i < 5; i++) {
+            int64_t result0, result1;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], oldValue[i].i64[0]));
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs] + 8, oldValue[i].i64[1]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(my_fam->fam_compare_swap(
+                item, testOffset[ofs], cmpValue[i].i128, newValue[i].i128));
+            EXPECT_NO_THROW(result0 =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(expValue[i].i64[0], result0);
+            EXPECT_NO_THROW(
+                result1 = my_fam->fam_fetch_int64(item, testOffset[ofs] + 8));
+            EXPECT_EQ(expValue[i].i64[1], result1);
         }
+    }
     pthread_exit(NULL);
 }
 TEST(FamCASAtomics, CASInt128) {
@@ -462,30 +430,31 @@ TEST(FamCASAtomics, CASInt128) {
     int i, sm, tid;
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item[sm] = my_fam->fam_allocate(dataItem, test_item_size[sm] * NUM_THREADS * sizeof(int128_t),
-                                       test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item[sm] = my_fam->fam_allocate(
+                            dataItem,
+                            test_item_size[sm] * NUM_THREADS * sizeof(int128_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-        tid = i;
-        info[i] = {item[sm], (uint64_t)sm,tid, 0};
-            if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int128, &info[i]))) {
-            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-            exit(1);
+            tid = i;
+            info[i] = {item[sm], (uint64_t)sm, tid, 0};
+            if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int128,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
         }
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-         }
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item[sm]));
     }
-    free(info);;
+    free(info);
+    ;
     free((void *)dataItem);
-
 }
-
 
 int main(int argc, char **argv) {
     int ret;
@@ -497,7 +466,7 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
     fam_opts.famThreadModel = strdup("FAM_THREAD_MULTIPLE");
-//    fam_opts.runtime = strdup("NONE");
+    //    fam_opts.runtime = strdup("NONE");
     testRegionStr = get_uniq_str("test", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(

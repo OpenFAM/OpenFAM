@@ -27,7 +27,8 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-/* Test Case Description: Tests non-fetching logical operations for multithreaded model.
+/* Test Case Description: Tests non-fetching logical operations for
+ * multithreaded model.
  */
 
 #include <fam/fam_exception.h>
@@ -57,7 +58,6 @@ typedef struct {
     int32_t tid;
     int32_t msg_size;
 } ValueInfo;
-
 
 // Test case 1 - tests FAM APIs fam_and, fam_or and fam_xow with uint32_t.
 void *thrd_logical_uint32(void *arg) {
@@ -93,7 +93,6 @@ void *thrd_logical_uint32(void *arg) {
     pthread_exit(NULL);
 }
 
-
 TEST(FamNonfetchLogicalAtomicUint32, NonfetchLogicalAtomicUint32Success) {
     Fam_Descriptor *item;
     const char *testRegion = get_uniq_str("test", my_fam);
@@ -103,24 +102,26 @@ TEST(FamNonfetchLogicalAtomicUint32, NonfetchLogicalAtomicUint32Success) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(uint32_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 1024 * sizeof(uint32_t),
+                                             0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_logical_uint32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_logical_uint32,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     free((void *)info);
@@ -177,26 +178,27 @@ TEST(FamNonfetchLogicalAtomicUint64, NonfetchLogicalAtomicUint64Success) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(uint64_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 1024 * sizeof(uint64_t),
+                                             0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_logical_uint64, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_logical_uint64,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
-
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));

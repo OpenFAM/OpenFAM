@@ -27,7 +27,8 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-/* Test Case Description: Tests non-fetching min/max operations for multithreaded model.
+/* Test Case Description: Tests non-fetching min/max operations for
+ * multithreaded model.
  */
 
 #include <fam/fam_exception.h>
@@ -46,7 +47,6 @@ using namespace openfam;
 fam *my_fam;
 Fam_Options fam_opts;
 
-
 Fam_Region_Descriptor *testRegionDesc;
 int rc;
 #define NUM_THREADS 10
@@ -57,7 +57,6 @@ typedef struct {
     int32_t tid;
     int32_t msg_size;
 } ValueInfo;
-
 
 // Test case 1 - tests non fetch fam_min and fam_max API calls for int32_t.
 void *thrd_min_max_int32(void *arg) {
@@ -80,7 +79,6 @@ void *thrd_min_max_int32(void *arg) {
     EXPECT_NO_THROW(valueInt32 = my_fam->fam_fetch_uint32(item, offset));
     EXPECT_EQ(valueInt32, (int32_t)0xCCCCCCCC);
 
-
     pthread_exit(NULL);
 }
 
@@ -94,29 +92,31 @@ TEST(FamNonfetchMinMaxAtomicInt32, NonfetchMinMaxAtomicInt32Success) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(int32_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 1024 * sizeof(int32_t),
+                                             0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc =
+                 pthread_create(&thr[i], NULL, thrd_min_max_int32, &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     free((void *)info);
 
-
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
 
     delete item;
@@ -132,7 +132,7 @@ void *thrd_min_max_int64(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(int64_t);
-	// Atomic min and max operations for int64
+    // Atomic min and max operations for int64
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt64));
     EXPECT_NO_THROW(my_fam->fam_quiet());
@@ -147,7 +147,6 @@ void *thrd_min_max_int64(void *arg) {
     EXPECT_NO_THROW(valueInt64 = my_fam->fam_fetch_uint64(item, offset));
     EXPECT_EQ(valueInt64, (int64_t)0xCCCCCCCCCCCCCCCC);
 
-
     pthread_exit(NULL);
 }
 TEST(FamNonfetchMinMaxAtomicInt64, NonfetchMinMaxAtomicInt64Success) {
@@ -160,28 +159,31 @@ TEST(FamNonfetchMinMaxAtomicInt64, NonfetchMinMaxAtomicInt64Success) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(int64_t), 0777, testRegionDesc));
-    EXPECT_NE((void *)NULL, item);    
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 1024 * sizeof(int64_t),
+                                             0777, testRegionDesc));
+    EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int64, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc =
+                 pthread_create(&thr[i], NULL, thrd_min_max_int64, &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     free((void *)info);
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
 
     delete item;
@@ -197,8 +199,8 @@ void *thrd_min_max_uint32(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(uint32_t);
-	
-	// Atomic min and max operations for uint32
+
+    // Atomic min and max operations for uint32
     uint32_t valueUint32 = 0xBBBBBBBB;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
     EXPECT_NO_THROW(my_fam->fam_quiet());
@@ -225,28 +227,31 @@ TEST(FamNonfetchMinMaxAtomicUint32, NonfetchMinMaxAtomicUint32Success) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(uint32_t), 0777, testRegionDesc));
-    EXPECT_NE((void *)NULL, item);    
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 1024 * sizeof(uint32_t),
+                                             0777, testRegionDesc));
+    EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint32,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     free((void *)info);
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
 
     delete item;
@@ -277,7 +282,6 @@ void *thrd_min_max_uint64(void *arg) {
     EXPECT_NO_THROW(valueUint64 = my_fam->fam_fetch_uint64(item, offset));
     EXPECT_EQ(valueUint64, (uint64_t)0xCCCCCCCCCCCCCCCC);
 
-
     pthread_exit(NULL);
 }
 TEST(FamNonfetchMinMaxAtomicUint64, NonfetchMinMaxAtomicUint64Success) {
@@ -290,29 +294,32 @@ TEST(FamNonfetchMinMaxAtomicUint64, NonfetchMinMaxAtomicUint64Success) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(uint64_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 1024 * sizeof(uint64_t),
+                                             0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint64, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint64,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     free((void *)info);
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
 
     delete item;
@@ -355,29 +362,31 @@ TEST(FamNonfetchMinMaxAtomicFloat, NonfetchMinMaxAtomicFloatSuccess) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(float), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(float),
+                                                0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_float, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc =
+                 pthread_create(&thr[i], NULL, thrd_min_max_float, &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     free((void *)info);
 
-	EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
 
     delete item;
@@ -408,7 +417,6 @@ void *thrd_min_max_double(void *arg) {
     EXPECT_NO_THROW(valueDouble = my_fam->fam_fetch_double(item, offset));
     EXPECT_EQ(valueDouble, 5.6e+38);
 
-
     pthread_exit(NULL);
 }
 TEST(FamNonfetchMinMaxAtomicDouble, NonfetchMinMaxAtomicDoubleSuccess) {
@@ -421,24 +429,27 @@ TEST(FamNonfetchMinMaxAtomicDouble, NonfetchMinMaxAtomicDoubleSuccess) {
     int i;
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(double), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 1024 * sizeof(double),
+                                             0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i,0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_double, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_double,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
 
     free((void *)info);

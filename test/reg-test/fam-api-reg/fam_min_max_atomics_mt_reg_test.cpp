@@ -28,8 +28,8 @@
  *
  */
 
-/* Test Case Description: Tests for non-fetching operations like fam_set, fam_min, 
- * fam_max for multithreaded model.
+/* Test Case Description: Tests for non-fetching operations like fam_set,
+ * fam_min, fam_max for multithreaded model.
  */
 
 #include <fam/fam.h>
@@ -52,7 +52,6 @@ Fam_Options fam_opts;
 Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 
-
 int rc;
 #define NUM_THREADS 10
 #define REGION_SIZE (32 * 1024 * 1024 * NUM_THREADS)
@@ -73,7 +72,6 @@ typedef struct {
     int itemId;
 } ValueInfo2;
 
-
 // Test case 1 - MinMaxInt32NonBlock
 
 void *thrd_min_max_int32(void *arg) {
@@ -83,7 +81,7 @@ void *thrd_min_max_int32(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(int32_t);
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
+    size_t test_item_size[3] = {1024, 4096, 8192};
     int32_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffff,
                                 (int32_t)0x87654321};
     int32_t operand2Value[5] = {(int32_t)0xf0000000, 0x1234, 0x7fffffff, 0x0,
@@ -94,72 +92,63 @@ void *thrd_min_max_int32(void *arg) {
                                        0x0, (int32_t)0x87654321};
     int32_t testMaxExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x1, 0x7fffffff};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int32_t) - 1)};
-    
-//   cout << "THRD : " <<  addInfo->tid  << ", Data item " << sm << " of size " << test_item_size[sm]  * sizeof(int32_t) << ", offset: " << offset << endl;
+                              offset +
+                                  (test_item_size[sm] - sizeof(int32_t) - 1)};
+
 
     for (ofs = 0; ofs < 3; ofs++) {
-	for (i = 0; i < 5; i++) {
-                /*cout << "Testing min max atomics: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", operand1Value=" << operand1Value[i]
-                     << ", operand2Value=" << operand2Value[i]
-                     << ", operand3Value=" << operand3Value[i]
-                     << ", expected(min)=" << testMinExpectedValue[i]
-                     << ", expected(max)=" << testMaxExpectedValue[i] << endl;*/
-                int32_t result;
-   //           cout << "THRD : " << addInfo->tid  << "is doing fam_set at offset " << testOffset[ofs] << " in data item of size " << test_item_size[sm] << " iem: " << addInfo->item[sm] << endl;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int32(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int32(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-	}
+        for (i = 0; i < 5; i++) {
+            int32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int32(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int32(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
+        }
     }
     pthread_exit(NULL);
-}	    
-
+}
 
 TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ;
+    int i, sm;
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
+    size_t test_item_size[3] = {1024, 4096, 8192};
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(int32_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(int32_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int32, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int32,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
     delete item;
@@ -170,13 +159,14 @@ TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
 void *thrd_min_max_uint32(void *arg) {
 
     int i, sm, ofs;
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
+    size_t test_item_size[3] = {1024, 4096, 8192};
     ValueInfo2 *addInfo = (ValueInfo2 *)arg;
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(uint32_t);
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint32_t) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(uint32_t) - 1)};
 
     uint32_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffff, 0x87654321};
     uint32_t operand2Value[5] = {0xf0000000, 0x1234, 0x7fffffff, 0x0,
@@ -185,67 +175,59 @@ void *thrd_min_max_uint32(void *arg) {
     uint32_t testMinExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x0, 0x87654321};
     uint32_t testMaxExpectedValue[5] = {0x0, 0xffff0000, 0x54321, 0x1,
                                         0x87654321};
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing min max atomics: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", operand1Value=" << operand1Value[i]
-                     << ", operand2Value=" << operand2Value[i]
-                     << ", operand3Value=" << operand3Value[i]
-                     << ", expected(min)=" << testMinExpectedValue[i]
-                     << ", expected(max)=" << testMaxExpectedValue[i] << endl;
-                uint32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            uint32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
     pthread_exit(NULL);
-}	    
+}
 TEST(FamMinMaxAtomics, MinMaxUInt32NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
-    int i, sm ;
+    int i, sm;
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
+    size_t test_item_size[3] = {1024, 4096, 8192};
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(uint32_t) ,
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(uint32_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint32, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint32,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
-
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
@@ -262,8 +244,9 @@ void *thrd_min_max_int64(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(int64_t);
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
-    //size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    // size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192
+    // * NUM_THREADS};
     int64_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffffffffffff,
                                 (int64_t)0xfedcba9876543210};
     int64_t operand2Value[5] = {(int64_t)0xf000000000000000, 0x1234,
@@ -277,70 +260,65 @@ void *thrd_min_max_int64(void *arg) {
     int64_t testMaxExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x1,
                                        0x7fffffffffffffff};
 
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int64_t) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing min max atomics: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", operand1Value=" << operand1Value[i]
-                     << ", operand2Value=" << operand2Value[i]
-                     << ", operand3Value=" << operand3Value[i]
-                     << ", expected(min)=" << testMinExpectedValue[i]
-                     << ", expected(max)=" << testMaxExpectedValue[i] << endl;
-                int64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            int64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
 
     pthread_exit(NULL);
-}	    
+}
 TEST(FamMinMaxAtomics, MinMaxInt64NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(int64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(int64_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int64, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int64,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
@@ -355,8 +333,9 @@ void *thrd_min_max_uint64(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(uint64_t);
-    //size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
+    // size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192
+    // * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
     uint64_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffffffffffff,
                                  0xfedcba9876543210};
     uint64_t operand2Value[5] = {0xf000000000000000, 0x1234, 0x7fffffffffffffff,
@@ -368,75 +347,69 @@ void *thrd_min_max_uint64(void *arg) {
     uint64_t testMaxExpectedValue[5] = {0x0, 0xffffffff00000000, 0x54321, 0x1,
                                         0xfedcba9876543210};
 
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint64_t) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing min max atomics: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", operand1Value=" << operand1Value[i]
-                     << ", operand2Value=" << operand2Value[i]
-                     << ", operand3Value=" << operand3Value[i]
-                     << ", expected(min)=" << testMinExpectedValue[i]
-                     << ", expected(max)=" << testMaxExpectedValue[i] << endl;
-                uint64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            uint64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxUInt64NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(uint64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(uint64_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
 
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint64, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint64,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
-        delete item;
+    delete item;
     free((void *)dataItem);
 }
 
@@ -448,79 +421,72 @@ void *thrd_min_max_float(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(float);
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
-    //size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    // size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192
+    // * NUM_THREADS};
     float operand1Value[5] = {0.0f, 1234.12f, 54321.87f, 8888.33f, 99999.99f};
     float operand2Value[5] = {0.1f, 1234.12f, 0.12f, 9999.22f, 0.01f};
     float operand3Value[5] = {0.5f, 1234.23f, 0.01f, 5432.10f, 0.05f};
     float testMinExpectedValue[5] = {0.0f, 1234.12f, 0.12f, 8888.33f, 0.01f};
     float testMaxExpectedValue[5] = {0.5f, 1234.23f, 0.12f, 8888.33f, 0.05f};
     uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(float) - 1)};
+                              offset +
+                                  (test_item_size[sm] - sizeof(float) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing min max atomics: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", operand1Value=" << operand1Value[i]
-                     << ", operand2Value=" << operand2Value[i]
-                     << ", operand3Value=" << operand3Value[i]
-                     << ", expected(min)=" << testMinExpectedValue[i]
-                     << ", expected(max)=" << testMaxExpectedValue[i] << endl;
-                float result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_float(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_float(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            float result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_float(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_float(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxFloatNonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
-
 
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(float),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(float),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_float, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_float,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
-
-
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
@@ -531,13 +497,14 @@ TEST(FamMinMaxAtomics, MinMaxFloatNonBlock) {
 // Test case 6 - MinMaxDoubleNonBlock
 void *thrd_min_max_double(void *arg) {
 
-    int i, sm ,ofs;
+    int i, sm, ofs;
     ValueInfo2 *addInfo = (ValueInfo2 *)arg;
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(double);
-    //size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
+    // size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192
+    // * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
     double operand1Value[5] = {0.0, 1234.123, 987654321.8765,
                                2222555577778888.3333, (DBL_MAX - 1.0)};
     double operand2Value[5] = {0.1, 1234.123, 0.1234, 1111.2222, 1.0};
@@ -546,71 +513,64 @@ void *thrd_min_max_double(void *arg) {
     double testMinExpectedValue[5] = {0.0, 1234.123, 0.1234, 1111.2222, 1.0};
     double testMaxExpectedValue[5] = {1.5, 5432.123, 0.1234,
                                       2222555577778888.3333, DBL_MAX - 1};
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(double) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(double) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                cout << "Testing min max atomics: item=" << item
-                     << ", offset=" << testOffset[ofs]
-                     << ", operand1Value=" << operand1Value[i]
-                     << ", operand2Value=" << operand2Value[i]
-                     << ", operand3Value=" << operand3Value[i]
-                     << ", expected(min)=" << testMinExpectedValue[i]
-                     << ", expected(max)=" << testMaxExpectedValue[i] << endl;
-                double result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_double(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_double(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            double result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                my_fam->fam_min(item, testOffset[ofs], operand2Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_double(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                my_fam->fam_max(item, testOffset[ofs], operand3Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_double(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxDoubleNonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(double),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(double),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_double, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_double,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
-
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
@@ -636,68 +596,70 @@ void *thrd_min_max_int32_block(void *arg) {
                                        0x0, (int32_t)0x87654321};
     int32_t testMaxExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x1, 0x7fffffff};
 
-//    size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int32_t) - 1)};
+    //    size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS,
+    //    8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(int32_t) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                int32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
-                                    item, testOffset[ofs], operand2Value[i]));
-                EXPECT_EQ(operand1Value[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int32(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
-                                    item, testOffset[ofs], operand3Value[i]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int32(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            int32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
+                                item, testOffset[ofs], operand2Value[i]));
+            EXPECT_EQ(operand1Value[i], result);
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int32(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
+                                item, testOffset[ofs], operand3Value[i]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int32(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxInt32Block) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
+    size_t test_item_size[3] = {1024, 4096, 8192};
     int i, sm;
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] *  sizeof(int32_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(int32_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int32_block, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int32_block,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
-
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
-        delete item;
+    delete item;
     free((void *)dataItem);
 }
 
@@ -709,8 +671,9 @@ void *thrd_min_max_uint32_block(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(uint32_t);
-    //size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
+    // size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192
+    // * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
     uint32_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffff, 0x87654321};
     uint32_t operand2Value[5] = {0xf0000000, 0x1234, 0x7fffffff, 0x0,
                                  0xffffffff};
@@ -719,67 +682,68 @@ void *thrd_min_max_uint32_block(void *arg) {
     uint32_t testMaxExpectedValue[5] = {0x0, 0xffff0000, 0x54321, 0x1,
                                         0x87654321};
 
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(uint32_t) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(uint32_t) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                uint32_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
-                                    item, testOffset[ofs], operand2Value[i]));
-                EXPECT_EQ(operand1Value[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
-                                    item, testOffset[ofs], operand3Value[i]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            uint32_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
+                                item, testOffset[ofs], operand2Value[i]));
+            EXPECT_EQ(operand1Value[i], result);
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
+                                item, testOffset[ofs], operand3Value[i]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_uint32(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxUInt32Block) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(uint32_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(uint32_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint32_block, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint32_block,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
-
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
-        delete item;
+    delete item;
     free((void *)dataItem);
 }
 
@@ -791,8 +755,9 @@ void *thrd_min_max_int64_block(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(int64_t);
-//    size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
+    //    size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS,
+    //    8192 * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
     int64_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffffffffffff,
                                 (int64_t)0xfedcba9876543210};
     int64_t operand2Value[5] = {(int64_t)0xf000000000000000, 0x1234,
@@ -805,68 +770,69 @@ void *thrd_min_max_int64_block(void *arg) {
                                        (int64_t)0xfedcba9876543210};
     int64_t testMaxExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x1,
                                        0x7fffffffffffffff};
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int64_t) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                int64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
-                                    item, testOffset[ofs], operand2Value[i]));
-                EXPECT_EQ(operand1Value[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
-                                    item, testOffset[ofs], operand3Value[i]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            int64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
+                                item, testOffset[ofs], operand2Value[i]));
+            EXPECT_EQ(operand1Value[i], result);
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
+                                item, testOffset[ofs], operand3Value[i]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
 
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxInt64Block) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(int64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(int64_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int64_block, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_int64_block,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
-        delete item;
+    delete item;
     free((void *)dataItem);
 }
 
@@ -878,8 +844,9 @@ void *thrd_min_max_uint64_block(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(uint64_t);
-    //size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
+    // size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192
+    // * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
     uint64_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffffffffffff,
                                  0xfedcba9876543210};
     uint64_t operand2Value[5] = {0xf000000000000000, 0x1234, 0x7fffffffffffffff,
@@ -890,68 +857,69 @@ void *thrd_min_max_uint64_block(void *arg) {
                                         0xfedcba9876543210};
     uint64_t testMaxExpectedValue[5] = {0x0, 0xffffffff00000000, 0x54321, 0x1,
                                         0xfedcba9876543210};
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(int64_t) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                uint64_t result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
-                                    item, testOffset[ofs], operand2Value[i]));
-                EXPECT_EQ(operand1Value[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
-                                    item, testOffset[ofs], operand3Value[i]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            uint64_t result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
+                                item, testOffset[ofs], operand2Value[i]));
+            EXPECT_EQ(operand1Value[i], result);
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
+                                item, testOffset[ofs], operand3Value[i]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_int64(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
 
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxUInt64Block) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(uint64_t),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(uint64_t),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint64_block, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_uint64_block,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
-        delete item;
+    delete item;
     free((void *)dataItem);
 }
 
@@ -963,8 +931,9 @@ void *thrd_min_max_float_block(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(float);
-    //size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
+    // size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192
+    // * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
 
     float operand1Value[5] = {0.0f, 1234.12f, 54321.87f, 8888.33f, 99999.99f};
     float operand2Value[5] = {0.1f, 1234.12f, 0.12f, 9999.22f, 0.01f};
@@ -972,66 +941,67 @@ void *thrd_min_max_float_block(void *arg) {
     float testMinExpectedValue[5] = {0.0f, 1234.12f, 0.12f, 8888.33f, 0.01f};
     float testMaxExpectedValue[5] = {0.5f, 1234.23f, 0.12f, 8888.33f, 0.05f};
 
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(float) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(float) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                float result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
-                                    item, testOffset[ofs], operand2Value[i]));
-                EXPECT_EQ(operand1Value[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_float(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
-                                    item, testOffset[ofs], operand3Value[i]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_float(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            float result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
+                                item, testOffset[ofs], operand2Value[i]));
+            EXPECT_EQ(operand1Value[i], result);
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_float(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
+                                item, testOffset[ofs], operand3Value[i]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result =
+                                my_fam->fam_fetch_float(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxFloatBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192 };
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(float),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(float),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_float_block, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_float_block,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
-
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
-        delete item;
+    delete item;
     free((void *)dataItem);
 }
 
@@ -1043,8 +1013,9 @@ void *thrd_min_max_double_block(void *arg) {
     sm = addInfo->itemId;
     Fam_Descriptor *item = addInfo->item[sm];
     uint64_t offset = addInfo->tid * sizeof(double);
-    //size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192 * NUM_THREADS};
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
+    // size_t test_item_size[3] = {1024 * NUM_THREADS , 4096 * NUM_THREADS, 8192
+    // * NUM_THREADS};
+    size_t test_item_size[3] = {1024, 4096, 8192};
     double operand1Value[5] = {0.0, 1234.123, 987654321.8765,
                                2222555577778888.3333, (DBL_MAX - 1.0)};
     double operand2Value[5] = {0.1, 1234.123, 0.1234, 1111.2222, 1.0};
@@ -1053,68 +1024,69 @@ void *thrd_min_max_double_block(void *arg) {
     double testMinExpectedValue[5] = {0.0, 1234.123, 0.1234, 1111.2222, 1.0};
     double testMaxExpectedValue[5] = {1.5, 5432.123, 0.1234,
                                       2222555577778888.3333, DBL_MAX - 1};
-        uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
-                                  offset + (test_item_size[sm] - sizeof(double) - 1)};
+    uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
+                              offset +
+                                  (test_item_size[sm] - sizeof(double) - 1)};
 
-        for (ofs = 0; ofs < 3; ofs++) {
-            for (i = 0; i < 5; i++) {
-                double result;
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
-                                    item, testOffset[ofs], operand2Value[i]));
-                EXPECT_EQ(operand1Value[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_double(item, testOffset[ofs]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
-                                    item, testOffset[ofs], operand3Value[i]));
-                EXPECT_EQ(testMinExpectedValue[i], result);
-                EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_double(item, testOffset[ofs]));
-                EXPECT_EQ(testMaxExpectedValue[i], result);
-            }
+    for (ofs = 0; ofs < 3; ofs++) {
+        for (i = 0; i < 5; i++) {
+            double result;
+            EXPECT_NO_THROW(
+                my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
+            EXPECT_NO_THROW(my_fam->fam_quiet());
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_min(
+                                item, testOffset[ofs], operand2Value[i]));
+            EXPECT_EQ(operand1Value[i], result);
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_double(item, testOffset[ofs]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(result = my_fam->fam_fetch_max(
+                                item, testOffset[ofs], operand3Value[i]));
+            EXPECT_EQ(testMinExpectedValue[i], result);
+            EXPECT_NO_THROW(
+                result = my_fam->fam_fetch_double(item, testOffset[ofs]));
+            EXPECT_EQ(testMaxExpectedValue[i], result);
         }
+    }
 
     pthread_exit(NULL);
-}	    
+}
 
 TEST(FamMinMaxAtomics, MinMaxDoubleBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     pthread_t thr[NUM_THREADS];
-    size_t test_item_size[3] = {1024 , 4096 , 8192};
-    int i, sm ;
+    size_t test_item_size[3] = {1024, 4096, 8192};
+    int i, sm;
 
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     ValueInfo2 *info = (ValueInfo2 *)malloc(sizeof(ValueInfo2) * NUM_THREADS);
 
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm] * sizeof(double),
-                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            dataItem, test_item_size[sm] * sizeof(double),
+                            test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
         for (i = 0; i < NUM_THREADS; ++i) {
-                info[i].item[sm] = item;
-                info[i].offset = (uint64_t)i;
-                info[i].tid = i;
-                info[i].itemId = sm;
-                if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_double_block, &info[i]))) {
-                    fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-                    exit(1);
-                }
+            info[i].item[sm] = item;
+            info[i].offset = (uint64_t)i;
+            info[i].tid = i;
+            info[i].itemId = sm;
+            if ((rc = pthread_create(&thr[i], NULL, thrd_min_max_double_block,
+                                     &info[i]))) {
+                fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+                exit(1);
             }
+        }
 
-            for (i = 0; i < NUM_THREADS; ++i) {
-                pthread_join(thr[i], NULL);
-            }
+        for (i = 0; i < NUM_THREADS; ++i) {
+            pthread_join(thr[i], NULL);
+        }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     }
-        delete item;
+    delete item;
     free((void *)dataItem);
 }
 #if 0
@@ -1138,7 +1110,6 @@ void *thrd_min_max_inv_perms(void *arg) {
         uint64_t testOffset[3] = {offset + 0, offset + (test_item_size[sm] / 2),
                                   offset + (test_item_size[sm] - sizeof(double) - 1)};
         for (ofs = 0; ofs < 1; ofs++) {
-//	cout << " Offsets: " << testOffset[0] << "," << testOffset[1] << "," << testOffset[2] <<  ", Item info " << item << endl;
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
@@ -1147,7 +1118,7 @@ void *thrd_min_max_inv_perms(void *arg) {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
-	   
+
 #endif
            EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandInt32[1]),
@@ -1155,7 +1126,7 @@ void *thrd_min_max_inv_perms(void *arg) {
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt32[1]),
                 Fam_Datapath_Exception);
-	    
+
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),

@@ -27,7 +27,8 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-/* Test Case Description: Tests fam_compare_swap and certain atomic operations for multithreaded model.
+/* Test Case Description: Tests fam_compare_swap and certain atomic operations
+ * for multithreaded model.
  */
 
 #include <fam/fam_exception.h>
@@ -50,7 +51,7 @@ Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 int rc;
 #define NUM_THREADS 10
-#define REGION_SIZE ( 16 * 1024 * 1024 * NUM_THREADS)
+#define REGION_SIZE (16 * 1024 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
 
 typedef struct {
@@ -72,8 +73,8 @@ void *thrd_cas_int32(void *arg) {
     int32_t oldValueInt32 = 0xAAAAAAAA;
     int32_t newValueInt32 = 0xBBBBBBBB;
     EXPECT_NO_THROW(
-        my_fam->fam_compare_swap(item,offset, oldValueInt32, newValueInt32));
-    EXPECT_NO_THROW(valueInt32 = my_fam->fam_fetch_int32(item,offset));
+        my_fam->fam_compare_swap(item, offset, oldValueInt32, newValueInt32));
+    EXPECT_NO_THROW(valueInt32 = my_fam->fam_fetch_int32(item, offset));
     EXPECT_EQ(valueInt32, (int32_t)0xBBBBBBBB);
 
     pthread_exit(NULL);
@@ -88,24 +89,25 @@ TEST(FamCompareSwapInt32, CompareSwapInt32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
     const char *firstItem = get_uniq_str("first", my_fam);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * NUM_THREADS * sizeof(int32_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(int32_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i, 0};
+        info[i] = {item, 0, i, 0};
         if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
-
 }
 
 void *thrd_cas_int64(void *arg) {
@@ -115,7 +117,7 @@ void *thrd_cas_int64(void *arg) {
     uint64_t offset = addInfo->tid * sizeof(int64_t);
     // Compare atomicas operation for int64
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
-    EXPECT_NO_THROW(my_fam->fam_set(item,offset , valueInt64));
+    EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt64));
     EXPECT_NO_THROW(my_fam->fam_quiet());
     int64_t oldValueInt64 = 0xBBBBBBBBBBBBBBBB;
     int64_t newValueInt64 = 0xCCCCCCCCCCCCCCCC;
@@ -136,19 +138,21 @@ TEST(FamCompareSwapInt64, CompareSwapInt64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
     const char *firstItem = get_uniq_str("first", my_fam);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024  * NUM_THREADS * sizeof(int64_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(int64_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i, 0};
+        info[i] = {item, 0, i, 0};
         if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int64, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
@@ -180,25 +184,25 @@ TEST(FamCompareSwapUint32, CompareSwapUint32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
     const char *firstItem = get_uniq_str("first", my_fam);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024  * NUM_THREADS * sizeof(uint32_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(uint32_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i, 0};
+        info[i] = {item, 0, i, 0};
         if ((rc = pthread_create(&thr[i], NULL, thrd_cas_uint32, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
-
-
 }
 void *thrd_cas_uint64(void *arg) {
 
@@ -207,7 +211,7 @@ void *thrd_cas_uint64(void *arg) {
     uint64_t offset = addInfo->tid * sizeof(uint64_t);
     // Compare atomic operation for uint64
     uint64_t valueUint64 = 0xBBBBBBBBBBBBBBBB;
-    EXPECT_NO_THROW(my_fam->fam_set(item,offset , valueUint64));
+    EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
     EXPECT_NO_THROW(my_fam->fam_quiet());
     uint64_t oldValueUint64 = 0xBBBBBBBBBBBBBBBB;
     uint64_t newValueUint64 = 0xCCCCCCCCCCCCCCCC;
@@ -229,24 +233,25 @@ TEST(FamCompareSwapUint64, CompareSwapUint64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
     const char *firstItem = get_uniq_str("first", my_fam);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024  * NUM_THREADS * sizeof(int64_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(int64_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i, 0};
+        info[i] = {item, 0, i, 0};
         if ((rc = pthread_create(&thr[i], NULL, thrd_cas_uint64, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
-
 }
 
 void *thrd_cas_int128(void *arg) {
@@ -254,7 +259,7 @@ void *thrd_cas_int128(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     uint64_t offset = addInfo->tid * sizeof(int64_t) * 2;
-//    offset = 0;
+    //    offset = 0;
     // Compare atomics operation for int128
     union int128store {
         struct {
@@ -274,7 +279,8 @@ void *thrd_cas_int128(void *arg) {
     valueInt128.i64[1] = 0xCCCCCCCCDDDDDDDD;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt128.i64[0]));
-    EXPECT_NO_THROW(my_fam->fam_set(item, offset + sizeof(int64_t), valueInt128.i64[1]));
+    EXPECT_NO_THROW(
+        my_fam->fam_set(item, offset + sizeof(int64_t), valueInt128.i64[1]));
     EXPECT_NO_THROW(my_fam->fam_quiet());
 
     valueInt128.i64[0] = 0;
@@ -289,8 +295,8 @@ void *thrd_cas_int128(void *arg) {
     EXPECT_NO_THROW(my_fam->fam_compare_swap(item, offset, oldValueInt128.i128,
                                              newValueInt128.i128));
     EXPECT_NO_THROW(valueInt128.i64[0] = my_fam->fam_fetch_int64(item, offset));
-    EXPECT_NO_THROW(valueInt128.i64[1] =
-                        my_fam->fam_fetch_int64(item, offset + sizeof(int64_t)));
+    EXPECT_NO_THROW(valueInt128.i64[1] = my_fam->fam_fetch_int64(
+                        item, offset + sizeof(int64_t)));
     EXPECT_EQ(newValueInt128.i64[0], valueInt128.i64[0]);
     EXPECT_EQ(newValueInt128.i64[1], valueInt128.i64[1]);
 
@@ -305,24 +311,25 @@ TEST(FamCompareSwapInt128, CompareSwapInt128Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
     const char *firstItem = get_uniq_str("first", my_fam);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024  * NUM_THREADS * sizeof(int128_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(int128_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i, 0};
+        info[i] = {item, 0, i, 0};
         if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int128, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
-
 }
 
 void *thrd_cas_uint64_neg(void *arg) {
@@ -351,25 +358,26 @@ TEST(FamCompareSwapNegativeCase, CompareSwapNegativeCaseSuccess) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
     const char *firstItem = get_uniq_str("first", my_fam);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 *  NUM_THREADS * sizeof(uint64_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(uint64_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i, 0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_cas_uint64_neg, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_cas_uint64_neg,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
-
-
 }
 
 void *thrd_cas_int128_neg(void *arg) {
@@ -396,7 +404,8 @@ void *thrd_cas_int128_neg(void *arg) {
     valueInt128.i64[1] = 0xAAAAAAAABBBBBBBB;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt128.i64[0]));
-    EXPECT_NO_THROW(my_fam->fam_set(item, offset + sizeof(int64_t), valueInt128.i64[1]));
+    EXPECT_NO_THROW(
+        my_fam->fam_set(item, offset + sizeof(int64_t), valueInt128.i64[1]));
     EXPECT_NO_THROW(my_fam->fam_quiet());
 
     valueInt128.i64[0] = 0;
@@ -411,8 +420,8 @@ void *thrd_cas_int128_neg(void *arg) {
     EXPECT_NO_THROW(my_fam->fam_compare_swap(item, offset, oldValueInt128.i128,
                                              newValueInt128.i128));
     EXPECT_NO_THROW(valueInt128.i64[0] = my_fam->fam_fetch_int64(item, offset));
-    EXPECT_NO_THROW(valueInt128.i64[1] =
-                        my_fam->fam_fetch_int64(item, offset + sizeof(int64_t)));
+    EXPECT_NO_THROW(valueInt128.i64[1] = my_fam->fam_fetch_int64(
+                        item, offset + sizeof(int64_t)));
     EXPECT_NE(newValueInt128.i64[0], valueInt128.i64[0]);
     EXPECT_NE(newValueInt128.i64[1], valueInt128.i64[1]);
 
@@ -426,26 +435,26 @@ TEST(FamCompareSwapNegativeCaseInt128, CompareSwapNegativeCaseInt128Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
     const char *firstItem = get_uniq_str("first", my_fam);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024  * NUM_THREADS * sizeof(int128_t), 0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(int128_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
-    info[i] = {item,0,i, 0};
-        if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int128_neg, &info[i]))) {
-        fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
-        exit(1);
+        info[i] = {item, 0, i, 0};
+        if ((rc = pthread_create(&thr[i], NULL, thrd_cas_int128_neg,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
         }
     }
 
     for (i = 0; i < NUM_THREADS; ++i) {
-            pthread_join(thr[i], NULL);
+        pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
-
-
-
 }
 int main(int argc, char **argv) {
     int ret;
@@ -460,8 +469,8 @@ int main(int argc, char **argv) {
 
     testRegionStr = get_uniq_str("test", my_fam);
 
-    EXPECT_NO_THROW(
-        testRegionDesc = my_fam->fam_create_region(testRegionStr, REGION_SIZE, REGION_PERM, RAID1));
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegionStr, REGION_SIZE, REGION_PERM, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
     ret = RUN_ALL_TESTS();
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
