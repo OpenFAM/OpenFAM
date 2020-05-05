@@ -29,20 +29,41 @@
  #
 
 #!/bin/bash
+unset http_proxy
+unset https_proxy
+
 base_dir=$4
 
 if [[ $5 == "RPC" ]]
 then
-    cmd="--allow-run-as-root -n $1 ${base_dir}/build/build-rpc/test/microbench/fam-api-mb/fam_microbenchmark_atomic $3"
+    cmd="--allow-run-as-root --bind-to core -n $1 ${base_dir}/build/build-rpc/test/microbench/fam-api-mb/fam_microbenchmark_atomic"
     log_dir="${base_dir}/mb_logs/rpc/atomic"
     mkdir -p $log_dir
 else
-    cmd="--allow-run-as-root -n $1 ${base_dir}/build/build-shm/test/microbench/fam-api-mb/fam_microbenchmark_atomic $3"
+    cmd="--allow-run-as-root --bind-to core -n $1 ${base_dir}/build/build-shm/test/microbench/fam-api-mb/fam_microbenchmark_atomic"
     log_dir="${base_dir}/mb_logs/shm/atomic"
     mkdir -p $log_dir
 fi
 
-${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchALLInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_ALLF.log
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FETCH.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchAddInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FADD.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchSubInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FSUB.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchAndInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FAND.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchOrInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FOR.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchXorInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FXOR.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchMinInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FMIN.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchMaxInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FMAX.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchCmpswapInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FCSWAP.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.FetchSwapInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_FSWAP.log
 wait
 ${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamArithmaticAtomicmicrobench.SetInt64 >$log_dir/${1}PE_${2}MEM_SERVER_${3}_SETN.log
 wait

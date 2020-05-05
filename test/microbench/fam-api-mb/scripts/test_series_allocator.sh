@@ -39,24 +39,8 @@ fi
 
 #Running tests on memoryserver
 #Note : For running this test on cluster environment                           \
-run_datapath_mb_MEMSERVER.sh to run_datapath_mb_CLUSTER.sh
+#run_allocator_mb_MEMSERVER.sh to run_allocator_mb_CLUSTER.sh
 for i in 1 2 4 8 16 32 64 
 do
-./run_datapath_mb_MEMSERVER.sh $i 1 256 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 512 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 1024 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 4096 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 65536 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 131072 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 524288 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 1048576 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 4194304 100  $1 $2
+./run_allocator_mb_MEMSERVER.sh $i 10 ${1} ${2}
 done

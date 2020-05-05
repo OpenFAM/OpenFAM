@@ -60,6 +60,8 @@ service Fam_Rpc {
     rpc release_CAS_lock(Fam_Dataitem_Request)
         returns (Fam_Dataitem_Response) {}
 
+    rpc reset_profile(Fam_Request) returns (Fam_Response) {}
+    rpc generate_profile(Fam_Request) returns (Fam_Response) {}
     rpc signal_start(Fam_Request) returns (Fam_Start_Response) {}
 
     rpc signal_termination(Fam_Request) returns (Fam_Response) {}

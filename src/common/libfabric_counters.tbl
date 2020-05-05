@@ -26,4 +26,6 @@ LIBFABRIC_COUNTER(fi_fetch_atomicmsg)
 LIBFABRIC_COUNTER(fi_compare_atomicmsg)
 LIBFABRIC_COUNTER(iprint)
 LIBFABRIC_COUNTER(vprint)
+LIBFABRIC_COUNTER(fabric_completion_wait)
+LIBFABRIC_COUNTER(fabric_completion_wait_multictx)
 

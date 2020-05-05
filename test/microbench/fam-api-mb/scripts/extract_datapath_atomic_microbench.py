@@ -1,5 +1,6 @@
+#!/usr/bin/python3
  #
- # extract_microbench.py
+ # extract_datapath_atomic_microbench.py
  # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
  # reserved. Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions are met:
@@ -28,7 +29,6 @@
  #
  #
 
-#!/usr/bin/python3
 import glob
 import sys
 import csv
@@ -37,8 +37,15 @@ arguments = sys.argv[1:]
 argc = len(arguments)
 if argc != 2:
     print ("usage:")
-    print ("./extract_microbench.py directory csv_file")
+    print ("./extract_datapath_atomic_microbench.py directory csv_file")
     exit()
+
+def isNumber(item):
+    try:
+        num_int = int(item)
+        return True
+    except ValueError:
+        return False
 
 path = sys.argv[1]
 outfile = sys.argv[2]
@@ -47,10 +54,13 @@ fam_api_map = {
         "GINB" : ['fam_gather_nonblocking', 'fam_quiet', 4, 4],
         "GISNB": ['fam_gather_nonblocking', 'fam_quiet', 4, 1],
         "GNB":   ['fam_get_nonblocking', 'fam_quiet', 1, 1],
-        "PGB":   ['fam_put_blocking', 'fam_get_blocking',1,1],
+        "PB":   ['fam_put_blocking', 1,1],
+        "GB":   ['fam_get_blocking', 1,1],
         "PNB":   ['fam_put_nonblocking', 'fam_quiet',1,1],
-        "SGIB":  ['fam_scatter_blocking', 'fam_gather_blocking',4,4],
-        "SGISB": ['fam_scatter_blocking', 'fam_gather_blocking',4,1],
+        "SIB":  ['fam_scatter_blocking' ,4,4],
+        "GIB":  ['fam_gather_blocking', 4,4],
+        "SISB": ['fam_scatter_blocking', 4,1],
+        "GISB": ['fam_gather_blocking', 4,1],
         "SINB":  ['fam_scatter_nonblocking', 'fam_quiet',4,4],
         "SISNB": ['fam_scatter_nonblocking', 'fam_quiet',4,1],
         "SETN":  ['fam_set', 'fam_quiet', 1, 1],
@@ -61,7 +71,16 @@ fam_api_map = {
         "XORN":   ['fam_xor', 'fam_quiet', 1, 1],
         "MINN":   ['fam_min', 'fam_quiet', 1, 1],
         "MAXN":   ['fam_max', 'fam_quiet', 1, 1],
-        "ALLF":   ['fam_fetch', 'fam_swap', 'fam_compare_swap', 'fam_fetch_add', 'fam_fetch_subtract', 'fam_fetch_min', 'fam_fetch_max', 'fam_fetch_and', 'fam_fetch_or', 'fam_fetch_xor', 1, 1]
+        "FETCH":   ['fam_fetch',  1, 1],
+        "FADD":   ['fam_fetch_add',  1, 1],
+        "FSUB":   ['fam_fetch_subtract',  1, 1],
+        "FAND":   ['fam_fetch_and',  1, 1],
+        "FOR":   ['fam_fetch_or',  1, 1],
+        "FXOR":   ['fam_fetch_xor',  1, 1],
+        "FMIN":   ['fam_fetch_min',  1, 1],
+        "FMAX" :  ['fam_fetch_max', 1, 1],
+        "FCSWAP":   ['fam_compare_swap', 1, 1],
+        "FSWAP":   ['fam_swap',  1, 1]
         }
 
 
@@ -71,9 +90,9 @@ files = [f for f in glob.glob(path + "/*.log", recursive=True)]
 # Create and OpenCSV file
 with open(outfile, "w") as outf:
     writer = csv.writer(outf,dialect='excel')
-    writer.writerow(['OpenFAM API', 'PE', 'PE Server','Count','Size', 'PE ID','Iteration','Total Pct','Total time(ns)','Avg time/call(ns)'])
+    writer.writerow(['Level 1', 'Level 2', 'Level 3', 'Level 4', 'total PEs', 'Count','Size', 'PE ID','Iteration','Total Pct','Total time(ns)','Avg time/call(ns)'])
     for f in files:
-        fname = f.split('/')[1]
+        fname = f.split('/')[-1]
         fparam = fname.split('_')
         if "MEM" in fname:
             server = "MemoryServer"
@@ -83,12 +102,12 @@ with open(outfile, "w") as outf:
             continue
         prefix = list()
         tmp_apis = list()
+        test_type = fparam[4].split('.')[0]
         #API
         fam_apis = fam_api_map[fparam[4].split('.')[0]]
         #PE
         prefix.append(fparam[0].split('PE')[0])
         # PE server type
-        prefix.append(server)
 
         if (fparam[4].split('.')[0] == "ALLF"):
             #Count
@@ -98,10 +117,13 @@ with open(outfile, "w") as outf:
             tmp_apis = fam_apis[:10]
         else:
             #Count
-            prefix.append(str(fam_apis[2]))
+            prefix.append(str(fam_apis[-2]))
             #Size
-            prefix.append(str(int(int(fparam[3])/fam_apis[3])))
-            tmp_apis = fam_apis[:2]
+            prefix.append(str(int(int(fparam[3])/fam_apis[-1])))
+            if(isNumber(fam_apis[1])):
+                tmp_apis = fam_apis[:1]
+            else:
+                tmp_apis = fam_apis[:2]
         lines = list()
         # Loop through all lines and extract required functions
         for line in open(f):
@@ -148,6 +170,9 @@ with open(outfile, "w") as outf:
         for line in lines:
             outputline = list()
             outputline.append(line.pop(1))
+            outputline.append("NA")
+            outputline.append("NA")
+            outputline.append("NA")
             for l in prefix:
                 outputline.append(l)
             for l in line:

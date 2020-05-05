@@ -28,9 +28,46 @@
  *
  */
 #include "allocator/memserver_allocator.h"
+#include <boost/atomic.hpp>
+#include <chrono>
+#include <iomanip>
+#include <string.h>
+#include <unistd.h>
+
+#include "common/fam_memserver_profile.h"
+using namespace std;
+using namespace chrono;
 
 namespace openfam {
+MEMSERVER_PROFILE_DECLARE(NVMM)
+MEMSERVER_PROFILE_GET_TIME_FUNC(NVMM)
+MEMSERVER_PROFILE_TIME_DIFF_NS_FUNC(NVMM)
+#define NVMM_PROFILE_GET_TIME() NVMM_get_time()
+#define NVMM_PROFILE_TIME_DIFF_NS(start, end)                                  \
+    NVMM_time_diff_nanoseconds(start, end)
+#define NVMM_PROFILE_START_TIME() MEMSERVER_PROFILE_START_TIME(NVMM)
+#define NVMM_PROFILE_INIT() MEMSERVER_PROFILE_INIT(NVMM)
+#define NVMM_PROFILE_END() nvmm_profile_end()
+#define NVMM_PROFILE_ADD_TO_TOTAL_OPS(apiIdx, total)                           \
+    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(NVMM, prof_##apiIdx, total)
+
+void nvmm_profile_end(){
+	MEMSERVER_PROFILE_END(NVMM)
+	MEMSERVER_DUMP_PROFILE_BANNER(NVMM)
+#undef MEMSERVER_COUNTER
+#define MEMSERVER_COUNTER(name)                                                \
+    MEMSERVER_DUMP_PROFILE_DATA(NVMM, name, prof_##name)
+#include "allocator/NVMM_counters.tbl"
+
+#undef MEMSERVER_COUNTER
+#define MEMSERVER_COUNTER(name) MEMSERVER_PROFILE_TOTAL(NVMM, prof_##name)
+#include "allocator/NVMM_counters.tbl"
+    MEMSERVER_DUMP_PROFILE_SUMMARY(NVMM)
+}
+
 Memserver_Allocator::Memserver_Allocator() {
+    NVMM_PROFILE_INIT();
+    NVMM_PROFILE_START_TIME();
     StartNVMM();
     heapMap = new HeapMap();
     memoryManager = MemoryManager::GetInstance();
@@ -41,6 +78,7 @@ Memserver_Allocator::Memserver_Allocator() {
 
 Memserver_Allocator::~Memserver_Allocator() {
     delete heapMap;
+    delete metadataManager;
     pthread_mutex_destroy(&heapMapLock);
 }
 
@@ -56,6 +94,15 @@ void Memserver_Allocator::memserver_allocator_finalize() {
     }
 }
 
+void Memserver_Allocator::reset_profile() {
+    NVMM_PROFILE_INIT();
+    NVMM_PROFILE_START_TIME();
+    metadataManager->reset_profile();
+}
+void Memserver_Allocator::dump_profile() {
+    NVMM_PROFILE_END();
+    metadataManager->dump_profile();
+}
 /*
  * Initalize the region Id bitmap address.
  * Size of bitmap is Max poolId's supported / 8 bytes.
@@ -112,8 +159,14 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         tmpSize = MIN_REGION_SIZE;
     else
         tmpSize = nbytes;
+    {
+        Profile_Time start = NVMM_PROFILE_GET_TIME();
+        ret = memoryManager->CreateHeap(poolId, tmpSize, MIN_OBJ_SIZE);
+        Profile_Time end = NVMM_PROFILE_GET_TIME();
+        Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(CreateHeap, total);
+    }
 
-    ret = memoryManager->CreateHeap(poolId, tmpSize, MIN_OBJ_SIZE);
     if (ret != NO_ERROR) {
         // Reset the poolId bit in the bitmap
         bitmap_reset(bmap, poolId);
@@ -121,7 +174,13 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         throw Memserver_Exception(HEAP_NOT_CREATED, message.str().c_str());
     }
     Heap *heap = 0;
-    ret = memoryManager->FindHeap(poolId, &heap);
+    {
+        Profile_Time start = NVMM_PROFILE_GET_TIME();
+        ret = memoryManager->FindHeap(poolId, &heap);
+        Profile_Time end = NVMM_PROFILE_GET_TIME();
+        Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(FindHeap, total);
+    }
     if (ret != NO_ERROR) {
         message << "Heap not found";
         // Reset the poolId bit in the bitmap
@@ -129,7 +188,13 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         delete heap;
         throw Memserver_Exception(HEAP_NOT_FOUND, message.str().c_str());
     }
-    ret = heap->Open();
+    {
+        Profile_Time start = NVMM_PROFILE_GET_TIME();
+        ret = heap->Open();
+        Profile_Time end = NVMM_PROFILE_GET_TIME();
+        Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Open, total);
+    }
     if (ret != NO_ERROR) {
         message << "Can not open heap";
         // Reset the poolId bit in the bitmap
@@ -139,7 +204,9 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
     }
     regionId = (uint64_t)poolId;
 
+    Profile_Time start1 = NVMM_PROFILE_GET_TIME();
     pthread_mutex_lock(&heapMapLock);
+    Profile_Time start2 = NVMM_PROFILE_GET_TIME();
 
     auto heapObj = heapMap->find(regionId);
     if (heapObj == heapMap->end()) {
@@ -150,14 +217,26 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         // Reset the poolId bit in the bitmap
         bitmap_reset(bmap, regionId);
         delete heap;
-        ret = memoryManager->DestroyHeap((PoolId)regionId);
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            ret = memoryManager->DestroyHeap((PoolId)regionId);
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(DestroyHeap, total);
+        }
         if (ret != NO_ERROR) {
             message << "Can not destroy heap";
         }
         throw Memserver_Exception(RBT_HEAP_NOT_INSERTED, message.str().c_str());
     }
+    Profile_Time end1 = NVMM_PROFILE_GET_TIME();
+    Profile_Time total1 = NVMM_PROFILE_TIME_DIFF_NS(start2, end1);
+    NVMM_PROFILE_ADD_TO_TOTAL_OPS(HeapMapInsertOp, total1);
 
     pthread_mutex_unlock(&heapMapLock);
+    Profile_Time end2 = NVMM_PROFILE_GET_TIME();
+    Profile_Time total2 = NVMM_PROFILE_TIME_DIFF_NS(start1, end2);
+    NVMM_PROFILE_ADD_TO_TOTAL_OPS(HeapMapInsertTotal, total2);
 
     // Register the region into metadata service
     region.regionId = regionId;
@@ -187,7 +266,13 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         // Reset the regionId bit in the bitmap
         bitmap_reset(bmap, regionId);
         delete heap;
-        ret = memoryManager->DestroyHeap((PoolId)regionId);
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            ret = memoryManager->DestroyHeap((PoolId)regionId);
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(DestroyHeap, total);
+        }
         if (ret != NO_ERROR) {
             message << "Can not destroy heap";
         }
@@ -235,11 +320,24 @@ int Memserver_Allocator::destroy_region(uint64_t regionId, uint32_t uid,
     HeapMap::iterator it = get_heap(regionId, heap);
 
     if (it != heapMap->end()) {
+        Profile_Time start1 = NVMM_PROFILE_GET_TIME();
         pthread_mutex_lock(&heapMapLock);
+        Profile_Time start2 = NVMM_PROFILE_GET_TIME();
         heapMap->erase(it);
+        Profile_Time end1 = NVMM_PROFILE_GET_TIME();
+        Profile_Time total1 = NVMM_PROFILE_TIME_DIFF_NS(start2, end1);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(HeapMapEraseOp, total1);
         pthread_mutex_unlock(&heapMapLock);
-
-        ret = heap->Close();
+        Profile_Time end2 = NVMM_PROFILE_GET_TIME();
+        Profile_Time total2 = NVMM_PROFILE_TIME_DIFF_NS(start1, end2);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(HeapMapEraseTotal, total2);
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            ret = heap->Close();
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Close, total);
+        }
         if (ret != NO_ERROR) {
             message << "Can not close heap";
             throw Memserver_Exception(HEAP_NOT_CLOSED, message.str().c_str());
@@ -256,8 +354,13 @@ int Memserver_Allocator::destroy_region(uint64_t regionId, uint32_t uid,
         message << "Can not remove region from metadata service";
         throw Memserver_Exception(REGION_NOT_REMOVED, message.str().c_str());
     }
-
-    ret = memoryManager->DestroyHeap((PoolId)regionId);
+    {
+        Profile_Time start = NVMM_PROFILE_GET_TIME();
+        ret = memoryManager->DestroyHeap((PoolId)regionId);
+        Profile_Time end = NVMM_PROFILE_GET_TIME();
+        Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(DestroyHeap, total);
+    }
     if (ret != NO_ERROR) {
         message << "Can not destroy heap";
         throw Memserver_Exception(HEAP_NOT_DESTROYED, message.str().c_str());
@@ -313,7 +416,13 @@ int Memserver_Allocator::resize_region(uint64_t regionId, uint32_t uid,
     }
 
     // Call NVMM to resize the heap
-    ret = heap->Resize(nbytes);
+    {
+        Profile_Time start = NVMM_PROFILE_GET_TIME();
+        ret = heap->Resize(nbytes);
+        Profile_Time end = NVMM_PROFILE_GET_TIME();
+        Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Resize, total);
+    }
     if (ret != NO_ERROR) {
         message << "heap resize failed";
         throw Memserver_Exception(RESIZE_FAILED, message.str().c_str());
@@ -410,16 +519,33 @@ int Memserver_Allocator::allocate(string name, uint64_t regionId, size_t nbytes,
         tmpSize = MIN_OBJ_SIZE;
     else
         tmpSize = nbytes;
-
-    offset = heap->AllocOffset(tmpSize);
+    {
+        Profile_Time start = NVMM_PROFILE_GET_TIME();
+        offset = heap->AllocOffset(tmpSize);
+        Profile_Time end = NVMM_PROFILE_GET_TIME();
+        Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_AllocOffset, total);
+    }
     if (!offset) {
         try {
-            heap->Merge();
+            {
+                Profile_Time start = NVMM_PROFILE_GET_TIME();
+                heap->Merge();
+                Profile_Time end = NVMM_PROFILE_GET_TIME();
+                Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+                NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Merge, total);
+            }
         } catch (...) {
             message << "Heap Merge() failed";
             throw Memserver_Exception(HEAP_MERGE_FAILED, message.str().c_str());
         }
-        offset = heap->AllocOffset(tmpSize);
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            offset = heap->AllocOffset(tmpSize);
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_AllocOffset, total);
+        }
         if (!offset) {
             message << "alloc() failed";
             throw Memserver_Exception(HEAP_ALLOCATE_FAILED,
@@ -428,7 +554,13 @@ int Memserver_Allocator::allocate(string name, uint64_t regionId, size_t nbytes,
     }
 
     // Register the data item with metadata service
-    localPointer = heap->OffsetToLocal(offset);
+    {
+        Profile_Time start = NVMM_PROFILE_GET_TIME();
+        localPointer = heap->OffsetToLocal(offset);
+        Profile_Time end = NVMM_PROFILE_GET_TIME();
+        Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_OffsetToLocal, total);
+    }
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
     dataitem.regionId = regionId;
     strncpy(dataitem.name, name.c_str(), metadataManager->metadata_maxkeylen());
@@ -445,7 +577,13 @@ int Memserver_Allocator::allocate(string name, uint64_t regionId, size_t nbytes,
                                                         &dataitem, name);
     if (ret != META_NO_ERROR) {
         message << "Can not insert dataitem into metadata service";
-        heap->Free(offset);
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            heap->Free(offset);
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Free, total);
+        }
         throw Memserver_Exception(DATAITEM_NOT_INSERTED, message.str().c_str());
     }
 
@@ -495,7 +633,13 @@ int Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset,
 
     HeapMap::iterator it = get_heap(regionId, heap);
     if (it != heapMap->end()) {
-        heap->Free(offset);
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            heap->Free(offset);
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Free, total);
+        }
     } else {
         // Heap not found in map. Get the heap from NVMM
         ret = open_heap(regionId);
@@ -509,7 +653,13 @@ int Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset,
             throw Memserver_Exception(RBT_HEAP_NOT_FOUND,
                                       message.str().c_str());
         }
-        heap->Free(offset);
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            heap->Free(offset);
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Free, total);
+        }
     }
     return ALLOC_NO_ERROR;
 }
@@ -643,7 +793,8 @@ int Memserver_Allocator::get_dataitem(string itemName, string regionName,
     int ret =
         metadataManager->metadata_find_dataitem(itemName, regionName, dataitem);
     if (ret != META_NO_ERROR) {
-        message << "could not find the dataitem";
+        message << "could not find the dataitem" << itemName << " "
+                << regionName << " " << ret;
         throw Memserver_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
     }
 
@@ -707,7 +858,15 @@ void *Memserver_Allocator::get_local_pointer(uint64_t regionId,
             throw Memserver_Exception(NO_LOCAL_POINTER, message.str().c_str());
         }
     }
-    return heap->OffsetToLocal(offset);
+    void *localPtr;
+    {
+        Profile_Time start = NVMM_PROFILE_GET_TIME();
+        localPtr = heap->OffsetToLocal(offset);
+        Profile_Time end = NVMM_PROFILE_GET_TIME();
+        Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_OffsetToLocal, total);
+    }
+    return localPtr;
 }
 
 int Memserver_Allocator::open_heap(uint64_t regionId) {
@@ -721,16 +880,29 @@ int Memserver_Allocator::open_heap(uint64_t regionId) {
     if (heap == NULL) {
 
         // Heap is not open, open it now
-        int ret = memoryManager->FindHeap((PoolId)regionId, &heap);
-
+        int ret;
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            ret = memoryManager->FindHeap((PoolId)regionId, &heap);
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(FindHeap, total);
+        }
         if (ret != NO_ERROR) {
             message << "heap not found";
             delete heap;
             throw Memserver_Exception(HEAP_NOT_OPENED, message.str().c_str());
         }
-        heap->Open();
-
+        {
+            Profile_Time start = NVMM_PROFILE_GET_TIME();
+            heap->Open();
+            Profile_Time end = NVMM_PROFILE_GET_TIME();
+            Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+            NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Open, total);
+        }
+        Profile_Time start1 = NVMM_PROFILE_GET_TIME();
         pthread_mutex_lock(&heapMapLock);
+        Profile_Time start2 = NVMM_PROFILE_GET_TIME();
 
         // Heap opened now, Add this into map for future references.
         auto heapObj = heapMap->find(regionId);
@@ -738,14 +910,23 @@ int Memserver_Allocator::open_heap(uint64_t regionId) {
             heapMap->insert({regionId, heap});
         } else {
             message << "Can not insert heap. regionId already found in map";
-            pthread_mutex_unlock(&heapMapLock);
-            heap->Close();
+            {
+                Profile_Time start = NVMM_PROFILE_GET_TIME();
+                heap->Close();
+                Profile_Time end = NVMM_PROFILE_GET_TIME();
+                Profile_Time total = NVMM_PROFILE_TIME_DIFF_NS(start, end);
+                NVMM_PROFILE_ADD_TO_TOTAL_OPS(Heap_Close, total);
+            }
             delete heap;
-            throw Memserver_Exception(RBT_HEAP_NOT_INSERTED,
-                                      message.str().c_str());
         }
 
+        Profile_Time end1 = NVMM_PROFILE_GET_TIME();
+        Profile_Time total1 = NVMM_PROFILE_TIME_DIFF_NS(start2, end1);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(HeapMapFindOp, total1);
         pthread_mutex_unlock(&heapMapLock);
+        Profile_Time end2 = NVMM_PROFILE_GET_TIME();
+        Profile_Time total2 = NVMM_PROFILE_TIME_DIFF_NS(start1, end2);
+        NVMM_PROFILE_ADD_TO_TOTAL_OPS(HeapMapFindTotal, total2);
 
         return ALLOC_NO_ERROR;
     }
@@ -793,13 +974,21 @@ int Memserver_Allocator::copy(uint64_t regionId, uint64_t srcOffset,
 
 HeapMap::iterator Memserver_Allocator::get_heap(uint64_t regionId,
                                                 Heap *&heap) {
+    Profile_Time start1 = NVMM_PROFILE_GET_TIME();
     pthread_mutex_lock(&heapMapLock);
+    Profile_Time start2 = NVMM_PROFILE_GET_TIME();
 
     auto heapObj = heapMap->find(regionId);
     if (heapObj != heapMap->end()) {
         heap = heapObj->second;
     }
+    Profile_Time end1 = NVMM_PROFILE_GET_TIME();
+    Profile_Time total1 = NVMM_PROFILE_TIME_DIFF_NS(start2, end1);
+    NVMM_PROFILE_ADD_TO_TOTAL_OPS(HeapMapFindOp, total1);
     pthread_mutex_unlock(&heapMapLock);
+    Profile_Time end2 = NVMM_PROFILE_GET_TIME();
+    Profile_Time total2 = NVMM_PROFILE_TIME_DIFF_NS(start1, end2);
+    NVMM_PROFILE_ADD_TO_TOTAL_OPS(HeapMapFindTotal, total2);
     return heapObj;
 }
 

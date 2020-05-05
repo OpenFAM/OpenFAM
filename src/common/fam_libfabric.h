@@ -62,7 +62,12 @@ int fabric_initialize(const char *name, const char *service, bool source,
                       struct fid_fabric **fabric, struct fid_eq **eq,
                       struct fid_domain **domain, Fam_Thread_Model famTM);
 
+void fabric_reset_profile(void);
+
+void fabric_dump_profile(void);
+
 int fabric_finalize(void);
+
 int fabric_initialize_av(struct fi_info *fi, struct fid_domain *domain,
                          struct fid_eq *eq, struct fid_av **av);
 
