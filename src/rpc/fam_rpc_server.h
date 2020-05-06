@@ -46,17 +46,24 @@ using namespace std;
 using namespace chrono;
 
 namespace openfam {
-MEMSERVER_PROFILE_DECLARE(RPC_SERVER)
-MEMSERVER_PROFILE_GET_TIME_FUNC(RPC_SERVER)
-MEMSERVER_PROFILE_TIME_DIFF_NS_FUNC(RPC_SERVER)
-#define RPC_SERVER_PROFILE_GET_TIME() RPC_SERVER_get_time()
-#define RPC_SERVER_PROFILE_TIME_DIFF_NS(start, end)                            \
-    RPC_SERVER_time_diff_nanoseconds(start, end)
-#define RPC_SERVER_PROFILE_START_TIME() MEMSERVER_PROFILE_START_TIME(RPC_SERVER)
-#define RPC_SERVER_PROFILE_INIT() MEMSERVER_PROFILE_INIT(RPC_SERVER)
-#define RPC_SERVER_PROFILE_END() rpc_server_profile_end()
-#define RPC_SERVER_PROFILE_ADD_TO_TOTAL_OPS(apiIdx, total)                     \
-    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(RPC_SERVER, prof_##apiIdx, total)
+MEMSERVER_PROFILE_START(RPC_SERVER)
+
+#ifdef MEMSERVER_PROFILE
+#define RPC_SERVER_PROFILE_START_OPS()                                         \
+    {                                                                          \
+        Profile_Time start = RPC_SERVER_get_time();
+
+#define RPC_SERVER_PROFILE_END_OPS(apiIdx)                                     \
+    Profile_Time end = RPC_SERVER_get_time();                                  \
+    Profile_Time total = RPC_SERVER_time_diff_nanoseconds(start, end);         \
+    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(RPC_SERVER, prof_##apiIdx, total)       \
+    }
+#define RPC_SERVER_PROFILE_DUMP() rpc_server_profile_end()
+#else
+#define RPC_SERVER_PROFILE_START_OPS()
+#define RPC_SERVER_PROFILE_END_OPS(apiIdx)
+#define RPC_SERVER_PROFILE_DUMP()
+#endif
 
 void rpc_server_profile_end() {
     MEMSERVER_PROFILE_END(RPC_SERVER)
@@ -81,8 +88,8 @@ class Fam_Rpc_Server {
         : serverAddress(name), port(rpcPort) {
         allocator = new Memserver_Allocator();
         service = new sType();
-        RPC_SERVER_PROFILE_INIT();
-        RPC_SERVER_PROFILE_START_TIME();
+        MEMSERVER_PROFILE_INIT(RPC_SERVER);
+        MEMSERVER_PROFILE_START_TIME(RPC_SERVER);
         service->rpc_service_initialize(name, libfabricPort, provider,
                                         allocator);
     }
@@ -90,7 +97,7 @@ class Fam_Rpc_Server {
     ~Fam_Rpc_Server() { delete service; }
 
     void dump_profile() {
-        RPC_SERVER_PROFILE_END();
+        RPC_SERVER_PROFILE_DUMP();
         service->dump_profile();
     }
     void rpc_server_finalize() { service->rpc_service_finalize(); }
@@ -144,7 +151,7 @@ class Fam_Rpc_Server {
 
         void Proceed() {
             if (status == CREATE) {
-                Profile_Time start = RPC_SERVER_PROFILE_GET_TIME();
+                RPC_SERVER_PROFILE_START_OPS()
                 // Make this instance progress to the PROCESS state.
                 status = PROCESS;
                 // As part of the initial CREATE state, we *request* that the
@@ -154,12 +161,9 @@ class Fam_Rpc_Server {
                 // requests concurrently), in this case the memory address of
                 // this CallData instance.
                 service->Requestcopy(&ctx, &request, &responder, cq, cq, this);
-                Profile_Time end = RPC_SERVER_PROFILE_GET_TIME();
-                Profile_Time total =
-                    RPC_SERVER_PROFILE_TIME_DIFF_NS(start, end);
-                RPC_SERVER_PROFILE_ADD_TO_TOTAL_OPS(copy_create, total);
+                RPC_SERVER_PROFILE_END_OPS(copy_create);
             } else if (status == PROCESS) {
-                Profile_Time start = RPC_SERVER_PROFILE_GET_TIME();
+                RPC_SERVER_PROFILE_START_OPS()
                 // Spawn a new CallData instance to serve new clients while we
                 // process the one for this CallData. The instance will
                 // deallocate itself as part of its FINISH state.
@@ -184,19 +188,13 @@ class Fam_Rpc_Server {
                 // identifying tag for the event.
                 status = FINISH;
                 responder.Finish(response, grpcStatus, this);
-                Profile_Time end = RPC_SERVER_PROFILE_GET_TIME();
-                Profile_Time total =
-                    RPC_SERVER_PROFILE_TIME_DIFF_NS(start, end);
-                RPC_SERVER_PROFILE_ADD_TO_TOTAL_OPS(copy_process, total);
+                RPC_SERVER_PROFILE_END_OPS(copy_process);
             } else {
-                Profile_Time start = RPC_SERVER_PROFILE_GET_TIME();
+                RPC_SERVER_PROFILE_START_OPS()
                 GPR_ASSERT(status == FINISH);
                 // Once in the FINISH state, deallocate ourselves (CallData).
                 delete this;
-                Profile_Time end = RPC_SERVER_PROFILE_GET_TIME();
-                Profile_Time total =
-                    RPC_SERVER_PROFILE_TIME_DIFF_NS(start, end);
-                RPC_SERVER_PROFILE_ADD_TO_TOTAL_OPS(copy_finish, total);
+                RPC_SERVER_PROFILE_END_OPS(copy_finish);
             }
         }
 

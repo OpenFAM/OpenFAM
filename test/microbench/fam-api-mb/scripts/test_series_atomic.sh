@@ -1,3 +1,4 @@
+#!/bin/bash
 #
 #test_series_atomic.sh
 #Copyright(c)2019 Hewlett Packard Enterprise Development, LP.All rights
@@ -28,7 +29,6 @@
 #
 #
 
-#!/ bin / bash
 
 if [ $# -lt 1 ]
 then

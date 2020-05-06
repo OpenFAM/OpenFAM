@@ -1,3 +1,4 @@
+ #!/bin/bash
  #
  # run_atomic_mb_MEMSERVER.sh
  # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
@@ -27,10 +28,6 @@
  # See https://spdx.org/licenses/BSD-3-Clause
  #
  #
-
-#!/bin/bash
-unset http_proxy
-unset https_proxy
 
 base_dir=$4
 

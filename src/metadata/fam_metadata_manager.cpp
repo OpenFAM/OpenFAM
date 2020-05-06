@@ -57,21 +57,26 @@ using namespace std;
 using namespace chrono;
 
 namespace metadata {
-MEMSERVER_PROFILE_DECLARE(METADATA)
-MEMSERVER_PROFILE_GET_TIME_FUNC(METADATA)
-MEMSERVER_PROFILE_TIME_DIFF_NS_FUNC(METADATA)
-#define METADATA_PROFILE_GET_TIME() METADATA_get_time()
-#define METADATA_PROFILE_TIME_DIFF_NS(start, end)                              \
-    METADATA_time_diff_nanoseconds(start, end)
-#define METADATA_PROFILE_START_TIME() MEMSERVER_PROFILE_START_TIME(METADATA)
-#define METADATA_PROFILE_INIT() MEMSERVER_PROFILE_INIT(METADATA)
-#define METADATA_PROFILE_END() metadata_profile_end()
-#define METADATA_PROFILE_ADD_TO_TOTAL_OPS(apiIdx, total)                       \
-    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(METADATA, prof_##apiIdx, total)
+MEMSERVER_PROFILE_START(METADATA)
+#ifdef MEMSERVER_PROFILE
+#define METADATA_PROFILE_START_OPS()                                           \
+    {                                                                          \
+        Profile_Time start = METADATA_get_time();
 
-void metadata_profile_end(){
-	MEMSERVER_PROFILE_END(METADATA)
-	MEMSERVER_DUMP_PROFILE_BANNER(METADATA)
+#define METADATA_PROFILE_END_OPS(apiIdx)                                       \
+    Profile_Time end = METADATA_get_time();                                    \
+    Profile_Time total = METADATA_time_diff_nanoseconds(start, end);           \
+    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(METADATA, prof_##apiIdx, total)         \
+    }
+#define METADATA_PROFILE_DUMP() metadata_profile_dump()
+#else
+#define METADATA_PROFILE_START_OPS()
+#define METADATA_PROFILE_END_OPS(apiIdx)
+#define METADATA_PROFILE_DUMP()
+#endif
+
+void metadata_profile_dump(){MEMSERVER_PROFILE_END(METADATA)
+                                 MEMSERVER_DUMP_PROFILE_BANNER(METADATA)
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_DUMP_PROFILE_DATA(METADATA, name, prof_##name)
@@ -80,8 +85,7 @@ void metadata_profile_end(){
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name) MEMSERVER_PROFILE_TOTAL(METADATA, prof_##name)
 #include "metadata/metadata_counters.tbl"
-    MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA)
-}
+                                     MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA)}
 
 KeyValueStore::IndexType const KVSTYPE = KeyValueStore::RADIX_TREE;
 
@@ -1918,8 +1922,9 @@ void FAM_Metadata_Manager::Stop() {
 }
 
 void FAM_Metadata_Manager::Start(bool use_meta_reg) {
-    METADATA_PROFILE_INIT()
-    METADATA_PROFILE_START_TIME();
+
+    MEMSERVER_PROFILE_INIT(METADATA)
+    MEMSERVER_PROFILE_START_TIME(METADATA)
     pimpl_ = new Impl_;
     assert(pimpl_);
     int ret = pimpl_->Init(use_meta_reg);
@@ -1927,80 +1932,71 @@ void FAM_Metadata_Manager::Start(bool use_meta_reg) {
 }
 
 void FAM_Metadata_Manager::reset_profile() {
-    METADATA_PROFILE_INIT()
-    METADATA_PROFILE_START_TIME();
+    MEMSERVER_PROFILE_INIT(METADATA)
+    MEMSERVER_PROFILE_START_TIME(METADATA)
 }
 
-void FAM_Metadata_Manager::dump_profile() { METADATA_PROFILE_END(); }
+void FAM_Metadata_Manager::dump_profile() { METADATA_PROFILE_DUMP(); }
 
 int FAM_Metadata_Manager::metadata_insert_region(const uint64_t regionID,
                                                  const std::string regionName,
                                                  Fam_Region_Metadata *region) {
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_insert_region(regionID, regionName, region);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_insert_region, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_insert_region(regionID, regionName, region);
+    METADATA_PROFILE_END_OPS(metadata_insert_region);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_region(const uint64_t regionID) {
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_delete_region(regionID);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_delete_region, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_region(regionID);
+    METADATA_PROFILE_END_OPS(metadata_delete_region);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_region(const std::string regionName) {
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_delete_region(regionName);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_delete_region, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_region(regionName);
+    METADATA_PROFILE_END_OPS(metadata_delete_region);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_find_region(const std::string regionName,
                                                Fam_Region_Metadata &region) {
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_find_region(regionName, region);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_find_region, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_region(regionName, region);
+    METADATA_PROFILE_END_OPS(metadata_find_region);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_find_region(const uint64_t regionId,
                                                Fam_Region_Metadata &region) {
-
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_find_region(regionId, region);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_find_region, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_region(regionId, region);
+    METADATA_PROFILE_END_OPS(metadata_find_region);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_modify_region(const uint64_t regionID,
                                                  Fam_Region_Metadata *region) {
-
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_modify_region(regionID, region);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_modify_region, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_region(regionID, region);
+    METADATA_PROFILE_END_OPS(metadata_modify_region);
     return ret;
 }
 int FAM_Metadata_Manager::metadata_modify_region(const std::string regionName,
                                                  Fam_Region_Metadata *region) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_modify_region(regionName, region);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_modify_region, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_region(regionName, region);
+    METADATA_PROFILE_END_OPS(metadata_modify_region);
     return ret;
 }
 
@@ -2008,12 +2004,11 @@ int FAM_Metadata_Manager::metadata_insert_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_insert_dataitem(dataitemId, regionName, dataitem,
-                                               dataitemName);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_insert_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_insert_dataitem(dataitemId, regionName, dataitem,
+                                           dataitemName);
+    METADATA_PROFILE_END_OPS(metadata_insert_dataitem);
     return ret;
 }
 
@@ -2021,56 +2016,51 @@ int FAM_Metadata_Manager::metadata_insert_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_insert_dataitem(dataitemId, regionId, dataitem,
-                                               dataitemName);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_insert_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_insert_dataitem(dataitemId, regionId, dataitem,
+                                           dataitemName);
+    METADATA_PROFILE_END_OPS(metadata_insert_dataitem);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_dataitem(
     const uint64_t dataitemId, const std::string regionName) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_delete_dataitem(dataitemId, regionName);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_delete_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_dataitem(dataitemId, regionName);
+    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_dataitem(const uint64_t dataitemId,
                                                    const uint64_t regionId) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_delete_dataitem(dataitemId, regionId);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_delete_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_dataitem(dataitemId, regionId);
+    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_dataitem(
     const std::string dataitemName, const std::string regionName) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_delete_dataitem(dataitemName, regionName);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_delete_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_dataitem(dataitemName, regionName);
+    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
     return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_dataitem(
     const std::string dataitemName, const uint64_t regionId) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_delete_dataitem(dataitemName, regionId);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_delete_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_dataitem(dataitemName, regionId);
+    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
     return ret;
 }
 
@@ -2078,11 +2068,10 @@ int FAM_Metadata_Manager::metadata_find_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_find_dataitem(dataitemId, regionId, dataitem);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_find_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_dataitem(dataitemId, regionId, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
     return ret;
 }
 
@@ -2090,11 +2079,10 @@ int FAM_Metadata_Manager::metadata_find_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_find_dataitem(dataitemId, regionName, dataitem);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_find_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_dataitem(dataitemId, regionName, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
     return ret;
 }
 
@@ -2102,11 +2090,10 @@ int FAM_Metadata_Manager::metadata_find_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_find_dataitem(dataitemName, regionId, dataitem);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_find_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_dataitem(dataitemName, regionId, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
     return ret;
 }
 
@@ -2114,12 +2101,10 @@ int FAM_Metadata_Manager::metadata_find_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret =
-        pimpl_->metadata_find_dataitem(dataitemName, regionName, dataitem);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_find_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_dataitem(dataitemName, regionName, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
     return ret;
 }
 
@@ -2127,11 +2112,10 @@ int FAM_Metadata_Manager::metadata_modify_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret = pimpl_->metadata_modify_dataitem(dataitemId, regionId, dataitem);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_modify_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_dataitem(dataitemId, regionId, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
     return ret;
 }
 
@@ -2139,12 +2123,10 @@ int FAM_Metadata_Manager::metadata_modify_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret =
-        pimpl_->metadata_modify_dataitem(dataitemId, regionName, dataitem);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_modify_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_dataitem(dataitemId, regionName, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
     return ret;
 }
 
@@ -2152,12 +2134,10 @@ int FAM_Metadata_Manager::metadata_modify_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret =
-        pimpl_->metadata_modify_dataitem(dataitemName, regionId, dataitem);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_modify_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_dataitem(dataitemName, regionId, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
     return ret;
 }
 
@@ -2165,12 +2145,10 @@ int FAM_Metadata_Manager::metadata_modify_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    int ret =
-        pimpl_->metadata_modify_dataitem(dataitemName, regionName, dataitem);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_modify_dataitem, total);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_dataitem(dataitemName, regionName, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
     return ret;
 }
 
@@ -2178,11 +2156,10 @@ bool FAM_Metadata_Manager::metadata_check_permissions(
     Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint64_t uid,
     uint64_t gid) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    bool ret = pimpl_->metadata_check_permissions(dataitem, op, uid, gid);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_check_permissions, total);
+    bool ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_check_permissions(dataitem, op, uid, gid);
+    METADATA_PROFILE_END_OPS(metadata_check_permissions);
     return ret;
 }
 
@@ -2190,21 +2167,19 @@ bool FAM_Metadata_Manager::metadata_check_permissions(
     Fam_Region_Metadata *region, metadata_region_item_op_t op, uint64_t uid,
     uint64_t gid) {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    bool ret = pimpl_->metadata_check_permissions(region, op, uid, gid);
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_check_permissions, total);
+    bool ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_check_permissions(region, op, uid, gid);
+    METADATA_PROFILE_END_OPS(metadata_check_permissions);
     return ret;
 }
 
 size_t FAM_Metadata_Manager::metadata_maxkeylen() {
 
-    Profile_Time start = METADATA_PROFILE_GET_TIME();
-    size_t ret = pimpl_->metadata_maxkeylen();
-    Profile_Time end = METADATA_PROFILE_GET_TIME();
-    Profile_Time total = METADATA_PROFILE_TIME_DIFF_NS(start, end);
-    METADATA_PROFILE_ADD_TO_TOTAL_OPS(metadata_maxkeylen, total);
+    size_t ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_maxkeylen();
+    METADATA_PROFILE_END_OPS(metadata_maxkeylen);
     return ret;
 }
 

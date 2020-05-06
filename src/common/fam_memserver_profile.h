@@ -1,3 +1,33 @@
+/*
+ * fam_microbenchmark.cpp
+ * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * reserved. Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holder nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * See https://spdx.org/licenses/BSD-3-Clause
+ *
+ */
+
 #include <boost/atomic.hpp>
 #include <chrono>
 #include <iomanip>
@@ -35,7 +65,7 @@ typedef enum Metadata_Counter_Enum {
     METADATA_COUNTER_MAX
 } Metadata_Counter_Enum_T;
 
-#define MEMSERVER_PROFILE_DECLARE(PROFILE_NAME)                                \
+#define MEMSERVER_PROFILE_START(PROFILE_NAME)                                  \
     struct PROFILE_NAME##_Counter_St {                                         \
         Memserver_Time count;                                                  \
         Memserver_Time start;                                                  \
@@ -47,28 +77,21 @@ typedef enum Metadata_Counter_Enum {
     uint64_t PROFILE_NAME##_profile_time;                                      \
     uint64_t PROFILE_NAME##_profile_start;                                     \
     uint64_t PROFILE_NAME##_lib_time = 0;                                      \
-    uint64_t PROFILE_NAME##_ops_time = 0;
-
-#define OUTPUT_WIDTH 140
-#define ITEM_WIDTH OUTPUT_WIDTH / 5
-
-#define MEMSERVER_PROFILE_GET_TIME_FUNC(PROFILE_NAME)                          \
+    uint64_t PROFILE_NAME##_ops_time = 0;                                      \
     uint64_t PROFILE_NAME##_get_time() {                                       \
         long int time = static_cast<long int>(                                 \
             duration_cast<nanoseconds>(                                        \
                 high_resolution_clock::now().time_since_epoch())               \
                 .count());                                                     \
         return time;                                                           \
-    }
-
-#define MEMSERVER_PROFILE_TIME_DIFF_NS_FUNC(PROFILE_NAME)                      \
+    }                                                                          \
     uint64_t PROFILE_NAME##_time_diff_nanoseconds(Profile_Time start,          \
                                                   Profile_Time end) {          \
         return (end - start);                                                  \
     }
 
-#define MEMSERVER_PROFILE_TOTAL_API_TIME(PROFILE_NAME)                         \
-    void PROFILE_NAME##_total_api_time(int apiIdx) {}
+#define OUTPUT_WIDTH 140
+#define ITEM_WIDTH OUTPUT_WIDTH / 5
 
 #define MEMSERVER_PROFILE_START_TIME(PROFILE_NAME)                             \
     PROFILE_NAME##_profile_start = PROFILE_NAME##_get_time();
@@ -181,6 +204,7 @@ typedef enum Metadata_Counter_Enum {
                                                   Profile_Time end) {          \
         return 0;                                                              \
     }
+#define MEMSERVER_PROFILE_START(PROFILE_NAME)
 #define MEMSERVER_PROFILE_START_TIME(PROFILE_NAME)
 #define MEMSERVER_PROFILE_END(PROFILE_NAME)
 #define MEMSERVER_PROFILE_INIT(PROFILE_NAME)

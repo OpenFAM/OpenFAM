@@ -28,15 +28,6 @@
  # See https://spdx.org/licenses/BSD-3-Clause
  #
  #
-unset http_proxy
-unset https_proxy
-
-echo "http proxy"
-echo $http_proxy
-echo "https proxy"
-echo $https_proxy
-
-
 base_dir=$3
 
 if [[ $4 == "RPC" ]]
