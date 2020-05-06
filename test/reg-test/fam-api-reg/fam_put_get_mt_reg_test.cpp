@@ -402,6 +402,184 @@ TEST(FamPutGetMT, BlockingPutGetMTSameRegionPerThreadDataItemPutGet) {
     free(info);
 }
 
+void *thr_func5_no_put(void *arg) {
+    ValueInfo *valInfo = (ValueInfo *)arg;
+    Fam_Descriptor *item;
+    int msg_no = valInfo->tid;
+    uint64_t off = msg_no * MSG_SIZE;
+    char chararr[MSG_SIZE];
+    sprintf(chararr, "Test message %d", msg_no);
+    char data[20];
+    sprintf(data, "first_%d", msg_no);
+    const char *dataItem = get_uniq_str(data, my_fam);
+    char *local = strdup(chararr);
+    ;
+    mode_t test_perm_mode = 0444;
+    size_t test_item_size = (1024 * NUM_THREADS);
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(dataItem, test_item_size,
+                                             test_perm_mode, testRegionDesc));
+    EXPECT_NE((void *)NULL, item);
+    items[msg_no] = item;
+    *valInfo = {item, 0, 0, 0};
+    // Put blocking
+    EXPECT_THROW(
+        my_fam->fam_put_blocking(local, items[msg_no], (uint64_t)off, MSG_SIZE),
+        Fam_Datapath_Exception);
+
+    free(local);
+    free((void *)dataItem);
+    pthread_exit(NULL);
+}
+
+void *thr_func5_put_no_get(void *arg) {
+    ValueInfo *valInfo = (ValueInfo *)arg;
+    Fam_Descriptor *item;
+    int msg_no = valInfo->tid;
+    uint64_t off = msg_no * MSG_SIZE;
+    char chararr[MSG_SIZE];
+    sprintf(chararr, "Test message %d", msg_no);
+    char data[20];
+    sprintf(data, "first_%d", msg_no);
+    const char *dataItem = get_uniq_str(data, my_fam);
+    char *local = strdup(chararr);
+    ;
+    mode_t test_perm_mode = 0777;
+    size_t test_item_size = (1024 * NUM_THREADS);
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(dataItem, test_item_size,
+                                             test_perm_mode, testRegionDesc));
+    EXPECT_NE((void *)NULL, item);
+    items[msg_no] = item;
+    *valInfo = {item, 0, 0, 0};
+    EXPECT_NO_THROW(my_fam->fam_change_permissions(item, 0333));
+    // Put blocking
+    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, items[msg_no],
+                                             (uint64_t)off, MSG_SIZE));
+    free(local);
+    free((void *)dataItem);
+    pthread_exit(NULL);
+}
+void *thr_func5_get(void *arg) {
+    ValueInfo *valInfo = (ValueInfo *)arg;
+    Fam_Descriptor *item = valInfo->item;
+    int tid = valInfo->tid;
+    EXPECT_NE((void *)NULL, item);
+    char chararr[MSG_SIZE];
+    int msg_no = (tid - NUM_THREADS / 2);
+    uint64_t off;
+    off = (uint64_t)(MSG_SIZE * msg_no);
+    sprintf(chararr, "Test message %d", msg_no);
+    char *local = strdup(chararr);
+    ;
+    // Get blocking
+    char *local2 = (char *)malloc(MSG_SIZE);
+
+    sleep(1);
+    EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, items[msg_no],
+                                             (uint64_t)off, MSG_SIZE));
+    free(local);
+    free(local2);
+    pthread_exit(NULL);
+}
+
+void *thr_func6_get(void *arg) {
+    ValueInfo *valInfo = (ValueInfo *)arg;
+    Fam_Descriptor *item = valInfo->item;
+    int tid = valInfo->tid;
+    EXPECT_NE((void *)NULL, item);
+    char chararr[MSG_SIZE];
+    int msg_no = (tid - NUM_THREADS / 2);
+    uint64_t off;
+    off = (uint64_t)(MSG_SIZE * msg_no);
+    sprintf(chararr, "Test message %d", msg_no);
+    char *local = strdup(chararr);
+    ;
+    // Get blocking
+    char *local2 = (char *)malloc(MSG_SIZE);
+
+    sleep(1);
+    EXPECT_THROW(my_fam->fam_get_blocking(local2, items[msg_no], (uint64_t)off,
+                                          MSG_SIZE),
+                 Fam_Datapath_Exception);
+    free(local);
+    free(local2);
+    pthread_exit(NULL);
+}
+
+// Test case 5 - blocking put get test by multiple threads on same region and
+// data item created before thread creation with invalid put permissions
+TEST(FamPutGetMT, BlockingPutGetMTSameRegionPerThreadDataItemInvalidPutGet) {
+
+    pthread_t thr[NUM_THREADS];
+    int i, tid = 0;
+    ValueInfo *info;
+    info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
+    for (i = 0; i < NUM_THREADS / 2; ++i) {
+        tid = i;
+        info[i] = {0, 0, tid, MSG_SIZE};
+        if ((rc = pthread_create(&thr[i], NULL, thr_func5_no_put, &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
+        }
+    }
+    for (i = 0; i < NUM_THREADS / 2; ++i) {
+        pthread_join(thr[i], NULL);
+    }
+
+    for (i = NUM_THREADS / 2; i < NUM_THREADS; ++i) {
+        tid = i;
+        info[i] = {info[i - NUM_THREADS / 2].item, 0, tid, MSG_SIZE};
+        if ((rc = pthread_create(&thr[i], NULL, thr_func5_get, &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
+        }
+    }
+    for (i = NUM_THREADS / 2; i < NUM_THREADS; ++i) {
+        pthread_join(thr[i], NULL);
+        EXPECT_NO_THROW(my_fam->fam_deallocate(info[i - NUM_THREADS / 2].item));
+    }
+    free(info);
+}
+
+// Test case 6 - blocking put get test by multiple threads on same region and
+// data item created before thread creation with invalid put permissions
+TEST(FamPutGetMT, BlockingPutGetMTSameRegionPerThreadDataItemPutInvalidGet) {
+
+    pthread_t thr[NUM_THREADS];
+    int i, tid = 0;
+    ValueInfo *info;
+    info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
+    for (i = 0; i < NUM_THREADS / 2; ++i) {
+        tid = i;
+        info[i] = {0, 0, tid, MSG_SIZE};
+        if ((rc = pthread_create(&thr[i], NULL, thr_func5_put_no_get,
+                                 &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
+        }
+    }
+    for (i = 0; i < NUM_THREADS / 2; ++i) {
+        pthread_join(thr[i], NULL);
+    }
+
+    for (i = NUM_THREADS / 2; i < NUM_THREADS; ++i) {
+        tid = i;
+        info[i] = {info[i - NUM_THREADS / 2].item, 0, tid, MSG_SIZE};
+        if ((rc = pthread_create(&thr[i], NULL, thr_func5_get, &info[i]))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
+        }
+    }
+    for (i = NUM_THREADS / 2; i < NUM_THREADS; ++i) {
+        pthread_join(thr[i], NULL);
+        EXPECT_NO_THROW(my_fam->fam_deallocate(info[i - NUM_THREADS / 2].item));
+    }
+    free(info);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

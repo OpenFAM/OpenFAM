@@ -40,7 +40,7 @@
 #include <fam/fam.h>
 
 #include "common/fam_test_config.h"
-#define NUM_THREADS 10
+#define NUM_THREADS 20
 
 using namespace std;
 using namespace openfam;
@@ -62,15 +62,15 @@ void *thr_func_index(void *arg) {
 
     // allocate an integer array and initialize it
     int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
-    uint64_t indexes[] = {0, 7, 3, 5, 8};
+    uint64_t indexes[] = {0, 7, 3, 5, 8, 1, 2, 4, 6, 9};
 
     EXPECT_NO_THROW(
-        my_fam->fam_scatter_blocking(newLocal, item, 5, indexes, sizeof(int)));
+        my_fam->fam_scatter_blocking(newLocal, item, 10, indexes, sizeof(int)));
 
     int *local2 = (int *)malloc(10 * sizeof(int));
 
     EXPECT_NO_THROW(
-        my_fam->fam_gather_blocking(local2, item, 5, indexes, sizeof(int)));
+        my_fam->fam_gather_blocking(local2, item, 10, indexes, sizeof(int)));
 
     for (int i = 0; i < 5; i++) {
         EXPECT_EQ(local2[i], newLocal[i]);
@@ -86,12 +86,12 @@ void *thr_func_stride(void *arg) {
                       26, 27, 28, 29, 30, 31, 32, 33, 34, 35};
 
     EXPECT_NO_THROW(
-        my_fam->fam_scatter_blocking(newLocal, item, 5, 2, 3, sizeof(int)));
+        my_fam->fam_scatter_blocking(newLocal, item, 10, 2, 3, sizeof(int)));
 
     int *local2 = (int *)malloc(10 * sizeof(int));
 
     EXPECT_NO_THROW(
-        my_fam->fam_gather_blocking(local2, item, 5, 2, 3, sizeof(int)));
+        my_fam->fam_gather_blocking(local2, item, 10, 2, 3, sizeof(int)));
 
     for (int i = 0; i < 5; i++) {
         EXPECT_EQ(local2[i], newLocal[i]);
@@ -100,7 +100,46 @@ void *thr_func_stride(void *arg) {
     pthread_exit(NULL);
 }
 
-// Test case 1 - put get test.
+void *thr_func_index_expect_failure(void *arg) {
+    ValueInfo *valInfo = (ValueInfo *)arg;
+    Fam_Descriptor *item = valInfo->item;
+
+    // allocate an integer array and initialize it
+    int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+    uint64_t indexes[] = {0, 7, 3, 5, 8, 1, 2, 4, 6, 9};
+    EXPECT_THROW(
+        my_fam->fam_scatter_blocking(newLocal, item, 10, indexes, sizeof(int)),
+        Fam_Datapath_Exception);
+
+    int *local2 = (int *)malloc(10 * sizeof(int));
+
+    EXPECT_NO_THROW(
+        my_fam->fam_gather_blocking(local2, item, 10, indexes, sizeof(int)));
+
+    free((void *)local2);
+    pthread_exit(NULL);
+}
+void *thr_func_stride_expect_failure(void *arg) {
+    ValueInfo *valInfo = (ValueInfo *)arg;
+    Fam_Descriptor *item = valInfo->item;
+
+    int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+                      26, 27, 28, 29, 30, 31, 32, 33, 34, 35};
+
+    EXPECT_THROW(
+        my_fam->fam_scatter_blocking(newLocal, item, 5, 2, 3, sizeof(int)),
+        Fam_Datapath_Exception);
+
+    int *local2 = (int *)malloc(10 * sizeof(int));
+
+    EXPECT_NO_THROW(
+        my_fam->fam_gather_blocking(local2, item, 5, 2, 3, sizeof(int)));
+
+    free((void *)local2);
+    pthread_exit(NULL);
+}
+
+// Test case 1 - scatter gather index test.
 TEST(FamScatterGatherIndexBlockMT, ScatterGatherIndexBlockSuccess) {
 
     Fam_Descriptor *item;
@@ -161,6 +200,89 @@ TEST(FamScatterGatherStrideBlockMT, ScatterGatherStrideBlockSuccess) {
 
     for (i = 0; i < NUM_THREADS; ++i) {
         if ((rc = pthread_create(&thr[i], NULL, thr_func_stride, &info))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
+        }
+    }
+
+    for (i = 0; i < NUM_THREADS; ++i) {
+        pthread_join(thr[i], NULL);
+    }
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
+
+    delete item;
+    delete testRegionDesc;
+
+    free((void *)testRegion);
+    free((void *)firstItem);
+}
+
+// Test case 3 - scatter gather index test.(Negative TestCase)
+TEST(FamScatterGatherIndexBlockMT, ScatterGatherIndexBlockFailure) {
+
+    Fam_Descriptor *item;
+    int i, rc;
+    pthread_t thr[NUM_THREADS];
+    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+    EXPECT_NE((void *)NULL, testRegionDesc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, (1024 * NUM_THREADS),
+                                                0444, testRegionDesc));
+    EXPECT_NE((void *)NULL, item);
+
+    ValueInfo info = {item, 0, 0, 0};
+
+    for (i = 0; i < NUM_THREADS; ++i) {
+        if ((rc = pthread_create(&thr[i], NULL, thr_func_index_expect_failure,
+                                 &info))) {
+            fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+            exit(1);
+        }
+    }
+
+    for (i = 0; i < NUM_THREADS; ++i) {
+        pthread_join(thr[i], NULL);
+    }
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
+
+    delete item;
+    delete testRegionDesc;
+
+    free((void *)testRegion);
+    free((void *)firstItem);
+}
+
+// Test case 4 - scatter gather stride test.(Negative TestCase)
+TEST(FamScatterGatherStrideBlockMT, ScatterGatherStrideBlockFailure) {
+    Fam_Region_Descriptor *testRegionDesc;
+    Fam_Descriptor *item;
+    int i, rc;
+    pthread_t thr[NUM_THREADS];
+    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+
+    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
+                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+    EXPECT_NE((void *)NULL, testRegionDesc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, (1024 * NUM_THREADS),
+                                                0444, testRegionDesc));
+    EXPECT_NE((void *)NULL, item);
+    ValueInfo info = {item, 0, 0, 0};
+
+    for (i = 0; i < NUM_THREADS; ++i) {
+        if ((rc = pthread_create(&thr[i], NULL, thr_func_stride_expect_failure,
+                                 &info))) {
             fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
             exit(1);
         }
