@@ -83,26 +83,17 @@ uint64_t libfabric_ops_time = 0;
 LibFabric_Counter_St profileLibfabricData[libfabric_counter_max];
 
 uint64_t libfabric_get_time() {
-#if 1
     long int time = static_cast<long int>(
         duration_cast<nanoseconds>(
             high_resolution_clock::now().time_since_epoch())
             .count());
     return time;
-#else // using intel tsc
-    uint64_t hi, lo, aux;
-    __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi), "=c"(aux));
-    return (uint64_t)lo | ((uint64_t)hi << 32);
-#endif
 }
 
 uint64_t libfabric_time_diff_nanoseconds(Profile_Time start, Profile_Time end) {
     return (end - start);
 }
 void libfabric_total_api_time(int apiIdx) {}
-#define LIBFABRIC_PROFILE_GET_TIME() libfabric_get_time();
-#define LIBFABRIC_PROFILE_TIME_DIFF_NS(start, end)                             \
-    libfabric_time_diff_nanoseconds(start, end);
 #define LIBFABRIC_PROFILE_START_TIME()                                         \
     fabric_profile_start = libfabric_get_time();
 #define LIBFABRIC_PROFILE_INIT() libfabric_profile_init();
@@ -113,11 +104,17 @@ void libfabric_total_api_time(int apiIdx) {}
         libfabric_dump_profile_data();                                         \
         libfabric_dump_profile_summary();                                      \
     }
-#define LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(apiIdx, total)                      \
-    __LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(prof_##apiIdx, total)
 
-#define __LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(apiIdx, total)                    \
-    libfabric_add_to_total_profile(apiIdx, total);
+#define LIBFABRIC_PROFILE_START_OPS()                                          \
+    {                                                                          \
+        Profile_Time start = libfabric_get_time();
+
+#define LIBFABRIC_PROFILE_END_OPS(apiIdx)                                      \
+    Profile_Time end = libfabric_get_time();                                   \
+    Profile_Time total = libfabric_time_diff_nanoseconds(start, end);          \
+    libfabric_add_to_total_profile(prof_##apiIdx, total);                      \
+    }
+
 void libfabric_profile_init() {
     memset(profileLibfabricData, 0, sizeof(profileLibfabricData));
 }
@@ -232,8 +229,8 @@ void libfabric_dump_profile_summary(void) {
 }
 #else
 
-#define LIBFABRIC_PROFILE_GET_TIME() 0
-#define LIBFABRIC_PROFILE_TIME_DIFF_NS(start, end) 0
+#define LIBFABRIC_PROFILE_START_OPS()
+#define LIBFABRIC_PROFILE_END_OPS()
 #define LIBFABRIC_PROFILE_START_TIME()
 #define LIBFABRIC_PROFILE_INIT()
 #define LIBFABRIC_PROFILE_END()
@@ -242,20 +239,16 @@ void libfabric_dump_profile_summary(void) {
 
 #define FI_CALL(retType, funcname, ...)                                        \
     {                                                                          \
-        Profile_Time start = LIBFABRIC_PROFILE_GET_TIME();                     \
+        LIBFABRIC_PROFILE_START_OPS()                                          \
         retType = funcname(__VA_ARGS__);                                       \
-        Profile_Time end = LIBFABRIC_PROFILE_GET_TIME();                       \
-        Profile_Time total = LIBFABRIC_PROFILE_TIME_DIFF_NS(start, end);       \
-        LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(funcname, total);                   \
+        LIBFABRIC_PROFILE_END_OPS(funcname)                                    \
     }
 
 #define FI_CALL_NO_RETURN(funcname, ...)                                       \
     {                                                                          \
-        Profile_Time start = LIBFABRIC_PROFILE_GET_TIME();                     \
+        LIBFABRIC_PROFILE_START_OPS()                                          \
         funcname(__VA_ARGS__);                                                 \
-        Profile_Time end = LIBFABRIC_PROFILE_GET_TIME();                       \
-        Profile_Time total = LIBFABRIC_PROFILE_TIME_DIFF_NS(start, end);       \
-        LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(funcname, total);                   \
+        LIBFABRIC_PROFILE_END_OPS(funcname)                                    \
     }
 
 /**
@@ -587,7 +580,7 @@ int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
 
 int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
 
-    Profile_Time start = LIBFABRIC_PROFILE_GET_TIME();
+    LIBFABRIC_PROFILE_START_OPS()
     ssize_t ret = 0;
     struct fi_cq_data_entry entry;
     int timeout_retry_cnt = 0;
@@ -624,15 +617,13 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
         }
     } while (entry.op_context != (void *)ctx);
 
-    Profile_Time end = LIBFABRIC_PROFILE_GET_TIME();
-    Profile_Time total = LIBFABRIC_PROFILE_TIME_DIFF_NS(start, end);
-    LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(fabric_completion_wait, total);
+    LIBFABRIC_PROFILE_END_OPS(fabric_completion_wait)
     return 0;
 }
 
 int fabric_completion_wait_multictx(Fam_Context *famCtx, fi_context *ctx,
                                     int64_t count) {
-    Profile_Time start = LIBFABRIC_PROFILE_GET_TIME();
+    LIBFABRIC_PROFILE_START_OPS()
     ssize_t ret = 0;
     struct fi_cq_data_entry entry;
     int timeout_retry_cnt = 0;
@@ -678,9 +669,7 @@ int fabric_completion_wait_multictx(Fam_Context *famCtx, fi_context *ctx,
         }
     } while (completion < count);
 
-    Profile_Time end = LIBFABRIC_PROFILE_GET_TIME();
-    Profile_Time total = LIBFABRIC_PROFILE_TIME_DIFF_NS(start, end);
-    LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(fabric_completion_wait_multictx, total);
+    LIBFABRIC_PROFILE_END_OPS(fabric_completion_wait_multictx)
     return 0;
 }
 
