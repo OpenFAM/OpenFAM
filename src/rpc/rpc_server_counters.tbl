@@ -1,0 +1,3 @@
+MEMSERVER_COUNTER(copy_create)
+MEMSERVER_COUNTER(copy_process)
+MEMSERVER_COUNTER(copy_finish)

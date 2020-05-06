@@ -96,6 +96,13 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
                                       const ::Fam_Request *request,
                                       ::Fam_Response *response) override;
 
+    ::grpc::Status reset_profile(::grpc::ServerContext *context,
+                                 const ::Fam_Request *request,
+                                 ::Fam_Response *response) override;
+
+    ::grpc::Status generate_profile(::grpc::ServerContext *context,
+                                    const ::Fam_Request *request,
+                                    ::Fam_Response *response) override;
     ::grpc::Status create_region(::grpc::ServerContext *context,
                                  const ::Fam_Region_Request *request,
                                  ::Fam_Region_Response *response) override;
@@ -154,6 +161,7 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
     ::grpc::Status release_CAS_lock(::grpc::ServerContext *context,
                                     const ::Fam_Dataitem_Request *request,
                                     ::Fam_Dataitem_Response *response) override;
+    void dump_profile();
 
   protected:
     uint64_t port;

@@ -1,3 +1,4 @@
+#!/bin/bash
  #
  # run_datapath_mb_VMNODE.sh
  # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
@@ -27,8 +28,6 @@
  # See https://spdx.org/licenses/BSD-3-Clause
  #
  #
-
-#!/bin/bash
 
 base_dir=$4
 

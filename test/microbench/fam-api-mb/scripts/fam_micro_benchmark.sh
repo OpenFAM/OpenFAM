@@ -1,7 +1,7 @@
 #!/bin/bash
  #
- #test_series_datapath.sh
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ # fam_micro_benchmark.sh
+ # Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  # reserved. Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice,
@@ -29,35 +29,39 @@
  #
  #
 
+CURRENTDIR=`pwd`
 
+#base_dir=$CURRENTDIR/microbm
 
-if [ $# -lt 2 ]
+#mkdir -p ${base_dir}/mb_logs/data_path
+#!/bin/bash
+
+CURRENTDIR=`pwd`
+
+TESTFILE=fam_microbenchmark_datapath
+if [[ $4 == "atomic" ]]
 then
-echo "Error: Base dir or allocator type not specified."
-echo "usage: ./test_series_datapath.sh <base_dir> <Allocator, RPC/NVMM>"
-exit 1
+TESTFILE=fam_microbenchmark_atomic
 fi
 
-#Running tests on memoryserver
-#Note : For running this test on cluster environment                           \
-run_datapath_mb_MEMSERVER.sh to run_datapath_mb_CLUSTER.sh
-for i in 1 2 4 8 16 32 64 
-do
-./run_datapath_mb_MEMSERVER.sh $i 1 256 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 512 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 1024 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 4096 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 65536 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 131072 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 524288 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 1048576 100  $1 $2
-wait
-./run_datapath_mb_MEMSERVER.sh $i 1 4194304 100  $1 $2
-done
+TESTDATASIZE=$1
+TESTAPIFILTER=$2
+TESTITERATION=$3
+
+#export PATH="$PATH:$CURRENTDIR/../third-party/build/bin/"
+#export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$CURRENTDIR/../third-party/build/lib"
+#module load pmix/2.2.2
+#module load gcc/6.2.0 automake/1.15 autoconf/2.69
+
+cd $CURRENTDIR/build-rpc/test/microbench/fam-api-mb/
+ulimit -c unlimited
+
+#./$TESTFILE $1 --gtest_filter=FamPutGet.BlockingFamPutGet >> ${base_dir}/mb_logs/data_path/PE_PER_VMNODE_${1}_PGB.log
+#./$TESTFILE $1 --gtest_filter=FamPutGet.BlockingFamPutGet > ${base_dir}/mb_logs/data_path/PE_${SLURMD_NODENAME}_${PMIX_RANK}_${1}_PBG.logS
+./$TESTFILE $TESTDATASIZE $TESTITERATION --gtest_filter=$TESTAPIFILTER
+
+exit_status=$?
+cd $CURRENTDIR
+#make reg-test
+exit $exit_status
+

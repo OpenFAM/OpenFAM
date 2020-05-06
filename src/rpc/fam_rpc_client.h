@@ -39,10 +39,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "common/fam_internal.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 #include "rpc/fam_rpc.grpc.pb.h"
-
 using namespace std;
 
 #define FAM_UNIMPLEMENTED_RPC()                                                \
@@ -136,6 +136,27 @@ class Fam_Rpc_Client {
         free(memServerFabricAddr);
     }
 
+    void reset_profile() {
+#ifdef MEMSERVER_PROFILE
+        Fam_Request req;
+        Fam_Response res;
+
+        ::grpc::ClientContext ctx;
+
+        ::grpc::Status status = stub->reset_profile(&ctx, req, &res);
+#endif
+    }
+
+    void generate_profile() {
+#ifdef MEMSERVER_PROFILE
+        Fam_Request req;
+        Fam_Response res;
+
+        ::grpc::ClientContext ctx;
+
+        ::grpc::Status status = stub->generate_profile(&ctx, req, &res);
+#endif
+    }
     /**
      * Creates a Region in FAM
      * @param name-Name of the reion to be created
@@ -159,7 +180,6 @@ class Fam_Rpc_Client {
         req.set_uid(uid);
         req.set_gid(gid);
         ::grpc::Status status = stub->create_region(&ctx, req, &res);
-
         if (status.ok()) {
             if (res.errorcode()) {
                 throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),

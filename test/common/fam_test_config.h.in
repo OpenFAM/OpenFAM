@@ -51,6 +51,10 @@ using namespace openfam;
 #cmakedefine TEST_RUNTIME "${TEST_RUNTIME}"
 #cmakedefine TEST_NUM_CONSUMER "${TEST_NUM_CONSUMER}"
 
+#ifdef MEMSERVER_PROFILE
+#cmakedefine TEST_MEMSERVER_IP "${TEST_MEMSERVER_IP}"
+#endif
+
 // Runtime configuration
 #cmakedefine TEST_NPE "${TEST_NPE}"
 

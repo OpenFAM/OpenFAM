@@ -26,7 +26,8 @@ function (add_fam_test file_name)
 endfunction()
 
 #add tests
-	add_fam_test(fam_microbenchmark_datapath)
 	add_fam_test(fam_microbenchmark)
+	add_fam_test(fam_microbenchmark_allocator)
+	add_fam_test(fam_microbenchmark_datapath)
 	add_fam_test(fam_microbenchmark_atomic)
 	add_fam_test(fam_microbenchmark_128_compare_swap)

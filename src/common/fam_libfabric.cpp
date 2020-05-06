@@ -34,12 +34,13 @@
 #include "common/fam_options.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
-#include <limits.h>
-#include <list>
-
 #include "string.h"
+#include <atomic>
+#include <boost/atomic.hpp>
 #include <chrono>
 #include <iomanip>
+#include <limits.h>
+#include <list>
 #include <unistd.h>
 
 using namespace std;
@@ -55,14 +56,16 @@ using namespace std;
 
 namespace openfam {
 
+typedef __attribute__((unused)) uint64_t Profile_Time;
+
 #ifdef LIBFABRIC_PROFILE
-using LibFabric_Time = uint64_t;
+using LibFabric_Time = boost::atomic_uint64_t;
 
 struct LibFabric_Counter_St {
-    uint64_t count;
+    LibFabric_Time count;
     LibFabric_Time start;
     LibFabric_Time end;
-    uint64_t total;
+    LibFabric_Time total;
 };
 typedef enum LibFabric_Counter_Enum {
 #undef LIBFABRIC_COUNTER
@@ -70,31 +73,24 @@ typedef enum LibFabric_Counter_Enum {
 #include "libfabric_counters.tbl"
     libfabric_counter_max
 } Libfabric_Counter_Enum_T;
-#define OUTPUT_WIDTH 120
+#define OUTPUT_WIDTH 140
 #define ITEM_WIDTH OUTPUT_WIDTH / 5
-uint64_t profile_time;
+uint64_t fabric_profile_time;
 uint64_t fabric_profile_start;
 uint64_t libfabric_lib_time = 0;
 uint64_t libfabric_ops_time = 0;
 
-LibFabric_Counter_St profileData[libfabric_counter_max];
+LibFabric_Counter_St profileLibfabricData[libfabric_counter_max];
 
-LibFabric_Time libfabric_get_time() {
-#if 1
+uint64_t libfabric_get_time() {
     long int time = static_cast<long int>(
         duration_cast<nanoseconds>(
             high_resolution_clock::now().time_since_epoch())
             .count());
     return time;
-#else // using intel tsc
-    uint64_t hi, lo, aux;
-    __asm__ __volatile__("rdtscp" : "=a"(lo), "=d"(hi), "=c"(aux));
-    return (uint64_t)lo | ((uint64_t)hi << 32);
-#endif
 }
 
-uint64_t libfabric_time_diff_nanoseconds(LibFabric_Time start,
-                                         LibFabric_Time end) {
+uint64_t libfabric_time_diff_nanoseconds(Profile_Time start, Profile_Time end) {
     return (end - start);
 }
 void libfabric_total_api_time(int apiIdx) {}
@@ -103,29 +99,41 @@ void libfabric_total_api_time(int apiIdx) {}
 #define LIBFABRIC_PROFILE_INIT() libfabric_profile_init();
 #define LIBFABRIC_PROFILE_END()                                                \
     {                                                                          \
-        profile_time = libfabric_get_time() - fabric_profile_start;            \
+        fabric_profile_time = libfabric_get_time() - fabric_profile_start;     \
         libfabric_dump_profile_banner();                                       \
         libfabric_dump_profile_data();                                         \
         libfabric_dump_profile_summary();                                      \
     }
-#define LIBFABRIC_PROFILE_START_OPS(apiIdx)                                    \
-    __LIBFABRIC_PROFILE_START_OPS(prof_##apiIdx)
-#define LIBFABRIC_PROFILE_END_OPS(apiIdx)                                      \
-    __LIBFABRIC_PROFILE_END_OPS(prof_##apiIdx)
 
-#define __LIBFABRIC_PROFILE_START_OPS(apiIdx) libfabric_start_profile(apiIdx);
-#define __LIBFABRIC_PROFILE_END_OPS(apiIdx) libfabric_end_profile(apiIdx);
-void libfabric_profile_init() { memset(profileData, 0, sizeof(profileData)); }
+#define LIBFABRIC_PROFILE_START_OPS()                                          \
+    {                                                                          \
+        Profile_Time start = libfabric_get_time();
+
+#define LIBFABRIC_PROFILE_END_OPS(apiIdx)                                      \
+    Profile_Time end = libfabric_get_time();                                   \
+    Profile_Time total = libfabric_time_diff_nanoseconds(start, end);          \
+    libfabric_add_to_total_profile(prof_##apiIdx, total);                      \
+    }
+
+void libfabric_profile_init() {
+    memset(profileLibfabricData, 0, sizeof(profileLibfabricData));
+}
 void libfabric_start_profile(int apiIdx) {
-    //           std::cout << "Starting function " << apiIdx << std::endl;
-    profileData[apiIdx].start = libfabric_get_time();
+    profileLibfabricData[apiIdx].start = libfabric_get_time();
 }
 
+void libfabric_add_to_total_profile(int apiIdx, Profile_Time total) {
+    uint64_t one = 1;
+    profileLibfabricData[apiIdx].total.fetch_add(total,
+                                                 boost::memory_order_seq_cst);
+    profileLibfabricData[apiIdx].count.fetch_add(one,
+                                                 boost::memory_order_seq_cst);
+}
 void libfabric_end_profile(int apiIdx) {
-    profileData[apiIdx].end = libfabric_get_time();
-    profileData[apiIdx].total += libfabric_time_diff_nanoseconds(
-        profileData[apiIdx].start, profileData[apiIdx].end);
-    profileData[apiIdx].count += 1;
+    profileLibfabricData[apiIdx].end = libfabric_get_time();
+    profileLibfabricData[apiIdx].total += libfabric_time_diff_nanoseconds(
+        profileLibfabricData[apiIdx].start, profileLibfabricData[apiIdx].end);
+    profileLibfabricData[apiIdx].count += 1;
 }
 
 void libfabric_dump_profile_banner(void) {
@@ -162,23 +170,24 @@ void libfabric_dump_profile_banner(void) {
 void libfabric_dump_profile_data(void) {
 #define DUMP_DATA_COUNT(idx)                                                   \
     cout << std::left << setbase(10) << setfill(' ') << setw(ITEM_WIDTH)       \
-         << profileData[idx].count;
+         << profileLibfabricData[idx].count;
 
 #define DUMP_DATA_TIME(idx)                                                    \
     cout << std::left << setbase(10) << setfill(' ') << setw(ITEM_WIDTH)       \
-         << profileData[idx].total;
+         << profileLibfabricData[idx].total;
 
 #define DUMP_DATA_PCT(idx)                                                     \
     {                                                                          \
-        double time_pct = (double)((double)profileData[idx].total * 100 /      \
-                                   (double)profile_time);                      \
+        double time_pct = (double)((double)profileLibfabricData[idx].total *   \
+                                   100 / (double)fabric_profile_time);         \
         cout << std::left << setfill(' ') << setw(ITEM_WIDTH) << std::fixed    \
              << setprecision(2) << time_pct;                                   \
     }
 
 #define DUMP_DATA_AVG(idx)                                                     \
     {                                                                          \
-        uint64_t avg_time = (profileData[idx].total / profileData[idx].count); \
+        uint64_t avg_time = (profileLibfabricData[idx].total /                 \
+                             profileLibfabricData[idx].count);                 \
         cout << std::left << setfill(' ') << setw(ITEM_WIDTH) << avg_time;     \
     }
 
@@ -186,7 +195,7 @@ void libfabric_dump_profile_data(void) {
 #undef LIBFABRIC_COUNTER
 #define LIBFABRIC_COUNTER(name) __LIBFABRIC_COUNTER(name, prof_##name)
 #define __LIBFABRIC_COUNTER(name, apiIdx)                                      \
-    if (profileData[apiIdx].count) {                                           \
+    if (profileLibfabricData[apiIdx].count) {                                  \
         cout << std::left << setfill(' ') << setw(ITEM_WIDTH) << #name;        \
         DUMP_DATA_COUNT(apiIdx);                                               \
         DUMP_DATA_PCT(apiIdx);                                                 \
@@ -207,12 +216,12 @@ void libfabric_dump_profile_summary(void) {
 #define LIBFABRIC_SUMMARY_ENTRY(name, value)                                   \
     cout << std::left << std::fixed << setprecision(2) << setfill(' ')         \
          << setw(ITEM_WIDTH) << name << setw(10) << ":" << value << " ns ("    \
-         << value * 100 / profile_time << "%)" << endl;
+         << value * 100 / fabric_profile_time << "%)" << endl;
 #undef LIBFABRIC_COUNTER
 #undef __LIBFABRIC_COUNTER
 #define LIBFABRIC_COUNTER(name) __LIBFABRIC_COUNTER(prof_##name)
 #define __LIBFABRIC_COUNTER(apiIdx)                                            \
-    { libfabric_ops_time += profileData[apiIdx].total; }
+    { libfabric_ops_time += profileLibfabricData[apiIdx].total; }
 #include "libfabric_counters.tbl"
 
     LIBFABRIC_SUMMARY_ENTRY("Total time", libfabric_ops_time);
@@ -220,25 +229,26 @@ void libfabric_dump_profile_summary(void) {
 }
 #else
 
+#define LIBFABRIC_PROFILE_START_OPS()
+#define LIBFABRIC_PROFILE_END_OPS()
 #define LIBFABRIC_PROFILE_START_TIME()
 #define LIBFABRIC_PROFILE_INIT()
 #define LIBFABRIC_PROFILE_END()
-#define LIBFABRIC_PROFILE_START_OPS(apiIdx)
-#define LIBFABRIC_PROFILE_END_OPS(apiIdx)
+#define LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(apiIdx, total)
 #endif
 
 #define FI_CALL(retType, funcname, ...)                                        \
     {                                                                          \
-        LIBFABRIC_PROFILE_START_OPS(funcname);                                 \
+        LIBFABRIC_PROFILE_START_OPS()                                          \
         retType = funcname(__VA_ARGS__);                                       \
-        LIBFABRIC_PROFILE_END_OPS(funcname);                                   \
+        LIBFABRIC_PROFILE_END_OPS(funcname)                                    \
     }
 
 #define FI_CALL_NO_RETURN(funcname, ...)                                       \
     {                                                                          \
-        LIBFABRIC_PROFILE_START_OPS(funcname);                                 \
+        LIBFABRIC_PROFILE_START_OPS()                                          \
         funcname(__VA_ARGS__);                                                 \
-        LIBFABRIC_PROFILE_END_OPS(funcname);                                   \
+        LIBFABRIC_PROFILE_END_OPS(funcname)                                    \
     }
 
 /**
@@ -570,6 +580,7 @@ int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
 
 int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
 
+    LIBFABRIC_PROFILE_START_OPS()
     ssize_t ret = 0;
     struct fi_cq_data_entry entry;
     int timeout_retry_cnt = 0;
@@ -605,11 +616,14 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
             }
         }
     } while (entry.op_context != (void *)ctx);
+
+    LIBFABRIC_PROFILE_END_OPS(fabric_completion_wait)
     return 0;
 }
 
 int fabric_completion_wait_multictx(Fam_Context *famCtx, fi_context *ctx,
                                     int64_t count) {
+    LIBFABRIC_PROFILE_START_OPS()
     ssize_t ret = 0;
     struct fi_cq_data_entry entry;
     int timeout_retry_cnt = 0;
@@ -655,6 +669,7 @@ int fabric_completion_wait_multictx(Fam_Context *famCtx, fi_context *ctx,
         }
     } while (completion < count);
 
+    LIBFABRIC_PROFILE_END_OPS(fabric_completion_wait_multictx)
     return 0;
 }
 
@@ -820,7 +835,6 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
                 famCtx->inc_num_tx_ops();
             else
                 famCtx->inc_num_rx_ops();
-
         } catch (...) {
             // Release Fam_Context read lock
             famCtx->release_lock();
@@ -1560,6 +1574,7 @@ void fabric_fetch_atomic(uint64_t key, void *value, void *result,
 
     return;
 }
+
 void fabric_compare_atomic(uint64_t key, void *compare, void *result,
                            void *value, uint64_t offset, enum fi_op op,
                            enum fi_datatype datatype, fi_addr_t fiAddr,
@@ -1620,10 +1635,21 @@ void fabric_compare_atomic(uint64_t key, void *compare, void *result,
  */
 const char *fabric_strerror(int fabErr) { return fi_strerror(fabErr); }
 
+/* Fabric profile reset - resets the counters and other profile data
+ */
+void fabric_reset_profile() {
+    LIBFABRIC_PROFILE_INIT();
+    LIBFABRIC_PROFILE_START_TIME();
+}
+
 int fabric_finalize(void) {
-    LIBFABRIC_PROFILE_END();
+    fabric_dump_profile();
     return 0;
 }
+
+/* Fabric profile dump - dumps the profile data
+ */
+void fabric_dump_profile() { LIBFABRIC_PROFILE_END(); }
 
 /* Fabric error to fam_error
  * @param fabErr - errno returned by libfabric fall

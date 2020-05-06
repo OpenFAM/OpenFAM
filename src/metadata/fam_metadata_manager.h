@@ -72,11 +72,11 @@ namespace metadata {
 #endif // META_DEBUG
 
 #define METADATA_HEAP_ID 16
-#define METADATA_HEAP_SIZE (1024*1024*1024)
+#define METADATA_HEAP_SIZE (1024 * 1024 * 1024)
 
 typedef struct {
-     KeyValueStore *diIdKVS;
-     KeyValueStore *diNameKVS;
+    KeyValueStore *diIdKVS;
+    KeyValueStore *diNameKVS;
 } diKVS;
 
 using KvsMap = std::map<uint64_t, diKVS *>;
@@ -142,6 +142,9 @@ class FAM_Metadata_Manager {
 
     void Start(bool use_meta_reg);
     void Stop();
+
+    void reset_profile();
+    void dump_profile();
 
     int metadata_insert_region(const uint64_t regionId,
                                const std::string regionName,

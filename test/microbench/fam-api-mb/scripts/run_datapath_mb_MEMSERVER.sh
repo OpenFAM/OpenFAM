@@ -1,3 +1,4 @@
+#!/bin/bash
  #
  # run_datapath_mb_MEMSERVER.sh
  # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
@@ -27,37 +28,43 @@
  # See https://spdx.org/licenses/BSD-3-Clause
  #
  #
+base_dir=$5
 
-#!/bin/bash
-
-base_dir=$4
-
-if [[ $5 == "RPC" ]]
+if [[ $6 == "RPC" ]]
 then
-	cmd="--allow-run-as-root -n $1 ${base_dir}/build/build-rpc/test/microbench/fam-api-mb/fam_microbenchmark_datapath $3"
+	cmd="--allow-run-as-root --bind-to core -n $1 ${base_dir}/build/build-rpc/test/microbench/fam-api-mb/fam_microbenchmark_datapath $3 $4"
 	log_dir="${base_dir}/mb_logs/rpc/data_path"
 	mkdir -p $log_dir
 else
-	cmd="--allow-run-as-root -n $1 ${base_dir}/build/build-shm/test/microbench/fam-api-mb/fam_microbenchmark_datapath $3"
+	cmd="--allow-run-as-root --bind-to core -n $1 ${base_dir}/build/build-shm/test/microbench/fam-api-mb/fam_microbenchmark_datapath $3 $4"
 	log_dir="${base_dir}/mb_logs/shm/data_path"
 	mkdir -p $log_dir
 fi
 
-${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamPutGet.BlockingFamPutGet >$log_dir/${1}PE_${2}MEM_SERVER_${3}_PGB.log
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamPutGet.BlockingFamPut >$log_dir/${1}PE_${2}MEM_SERVER_${3}_PB.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamPutGet.BlockingFamGet >$log_dir/${1}PE_${2}MEM_SERVER_${3}_GB.log
 wait
 ${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamPutGet.NonBlockingFamGet >$log_dir/${1}PE_${2}MEM_SERVER_${3}_GNB.log
 wait
 ${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamPutGet.NonBlockingFamPut >$log_dir/${1}PE_${2}MEM_SERVER_${3}_PNB.log
 wait
-${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.BlockingScatterGatherIndex >$log_dir/${1}PE_${2}MEM_SERVER_${3}_SGIB.log
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.BlockingScatterIndex >$log_dir/${1}PE_${2}MEM_SERVER_${3}_SIB.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.BlockingGatherIndex >$log_dir/${1}PE_${2}MEM_SERVER_${3}_GIB.log
 wait
 ${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.NonBlockingScatterIndex >$log_dir/${1}PE_${2}MEM_SERVER_${3}_SINB.log
 wait
 ${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.NonBlockingGatherIndex >$log_dir/${1}PE_${2}MEM_SERVER_${3}_GINB.log
 wait
-${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.BlockingScatterGatherIndexSize >$log_dir/${1}PE_${2}MEM_SERVER_${3}_SGISB.log
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.BlockingScatterIndexSize >$log_dir/${1}PE_${2}MEM_SERVER_${3}_SISB.log
+wait
+${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.BlockingGatherIndexSize >$log_dir/${1}PE_${2}MEM_SERVER_${3}_GISB.log
 wait
 ${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.NonBlockingScatterIndexSize >$log_dir/${1}PE_${2}MEM_SERVER_${3}_SISNB.log
 wait
 ${base_dir}/third-party/build/bin/mpirun $cmd --gtest_filter=FamScatter.NonBlockingGatherIndexSize >$log_dir/${1}PE_${2}MEM_SERVER_${3}_GISNB.log
 wait
+
+
+

@@ -28,10 +28,51 @@
  *
  */
 #include "fam_rpc_service_impl.h"
+#include "common/fam_memserver_profile.h"
 #include <thread>
+
+#include <boost/atomic.hpp>
+
+#include <chrono>
+#include <iomanip>
+#include <string.h>
 #include <unistd.h>
 
+using namespace std;
+using namespace chrono;
 namespace openfam {
+MEMSERVER_PROFILE_START(RPC_SERVICE)
+#ifdef MEMSERVER_PROFILE
+#define RPC_SERVICE_PROFILE_START_OPS()                                        \
+    {                                                                          \
+        Profile_Time start = RPC_SERVICE_get_time();
+
+#define RPC_SERVICE_PROFILE_END_OPS(apiIdx)                                    \
+    Profile_Time end = RPC_SERVICE_get_time();                                 \
+    Profile_Time total = RPC_SERVICE_time_diff_nanoseconds(start, end);        \
+    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(RPC_SERVICE, prof_##apiIdx, total)      \
+    }
+#define RPC_SERVICE_PROFILE_DUMP() rpc_service_profile_dump()
+#else
+#define RPC_SERVICE_PROFILE_START_OPS()
+#define RPC_SERVICE_PROFILE_END_OPS(apiIdx)
+#define RPC_SERVICE_PROFILE_DUMP()
+#endif
+
+void rpc_service_profile_dump() {
+    MEMSERVER_PROFILE_END(RPC_SERVICE);
+    MEMSERVER_DUMP_PROFILE_BANNER(RPC_SERVICE)
+#undef MEMSERVER_COUNTER
+#define MEMSERVER_COUNTER(name)                                                \
+    MEMSERVER_DUMP_PROFILE_DATA(RPC_SERVICE, name, prof_##name)
+#include "rpc/rpc_service_counters.tbl"
+
+#undef MEMSERVER_COUNTER
+#define MEMSERVER_COUNTER(name)                                                \
+    MEMSERVER_PROFILE_TOTAL(RPC_SERVICE, prof_##name)
+#include "rpc/rpc_service_counters.tbl"
+    MEMSERVER_DUMP_PROFILE_SUMMARY(RPC_SERVICE)
+}
 
 void Fam_Rpc_Service_Impl::progress_thread() {
     if (libfabricProgressMode == FI_PROGRESS_MANUAL) {
@@ -50,6 +91,8 @@ void Fam_Rpc_Service_Impl::rpc_service_initialize(
     numClients = 0;
     shouldShutdown = false;
     allocator = memAlloc;
+    MEMSERVER_PROFILE_INIT(RPC_SERVICE)
+    MEMSERVER_PROFILE_START_TIME(RPC_SERVICE)
     famOps =
         new Fam_Ops_Libfabric(name, service, true, provider,
                               FAM_THREAD_MULTIPLE, NULL, FAM_CONTEXT_DEFAULT);
@@ -92,8 +135,9 @@ Fam_Rpc_Service_Impl::~Fam_Rpc_Service_Impl() {
         haltProgress = true;
         progressThread.join();
     }
-    delete allocator;
+    famOps->finalize();
     delete famOps;
+    delete allocator;
 }
 
 ::grpc::Status
@@ -133,9 +177,38 @@ Fam_Rpc_Service_Impl::signal_termination(::grpc::ServerContext *context,
 }
 
 ::grpc::Status
+Fam_Rpc_Service_Impl::reset_profile(::grpc::ServerContext *context,
+                                    const ::Fam_Request *request,
+                                    ::Fam_Response *response) {
+
+    MEMSERVER_PROFILE_INIT(RPC_SERVICE)
+    MEMSERVER_PROFILE_START_TIME(RPC_SERVICE)
+    fabric_reset_profile();
+    allocator->reset_profile();
+    return ::grpc::Status::OK;
+}
+
+void Fam_Rpc_Service_Impl::dump_profile() {
+    RPC_SERVICE_PROFILE_DUMP();
+    fabric_dump_profile();
+    allocator->dump_profile();
+}
+
+::grpc::Status
+Fam_Rpc_Service_Impl::generate_profile(::grpc::ServerContext *context,
+                                       const ::Fam_Request *request,
+                                       ::Fam_Response *response) {
+#ifdef MEMSERVER_PROFILE
+    kill(getpid(), SIGINT);
+#endif
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
 Fam_Rpc_Service_Impl::create_region(::grpc::ServerContext *context,
                                     const ::Fam_Region_Request *request,
                                     ::Fam_Region_Response *response) {
+    RPC_SERVICE_PROFILE_START_OPS()
     uint64_t regionId;
     try {
         allocator->create_region(
@@ -149,6 +222,7 @@ Fam_Rpc_Service_Impl::create_region(::grpc::ServerContext *context,
     response->set_regionid(regionId);
     response->set_offset(INVALID_OFFSET);
 
+    RPC_SERVICE_PROFILE_END_OPS(create_region);
     // Return status OK
     return ::grpc::Status::OK;
 }
@@ -157,6 +231,7 @@ Fam_Rpc_Service_Impl::create_region(::grpc::ServerContext *context,
 Fam_Rpc_Service_Impl::destroy_region(::grpc::ServerContext *context,
                                      const ::Fam_Region_Request *request,
                                      ::Fam_Region_Response *response) {
+    RPC_SERVICE_PROFILE_START_OPS()
     try {
         allocator->destroy_region(request->regionid(), request->uid(),
                                   request->gid());
@@ -165,6 +240,7 @@ Fam_Rpc_Service_Impl::destroy_region(::grpc::ServerContext *context,
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
     }
+    RPC_SERVICE_PROFILE_END_OPS(destroy_region);
 
     // Return status OK
     return ::grpc::Status::OK;
@@ -175,6 +251,7 @@ Fam_Rpc_Service_Impl::resize_region(::grpc::ServerContext *context,
                                     const ::Fam_Region_Request *request,
                                     ::Fam_Region_Response *response) {
 
+    RPC_SERVICE_PROFILE_START_OPS()
     try {
         allocator->resize_region(request->regionid(), request->uid(),
                                  request->gid(), request->size());
@@ -183,6 +260,7 @@ Fam_Rpc_Service_Impl::resize_region(::grpc::ServerContext *context,
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
     }
+    RPC_SERVICE_PROFILE_END_OPS(resize_region);
 
     // Return status OK
     return ::grpc::Status::OK;
@@ -192,6 +270,7 @@ Fam_Rpc_Service_Impl::resize_region(::grpc::ServerContext *context,
 Fam_Rpc_Service_Impl::allocate(::grpc::ServerContext *context,
                                const ::Fam_Dataitem_Request *request,
                                ::Fam_Dataitem_Response *response) {
+    RPC_SERVICE_PROFILE_START_OPS()
     ostringstream message;
     uint64_t offset;
     uint64_t key;
@@ -263,6 +342,7 @@ Fam_Rpc_Service_Impl::allocate(::grpc::ServerContext *context,
         response->set_base((uint64_t)localPointer);
     else
         response->set_base((uint64_t)0);
+    RPC_SERVICE_PROFILE_END_OPS(allocate);
 
     // Return status OK
     return ::grpc::Status::OK;
@@ -272,6 +352,7 @@ Fam_Rpc_Service_Impl::allocate(::grpc::ServerContext *context,
 Fam_Rpc_Service_Impl::deallocate(::grpc::ServerContext *context,
                                  const ::Fam_Dataitem_Request *request,
                                  ::Fam_Dataitem_Response *response) {
+    RPC_SERVICE_PROFILE_START_OPS()
     ostringstream message;
     try {
         allocator->deallocate(request->regionid(), request->offset(),
@@ -291,6 +372,7 @@ Fam_Rpc_Service_Impl::deallocate(::grpc::ServerContext *context,
         response->set_errormsg(message.str());
         return ::grpc::Status::OK;
     }
+    RPC_SERVICE_PROFILE_END_OPS(deallocate);
 
     // Return status OK
     return ::grpc::Status::OK;
@@ -299,6 +381,7 @@ Fam_Rpc_Service_Impl::deallocate(::grpc::ServerContext *context,
 ::grpc::Status Fam_Rpc_Service_Impl::change_region_permission(
     ::grpc::ServerContext *context, const ::Fam_Region_Request *request,
     ::Fam_Region_Response *response) {
+    RPC_SERVICE_PROFILE_START_OPS()
     try {
         allocator->change_region_permission(request->regionid(),
                                             (mode_t)request->perm(),
@@ -308,6 +391,7 @@ Fam_Rpc_Service_Impl::deallocate(::grpc::ServerContext *context,
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
     }
+    RPC_SERVICE_PROFILE_END_OPS(change_region_permission);
 
     // Return status OK
     return ::grpc::Status::OK;
@@ -316,6 +400,7 @@ Fam_Rpc_Service_Impl::deallocate(::grpc::ServerContext *context,
 ::grpc::Status Fam_Rpc_Service_Impl::change_dataitem_permission(
     ::grpc::ServerContext *context, const ::Fam_Dataitem_Request *request,
     ::Fam_Dataitem_Response *response) {
+    RPC_SERVICE_PROFILE_START_OPS()
     try {
         allocator->change_dataitem_permission(
             request->regionid(), request->offset(), (mode_t)request->perm(),
@@ -326,6 +411,7 @@ Fam_Rpc_Service_Impl::deallocate(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
 
+    RPC_SERVICE_PROFILE_END_OPS(change_dataitem_permission);
     // Return status OK
     return ::grpc::Status::OK;
 }
@@ -334,6 +420,7 @@ Fam_Rpc_Service_Impl::deallocate(::grpc::ServerContext *context,
 Fam_Rpc_Service_Impl::lookup_region(::grpc::ServerContext *context,
                                     const ::Fam_Region_Request *request,
                                     ::Fam_Region_Response *response) {
+    RPC_SERVICE_PROFILE_START_OPS()
     ostringstream message;
     Fam_Region_Metadata region;
     try {
@@ -349,13 +436,11 @@ Fam_Rpc_Service_Impl::lookup_region(::grpc::ServerContext *context,
         response->set_regionid(region.regionId);
         response->set_offset(region.offset);
         response->set_size(region.size);
-        return ::grpc::Status::OK;
     } else if (allocator->check_region_permission(region, 0, request->uid(),
                                                   request->gid())) {
         response->set_regionid(region.regionId);
         response->set_offset(region.offset);
         response->set_size(region.size);
-        return ::grpc::Status::OK;
     } else {
         response->set_errorcode(FAM_ERR_NOPERM);
         message << "Error while looking up for region : ";
@@ -363,12 +448,15 @@ Fam_Rpc_Service_Impl::lookup_region(::grpc::ServerContext *context,
         response->set_errormsg(message.str());
         return ::grpc::Status::OK;
     }
+    RPC_SERVICE_PROFILE_END_OPS(lookup_region);
+    return ::grpc::Status::OK;
 }
 
 ::grpc::Status
 Fam_Rpc_Service_Impl::lookup(::grpc::ServerContext *context,
                              const ::Fam_Dataitem_Request *request,
                              ::Fam_Dataitem_Response *response) {
+    RPC_SERVICE_PROFILE_START_OPS()
     Fam_DataItem_Metadata dataitem;
     ostringstream message;
     try {
@@ -384,13 +472,11 @@ Fam_Rpc_Service_Impl::lookup(::grpc::ServerContext *context,
         response->set_regionid(dataitem.regionId);
         response->set_offset(dataitem.offset);
         response->set_size(dataitem.size);
-        return ::grpc::Status::OK;
     } else if (allocator->check_dataitem_permission(dataitem, 0, request->uid(),
                                                     request->gid())) {
         response->set_regionid(dataitem.regionId);
         response->set_offset(dataitem.offset);
         response->set_size(dataitem.size);
-        return ::grpc::Status::OK;
     } else {
         response->set_errorcode(FAM_ERR_NOPERM);
         message << "Error while looking up for region : ";
@@ -398,40 +484,8 @@ Fam_Rpc_Service_Impl::lookup(::grpc::ServerContext *context,
         response->set_errormsg(message.str());
         return ::grpc::Status::OK;
     }
-    /*
-void *localPointer = 0;
-int ret;
-try {
-    ret = register_memory(dataitem, localPointer, request->uid(),
-                          request->gid(), key);
-}
-catch (Memserver_Exception &e) {
-    response->set_errorcode(e.fam_error());
-    response->set_errormsg(e.fam_error_msg());
-    return ::grpc::Status::OK;
-}
-
-if (ret < 0) {
-    if (ret == NOT_PERMITTED) {
-        response->set_errorcode(FAM_ERR_NOPERM);
-        message << "Error while looking up for dataitem : ";
-        message << "No permission, dataitem registration failed";
-        response->set_errormsg(message.str());
-        return ::grpc::Status::OK;
-    } else {
-        response->set_errorcode(FAM_ERR_RESOURCE);
-        message << "Error while looking up for dataitem : ";
-        message << "dataitem registration failed";
-        response->set_errormsg(message.str());
-        return ::grpc::Status::OK;
-    }
-}
-response->set_regionid(dataitem.regionId);
-response->set_offset(dataitem.offset);
-response->set_size(dataitem.size);
-response->set_key(key);
-    */
     // Return status OK
+    RPC_SERVICE_PROFILE_END_OPS(lookup);
     return ::grpc::Status::OK;
 }
 
@@ -439,6 +493,7 @@ response->set_key(key);
     ::grpc::ServerContext *context, const ::Fam_Region_Request *request,
     ::Fam_Region_Response *response) {
 
+    RPC_SERVICE_PROFILE_START_OPS()
     Fam_Region_Metadata region;
     ostringstream message;
     try {
@@ -460,7 +515,7 @@ response->set_key(key);
         response->set_errorcode(FAM_ERR_NOPERM);
         response->set_errormsg(message.str());
     }
-
+    RPC_SERVICE_PROFILE_END_OPS(check_permission_get_region_info);
     return ::grpc::Status::OK;
 }
 
@@ -468,6 +523,7 @@ response->set_key(key);
     ::grpc::ServerContext *context, const ::Fam_Dataitem_Request *request,
     ::Fam_Dataitem_Response *response) {
 
+    RPC_SERVICE_PROFILE_START_OPS()
     Fam_DataItem_Metadata dataitem;
     uint64_t key;
     ostringstream message;
@@ -517,6 +573,8 @@ response->set_key(key);
         response->set_base((uint64_t)0);
     response->set_size(dataitem.size);
 
+    RPC_SERVICE_PROFILE_END_OPS(check_permission_get_item_info);
+
     // Return status OK
     return ::grpc::Status::OK;
 }
@@ -551,7 +609,6 @@ int Fam_Rpc_Service_Impl::register_fence_memory() {
 
     localPointer = mmap(NULL, len, PROT_WRITE, MAP_SHARED | MAP_ANON, fd, 0);
     if (localPointer == MAP_FAILED) {
-        cout << "mmap of fence memory failed" << endl;
     }
 
     // register the memory location with libfabric
@@ -562,7 +619,6 @@ int Fam_Rpc_Service_Impl::register_fence_memory() {
                                  1, mr);
         if (ret < 0) {
             pthread_mutex_unlock(famOps->get_mr_lock());
-            cout << "error: memory register failed" << endl;
             return ITEM_REGISTRATION_FAILED;
         }
 
@@ -596,7 +652,6 @@ int Fam_Rpc_Service_Impl::register_memory(Fam_DataItem_Metadata dataitem,
                                      famOps->get_domain(), 1, mr);
             if (ret < 0) {
                 pthread_mutex_unlock(famOps->get_mr_lock());
-                cout << "error: memory register failed" << endl;
                 return ITEM_REGISTRATION_FAILED;
             }
 
@@ -619,7 +674,6 @@ int Fam_Rpc_Service_Impl::register_memory(Fam_DataItem_Metadata dataitem,
                                      famOps->get_domain(), 0, mr);
             if (ret < 0) {
                 pthread_mutex_unlock(famOps->get_mr_lock());
-                cout << "error: memory register failed" << endl;
                 return ITEM_REGISTRATION_FAILED;
             }
 
@@ -633,7 +687,6 @@ int Fam_Rpc_Service_Impl::register_memory(Fam_DataItem_Metadata dataitem,
         // Return status OK
         return 0;
     } else {
-        cout << "error: Not permitted to register dataitem" << endl;
         return NOT_PERMITTED;
     }
 }
@@ -648,7 +701,6 @@ int Fam_Rpc_Service_Impl::deregister_fence_memory() {
         ret = fabric_deregister_mr(mr->second);
         if (ret < 0) {
             pthread_mutex_unlock(famOps->get_mr_lock());
-            cout << "error: memory deregister failed" << endl;
             return ITEM_DEREGISTRATION_FAILED;
         }
         fiMrs->erase(mr);
@@ -660,6 +712,8 @@ int Fam_Rpc_Service_Impl::deregister_fence_memory() {
 
 int Fam_Rpc_Service_Impl::deregister_memory(uint64_t regionId,
                                             uint64_t offset) {
+    RPC_SERVICE_PROFILE_START_OPS()
+
     int ret = 0;
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
     uint64_t rKey = generate_access_key(regionId, dataitemId, 0);
@@ -672,7 +726,6 @@ int Fam_Rpc_Service_Impl::deregister_memory(uint64_t regionId,
         ret = fabric_deregister_mr(rMr->second);
         if (ret < 0) {
             pthread_mutex_unlock(famOps->get_mr_lock());
-            cout << "error: memory deregister failed" << endl;
             return ITEM_DEREGISTRATION_FAILED;
         }
         fiMrs->erase(rMr);
@@ -682,13 +735,13 @@ int Fam_Rpc_Service_Impl::deregister_memory(uint64_t regionId,
         ret = fabric_deregister_mr(rwMr->second);
         if (ret < 0) {
             pthread_mutex_unlock(famOps->get_mr_lock());
-            cout << "error: memory deregister failed" << endl;
             return ITEM_DEREGISTRATION_FAILED;
         }
         fiMrs->erase(rwMr);
     }
 
     pthread_mutex_unlock(famOps->get_mr_lock());
+    RPC_SERVICE_PROFILE_END_OPS(deregister_memory);
     return 0;
 }
 
