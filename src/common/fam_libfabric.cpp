@@ -230,11 +230,10 @@ void libfabric_dump_profile_summary(void) {
 #else
 
 #define LIBFABRIC_PROFILE_START_OPS()
-#define LIBFABRIC_PROFILE_END_OPS()
+#define LIBFABRIC_PROFILE_END_OPS(apiIdx)
 #define LIBFABRIC_PROFILE_START_TIME()
 #define LIBFABRIC_PROFILE_INIT()
 #define LIBFABRIC_PROFILE_END()
-#define LIBFABRIC_PROFILE_ADD_TO_TOTAL_OPS(apiIdx, total)
 #endif
 
 #define FI_CALL(retType, funcname, ...)                                        \
