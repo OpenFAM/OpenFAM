@@ -71,10 +71,4 @@ then
         echo "NVMM make failed, exiting..."
         exit 1
 fi
-make test
-if [[ $? > 0 ]]
-then
-        echo "Some or all of NVMM tests failed, exiting..."
-        exit 1
-fi
 
