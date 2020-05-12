@@ -192,7 +192,7 @@ void libfabric_dump_profile_data(void) {
     }
 
 #undef LIBFABRIC_COUNTER
-#undef LIBFABRIC_COUNTER
+#undef __LIBFABRIC_COUNTER
 #define LIBFABRIC_COUNTER(name) __LIBFABRIC_COUNTER(name, prof_##name)
 #define __LIBFABRIC_COUNTER(name, apiIdx)                                      \
     if (profileLibfabricData[apiIdx].count) {                                  \
