@@ -28,14 +28,6 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 #
-# default system include and link directories
-#
-link_directories(/usr/lib)
-include_directories(/usr/include)
-link_directories(/usr/local/lib)
-include_directories(/usr/local/include)
-
-#
 # build type: Release (default) or Debug
 #
 message(STATUS "====================")
@@ -66,6 +58,12 @@ endif()
 if(ENABLE_LIBFABRIC_PROFILING)
 	message(STATUS "LIBFABRIC profiling enabled")
 	add_definitions(-DLIBFABRIC_PROFILE)
+endif()
+
+if(ENABLE_MEMORYSERVER_PROFILING)
+	message(STATUS "Memory Server profile enabled")
+	add_definitions(-DMEMSERVER_PROFILE)
+	set( TEST_MEMSERVER_IP "127.0.0.1" )
 endif()
 
 message(STATUS "====================")
@@ -122,6 +120,14 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
 link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib) # third-party libraries
 
 #
+# default system include and link directories
+#
+link_directories(/usr/lib)
+include_directories(/usr/include)
+link_directories(/usr/local/lib)
+include_directories(/usr/local/include)
+
+#
 # Set openFAM options to be used only by test. Some individual test cases might override these options. 
 #
 
@@ -144,9 +150,19 @@ if (${TEST_ALLOCATOR} STREQUAL "NVMM")
 	add_definitions(-DSHM)
 endif()
 
+if (USE_FAM_PERSIST)
+	message(STATUS "Using FAM persist")
+	add_definitions(-DUSE_FAM_PERSIST)
+endif()
+
 if (USE_FAM_INVALIDATE)
 	message(STATUS "Using FAM invalidate")
 	add_definitions(-DUSE_FAM_INVALIDATE)
+endif()
+
+if (USE_BOOST_FIBER)
+	message(STATUS "Using Boost Fiber")
+	add_definitions(-DUSE_BOOST_FIBER)
 endif()
 
 # Use native atomics
@@ -166,10 +182,12 @@ configure_file( ${PROJECT_SOURCE_DIR}/test/common/fam_test_config.h.in ${PROJECT
 add_subdirectory(src)
 add_subdirectory(test/unit-test)
 add_subdirectory(test/reg-test)
+add_subdirectory(test/multi-memnode-test)
 add_subdirectory(test/maxconfig)
 add_subdirectory(test/coverage)
 add_subdirectory(test/microbench)
 add_subdirectory(test/apps)
+add_subdirectory(test/permission-test)
 #
 # find src include -regex '.*\.\(c\|cpp\|h\)$' -print | xargs clang-format -i -style="{BasedOnStyle: llvm, IndentWidth: 4}"
 #

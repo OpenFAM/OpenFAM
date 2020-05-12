@@ -34,15 +34,20 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "common/fam_libfabric.h"
+#include "rpc/fam_rpc_client.h"
 #include <fam/fam.h>
 
 #include "common/fam_test_config.h"
-#define NUM_ITERATIONS 100
+//#define NUM_ITERATIONS 1000
 #define ALL_PERM 0777
 #define BIG_REGION_SIZE 1073741824
 using namespace std;
 using namespace openfam;
 
+int NUM_ITERATIONS;
+int *myPE;
+Fam_Rpc_Client *rpc;
 fam *my_fam;
 Fam_Options fam_opts;
 Fam_Descriptor *item;
@@ -52,14 +57,61 @@ size_t test_item_size;
 
 uint64_t gDataSize = 256;
 
+#if !defined(SHM) && defined(MEMSERVER_PROFILE)
+#define RESET_PROFILE()                                                        \
+    {                                                                          \
+        rpc->reset_profile();                                                  \
+        my_fam->fam_barrier_all();                                             \
+    }
+
+#define GENERATE_PROFILE()                                                     \
+    {                                                                          \
+        if (*myPE == 0)                                                        \
+            rpc->generate_profile();                                           \
+        my_fam->fam_barrier_all();                                             \
+    }
+#else
+#define RESET_PROFILE()
+#define GENERATE_PROFILE()
+#endif
+
 // Test case -  Blocking put get test.
-TEST(FamPutGet, BlockingFamPutGet) {
+TEST(FamPutGet, BlockingFamPut) {
     int64_t *local = (int64_t *)malloc(gDataSize);
     unsigned int offset = 0;
 
     for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_put_blocking(local, item, offset, gDataSize));
+    }
+    free(local);
+}
+
+TEST(FamPutGet, BlockingFamPutNewDesc) {
+    int64_t *local = (int64_t *)malloc(gDataSize);
+    unsigned int offset = 0;
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    RESET_PROFILE();
+
+    for (int i = 0; i < NUM_ITERATIONS; i++) {
+
+        Fam_Global_Descriptor globalDesc = item->get_global_descriptor();
+
+        Fam_Descriptor *itemCopy = new Fam_Descriptor(globalDesc);
+        EXPECT_NO_THROW(
+            my_fam->fam_put_blocking(local, itemCopy, offset, gDataSize));
+    }
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    GENERATE_PROFILE();
+
+    free(local);
+}
+
+TEST(FamPutGet, BlockingFamGet) {
+    int64_t *local = (int64_t *)malloc(gDataSize);
+    unsigned int offset = 0;
+
+    for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_get_blocking(local, item, offset, gDataSize));
     }
@@ -94,7 +146,7 @@ TEST(FamPutGet, NonBlockingFamPut) {
 }
 
 // Test case -  Blocking scatter and gather (Index) test.
-TEST(FamScatter, BlockingScatterGatherIndex) {
+TEST(FamScatter, BlockingScatterIndex) {
     int64_t *local = (int64_t *)malloc(gDataSize);
     int count = 4;
     int64_t size = gDataSize / count;
@@ -106,6 +158,20 @@ TEST(FamScatter, BlockingScatterGatherIndex) {
     for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_scatter_blocking(local, item, count, indexes, size));
+    }
+    free(local);
+}
+
+TEST(FamScatter, BlockingGatherIndex) {
+    int64_t *local = (int64_t *)malloc(gDataSize);
+    int count = 4;
+    int64_t size = gDataSize / count;
+    uint64_t *indexes = (uint64_t *)malloc(count * sizeof(uint64_t));
+
+    for (int e = 0; e < count; e++) {
+        indexes[e] = e;
+    }
+    for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_gather_blocking(local, item, count, indexes, size));
     }
@@ -151,7 +217,7 @@ TEST(FamScatter, NonBlockingGatherIndex) {
 }
 
 // Test case -  Blocking scatter and gather (Index) test (Full size).
-TEST(FamScatter, BlockingScatterGatherIndexSize) {
+TEST(FamScatter, BlockingScatterIndexSize) {
     int count = 4;
     int64_t *local = (int64_t *)malloc(gDataSize * count);
     int64_t size = gDataSize;
@@ -163,6 +229,20 @@ TEST(FamScatter, BlockingScatterGatherIndexSize) {
     for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_scatter_blocking(local, item, count, indexes, size));
+    }
+    free(local);
+}
+
+TEST(FamScatter, BlockingGatherIndexSize) {
+    int count = 4;
+    int64_t *local = (int64_t *)malloc(gDataSize * count);
+    int64_t size = gDataSize;
+    uint64_t *indexes = (uint64_t *)malloc(count * sizeof(uint64_t));
+
+    for (int e = 0; e < count; e++) {
+        indexes[e] = e;
+    }
+    for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(
             my_fam->fam_gather_blocking(local, item, count, indexes, size));
     }
@@ -213,9 +293,15 @@ int main(int argc, char **argv) {
     for (int i = 1; i < argc; ++i) {
         printf("arg %2d = %s\n", i, (argv[i]));
     }
-    if (argc == 2)
+    if (argc == 3) {
         gDataSize = atoi(argv[1]);
+        NUM_ITERATIONS = atoi(argv[2]);
+    }
 
+#if !defined(SHM) && defined(MEMSERVER_PROFILE)
+    const char *ip = strdup(TEST_MEMSERVER_IP);
+    EXPECT_NO_THROW(rpc = new Fam_Rpc_Client(ip, atoi(TEST_GRPC_PORT)));
+#endif
     my_fam = new fam();
 
     init_fam_options(&fam_opts);
@@ -225,6 +311,7 @@ int main(int argc, char **argv) {
     const char *dataItem = get_uniq_str("firstGlobal", my_fam);
     const char *testRegion = get_uniq_str("testGlobal", my_fam);
 
+    EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(
                         testRegion, BIG_REGION_SIZE, 0777, RAID1));
 
@@ -233,10 +320,24 @@ int main(int argc, char **argv) {
     // Allocating data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem, test_item_size,
                                                 test_perm_mode, desc));
+
+    // EXPECT_NO_THROW(item = my_fam->fam_lookup(dataItem, testRegion));
     EXPECT_NE((void *)NULL, item);
-    my_fam->fam_barrier_all();
+
+    uint64_t testOffset = 0;
+    for (int i = 0; i < 10; i++) {
+        EXPECT_NO_THROW(my_fam->fam_fetch_int32(item, testOffset));
+    }
+
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+#if !defined(SHM) && defined(MEMSERVER_PROFILE)
+	EXPECT_NO_THROW(rpc->reset_profile());
+    EXPECT_NO_THROW(fabric_reset_profile());
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+#endif
     ret = RUN_ALL_TESTS();
 
+    cout << "finished all testing" << endl;
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
     delete item;
@@ -245,6 +346,7 @@ int main(int argc, char **argv) {
     free((void *)testRegion);
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
+    cout << "Finalize done : " << ret << endl;
     delete my_fam;
     return ret;
 }

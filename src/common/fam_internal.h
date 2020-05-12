@@ -83,11 +83,11 @@ namespace openfam {
 #define FAM_WRITE_KEY_SHM ((uint64_t)0x2)
 #define FAM_RW_KEY_SHM (FAM_READ_KEY_SHM | FAM_WRITE_KEY_SHM)
 
-#define FAM_KEY_UNINITIALIZED ((uint64_t)-1)
-#define FAM_KEY_INVALID ((uint64_t)-2)
-#define FAM_FENCE_KEY ((uint64_t)-4)
-#define INVALID_OFFSET ((uint64_t)-1)
-#define FAM_INVALID_REGION ((uint64_t)-1)
+#define FAM_KEY_UNINITIALIZED ((uint64_t) - 1)
+#define FAM_KEY_INVALID ((uint64_t) - 2)
+#define FAM_FENCE_KEY ((uint64_t) - 4)
+#define INVALID_OFFSET ((uint64_t) - 1)
+#define FAM_INVALID_REGION ((uint64_t) - 1)
 /*
  * Region id 5-15 are reserved for MODC
  * Region id 16-20 are reserved for OpenFAM
@@ -104,7 +104,9 @@ namespace openfam {
 #define DATAITEMID_SHIFT 1
 
 inline void openfam_persist(void *addr, uint64_t size) {
+#ifdef USE_FAM_PERSIST
     fam_persist(addr, size);
+#endif
 }
 
 inline void openfam_invalidate(void *addr, uint64_t size) {

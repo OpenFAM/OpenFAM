@@ -34,8 +34,15 @@
 
 #include "fam_metadata_manager.h"
 
+#include <boost/atomic.hpp>
+
+#include <atomic>
+#include <chrono>
+#include <iomanip>
 #include <string.h>
 #include <unistd.h>
+
+#include "common/fam_memserver_profile.h"
 
 #define OPEN_METADATA_KVS(root, heap_size, heap_id, kvs)                       \
     if (use_meta_region) {                                                     \
@@ -46,8 +53,39 @@
 
 using namespace famradixtree;
 using namespace nvmm;
+using namespace std;
+using namespace chrono;
 
 namespace metadata {
+MEMSERVER_PROFILE_START(METADATA)
+#ifdef MEMSERVER_PROFILE
+#define METADATA_PROFILE_START_OPS()                                           \
+    {                                                                          \
+        Profile_Time start = METADATA_get_time();
+
+#define METADATA_PROFILE_END_OPS(apiIdx)                                       \
+    Profile_Time end = METADATA_get_time();                                    \
+    Profile_Time total = METADATA_time_diff_nanoseconds(start, end);           \
+    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(METADATA, prof_##apiIdx, total)         \
+    }
+#define METADATA_PROFILE_DUMP() metadata_profile_dump()
+#else
+#define METADATA_PROFILE_START_OPS()
+#define METADATA_PROFILE_END_OPS(apiIdx)
+#define METADATA_PROFILE_DUMP()
+#endif
+
+void metadata_profile_dump(){MEMSERVER_PROFILE_END(METADATA)
+                                 MEMSERVER_DUMP_PROFILE_BANNER(METADATA)
+#undef MEMSERVER_COUNTER
+#define MEMSERVER_COUNTER(name)                                                \
+    MEMSERVER_DUMP_PROFILE_DATA(METADATA, name, prof_##name)
+#include "metadata/metadata_counters.tbl"
+
+#undef MEMSERVER_COUNTER
+#define MEMSERVER_COUNTER(name) MEMSERVER_PROFILE_TOTAL(METADATA, prof_##name)
+#include "metadata/metadata_counters.tbl"
+                                     MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA)}
 
 KeyValueStore::IndexType const KVSTYPE = KeyValueStore::RADIX_TREE;
 
@@ -283,10 +321,9 @@ FAM_Metadata_Manager::Impl_::open_metadata_kvs(GlobalPtr root, size_t heap_size,
                                   (PoolId)heap_id);
 }
 
-int
-FAM_Metadata_Manager::Impl_::get_dataitem_KVS(uint64_t regionId,
-                                              KeyValueStore *&dataitemIdKVS,
-                                              KeyValueStore *&dataitemNameKVS) {
+int FAM_Metadata_Manager::Impl_::get_dataitem_KVS(
+    uint64_t regionId, KeyValueStore *&dataitemIdKVS,
+    KeyValueStore *&dataitemNameKVS) {
 
     int ret = META_NO_ERROR;
     pthread_mutex_lock(&kvsMapLock);
@@ -322,10 +359,10 @@ FAM_Metadata_Manager::Impl_::get_dataitem_KVS(uint64_t regionId,
         pthread_mutex_lock(&kvsMapLock);
         auto kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj == metadataKvsMap->end()) {
-            metadataKvsMap->insert({ regionId, kvs });
+            metadataKvsMap->insert({regionId, kvs});
         } else {
             pthread_mutex_unlock(&kvsMapLock);
-            return META_ERROR;
+            return META_NO_ERROR;
         }
         pthread_mutex_unlock(&kvsMapLock);
     } else {
@@ -350,9 +387,8 @@ FAM_Metadata_Manager::Impl_::get_dataitem_KVS(uint64_t regionId,
  *	found
  *
  */
-int
-FAM_Metadata_Manager::Impl_::metadata_find_region(const uint64_t regionId,
-                                                  Fam_Region_Metadata &region) {
+int FAM_Metadata_Manager::Impl_::metadata_find_region(
+    const uint64_t regionId, Fam_Region_Metadata &region) {
 
     int ret;
     std::string regionKey = std::to_string(regionId);
@@ -386,9 +422,8 @@ FAM_Metadata_Manager::Impl_::metadata_find_region(const uint64_t regionId,
  * 	key not found
  *
  */
-int
-FAM_Metadata_Manager::Impl_::metadata_find_region(const std::string regionName,
-                                                  Fam_Region_Metadata &region) {
+int FAM_Metadata_Manager::Impl_::metadata_find_region(
+    const std::string regionName, Fam_Region_Metadata &region) {
 
     int ret;
 
@@ -598,7 +633,7 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_region(
         pthread_mutex_lock(&kvsMapLock);
         auto kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj == metadataKvsMap->end()) {
-            metadataKvsMap->insert({ regionId, kvs });
+            metadataKvsMap->insert({regionId, kvs});
         } else {
             pthread_mutex_unlock(&kvsMapLock);
             return META_ERROR;
@@ -757,8 +792,8 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_region(
  * META_KEY_DOES_NOT_EXIST
  * 	if key not found.
  */
-int
-FAM_Metadata_Manager::Impl_::metadata_delete_region(const uint64_t regionId) {
+int FAM_Metadata_Manager::Impl_::metadata_delete_region(
+    const uint64_t regionId) {
 
     int ret;
 
@@ -1314,9 +1349,8 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
  * @return - META_NO_ERROR if the key is deleted successfully,
  * META_KEY_DOES_NOT_EXIST if region or daatitem key does not exists
  */
-int
-FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(const uint64_t dataitemId,
-                                                      const uint64_t regionId) {
+int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
+    const uint64_t dataitemId, const uint64_t regionId) {
 
     int ret;
 
@@ -1888,173 +1922,265 @@ void FAM_Metadata_Manager::Stop() {
 }
 
 void FAM_Metadata_Manager::Start(bool use_meta_reg) {
+
+    MEMSERVER_PROFILE_INIT(METADATA)
+    MEMSERVER_PROFILE_START_TIME(METADATA)
     pimpl_ = new Impl_;
     assert(pimpl_);
     int ret = pimpl_->Init(use_meta_reg);
     assert(ret == META_NO_ERROR);
 }
 
+void FAM_Metadata_Manager::reset_profile() {
+    MEMSERVER_PROFILE_INIT(METADATA)
+    MEMSERVER_PROFILE_START_TIME(METADATA)
+}
+
+void FAM_Metadata_Manager::dump_profile() { METADATA_PROFILE_DUMP(); }
+
 int FAM_Metadata_Manager::metadata_insert_region(const uint64_t regionID,
                                                  const std::string regionName,
                                                  Fam_Region_Metadata *region) {
-
-    return pimpl_->metadata_insert_region(regionID, regionName, region);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_insert_region(regionID, regionName, region);
+    METADATA_PROFILE_END_OPS(metadata_insert_region);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_region(const uint64_t regionID) {
-
-    return pimpl_->metadata_delete_region(regionID);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_region(regionID);
+    METADATA_PROFILE_END_OPS(metadata_delete_region);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_region(const std::string regionName) {
-
-    return pimpl_->metadata_delete_region(regionName);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_region(regionName);
+    METADATA_PROFILE_END_OPS(metadata_delete_region);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_find_region(const std::string regionName,
                                                Fam_Region_Metadata &region) {
-
-    return pimpl_->metadata_find_region(regionName, region);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_region(regionName, region);
+    METADATA_PROFILE_END_OPS(metadata_find_region);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_find_region(const uint64_t regionId,
                                                Fam_Region_Metadata &region) {
-
-    return pimpl_->metadata_find_region(regionId, region);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_region(regionId, region);
+    METADATA_PROFILE_END_OPS(metadata_find_region);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_modify_region(const uint64_t regionID,
                                                  Fam_Region_Metadata *region) {
-
-    return pimpl_->metadata_modify_region(regionID, region);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_region(regionID, region);
+    METADATA_PROFILE_END_OPS(metadata_modify_region);
+    return ret;
 }
 int FAM_Metadata_Manager::metadata_modify_region(const std::string regionName,
                                                  Fam_Region_Metadata *region) {
 
-    return pimpl_->metadata_modify_region(regionName, region);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_region(regionName, region);
+    METADATA_PROFILE_END_OPS(metadata_modify_region);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_insert_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
-    return pimpl_->metadata_insert_dataitem(dataitemId, regionName, dataitem,
-                                            dataitemName);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_insert_dataitem(dataitemId, regionName, dataitem,
+                                           dataitemName);
+    METADATA_PROFILE_END_OPS(metadata_insert_dataitem);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_insert_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
-    return pimpl_->metadata_insert_dataitem(dataitemId, regionId, dataitem,
-                                            dataitemName);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_insert_dataitem(dataitemId, regionId, dataitem,
+                                           dataitemName);
+    METADATA_PROFILE_END_OPS(metadata_insert_dataitem);
+    return ret;
 }
 
-int
-FAM_Metadata_Manager::metadata_delete_dataitem(const uint64_t dataitemId,
-                                               const std::string regionName) {
+int FAM_Metadata_Manager::metadata_delete_dataitem(
+    const uint64_t dataitemId, const std::string regionName) {
 
-    return pimpl_->metadata_delete_dataitem(dataitemId, regionName);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_dataitem(dataitemId, regionName);
+    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_delete_dataitem(const uint64_t dataitemId,
                                                    const uint64_t regionId) {
 
-    return pimpl_->metadata_delete_dataitem(dataitemId, regionId);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_dataitem(dataitemId, regionId);
+    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
+    return ret;
 }
 
-int
-FAM_Metadata_Manager::metadata_delete_dataitem(const std::string dataitemName,
-                                               const std::string regionName) {
+int FAM_Metadata_Manager::metadata_delete_dataitem(
+    const std::string dataitemName, const std::string regionName) {
 
-    return pimpl_->metadata_delete_dataitem(dataitemName, regionName);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_dataitem(dataitemName, regionName);
+    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
+    return ret;
 }
 
-int
-FAM_Metadata_Manager::metadata_delete_dataitem(const std::string dataitemName,
-                                               const uint64_t regionId) {
+int FAM_Metadata_Manager::metadata_delete_dataitem(
+    const std::string dataitemName, const uint64_t regionId) {
 
-    return pimpl_->metadata_delete_dataitem(dataitemName, regionId);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_delete_dataitem(dataitemName, regionId);
+    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
+    return ret;
 }
 
-int
-FAM_Metadata_Manager::metadata_find_dataitem(const uint64_t dataitemId,
-                                             const uint64_t regionId,
-                                             Fam_DataItem_Metadata &dataitem) {
+int FAM_Metadata_Manager::metadata_find_dataitem(
+    const uint64_t dataitemId, const uint64_t regionId,
+    Fam_DataItem_Metadata &dataitem) {
 
-    return pimpl_->metadata_find_dataitem(dataitemId, regionId, dataitem);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_dataitem(dataitemId, regionId, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
+    return ret;
 }
 
-int
-FAM_Metadata_Manager::metadata_find_dataitem(const uint64_t dataitemId,
-                                             const std::string regionName,
-                                             Fam_DataItem_Metadata &dataitem) {
+int FAM_Metadata_Manager::metadata_find_dataitem(
+    const uint64_t dataitemId, const std::string regionName,
+    Fam_DataItem_Metadata &dataitem) {
 
-    return pimpl_->metadata_find_dataitem(dataitemId, regionName, dataitem);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_dataitem(dataitemId, regionName, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
+    return ret;
 }
 
-int
-FAM_Metadata_Manager::metadata_find_dataitem(const std::string dataitemName,
-                                             const uint64_t regionId,
-                                             Fam_DataItem_Metadata &dataitem) {
+int FAM_Metadata_Manager::metadata_find_dataitem(
+    const std::string dataitemName, const uint64_t regionId,
+    Fam_DataItem_Metadata &dataitem) {
 
-    return pimpl_->metadata_find_dataitem(dataitemName, regionId, dataitem);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_dataitem(dataitemName, regionId, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
+    return ret;
 }
 
-int
-FAM_Metadata_Manager::metadata_find_dataitem(const std::string dataitemName,
-                                             const std::string regionName,
-                                             Fam_DataItem_Metadata &dataitem) {
+int FAM_Metadata_Manager::metadata_find_dataitem(
+    const std::string dataitemName, const std::string regionName,
+    Fam_DataItem_Metadata &dataitem) {
 
-    return pimpl_->metadata_find_dataitem(dataitemName, regionName, dataitem);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_find_dataitem(dataitemName, regionName, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_modify_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
 
-    return pimpl_->metadata_modify_dataitem(dataitemId, regionId, dataitem);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_dataitem(dataitemId, regionId, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_modify_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
 
-    return pimpl_->metadata_modify_dataitem(dataitemId, regionName, dataitem);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_dataitem(dataitemId, regionName, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_modify_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
 
-    return pimpl_->metadata_modify_dataitem(dataitemName, regionId, dataitem);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_dataitem(dataitemName, regionId, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
+    return ret;
 }
 
 int FAM_Metadata_Manager::metadata_modify_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
 
-    return pimpl_->metadata_modify_dataitem(dataitemName, regionName, dataitem);
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_modify_dataitem(dataitemName, regionName, dataitem);
+    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
+    return ret;
 }
 
 bool FAM_Metadata_Manager::metadata_check_permissions(
     Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint64_t uid,
     uint64_t gid) {
 
-    return pimpl_->metadata_check_permissions(dataitem, op, uid, gid);
+    bool ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_check_permissions(dataitem, op, uid, gid);
+    METADATA_PROFILE_END_OPS(metadata_check_permissions);
+    return ret;
 }
 
-bool
-FAM_Metadata_Manager::metadata_check_permissions(Fam_Region_Metadata *region,
-                                                 metadata_region_item_op_t op,
-                                                 uint64_t uid, uint64_t gid) {
+bool FAM_Metadata_Manager::metadata_check_permissions(
+    Fam_Region_Metadata *region, metadata_region_item_op_t op, uint64_t uid,
+    uint64_t gid) {
 
-    return pimpl_->metadata_check_permissions(region, op, uid, gid);
+    bool ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_check_permissions(region, op, uid, gid);
+    METADATA_PROFILE_END_OPS(metadata_check_permissions);
+    return ret;
 }
 
 size_t FAM_Metadata_Manager::metadata_maxkeylen() {
 
-    return pimpl_->metadata_maxkeylen();
+    size_t ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_maxkeylen();
+    METADATA_PROFILE_END_OPS(metadata_maxkeylen);
+    return ret;
 }
 
 } // end namespace metadata

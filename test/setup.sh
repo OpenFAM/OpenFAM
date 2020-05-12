@@ -30,8 +30,8 @@
 
 #!/bin/bash
 CURRENTDIR=`pwd`
-export PATH="$PATH:$CURRENTDIR/../../third-party/build/bin/"
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$CURRENTDIR/../../third-party/build/lib"
+export PATH="$CURRENTDIR/../../third-party/build/bin/:$PATH"
+export LD_LIBRARY_PATH="$CURRENTDIR/../../third-party/build/lib:$LD_LIBRARY_PATH"
 
 if [ $# -lt 1 ]
 then

@@ -96,6 +96,13 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
                                       const ::Fam_Request *request,
                                       ::Fam_Response *response) override;
 
+    ::grpc::Status reset_profile(::grpc::ServerContext *context,
+                                 const ::Fam_Request *request,
+                                 ::Fam_Response *response) override;
+
+    ::grpc::Status generate_profile(::grpc::ServerContext *context,
+                                    const ::Fam_Request *request,
+                                    ::Fam_Response *response) override;
     ::grpc::Status create_region(::grpc::ServerContext *context,
                                  const ::Fam_Region_Request *request,
                                  ::Fam_Region_Response *response) override;
@@ -154,6 +161,7 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
     ::grpc::Status release_CAS_lock(::grpc::ServerContext *context,
                                     const ::Fam_Dataitem_Request *request,
                                     ::Fam_Dataitem_Response *response) override;
+    void dump_profile();
 
   protected:
     uint64_t port;
@@ -175,7 +183,7 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
 
     int deregister_memory(uint64_t regionId, uint64_t offset);
 
-    int register_memory(Fam_DataItem_Metadata dataitem, void *localPointer,
+    int register_memory(Fam_DataItem_Metadata dataitem, void *&localPointer,
                         uint32_t uid, uint32_t gid, uint64_t &key);
 
     int register_fence_memory();

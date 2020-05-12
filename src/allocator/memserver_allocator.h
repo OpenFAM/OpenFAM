@@ -34,6 +34,7 @@
 #include <pthread.h>
 #include <sys/types.h> // needed for mode_t
 
+#include <boost/atomic.hpp>
 #include <nvmm/error_code.h>
 #include <nvmm/global_ptr.h>
 #include <nvmm/heap.h>
@@ -63,6 +64,8 @@ class Memserver_Allocator {
     Memserver_Allocator();
     ~Memserver_Allocator();
     void memserver_allocator_finalize();
+    void reset_profile();
+    void dump_profile();
     int create_region(string name, uint64_t &regionId, size_t nbytes,
                       mode_t permission, uint32_t uid, uint32_t gid);
     int destroy_region(uint64_t regionId, uint32_t uid, uint32_t gid);

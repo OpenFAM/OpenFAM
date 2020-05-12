@@ -60,6 +60,8 @@ service Fam_Rpc {
     rpc release_CAS_lock(Fam_Dataitem_Request)
         returns (Fam_Dataitem_Response) {}
 
+    rpc reset_profile(Fam_Request) returns (Fam_Response) {}
+    rpc generate_profile(Fam_Request) returns (Fam_Response) {}
     rpc signal_start(Fam_Request) returns (Fam_Start_Response) {}
 
     rpc signal_termination(Fam_Request) returns (Fam_Response) {}
@@ -128,7 +130,8 @@ message Fam_Dataitem_Request {
     string regionname = 7;
     uint64 size = 8;
     uint64 key = 9;
-    bool dup = 10;
+    uint64 base = 10;
+    bool dup = 11;
 }
 
 /*
@@ -141,8 +144,9 @@ message Fam_Dataitem_Response {
     uint64 offset = 2;
     uint64 size = 3;
     uint64 key = 4;
-    int32 errorcode = 5;
-    string errormsg = 6;
+    uint64 base = 5;
+    int32 errorcode = 6;
+    string errormsg = 7;
 }
 
 message Fam_Copy_Request {

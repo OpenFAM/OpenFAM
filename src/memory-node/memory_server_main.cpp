@@ -46,6 +46,15 @@ void signal_handler(int signum) {
 }
 #endif
 
+Fam_Rpc_Server *rpcService;
+
+#ifdef MEMSERVER_PROFILE
+void profile_dump_handler(int signum) {
+    cout << "Dumping memory server profile data....!! #" << signum << endl;
+    rpcService->dump_profile();
+}
+#endif
+
 int main(int argc, char *argv[]) {
     // Example for commandline argument: ./memoryserver 127.0.0.1 8787 7500
     // sockets
@@ -96,7 +105,10 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, signal_handler);
 #endif
 
-    Fam_Rpc_Server *rpcService = NULL;
+#ifdef MEMSERVER_PROFILE
+    signal(SIGINT, profile_dump_handler);
+#endif
+    rpcService = NULL;
     try {
         rpcService = new Fam_Rpc_Server(rpcPort, name, libfabricPort, provider);
         rpcService->run();
