@@ -58,6 +58,13 @@ using MemServerMap = std::map<uint64_t, std::string>;
 
 namespace openfam {
 
+typedef struct {
+    uint64_t regionId;
+    std::map<uint64_t, fid_mr *> *fiRegionMrs;
+    pthread_rwlock_t fiRegionLock;
+} Fam_Region_Map_t;
+
+
 class Fam_Ops_Libfabric : public Fam_Ops {
   public:
     ~Fam_Ops_Libfabric();
@@ -317,7 +324,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     std::vector<fi_addr_t> *get_fiAddrs() {
         return fiAddrs;
     };
-    std::map<uint64_t, fid_mr *> *get_fiMrs() {
+    std::map<uint64_t, Fam_Region_Map_t *> *get_fiMrs() {
         return fiMrs;
     };
     Fam_Context *get_defaultCtx(uint64_t nodeId) {
@@ -341,7 +348,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         else
             return obj->second;
     };
-    pthread_mutex_t *get_mr_lock() {
+    pthread_rwlock_t *get_mr_lock() {
         return &fiMrLock;
     };
 
@@ -379,11 +386,11 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     size_t serverAddrNameLen;
     void *serverAddrName;
 
-    pthread_mutex_t fiMrLock;
+    pthread_rwlock_t fiMrLock;
     pthread_mutex_t ctxLock;
 
     std::vector<fi_addr_t> *fiAddrs;
-    std::map<uint64_t, fid_mr *> *fiMrs;
+    std::map<uint64_t, Fam_Region_Map_t *> *fiMrs;
 
     std::map<uint64_t, Fam_Context *> *contexts;
     std::map<uint64_t, Fam_Context *> *defContexts;
