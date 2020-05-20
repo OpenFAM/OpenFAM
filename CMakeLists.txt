@@ -110,7 +110,7 @@ include_directories(${PROJECT_SOURCE_DIR}/third-party/googletest/include)
 # include directories
 #
 include_directories(${PROJECT_SOURCE_DIR}/include) # public headers (include)
-include_directories(${PROJECT_SOURCE_DIR}/third-party/build/include) # third-party headers (include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/build/include) # third-party headers (include)
 include_directories(${PROJECT_SOURCE_DIR}/test/util) # utility functions
 include_directories(${PROJECT_SOURCE_DIR}/src) # private headers (src)
 include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
