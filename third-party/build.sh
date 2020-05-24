@@ -72,13 +72,65 @@ function get_ubuntu_release(){
 }
 
 #Install dependency packages
-sudo apt-get install --assume-yes build-essential autoconf libtool pkg-config
-if [[ $? > 0 ]]
-then
-        echo "apt-get install failed, exiting..."
-        exit 1
-fi
+OS=`grep -m1 "ID=" /etc/os-release | sed 's/"//g' | sed 's/ID=//g' `
 
+case $OS in
+        "ubuntu")
+
+		sudo apt-get install --assume-yes build-essential autoconf libtool pkg-config
+		if [[ $? > 0 ]]
+		then
+			echo "apt-get install failed, exiting..."
+			exit 1
+		fi
+		case $(get_ubuntu_release) in
+		    *16.04*)
+			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-dev flex hwloc libhwloc-dev libhwloc-plugins
+		        wget https://github.com/libevent/libevent/archive/release-2.1.6-beta.tar.gz
+			tar zxvf release-2.1.6-beta.tar.gz
+		        cd libevent-release-2.1.6-beta/
+		        ./autogen.sh; ./configure; make; sudo make install
+		        cd $CURRENT_DIR
+			;;
+		    *)
+			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins
+		esac
+		if [[ $? > 0 ]]
+		then
+			echo "apt-get install failed, exiting..."
+			exit 1
+		fi
+
+		;;
+	"rhel" | "centos")
+		sudo yum install --assumeyes gcc gcc-c++ kernel-devel make cmake autoconf-archive glibc python python-devel automake libtool doxygen
+		sudo yum install --assumeyes libevent cmake xmlto libevent-devel
+		if [[ $? > 0 ]]
+		then
+			exit 1
+		fi
+		
+
+	echo "Installing boost-1.63.0"
+	if [[ ! -e boost_1_63_0 ]]; then
+		wget https://sourceforge.net/projects/boost/files/boost/1.63.0/boost_1_63_0.tar.gz
+		tar -zxvf boost_1_63_0.tar.gz
+	fi
+
+	cd boost_1_63_0/
+	./bootstrap.sh
+	sudo ./b2 install --prefix=$ABS_BUILD_DIR
+	if [[ $? > 0 ]]
+	then
+		exit 1
+	fi
+
+	export BOOST_ROOT=$ABS_BUILD_DIR
+
+esac		
+echo "Finished installing required RPMS"
+cd $CURRENT_DIR
+pwd
 #Install grpc
 cd grpc
 
@@ -86,7 +138,7 @@ cd grpc
 git submodule update --init
 
 #For parallel compilation, make -j is selected. For systems with limited DRAM, avoid using -j option for all make commands
-make  -j
+make  
 if [[ $? > 0 ]]
 then
         echo "Make of grpc failed.. exit..."
@@ -113,26 +165,16 @@ if [ -e Makefile ]; then
         fi
 fi
 
-cd $CURRENT_DIR
-#PMIX and PRRTE Build
-case $(get_ubuntu_release) in
-    *16.04*)
-        sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-dev flex hwloc libhwloc-dev libhwloc-plugins
-        wget https://github.com/libevent/libevent/archive/release-2.1.6-beta.tar.gz
-        tar zxvf release-2.1.6-beta.tar.gz
-        cd libevent-release-2.1.6-beta/
-        ./autogen.sh; ./configure; make; sudo make install
-        cd $CURRENT_DIR
-        ;;
-    *)
-        sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins
-esac
+#Creating soft links for gRPC libraries
+cd ../../../$LIB_DIR
 
-if [[ $? > 0 ]]
-then
-        echo "apt-get install failed, exiting..."
-        exit 1
-fi
+ln -s libgrpc++.so.1.17.0-dev libgrpc++.so.1
+
+ln -s libgrpc++_reflection.so.1.17.0-dev libgrpc++_reflection.so.1
+
+cd $CURRENT_DIR
+
+#PMIX and PRRTE Build
 
 cd pmix-3.0.2
 ./autogen.pl --force
@@ -144,8 +186,17 @@ cd $CURRENT_DIR
 
 cd openmpi-4.0.1
 OPENMPI_OBJ_DIR="$CURRENT_DIR/$BUILD_DIR"
-./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR"
-make -j
+case $OS in
+        "ubuntu")
+
+            ./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR"
+            ;;
+        "rhel" | "centos")
+            ./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR" --with-libevent=/usr           
+	    ;;
+esac
+
+make 
 make install
 if [[ $? > 0 ]]
 then
@@ -175,7 +226,7 @@ INSTALLDIR="$CURRENT_DIR/build"
 cd libfabric/
 
 ./autogen.sh ;
-./configure; make -j
+./configure; make 
 if [[ $? > 0 ]]
 then
         echo "Make of libfabric failed.. exit..."
@@ -189,9 +240,6 @@ cd $CURRENT_DIR
 #build and install radixtree in third-party/build
 #radixtree is required to build fammetadata library.
 tar -zxvf radixtree.tar.gz
-# Currently radixtree build doesn't provide compiler option -  "-std=c++11" by default.But without this radixtree build fails.
-# Following line can be omitted if that option is added in the radixtree github.
-sed -i '22i\set(CMAKE_CXX_FLAGS "-std=c++11")\' radixtree/CMakeLists.txt 
 
 cd radixtree; mkdir build; cd build
 cmake ..; make
