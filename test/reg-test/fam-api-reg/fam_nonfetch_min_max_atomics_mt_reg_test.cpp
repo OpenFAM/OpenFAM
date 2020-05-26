@@ -53,7 +53,7 @@ Fam_Options fam_opts;
 Fam_Region_Descriptor *testRegionDesc;
 int rc;
 #define NUM_THREADS 10
-#define REGION_SIZE (1024 * 1024 * NUM_THREADS)
+#define REGION_SIZE (1024 * NUM_THREADS * 1024 * NUM_THREADS * NUM_THREADS)
 typedef struct {
     Fam_Descriptor *item;
     uint64_t offset;
@@ -100,9 +100,9 @@ TEST(FamNonfetchMinMaxAtomicInt32, NonfetchMinMaxAtomicInt32Success) {
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item =
-                        my_fam->fam_allocate(firstItem, 1024 * sizeof(int32_t),
-                                             0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(int32_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
         info[i] = {item, 0, i, 0};
@@ -167,9 +167,9 @@ TEST(FamNonfetchMinMaxAtomicInt64, NonfetchMinMaxAtomicInt64Success) {
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item =
-                        my_fam->fam_allocate(firstItem, 1024 * sizeof(int64_t),
-                                             0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(int64_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
     for (i = 0; i < NUM_THREADS; ++i) {
         info[i] = {item, 0, i, 0};
@@ -234,9 +234,9 @@ TEST(FamNonfetchMinMaxAtomicUint32, NonfetchMinMaxAtomicUint32Success) {
                         testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, testRegionDesc);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item =
-                        my_fam->fam_allocate(firstItem, 1024 * sizeof(uint32_t),
-                                             0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(uint32_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
@@ -302,9 +302,9 @@ TEST(FamNonfetchMinMaxAtomicUint64, NonfetchMinMaxAtomicUint64Success) {
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item =
-                        my_fam->fam_allocate(firstItem, 1024 * sizeof(uint64_t),
-                                             0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(uint64_t), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
@@ -370,8 +370,9 @@ TEST(FamNonfetchMinMaxAtomicFloat, NonfetchMinMaxAtomicFloatSuccess) {
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024 * sizeof(float),
-                                                0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(float), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
@@ -437,9 +438,9 @@ TEST(FamNonfetchMinMaxAtomicDouble, NonfetchMinMaxAtomicDoubleSuccess) {
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item =
-                        my_fam->fam_allocate(firstItem, 1024 * sizeof(double),
-                                             0777, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                        firstItem, 1024 * NUM_THREADS * sizeof(double), 0777,
+                        testRegionDesc));
     EXPECT_NE((void *)NULL, item);
 
     for (i = 0; i < NUM_THREADS; ++i) {
