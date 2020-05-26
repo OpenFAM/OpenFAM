@@ -33,8 +33,8 @@
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 
-#include "common/fam_options.h"
 #include "common/fam_internal.h"
+#include "common/fam_options.h"
 
 #include <iostream>
 #include <sstream>
@@ -307,7 +307,7 @@ class Fam_Ops {
      * @param nbytes - number of bytes to be copied
      */
     virtual void *copy(Fam_Descriptor *src, uint64_t srcOffset,
-                       Fam_Descriptor **dest, uint64_t destOffset,
+                       Fam_Descriptor *dest, uint64_t destOffset,
                        uint64_t nbytes) = 0;
 
     virtual void wait_for_copy(void *waitObj) = 0;

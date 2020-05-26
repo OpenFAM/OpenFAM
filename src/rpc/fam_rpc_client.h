@@ -71,6 +71,9 @@ typedef struct {
 
     uint64_t memServerId;
 
+    // flag to indicate copy across memoryserver
+    bool isAcrossServer;
+
     std::unique_ptr<::grpc::ClientAsyncResponseReader<Fam_Copy_Response>>
         responseReader;
 } Fam_Copy_Tag;
@@ -543,59 +546,34 @@ class Fam_Rpc_Client {
         }
     }
 
-    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor **dest,
+    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
                uint64_t destOffset, uint64_t nbytes) {
-        Fam_Dataitem_Request req;
-        Fam_Dataitem_Response res;
         Fam_Copy_Request copyReq;
         Fam_Copy_Response copyRes;
         ::grpc::ClientContext ctx;
 
         Fam_Global_Descriptor srcGlobalDescriptor =
             src->get_global_descriptor();
-        req.set_regionid(srcGlobalDescriptor.regionId & REGIONID_MASK);
-        req.set_offset(srcGlobalDescriptor.offset);
-        req.set_gid(gid);
-        req.set_uid(uid);
-        req.set_dup(true);
+        Fam_Global_Descriptor destGlobalDescriptor =
+            dest->get_global_descriptor();
+        uint64_t srcItemSize = src->get_size();
+        uint64_t destItemSize = dest->get_size();
 
-        uint64_t itemSize = src->get_size();
-
-        if ((srcOffset + nbytes) > itemSize) {
+        if ((srcOffset + nbytes) > srcItemSize) {
             throw Fam_Allocator_Exception(
                 FAM_ERR_OUTOFRANGE,
                 "Source offset or size is beyond dataitem boundary");
         }
 
-        if ((destOffset + nbytes) > itemSize) {
+        if ((destOffset + nbytes) > destItemSize) {
             throw Fam_Allocator_Exception(
                 FAM_ERR_OUTOFRANGE,
                 "Destination offset or size is beyond dataitem boundary");
         }
+        uint64_t srcNodeId = src->get_memserver_id();
 
-        ::grpc::Status status = stub->allocate(&ctx, req, &res);
-
-        Fam_Global_Descriptor destGlobalDescriptor;
-        uint64_t nodeId = src->get_memserver_id();
-
-        if (status.ok()) {
-            if (res.errorcode()) {
-                throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                              (res.errormsg()).c_str());
-            } else {
-                destGlobalDescriptor.regionId =
-                    res.regionid() | (nodeId << MEMSERVERID_SHIFT);
-                destGlobalDescriptor.offset = res.offset();
-                *dest = new Fam_Descriptor(destGlobalDescriptor, res.size());
-                (*dest)->bind_key(res.key());
-                (*dest)->set_base_address((void *)res.base());
-            }
-        } else {
-            throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                          (status.error_message()).c_str());
-        }
-
-        copyReq.set_regionid(srcGlobalDescriptor.regionId & REGIONID_MASK);
+        copyReq.set_srcregionid(srcGlobalDescriptor.regionId & REGIONID_MASK);
+        copyReq.set_destregionid(destGlobalDescriptor.regionId & REGIONID_MASK);
         copyReq.set_srcoffset(srcGlobalDescriptor.offset);
         copyReq.set_destoffset(destGlobalDescriptor.offset);
         copyReq.set_srccopystart(srcOffset);
@@ -607,7 +585,7 @@ class Fam_Rpc_Client {
         Fam_Copy_Tag *tag = new Fam_Copy_Tag();
 
         tag->isCompleted = false;
-        tag->memServerId = nodeId;
+        tag->memServerId = srcNodeId;
 
         tag->responseReader = stub->PrepareAsynccopy(&tag->ctx, copyReq, &cq);
 

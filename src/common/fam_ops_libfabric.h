@@ -64,7 +64,6 @@ typedef struct {
     pthread_rwlock_t fiRegionLock;
 } Fam_Region_Map_t;
 
-
 class Fam_Ops_Libfabric : public Fam_Ops {
   public:
     ~Fam_Ops_Libfabric();
@@ -144,7 +143,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                              uint64_t nElements, uint64_t *elementIndex,
                              uint64_t elementSize);
 
-    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor **dest,
+    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
                uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
@@ -321,12 +320,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     struct fid_domain *get_domain() {
         return domain;
     };
-    std::vector<fi_addr_t> *get_fiAddrs() {
-        return fiAddrs;
-    };
-    std::map<uint64_t, Fam_Region_Map_t *> *get_fiMrs() {
-        return fiMrs;
-    };
+    std::vector<fi_addr_t> *get_fiAddrs() { return fiAddrs; };
+    std::map<uint64_t, Fam_Region_Map_t *> *get_fiMrs() { return fiMrs; };
     Fam_Context *get_defaultCtx(uint64_t nodeId) {
         auto obj = defContexts->find(nodeId);
         if (obj == defContexts->end())
@@ -348,29 +343,19 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         else
             return obj->second;
     };
-    pthread_rwlock_t *get_mr_lock() {
-        return &fiMrLock;
-    };
+    pthread_rwlock_t *get_mr_lock() { return &fiMrLock; };
 
-    pthread_mutex_t *get_ctx_lock() {
-        return &ctxLock;
-    };
+    pthread_mutex_t *get_ctx_lock() { return &ctxLock; };
 
     Fam_Context *get_context(Fam_Descriptor *descriptor);
 
     void quiet_context(Fam_Context *context);
 
-    size_t get_addr_size() {
-        return serverAddrNameLen;
-    };
+    size_t get_addr_size() { return serverAddrNameLen; };
 
-    void *get_addr() {
-        return serverAddrName;
-    };
+    void *get_addr() { return serverAddrName; };
 
-    char *get_provider() {
-        return provider;
-    };
+    char *get_provider() { return provider; };
 
   protected:
     MemServerMap name;

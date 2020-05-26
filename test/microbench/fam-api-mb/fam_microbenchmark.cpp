@@ -628,35 +628,52 @@ TEST(FamAllocator, FamResizeRegion) {
 
 // Test case -  copy and wait test
 TEST(FamCopy, FamCopyAndWait) {
-    Fam_Region_Descriptor *descLocal;
+    Fam_Region_Descriptor *srcRegion, *destRegion;
     Fam_Descriptor **src = new Fam_Descriptor *[NUM_MM_ITERATIONS];
     Fam_Descriptor **dest = new Fam_Descriptor *[NUM_MM_ITERATIONS];
     void **waitObj = new void *[NUM_MM_ITERATIONS];
 
     const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
-    const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
+    const char *firstRegionLocal = get_uniq_str("firstRegionLocal", my_fam);
     char *local = strdup("Test message");
 
-    EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
-    EXPECT_NE((void *)NULL, descLocal);
+    EXPECT_NO_THROW(srcRegion = my_fam->fam_create_region(
+                        firstRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+    EXPECT_NE((void *)NULL, srcRegion);
 
     for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
         char itemInfo[NAME_BUFF_SIZE];
         sprintf(itemInfo, "%s_%d", firstItemLocal, i);
         // Allocating data items
         EXPECT_NO_THROW(src[i] = my_fam->fam_allocate(itemInfo, DATA_ITEM_SIZE,
-                                                      0777, descLocal));
+                                                      0777, srcRegion));
         EXPECT_NE((void *)NULL, src[i]);
         EXPECT_NO_THROW(my_fam->fam_put_blocking(
             local, src[i], (i * 20) % (DATA_ITEM_SIZE - 20), 20));
     }
+
+    const char *secondItemLocal = get_uniq_str("firstLocal", my_fam);
+    const char *secondRegionLocal = get_uniq_str("secondRegionLocal", my_fam);
+
+    EXPECT_NO_THROW(destRegion = my_fam->fam_create_region(
+                        secondRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+    EXPECT_NE((void *)NULL, destRegion);
+
+    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
+        char itemInfo[NAME_BUFF_SIZE];
+        sprintf(itemInfo, "%s_%d", secondItemLocal, i);
+        // Allocating data items
+        EXPECT_NO_THROW(dest[i] = my_fam->fam_allocate(itemInfo, DATA_ITEM_SIZE,
+                                                       0777, destRegion));
+        EXPECT_NE((void *)NULL, dest[i]);
+    }
+
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     RESET_PROFILE();
     for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
         // dest[i] = new Fam_Descriptor();
         EXPECT_NO_THROW(waitObj[i] =
-                            my_fam->fam_copy(src[i], 0, &dest[i], 0, 13));
+                            my_fam->fam_copy(src[i], 0, dest[i], 0, 13));
         EXPECT_NE((void *)NULL, waitObj[i]);
     }
 
@@ -670,9 +687,12 @@ TEST(FamCopy, FamCopyAndWait) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(src[i]));
         EXPECT_NO_THROW(my_fam->fam_deallocate(dest[i]));
     }
-    EXPECT_NO_THROW(my_fam->fam_destroy_region(descLocal));
-    free((void *)testRegionLocal);
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(srcRegion));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(destRegion));
+    free((void *)firstRegionLocal);
     free((void *)firstItemLocal);
+    free((void *)secondRegionLocal);
+    free((void *)secondItemLocal);
 }
 
 // Test case -  Fetch add for Int32
@@ -2471,7 +2491,7 @@ int main(int argc, char **argv) {
 // Note:this test can not be run with multiple memory server model, when memory
 // server profiling is enabled.
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-	const char *ip = strdup(TEST_MEMSERVER_IP);
+    const char *ip = strdup(TEST_MEMSERVER_IP);
     EXPECT_NO_THROW(rpc = new Fam_Rpc_Client(ip, atoi(TEST_GRPC_PORT)));
 #endif
 

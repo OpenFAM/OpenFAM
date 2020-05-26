@@ -39,12 +39,10 @@ using namespace std;
 #define FAM_UNIMPLEMENTED_GRPC()                                               \
     {                                                                          \
         std::ostringstream message;                                            \
-        message                                                                \
-            << __func__                                                        \
-            << " is Not Yet Implemented for libfabric interface !!!";          \
+        message << __func__                                                    \
+                << " is Not Yet Implemented for libfabric interface !!!";      \
         throw Fam_Unimplemented_Exception(message.str().c_str());              \
     }
-
 
 namespace openfam {
 Fam_Allocator_Grpc::Fam_Allocator_Grpc(MemServerMap name, uint64_t port) {
@@ -55,8 +53,9 @@ Fam_Allocator_Grpc::Fam_Allocator_Grpc(MemServerMap name, uint64_t port) {
     rpcClients = new RpcClientMap();
 
     for (auto obj = name.begin(); obj != name.end(); ++obj) {
-        Fam_Rpc_Client *client = new Fam_Rpc_Client((obj->second).c_str(), port);
-        rpcClients->insert({ obj->first, client });
+        Fam_Rpc_Client *client =
+            new Fam_Rpc_Client((obj->second).c_str(), port);
+        rpcClients->insert({obj->first, client});
     }
 }
 
@@ -153,7 +152,7 @@ Fam_Allocator_Grpc::check_permission_get_info(Fam_Descriptor *descriptor) {
 }
 
 void *Fam_Allocator_Grpc::copy(Fam_Descriptor *src, uint64_t srcOffset,
-                               Fam_Descriptor **dest, uint64_t destOffset,
+                               Fam_Descriptor *dest, uint64_t destOffset,
                                uint64_t nbytes) {
     Fam_Rpc_Client *rpcClient = get_rpc_client(src->get_memserver_id());
     return rpcClient->copy(src, srcOffset, dest, destOffset, nbytes);

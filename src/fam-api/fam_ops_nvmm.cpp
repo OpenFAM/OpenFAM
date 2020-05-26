@@ -586,35 +586,33 @@ void Fam_Ops_NVMM::quiet(Fam_Region_Descriptor *descriptor) {
 void Fam_Ops_NVMM::abort(int status) FAM_OPS_UNIMPLEMENTED(void_);
 
 void *Fam_Ops_NVMM::copy(Fam_Descriptor *src, uint64_t srcOffset,
-                         Fam_Descriptor **dest, uint64_t destOffset,
+                         Fam_Descriptor *dest, uint64_t destOffset,
                          uint64_t nbytes) {
     void *baseSrc = src->get_base_address();
-    Fam_Region_Item_Info itemInfo =
+    void *baseDest = dest->get_base_address();
+    Fam_Region_Item_Info srcItemInfo =
         famAllocator->check_permission_get_info(src);
-    Fam_Global_Descriptor gDesc = src->get_global_descriptor();
-    Fam_Region_Descriptor *region = new Fam_Region_Descriptor(gDesc);
-
-    if ((srcOffset > itemInfo.size) || ((srcOffset + nbytes) > itemInfo.size)) {
+    Fam_Region_Item_Info destItemInfo =
+        famAllocator->check_permission_get_info(dest);
+    
+	if ((srcOffset > srcItemInfo.size) ||
+        ((srcOffset + nbytes) > srcItemInfo.size)) {
         throw Fam_Allocator_Exception(
             FAM_ERR_OUTOFRANGE,
             "Source offset or size is beyond dataitem boundary");
     }
 
-    if ((destOffset > itemInfo.size) ||
-        ((destOffset + nbytes) > itemInfo.size)) {
+    if ((destOffset > destItemInfo.size) ||
+        ((destOffset + nbytes) > destItemInfo.size)) {
         throw Fam_Allocator_Exception(
             FAM_ERR_OUTOFRANGE,
             "Destination offset or size is beyond dataitem boundary");
     }
-
-    *dest = famAllocator->allocate("", itemInfo.size, itemInfo.perm, region);
-
-    void *baseDest = (*dest)->get_base_address();
-    Copy_Tag *tag = new Copy_Tag();
+    
+	Copy_Tag *tag = new Copy_Tag();
     tag->copyDone.store(false, boost::memory_order_seq_cst);
 
-    Fam_Ops_Info opsInfo = {COPY, baseSrc, baseDest,      nbytes, 0,
-                            0,    0,       itemInfo.size, tag};
+    Fam_Ops_Info opsInfo = {COPY, baseSrc, baseDest, nbytes, 0, 0, 0, 0, tag};
     asyncQHandler->initiate_operation(opsInfo);
 
     return (void *)tag;

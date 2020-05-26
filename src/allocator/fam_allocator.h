@@ -32,14 +32,14 @@
 
 #include <sys/types.h>
 
-#include "fam/fam.h"
 #include "common/fam_internal.h"
+#include "fam/fam.h"
 
 namespace openfam {
 
 class Fam_Allocator {
   public:
-    virtual ~Fam_Allocator() {};
+    virtual ~Fam_Allocator(){};
 
     virtual void allocator_initialize() = 0;
 
@@ -72,7 +72,7 @@ class Fam_Allocator {
     check_permission_get_info(Fam_Descriptor *descriptor) = 0;
 
     virtual void *copy(Fam_Descriptor *src, uint64_t srcOffset,
-                       Fam_Descriptor **dest, uint64_t destOffset,
+                       Fam_Descriptor *dest, uint64_t destOffset,
                        uint64_t nbytes) = 0;
 
     virtual void wait_for_copy(void *waitObj) = 0;
