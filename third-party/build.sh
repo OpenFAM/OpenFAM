@@ -29,7 +29,7 @@
 #
 
 #
-#This script assumes you have NOPASSWD access to sudo command
+#This script assumes you have NOPASSWD access to pudo command
 #If it doesnt work, encourage you to copy paste the command and workaround,
 #Or you can edit sudoers file to give NOPASSWD access.
 #Note : This works only on ubuntu.
@@ -86,11 +86,6 @@ case $OS in
 		case $(get_ubuntu_release) in
 		    *16.04*)
 			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-dev flex hwloc libhwloc-dev libhwloc-plugins
-		        wget https://github.com/libevent/libevent/archive/release-2.1.6-beta.tar.gz
-			tar zxvf release-2.1.6-beta.tar.gz
-		        cd libevent-release-2.1.6-beta/
-		        ./autogen.sh; ./configure; make; sudo make install
-		        cd $CURRENT_DIR
 			;;
 		    *)
 			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins
@@ -119,7 +114,7 @@ case $OS in
 
 	cd boost_1_63_0/
 	./bootstrap.sh
-	sudo ./b2 install --prefix=$ABS_BUILD_DIR
+	./b2 install --prefix=$ABS_BUILD_DIR
 	if [[ $? > 0 ]]
 	then
 		exit 1
@@ -138,7 +133,7 @@ cd grpc
 git submodule update --init
 
 #For parallel compilation, make -j is selected. For systems with limited DRAM, avoid using -j option for all make commands
-make  
+make -j 
 if [[ $? > 0 ]]
 then
         echo "Make of grpc failed.. exit..."
@@ -155,22 +150,19 @@ fi
 
 #installing protocol buffer
 cd ./third_party/protobuf
-
-if [ -e Makefile ]; then
-        sudo make install prefix=$ABS_BUILD_DIR
+if [[ ! -f "$ABS_BUILD_DIR/bin/protoc" ]]; then
+	./autogen.sh
+	./configure --prefix=$ABS_BUILD_DIR --disable-shared
+	make -j
+        make install prefix=$ABS_BUILD_DIR
         if [[ $? > 0 ]]
         then
              echo "Make install of protobuf failed.. exit..."
              exit 1
         fi
+else
+	echo "$ABS_BUILD_DIR/bin/protoc is already present"	
 fi
-
-#Creating soft links for gRPC libraries
-cd ../../../$LIB_DIR
-
-ln -s libgrpc++.so.1.17.0-dev libgrpc++.so.1
-
-ln -s libgrpc++_reflection.so.1.17.0-dev libgrpc++_reflection.so.1
 
 cd $CURRENT_DIR
 
@@ -196,7 +188,7 @@ case $OS in
 	    ;;
 esac
 
-make 
+make -j
 make install
 if [[ $? > 0 ]]
 then
@@ -226,7 +218,7 @@ INSTALLDIR="$CURRENT_DIR/build"
 cd libfabric/
 
 ./autogen.sh ;
-./configure; make 
+./configure; make -j
 if [[ $? > 0 ]]
 then
         echo "Make of libfabric failed.. exit..."

@@ -36,7 +36,7 @@
 # The process is considered successful once we have make test passing
 # 
 OS=`grep -m1 "ID=" /etc/os-release | sed 's/"//g' | sed 's/ID=//g' `
-
+CWD=`pwd`
 case $OS in
         "ubuntu")
                 sudo apt-get install --assume-yes build-essential cmake libboost-all-dev
@@ -61,13 +61,13 @@ mkdir build
 cd third-party/
 git clone https://github.com/FabricAttachedMemory/nvml.git
 cd nvml
-make
+make -j
 if [[ $? > 0 ]]
 then
         echo "nvml make failed, exiting..."
         exit 1
 fi
-sudo make install
+make install prefix="$CWD/../build"
 if [[ $? > 0 ]]
 then
         echo "nvml make install failed, exiting..."
@@ -75,7 +75,7 @@ then
 fi
 cd ../../build
 cmake .. -DFAME=OFF
-make
+make -j
 if [[ $? > 0 ]]
 then
         echo "NVMM make failed, exiting..."
