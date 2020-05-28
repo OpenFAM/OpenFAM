@@ -38,11 +38,6 @@
 #include <rdma/fi_endpoint.h>
 
 #include "common/fam_options.h"
-enum Fam_Req_State {
-    FAM_REQ_INPROGRESS = 0,
-    FAM_REQ_COMPLETED = 1,
-    FAM_REQ_FAILED = 2,
-};
 
 class Fam_Context {
   public:

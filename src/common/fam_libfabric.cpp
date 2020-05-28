@@ -673,6 +673,7 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
     return 0;
 }
 
+/*
 int fabric_completion_wait_multictx(Fam_Context *famCtx, fi_context *ctx,
                                     int64_t count) {
     LIBFABRIC_PROFILE_START_OPS()
@@ -724,6 +725,7 @@ int fabric_completion_wait_multictx(Fam_Context *famCtx, fi_context *ctx,
     LIBFABRIC_PROFILE_END_OPS(fabric_completion_wait_multictx)
     return 0;
 }
+*/
 
 /*
  * fabric write message blocking
@@ -841,7 +843,6 @@ int fabric_read(uint64_t key, const void *local, size_t nbytes, uint64_t offset,
     // Release Fam_Context read lock
     famCtx->release_lock();
     delete ctx;
-    // cout << " Exiting fabric_read with return value ret " << ret << endl;
     return (int)ret;
 }
 
@@ -1477,9 +1478,6 @@ void fabric_get_quiet(Fam_Context *famCtx) {
     uint64_t rxLastFailCnt = famCtx->get_num_rx_fail_cnt();
     int timeout_wait_retry_cnt = 0;
     rxcnt = famCtx->get_num_rx_ops();
-    rxLastFailCnt = famCtx->get_num_rx_fail_cnt();
-    cout << "Entered fam_get_quiet: rxcnt " << rxcnt
-         << " , rxlastFailCnt: " << rxLastFailCnt << endl;
 
     do {
 
@@ -1706,7 +1704,7 @@ void fabric_reset_profile() {
 }
 
 int fabric_finalize(void) {
-    // fabric_dump_profile();
+    fabric_dump_profile();
     return 0;
 }
 
