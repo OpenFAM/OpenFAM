@@ -32,8 +32,6 @@
 # This script assumes you have NOPASSWD access to sudo command
 # If it doesnt work, encourage you to copy paste the command and workaround, 
 # Or you can edit sudoers file to give NOPASSWD access.
-# Works in ubuntu only now, Will add RHEL support "soon"
-# The process is considered successful once we have make test passing
 # 
 OS=`grep -m1 "ID=" /etc/os-release | sed 's/"//g' | sed 's/ID=//g' `
 CWD=`pwd`

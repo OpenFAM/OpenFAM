@@ -29,10 +29,9 @@
 #
 
 #
-#This script assumes you have NOPASSWD access to pudo command
+#This script assumes you have NOPASSWD access to sudo command
 #If it doesnt work, encourage you to copy paste the command and workaround,
 #Or you can edit sudoers file to give NOPASSWD access.
-#Note : This works only on ubuntu.
 #
 BUILD_DIR="build"
 LIB_DIR="$BUILD_DIR/lib"
@@ -104,23 +103,22 @@ case $OS in
 		then
 			exit 1
 		fi
-		
 
-	echo "Installing boost-1.63.0"
-	if [[ ! -e boost_1_63_0 ]]; then
-		wget https://sourceforge.net/projects/boost/files/boost/1.63.0/boost_1_63_0.tar.gz
-		tar -zxvf boost_1_63_0.tar.gz
-	fi
+		echo "Installing boost-1.63.0"
+		if [[ ! -e boost_1_63_0 ]]; then
+		    wget https://sourceforge.net/projects/boost/files/boost/1.63.0/boost_1_63_0.tar.gz
+		    tar -zxvf boost_1_63_0.tar.gz
+		fi
 
-	cd boost_1_63_0/
-	./bootstrap.sh
-	./b2 install --prefix=$ABS_BUILD_DIR
-	if [[ $? > 0 ]]
-	then
-		exit 1
-	fi
-
-	export BOOST_ROOT=$ABS_BUILD_DIR
+		cd boost_1_63_0/
+		./bootstrap.sh
+		./b2 install --prefix=$ABS_BUILD_DIR
+		if [[ $? > 0 ]]
+		then
+			exit 1
+		fi
+		export BOOST_ROOT=$ABS_BUILD_DIR
+		;;
 
 esac		
 echo "Finished installing required RPMS"
@@ -151,17 +149,17 @@ fi
 #installing protocol buffer
 cd ./third_party/protobuf
 if [[ ! -f "$ABS_BUILD_DIR/bin/protoc" ]]; then
-	./autogen.sh
-	./configure --prefix=$ABS_BUILD_DIR --disable-shared
-	make -j
-        make install prefix=$ABS_BUILD_DIR
-        if [[ $? > 0 ]]
-        then
-             echo "Make install of protobuf failed.. exit..."
-             exit 1
-        fi
+    ./autogen.sh
+    ./configure --prefix=$ABS_BUILD_DIR --disable-shared
+    make -j
+    make install prefix=$ABS_BUILD_DIR
+    if [[ $? > 0 ]]
+    then
+        echo "Make install of protobuf failed.. exit..."
+        exit 1
+    fi
 else
-	echo "$ABS_BUILD_DIR/bin/protoc is already present"	
+    echo "$ABS_BUILD_DIR/bin/protoc is already present"	
 fi
 
 cd $CURRENT_DIR
@@ -184,7 +182,7 @@ case $OS in
             ./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR"
             ;;
         "rhel" | "centos")
-            ./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR" --with-libevent=/usr           
+            ./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR" --with-libevent=external          
 	    ;;
 esac
 
