@@ -400,13 +400,14 @@ class fam::Impl_ {
 
         return memoryServerList;
     }
+
 #ifdef FAM_PROFILE
     Fam_Counter_St profileData[fam_counter_max][FAM_CNTR_TYPE_MAX];
     uint64_t profile_time;
     uint64_t profile_start;
 #define OUTPUT_WIDTH 120
 #define ITEM_WIDTH OUTPUT_WIDTH / 5
-    Fam_Time fam_get_time() {
+    uint64_t fam_get_time() {
 #if 1
         long int time = static_cast<long int>(
             duration_cast<nanoseconds>(
@@ -420,7 +421,8 @@ class fam::Impl_ {
 #endif
     }
 
-    uint64_t fam_time_diff_nanoseconds(Fam_Time start, Fam_Time end) {
+    uint64_t fam_time_diff_nanoseconds(Fam_Profile_Time start,
+                                       Fam_Profile_Time end) {
         return (end - start);
     }
 #define FAM_PROFILE_START_TIME() profile_start = fam_get_time();
@@ -432,37 +434,50 @@ class fam::Impl_ {
         fam_dump_profile_data();                                               \
         fam_dump_profile_summary();                                            \
     }
+
 #define FAM_CNTR_INC_API(apiIdx) __FAM_CNTR_INC_API(prof_##apiIdx)
-#define FAM_PROFILE_START_ALLOCATOR(apiIdx)                                    \
-    __FAM_PROFILE_START_ALLOCATOR(prof_##apiIdx)
+#define FAM_PROFILE_START_ALLOCATOR(apiIdx) __FAM_PROFILE_START_ALLOCATOR()
 #define FAM_PROFILE_END_ALLOCATOR(apiIdx)                                      \
     __FAM_PROFILE_END_ALLOCATOR(prof_##apiIdx)
-#define FAM_PROFILE_START_OPS(apiIdx) __FAM_PROFILE_START_OPS(prof_##apiIdx)
+#define FAM_PROFILE_START_OPS(apiIdx) __FAM_PROFILE_START_OPS()
 #define FAM_PROFILE_END_OPS(apiIdx) __FAM_PROFILE_END_OPS(prof_##apiIdx)
 
-#define __FAM_CNTR_INC_API(apiIdx) profileData[apiIdx][FAM_CNTR_API].count++;
+#define __FAM_CNTR_INC_API(apiIdx)                                             \
+    uint64_t one = 1;                                                          \
+    profileData[apiIdx][FAM_CNTR_API].count.fetch_add(                         \
+        one, boost::memory_order_seq_cst);
 #define __FAM_PROFILE_START_ALLOCATOR(apiIdx)                                  \
-    fam_start_profile(FAM_CNTR_ALLOCATOR, apiIdx);
-#define __FAM_PROFILE_END_ALLOCATOR(apiIdx)                                    \
-    fam_end_profile(FAM_CNTR_ALLOCATOR, apiIdx);
-#define __FAM_PROFILE_START_OPS(apiIdx) fam_start_profile(FAM_CNTR_OPS, apiIdx);
-#define __FAM_PROFILE_END_OPS(apiIdx) fam_end_profile(FAM_CNTR_OPS, apiIdx);
-    void fam_profile_init() { memset(profileData, 0, sizeof(profileData)); }
-    void fam_start_profile(Fam_Counter_Type_T type, int apiIdx) {
-        profileData[apiIdx][type].start = fam_get_time();
-    }
+    Fam_Profile_Time startAlloc = fam_get_time();
 
-    void fam_end_profile(Fam_Counter_Type_T type, int apiIdx) {
-        profileData[apiIdx][type].end = fam_get_time();
-        profileData[apiIdx][type].total += fam_time_diff_nanoseconds(
-            profileData[apiIdx][type].start, profileData[apiIdx][type].end);
-        profileData[apiIdx][type].count += 1;
+#define __FAM_PROFILE_START_OPS(apiIdx)                                        \
+    Fam_Profile_Time startOps = fam_get_time();
+
+#define __FAM_PROFILE_END_ALLOCATOR(apiIdx)                                    \
+    Fam_Profile_Time endAlloc = fam_get_time();                                \
+    Fam_Profile_Time totalAlloc =                                              \
+        fam_time_diff_nanoseconds(startAlloc, endAlloc);                       \
+    fam_add_to_total_profile(FAM_CNTR_ALLOCATOR, apiIdx, totalAlloc);
+
+#define __FAM_PROFILE_END_OPS(apiIdx)                                          \
+    Fam_Profile_Time endOps = fam_get_time();                                  \
+    Fam_Profile_Time totalOps = fam_time_diff_nanoseconds(startOps, endOps);   \
+    fam_add_to_total_profile(FAM_CNTR_OPS, apiIdx, totalOps);
+
+    void fam_profile_init() { memset(profileData, 0, sizeof(profileData)); }
+
+    void fam_add_to_total_profile(Fam_Counter_Type_T type, int apiIdx,
+                                  Fam_Profile_Time total) {
+        profileData[apiIdx][type].total.fetch_add(total,
+                                                  boost::memory_order_seq_cst);
     }
 
     void fam_total_api_time(int apiIdx) {
-        profileData[apiIdx][FAM_CNTR_API].total +=
-            profileData[apiIdx][FAM_CNTR_ALLOCATOR].total +
-            profileData[apiIdx][FAM_CNTR_OPS].total;
+        uint64_t total = profileData[apiIdx][FAM_CNTR_ALLOCATOR].total.load(
+                             boost::memory_order_seq_cst) +
+                         profileData[apiIdx][FAM_CNTR_OPS].total.load(
+                             boost::memory_order_seq_cst);
+        profileData[apiIdx][FAM_CNTR_API].total.fetch_add(
+            total, boost::memory_order_seq_cst);
     }
 
     void fam_dump_profile_banner(void) {
