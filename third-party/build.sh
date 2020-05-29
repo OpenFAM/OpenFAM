@@ -32,6 +32,7 @@
 #This script assumes you have NOPASSWD access to sudo command
 #If it doesnt work, encourage you to copy paste the command and workaround,
 #Or you can edit sudoers file to give NOPASSWD access.
+#This script should work on ubunutu 18.04 and centos 7.x. (We have tested on centos 7.8). 
 #
 BUILD_DIR="build"
 LIB_DIR="$BUILD_DIR/lib"
