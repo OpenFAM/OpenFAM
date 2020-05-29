@@ -32,32 +32,40 @@
 # This script assumes you have NOPASSWD access to sudo command
 # If it doesnt work, encourage you to copy paste the command and workaround, 
 # Or you can edit sudoers file to give NOPASSWD access.
-# Works in ubuntu only now, Will add RHEL support "soon"
-# The process is considered successful once we have make test passing
 # 
-sudo apt-get install --assume-yes build-essential cmake libboost-all-dev 
-if [[ $? > 0 ]]
-then
-        echo "apt-get install failed, exiting..."
-	exit 1
-fi
-sudo apt-get install --assume-yes autoconf pkg-config doxygen graphviz
-if [[ $? > 0 ]]
-then
-        echo "apt-get install failed, exiting..."
-        exit 1
-fi
+OS=`grep -m1 "ID=" /etc/os-release | sed 's/"//g' | sed 's/ID=//g' `
+CWD=`pwd`
+case $OS in
+        "ubuntu")
+                sudo apt-get install --assume-yes build-essential cmake libboost-all-dev
+                if [[ $? > 0 ]]
+                then
+                        echo "apt-get install failed, exiting..."
+                        exit 1
+                fi
+                sudo apt-get install --assume-yes autoconf pkg-config doxygen graphviz
+                if [[ $? > 0 ]]
+                then
+                        echo "apt-get install failed, exiting..."
+                        exit 1
+                fi
+                ;;
+        "rhel" | "centos")
+                sudo yum install --assumeyes gcc gcc-c++ kernel-devel make cmake autoconf glibc python python-devel automake libtool doxygen
+                ;;
+esac
+
 mkdir build
 cd third-party/
 git clone https://github.com/FabricAttachedMemory/nvml.git
 cd nvml
-make
+make -j
 if [[ $? > 0 ]]
 then
         echo "nvml make failed, exiting..."
         exit 1
 fi
-sudo make install
+make install prefix="$CWD/../build"
 if [[ $? > 0 ]]
 then
         echo "nvml make install failed, exiting..."
@@ -65,7 +73,7 @@ then
 fi
 cd ../../build
 cmake .. -DFAME=OFF
-make
+make -j
 if [[ $? > 0 ]]
 then
         echo "NVMM make failed, exiting..."
