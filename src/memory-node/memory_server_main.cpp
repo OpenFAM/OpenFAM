@@ -37,6 +37,10 @@
 using namespace std;
 using namespace openfam;
 
+#ifndef OPENFAM_VERSION 
+#define OPENFAM_VERSION "0.0.0"
+#endif
+
 #ifdef COVERAGE
 extern "C" void __gcov_flush();
 void signal_handler(int signum) {
@@ -65,7 +69,13 @@ int main(int argc, char *argv[]) {
     char *provider = strdup("sockets");
 
     for (int i = 1; i < argc; i++) {
-        if ((std::string(argv[i]) == "-h") ||
+        if ((std::string(argv[i]) == "-v") ||
+            (std::string(argv[i]) == "--version")) {
+            cout << "OpenFAM version : "
+                 << OPENFAM_VERSION
+                 << "\n";
+            exit(0);
+        } else if ((std::string(argv[i]) == "-h") ||
             (std::string(argv[i]) == "--help")) {
             cout << "Usage : \n"
                  << "\t./memoryserver <options> \n"
@@ -81,6 +91,7 @@ int main(int argc, char *argv[]) {
                  << "\n"
                  << "\t-p/--provider       : Libfabric provider (default value "
                     "is \"sockets\") \n"
+                 << "\t-v/--version        : Display memory server version  \n"
                  << "\n"
                  << endl;
             exit(0);
