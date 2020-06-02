@@ -37,8 +37,10 @@
 using namespace std;
 using namespace openfam;
 
-#ifndef OPENFAM_VERSION 
-#define OPENFAM_VERSION "0.0.0"
+#ifdef OPENFAM_VERSION 
+#define MEMORYSERVER_VERSION OPENFAM_VERSION
+#else
+#define MEMORYSERVER_VERSION "0.0.0"
 #endif
 
 #ifdef COVERAGE
@@ -72,7 +74,7 @@ int main(int argc, char *argv[]) {
         if ((std::string(argv[i]) == "-v") ||
             (std::string(argv[i]) == "--version")) {
             cout << "Memory Server version : "
-                 << OPENFAM_VERSION
+                 << MEMORYSERVER_VERSION
                  << "\n";
             exit(0);
         } else if ((std::string(argv[i]) == "-h") ||
