@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
                  << "\n"
                  << "\t-p/--provider       : Libfabric provider (default value "
                     "is \"sockets\") \n"
+                 << "\n"
                  << "\t-v/--version        : Display memory server version  \n"
                  << "\n"
                  << endl;
