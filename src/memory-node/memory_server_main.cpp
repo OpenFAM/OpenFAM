@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
             (std::string(argv[i]) == "--version")) {
-            cout << "OpenFAM version : "
+            cout << "Memory Server version : "
                  << OPENFAM_VERSION
                  << "\n";
             exit(0);
