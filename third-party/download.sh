@@ -62,9 +62,9 @@ tar -zxvf openmpi-4.0.1.tar.gz >/dev/null
 #GOOGLETEST 
 cd $CURRENT_DIR
 echo "Downloading GOOGLETEST source"
-git clone https://github.com/google/googletest.git googletest_master
-cp -fr googletest_master/googletest .
-rm -fr googletest_master
+git clone --branch v1.10.x https://github.com/google/googletest.git googletest_v1_10_x
+cp -fr googletest_v1_10_x/googletest .
+rm -fr googletest_v1_10_x
 
 #NVMM
 cd $CURRENT_DIR

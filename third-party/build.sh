@@ -195,7 +195,7 @@ then
         exit 1
 fi
 cd $CURRENT_DIR
-
+export CMAKE_PREFIX_PATH=$ABS_BUILD_DIR/include:$ABS_BUILD_DIR/lib
 #Install nvmm
 cd ./nvmm
 ../nvmm_build.sh
