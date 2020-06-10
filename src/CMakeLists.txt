@@ -28,7 +28,6 @@ add_subdirectory(metadata)
 add_subdirectory(bitmap-manager)
 add_subdirectory(rpc)
 
-
 add_library(openfam SHARED ${LIBOPENFAM_SRC})
 
 if(USE_BOOST_FIBER)
@@ -38,5 +37,5 @@ else()
 endif()
 add_executable (memoryserver ${MEMORYSERVER_SRC})
 
+set_target_properties(openfam PROPERTIES SOVERSION ${VERSION_STR})
 target_link_libraries(memoryserver fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_system fambitmap)
-

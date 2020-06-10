@@ -22,8 +22,8 @@
 
 
 #compile .proto filr using protoc compiler
-execute_process(COMMAND protoc --grpc_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --plugin=protoc-gen-grpc=${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.proto
-                COMMAND  protoc --cpp_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.proto)
+execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --grpc_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --plugin=protoc-gen-grpc=${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.proto
+                COMMAND  ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --cpp_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.proto)
 
 #Add the .pb.cc and .grpc.pb.cc file path to LIBOPENFAM_SRC 
 set(LIBOPENFAM_SRC

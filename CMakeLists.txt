@@ -110,7 +110,7 @@ include_directories(${PROJECT_SOURCE_DIR}/third-party/googletest/include)
 # include directories
 #
 include_directories(${PROJECT_SOURCE_DIR}/include) # public headers (include)
-include_directories(${PROJECT_SOURCE_DIR}/third-party/build/include) # third-party headers (include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/build/include) # third-party headers (include)
 include_directories(${PROJECT_SOURCE_DIR}/test/util) # utility functions
 include_directories(${PROJECT_SOURCE_DIR}/src) # private headers (src)
 include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
@@ -175,6 +175,10 @@ set( TEST_RUNTIME_OPTS --allow-run-as-root -n ${TEST_NPE} ) # path to mpirun/pru
 
 # Include fam_test_config.h in individual test cases and use the above variables as macros.
 configure_file( ${PROJECT_SOURCE_DIR}/test/common/fam_test_config.h.in ${PROJECT_BINARY_DIR}/test/common/fam_test_config.h )
+
+# Read version number from VERSION file
+file(STRINGS "VERSION" VERSION_STR)
+add_definitions(-DOPENFAM_VERSION="${VERSION_STR}")
 
 #
 # add source code

@@ -73,7 +73,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(const char *memServerName,
     famAllocator = famAlloc;
 
     fiAddrs = new std::vector<fi_addr_t>();
-    fiMrs = new std::map<uint64_t, fid_mr *>();
+    fiMrs = new std::map<uint64_t, Fam_Region_Map_t *>();
     contexts = new std::map<uint64_t, Fam_Context *>();
     defContexts = new std::map<uint64_t, Fam_Context *>();
 
@@ -107,7 +107,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(MemServerMap memServerList,
     famAllocator = famAlloc;
 
     fiAddrs = new std::vector<fi_addr_t>();
-    fiMrs = new std::map<uint64_t, fid_mr *>();
+    fiMrs = new std::map<uint64_t, Fam_Region_Map_t *>();
     contexts = new std::map<uint64_t, Fam_Context *>();
     defContexts = new std::map<uint64_t, Fam_Context *>();
 
@@ -136,7 +136,7 @@ int Fam_Ops_Libfabric::initialize() {
     }
 
     // Initialize the mutex lock
-    (void)pthread_mutex_init(&fiMrLock, NULL);
+    (void)pthread_rwlock_init(&fiMrLock, NULL);
 
     // Initialize the mutex lock
     if (famContextModel == FAM_CONTEXT_REGION)
@@ -279,7 +279,12 @@ void Fam_Ops_Libfabric::finalize() {
     fabric_finalize();
     if (fiMrs != NULL) {
         for (auto mr : *fiMrs) {
-            fi_close(&(mr.second->fid));
+            Fam_Region_Map_t *fiRegionMap = mr.second;
+            for (auto dmr : *(fiRegionMap->fiRegionMrs)) {
+                fi_close(&(dmr.second->fid));
+            }
+            fiRegionMap->fiRegionMrs->clear();
+            free(fiRegionMap);
         }
         fiMrs->clear();
     }

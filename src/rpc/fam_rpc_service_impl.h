@@ -176,12 +176,14 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
     bool shouldShutdown;
     pthread_mutex_t casLock[CAS_LOCK_CNT];
 
-    std::map<uint64_t, fid_mr *> *fiMrs;
+    std::map<uint64_t, Fam_Region_Map_t *> *fiMrs;
+    fid_mr *fenceMr;
 
     uint64_t generate_access_key(uint64_t regionId, uint64_t dataitemId,
                                  bool permission);
 
     int deregister_memory(uint64_t regionId, uint64_t offset);
+    int deregister_region_memory(uint64_t regionId);
 
     int register_memory(Fam_DataItem_Metadata dataitem, void *&localPointer,
                         uint32_t uid, uint32_t gid, uint64_t &key);
