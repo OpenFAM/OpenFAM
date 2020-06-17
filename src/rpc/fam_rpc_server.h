@@ -173,9 +173,10 @@ class Fam_Rpc_Server {
                 grpcStatus = Status::OK;
                 try {
                     ret = allocator->copy(
-                        request.regionid(), request.srcoffset(),
-                        request.srccopystart(), request.destoffset(),
-                        request.destcopystart(), request.uid(), request.gid(),
+                        request.srcregionid(), request.srcoffset(),
+                        request.srccopystart(), request.destregionid(),
+                        request.destoffset(), request.destcopystart(),
+                        request.uid(), request.gid(),
                         (size_t)request.copysize());
                 } catch (Memserver_Exception &e) {
                     response.set_errorcode(e.fam_error());

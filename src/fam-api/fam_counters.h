@@ -37,7 +37,9 @@
 
 using namespace std;
 using namespace chrono;
-using Fam_Time = uint64_t;
+using Fam_Time = boost::atomic_uint64_t;
+
+typedef __attribute__((unused)) uint64_t Fam_Profile_Time;
 
 typedef enum Fam_Counter_Enum {
 #undef FAM_COUNTER
@@ -54,9 +56,9 @@ typedef enum Fam_Counter_Type {
 } Fam_Counter_Type_T;
 
 struct Fam_Counter_St {
-    uint64_t count;
+    Fam_Time count;
     Fam_Time start;
     Fam_Time end;
-    uint64_t total;
+    Fam_Time total;
 };
 #endif // FAM_COUNTERS_H_

@@ -104,7 +104,7 @@ class Fam_Ops_NVMM : public Fam_Ops {
                              uint64_t nElements, uint64_t *elementIndex,
                              uint64_t elementSize);
 
-    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor **dest,
+    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
                uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);

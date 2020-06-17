@@ -150,14 +150,15 @@ message Fam_Dataitem_Response {
 }
 
 message Fam_Copy_Request {
-    uint64 regionid = 1;
-    uint64 srcoffset = 2;
-    uint64 destoffset = 3;
-    uint64 srccopystart = 4;
-    uint64 destcopystart = 5;
-    uint32 uid = 6;
-    uint32 gid = 7;
-    uint64 copysize = 8;
+    uint64 srcregionid = 1;
+    uint64 destregionid = 2;
+    uint64 srcoffset = 3;
+    uint64 destoffset = 4;
+    uint64 srccopystart = 5;
+    uint64 destcopystart = 6;
+    uint32 uid = 7;
+    uint32 gid = 8;
+    uint64 copysize = 9;
 }
 
 message Fam_Copy_Response {
