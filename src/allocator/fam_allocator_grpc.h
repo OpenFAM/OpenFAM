@@ -73,7 +73,7 @@ class Fam_Allocator_Grpc : public Fam_Allocator {
     check_permission_get_info(Fam_Region_Descriptor *descriptor);
     Fam_Region_Item_Info check_permission_get_info(Fam_Descriptor *descriptor);
 
-    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor **dest,
+    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
                uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);

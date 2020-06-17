@@ -47,32 +47,49 @@ Fam_Options fam_opts;
 
 // Test case 1 - fam_copy and fam_copy_wait test (success).
 TEST(FamCopy, CopySuccess) {
-    Fam_Region_Descriptor *desc;
-    Fam_Descriptor *item;
+    Fam_Region_Descriptor *srcDesc, *destDesc;
+    Fam_Descriptor *srcItem;
+    Fam_Descriptor *destItem[MESSAGE_SIZE];
+
     char *local = strdup("Test message");
-    const char *testRegion = get_uniq_str("test", my_fam);
-    const char *firstItem = get_uniq_str("first", my_fam);
+    const char *srcRegionName = get_uniq_str("Src_Region", my_fam);
+    const char *srcItemName = get_uniq_str("Src_Itemt", my_fam);
+
+    const char *destRegionName = get_uniq_str("Dest_Region", my_fam);
+    const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
-    EXPECT_NE((void *)NULL, desc);
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, RAID1));
+    EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 128, 0777, desc));
-    EXPECT_NE((void *)NULL, item);
+    EXPECT_NO_THROW(srcItem =
+                        my_fam->fam_allocate(srcItemName, 128, 0777, srcDesc));
+    EXPECT_NE((void *)NULL, srcItem);
 
-    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, item, 0, 13));
+    EXPECT_NO_THROW(destDesc = my_fam->fam_create_region(destRegionName, 8192,
+                                                         0777, RAID1));
+    EXPECT_NE((void *)NULL, destDesc);
+
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
+        // Allocating data items in the created region
+        char itemInfo[255];
+        sprintf(itemInfo, "%s_%d", destItemName, i);
+        EXPECT_NO_THROW(
+            destItem[i] = my_fam->fam_allocate(itemInfo, 128, 0777, destDesc));
+        EXPECT_NE((void *)NULL, destItem[i]);
+    }
+    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
 
     void *waitObj[MESSAGE_SIZE];
-    Fam_Descriptor *dest[MESSAGE_SIZE];
     /*
         for (int i = 0; i < MESSAGE_SIZE; i++) {
             dest[i] = new Fam_Descriptor();
         }
     */
     for (int i = 0; i < MESSAGE_SIZE; i++) {
-        EXPECT_NO_THROW(waitObj[i] =
-                            my_fam->fam_copy(item, 0, &dest[i], 0, i + 1));
+        EXPECT_NO_THROW(
+            waitObj[i] = my_fam->fam_copy(srcItem, 0, destItem[i], 0, i + 1));
         EXPECT_NE((void *)NULL, waitObj[i]);
     }
 
@@ -87,120 +104,182 @@ TEST(FamCopy, CopySuccess) {
     for (int i = 0; i < MESSAGE_SIZE; i++) {
         strncpy(tmpLocal, local, i + 1);
         tmpLocal[i + 1] = '\0';
-        EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, dest[i], 0, 13));
+        EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, destItem[i], 0, 13));
         EXPECT_STREQ(tmpLocal, local2);
     }
 
-    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
-    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
 
-    delete item;
-    delete desc;
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(destItem[i]));
+    }
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(destDesc));
 
-    free((void *)testRegion);
-    free((void *)firstItem);
+    delete srcItem;
+    delete srcDesc;
+    delete destDesc;
+
+    free((void *)srcRegionName);
+    free((void *)srcItemName);
+    free((void *)destRegionName);
+    free((void *)destItemName);
 }
 
 // Test case 2 - (Negative test case) source offset is out of range
 TEST(FamCopy, CopyFailSrcOutOfRange) {
-    Fam_Region_Descriptor *desc;
-    Fam_Descriptor *item;
+    Fam_Region_Descriptor *srcDesc, *destDesc;
+    Fam_Descriptor *srcItem;
+    Fam_Descriptor *destItem;
+
     char *local = strdup("Test message");
-    const char *testRegion = get_uniq_str("test", my_fam);
-    const char *firstItem = get_uniq_str("first", my_fam);
+    const char *srcRegionName = get_uniq_str("Src_Region", my_fam);
+    const char *srcItemName = get_uniq_str("Src_Itemt", my_fam);
+
+    const char *destRegionName = get_uniq_str("Dest_Region", my_fam);
+    const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
-    EXPECT_NE((void *)NULL, desc);
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, RAID1));
+    EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 128, 0777, desc));
-    EXPECT_NE((void *)NULL, item);
+    EXPECT_NO_THROW(srcItem =
+                        my_fam->fam_allocate(srcItemName, 128, 0777, srcDesc));
+    EXPECT_NE((void *)NULL, srcItem);
 
-    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, item, 0, 13));
+    EXPECT_NO_THROW(destDesc = my_fam->fam_create_region(destRegionName, 8192,
+                                                         0777, RAID1));
+    EXPECT_NE((void *)NULL, destDesc);
 
-    // Fam_Descriptor *dest = new Fam_Descriptor();
-    Fam_Descriptor *dest;
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(
+        destItem = my_fam->fam_allocate(destItemName, 128, 0777, destDesc));
+    EXPECT_NE((void *)NULL, destItem);
 
-    EXPECT_THROW(my_fam->fam_copy(item, 130, &dest, 0, 13),
-                 Fam_Allocator_Exception);
+    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
 
-    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
-    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+    EXPECT_THROW(my_fam->fam_copy(srcItem, 130, destItem, 0, 13),
+                 Fam_Exception);
 
-    delete item;
-    delete desc;
+    EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(destItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(destDesc));
 
-    free((void *)testRegion);
-    free((void *)firstItem);
+    delete srcItem;
+    delete srcDesc;
+    delete destItem;
+    delete destDesc;
+
+    free((void *)srcRegionName);
+    free((void *)srcItemName);
+    free((void *)destRegionName);
+    free((void *)destItemName);
 }
 
 // Test case 3 - (Negative test case) destination offset is out of range
 TEST(FamCopy, CopyFailDstOutOfRange) {
-    Fam_Region_Descriptor *desc;
-    Fam_Descriptor *item;
+    Fam_Region_Descriptor *srcDesc, *destDesc;
+    Fam_Descriptor *srcItem;
+    Fam_Descriptor *destItem;
+
     char *local = strdup("Test message");
-    const char *testRegion = get_uniq_str("test", my_fam);
-    const char *firstItem = get_uniq_str("first", my_fam);
+    const char *srcRegionName = get_uniq_str("Src_Region", my_fam);
+    const char *srcItemName = get_uniq_str("Src_Itemt", my_fam);
+
+    const char *destRegionName = get_uniq_str("Dest_Region", my_fam);
+    const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
-    EXPECT_NE((void *)NULL, desc);
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, RAID1));
+    EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 128, 0777, desc));
-    EXPECT_NE((void *)NULL, item);
+    EXPECT_NO_THROW(srcItem =
+                        my_fam->fam_allocate(srcItemName, 128, 0777, srcDesc));
+    EXPECT_NE((void *)NULL, srcItem);
 
-    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, item, 0, 13));
+    EXPECT_NO_THROW(destDesc = my_fam->fam_create_region(destRegionName, 8192,
+                                                         0777, RAID1));
+    EXPECT_NE((void *)NULL, destDesc);
 
-    // Fam_Descriptor *dest = new Fam_Descriptor();
-    Fam_Descriptor *dest;
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(
+        destItem = my_fam->fam_allocate(destItemName, 128, 0777, destDesc));
+    EXPECT_NE((void *)NULL, destItem);
 
-    EXPECT_THROW(my_fam->fam_copy(item, 0, &dest, 130, 13),
-                 Fam_Allocator_Exception);
+    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
 
-    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
-    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+    EXPECT_THROW(my_fam->fam_copy(srcItem, 0, destItem, 130, 13),
+                 Fam_Exception);
 
-    delete item;
-    delete desc;
+    EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(destItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(destDesc));
 
-    free((void *)testRegion);
-    free((void *)firstItem);
+    delete srcItem;
+    delete srcDesc;
+    delete destItem;
+    delete destDesc;
+
+    free((void *)srcRegionName);
+    free((void *)srcItemName);
+    free((void *)destRegionName);
+    free((void *)destItemName);
 }
 
 // Test case 4 - (Negative test case) length is out of range
 TEST(FamCopy, CopyFailLenOutOfRange) {
-    Fam_Region_Descriptor *desc;
-    Fam_Descriptor *item;
+    Fam_Region_Descriptor *srcDesc, *destDesc;
+    Fam_Descriptor *srcItem;
+    Fam_Descriptor *destItem;
+
     char *local = strdup("Test message");
-    const char *testRegion = get_uniq_str("test", my_fam);
-    const char *firstItem = get_uniq_str("first", my_fam);
+    const char *srcRegionName = get_uniq_str("Src_Region", my_fam);
+    const char *srcItemName = get_uniq_str("Src_Itemt", my_fam);
+
+    const char *destRegionName = get_uniq_str("Dest_Region", my_fam);
+    const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
-    EXPECT_NE((void *)NULL, desc);
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, RAID1));
+    EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 128, 0777, desc));
-    EXPECT_NE((void *)NULL, item);
+    EXPECT_NO_THROW(srcItem =
+                        my_fam->fam_allocate(srcItemName, 128, 0777, srcDesc));
+    EXPECT_NE((void *)NULL, srcItem);
 
-    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, item, 0, 13));
+    EXPECT_NO_THROW(destDesc = my_fam->fam_create_region(destRegionName, 8192,
+                                                         0777, RAID1));
+    EXPECT_NE((void *)NULL, destDesc);
 
-    // Fam_Descriptor *dest = new Fam_Descriptor();
-    Fam_Descriptor *dest;
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(
+        destItem = my_fam->fam_allocate(destItemName, 128, 0777, destDesc));
+    EXPECT_NE((void *)NULL, destItem);
 
-    EXPECT_THROW(my_fam->fam_copy(item, 0, &dest, 126, 13),
-                 Fam_Allocator_Exception);
+    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
 
-    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
-    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+    EXPECT_THROW(my_fam->fam_copy(srcItem, 0, destItem, 126, 13),
+                 Fam_Exception);
 
-    delete item;
-    delete desc;
+    EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(destItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(destDesc));
 
-    free((void *)testRegion);
-    free((void *)firstItem);
+    delete srcItem;
+    delete srcDesc;
+    delete destItem;
+    delete destDesc;
+
+    free((void *)srcRegionName);
+    free((void *)srcItemName);
+    free((void *)destRegionName);
+    free((void *)destItemName);
 }
 
 int main(int argc, char **argv) {

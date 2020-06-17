@@ -495,10 +495,10 @@ void Fam_Ops_Libfabric::scatter_nonblocking(
     key = descriptor->get_key();
     uint64_t nodeId = descriptor->get_memserver_id();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
-    fabric_scatter_stride_nonblocking(
-        key, local, elementSize, firstElement, nElements, stride,
-        (*fiAddr)[nodeId], get_context(descriptor), fabric_iov_limit,
-        (uint64_t)descriptor->get_base_address());
+    fabric_scatter_stride_nonblocking(key, local, elementSize, firstElement,
+                                      nElements, stride, (*fiAddr)[nodeId],
+                                      get_context(descriptor), fabric_iov_limit,
+                                      (uint64_t)descriptor->get_base_address());
     return;
 }
 
@@ -519,14 +519,35 @@ void Fam_Ops_Libfabric::scatter_nonblocking(void *local,
     return;
 }
 
+// Note : In case of copy operation across memoryserver this API is blocking
+// and no need to wait on copy.
 void *Fam_Ops_Libfabric::copy(Fam_Descriptor *src, uint64_t srcOffset,
-                              Fam_Descriptor **dest, uint64_t destOffset,
+                              Fam_Descriptor *dest, uint64_t destOffset,
                               uint64_t nbytes) {
-    return famAllocator->copy(src, srcOffset, dest, destOffset, nbytes);
+    if (src->get_memserver_id() == dest->get_memserver_id())
+        return famAllocator->copy(src, srcOffset, dest, destOffset, nbytes);
+    else {
+        char *local = (char *)malloc(nbytes);
+        try {
+            get_blocking(local, src, srcOffset, nbytes);
+
+            put_blocking(local, dest, destOffset, nbytes);
+        } catch (...) {
+            free(local);
+            throw;
+        }
+        Fam_Copy_Tag *tag = new Fam_Copy_Tag();
+        tag->isAcrossServer = true;
+        free(local);
+        return (void *)tag;
+    }
 }
 
 void Fam_Ops_Libfabric::wait_for_copy(void *waitObj) {
-    return famAllocator->wait_for_copy(waitObj);
+    if (!((Fam_Copy_Tag *)waitObj)->isAcrossServer)
+        return famAllocator->wait_for_copy(waitObj);
+    else
+        return;
 }
 
 void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {

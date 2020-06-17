@@ -673,7 +673,7 @@ class fam {
      * @param nbytes - number of bytes to be copied
      */
     void *fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
-                   Fam_Descriptor **dest, uint64_t destOffset, uint64_t nbytes);
+                   Fam_Descriptor *dest, uint64_t destOffset, uint64_t nbytes);
 
     /**
      * Wait for copy operation correspond to the wait object passed to complete

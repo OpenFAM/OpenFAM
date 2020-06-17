@@ -55,20 +55,21 @@ using namespace std;
  * List of Options supported by this OpenFAM implementation.
  * Defined as static list of option array.
  */
-const char *supportedOptionList[] = { "VERSION",             // index #0
-                                      "DEFAULT_REGION_NAME", // index #1
-                                      "MEMORY_SERVER",       // index #2
-                                      "GRPC_PORT",           // index #3
-                                      "LIBFABRIC_PORT",      // index #4
-                                      "LIBFABRIC_PROVIDER",  // index #5
-                                      "FAM_THREAD_MODEL",    // index #6
-                                      "ALLOCATOR",           // index #7
-                                      "FAM_CONTEXT_MODEL",   // index #8
-                                      "PE_COUNT",            // index #9
-                                      "PE_ID",               // index #10
-                                      "RUNTIME",             // index #11
-                                      "NUM_CONSUMER",        // index #12
-                                      NULL                   // index #13
+const char *supportedOptionList[] = {
+    "VERSION",             // index #0
+    "DEFAULT_REGION_NAME", // index #1
+    "MEMORY_SERVER",       // index #2
+    "GRPC_PORT",           // index #3
+    "LIBFABRIC_PORT",      // index #4
+    "LIBFABRIC_PROVIDER",  // index #5
+    "FAM_THREAD_MODEL",    // index #6
+    "ALLOCATOR",           // index #7
+    "FAM_CONTEXT_MODEL",   // index #8
+    "PE_COUNT",            // index #9
+    "PE_ID",               // index #10
+    "RUNTIME",             // index #11
+    "NUM_CONSUMER",        // index #12
+    NULL                   // index #13
 };
 
 namespace openfam {
@@ -191,7 +192,7 @@ class fam::Impl_ {
                                  uint64_t elementSize);
 
     void *fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
-                   Fam_Descriptor **dest, uint64_t destOffset, uint64_t nbytes);
+                   Fam_Descriptor *dest, uint64_t destOffset, uint64_t nbytes);
 
     void fam_copy_wait(void *waitObj);
 
@@ -363,8 +364,7 @@ class fam::Impl_ {
     Fam_Runtime *famRuntime;
     uint64_t memoryServerCount;
     uint64_t generate_memory_server_id(const char *name) {
-        std::uint64_t hashVal = std::hash<std::string> {}
-        (name);
+        std::uint64_t hashVal = std::hash<std::string>{}(name);
         return hashVal % memoryServerCount;
     }
     MemServerMap parse_memserver_list(std::string memServer,
@@ -388,7 +388,7 @@ class fam::Impl_ {
                         if (count % 2 == 0) {
                             nodeid = stoull(token2);
                         } else {
-                            memoryServerList.insert({ nodeid, token2 });
+                            memoryServerList.insert({nodeid, token2});
                         }
                         count++;
                     }
@@ -400,16 +400,19 @@ class fam::Impl_ {
 
         return memoryServerList;
     }
+
 #ifdef FAM_PROFILE
     Fam_Counter_St profileData[fam_counter_max][FAM_CNTR_TYPE_MAX];
     uint64_t profile_time;
     uint64_t profile_start;
 #define OUTPUT_WIDTH 120
 #define ITEM_WIDTH OUTPUT_WIDTH / 5
-    Fam_Time fam_get_time() {
+    uint64_t fam_get_time() {
 #if 1
-        long int time = static_cast<long int>(duration_cast<nanoseconds>(
-            high_resolution_clock::now().time_since_epoch()).count());
+        long int time = static_cast<long int>(
+            duration_cast<nanoseconds>(
+                high_resolution_clock::now().time_since_epoch())
+                .count());
         return time;
 #else // using intel tsc
         uint64_t hi, lo, aux;
@@ -418,7 +421,8 @@ class fam::Impl_ {
 #endif
     }
 
-    uint64_t fam_time_diff_nanoseconds(Fam_Time start, Fam_Time end) {
+    uint64_t fam_time_diff_nanoseconds(Fam_Profile_Time start,
+                                       Fam_Profile_Time end) {
         return (end - start);
     }
 #define FAM_PROFILE_START_TIME() profile_start = fam_get_time();
@@ -430,37 +434,50 @@ class fam::Impl_ {
         fam_dump_profile_data();                                               \
         fam_dump_profile_summary();                                            \
     }
+
 #define FAM_CNTR_INC_API(apiIdx) __FAM_CNTR_INC_API(prof_##apiIdx)
-#define FAM_PROFILE_START_ALLOCATOR(apiIdx)                                    \
-    __FAM_PROFILE_START_ALLOCATOR(prof_##apiIdx)
+#define FAM_PROFILE_START_ALLOCATOR(apiIdx) __FAM_PROFILE_START_ALLOCATOR()
 #define FAM_PROFILE_END_ALLOCATOR(apiIdx)                                      \
     __FAM_PROFILE_END_ALLOCATOR(prof_##apiIdx)
-#define FAM_PROFILE_START_OPS(apiIdx) __FAM_PROFILE_START_OPS(prof_##apiIdx)
+#define FAM_PROFILE_START_OPS(apiIdx) __FAM_PROFILE_START_OPS()
 #define FAM_PROFILE_END_OPS(apiIdx) __FAM_PROFILE_END_OPS(prof_##apiIdx)
 
-#define __FAM_CNTR_INC_API(apiIdx) profileData[apiIdx][FAM_CNTR_API].count++;
+#define __FAM_CNTR_INC_API(apiIdx)                                             \
+    uint64_t one = 1;                                                          \
+    profileData[apiIdx][FAM_CNTR_API].count.fetch_add(                         \
+        one, boost::memory_order_seq_cst);
 #define __FAM_PROFILE_START_ALLOCATOR(apiIdx)                                  \
-    fam_start_profile(FAM_CNTR_ALLOCATOR, apiIdx);
-#define __FAM_PROFILE_END_ALLOCATOR(apiIdx)                                    \
-    fam_end_profile(FAM_CNTR_ALLOCATOR, apiIdx);
-#define __FAM_PROFILE_START_OPS(apiIdx) fam_start_profile(FAM_CNTR_OPS, apiIdx);
-#define __FAM_PROFILE_END_OPS(apiIdx) fam_end_profile(FAM_CNTR_OPS, apiIdx);
-    void fam_profile_init() { memset(profileData, 0, sizeof(profileData)); }
-    void fam_start_profile(Fam_Counter_Type_T type, int apiIdx) {
-        profileData[apiIdx][type].start = fam_get_time();
-    }
+    Fam_Profile_Time startAlloc = fam_get_time();
 
-    void fam_end_profile(Fam_Counter_Type_T type, int apiIdx) {
-        profileData[apiIdx][type].end = fam_get_time();
-        profileData[apiIdx][type].total += fam_time_diff_nanoseconds(
-            profileData[apiIdx][type].start, profileData[apiIdx][type].end);
-        profileData[apiIdx][type].count += 1;
+#define __FAM_PROFILE_START_OPS(apiIdx)                                        \
+    Fam_Profile_Time startOps = fam_get_time();
+
+#define __FAM_PROFILE_END_ALLOCATOR(apiIdx)                                    \
+    Fam_Profile_Time endAlloc = fam_get_time();                                \
+    Fam_Profile_Time totalAlloc =                                              \
+        fam_time_diff_nanoseconds(startAlloc, endAlloc);                       \
+    fam_add_to_total_profile(FAM_CNTR_ALLOCATOR, apiIdx, totalAlloc);
+
+#define __FAM_PROFILE_END_OPS(apiIdx)                                          \
+    Fam_Profile_Time endOps = fam_get_time();                                  \
+    Fam_Profile_Time totalOps = fam_time_diff_nanoseconds(startOps, endOps);   \
+    fam_add_to_total_profile(FAM_CNTR_OPS, apiIdx, totalOps);
+
+    void fam_profile_init() { memset(profileData, 0, sizeof(profileData)); }
+
+    void fam_add_to_total_profile(Fam_Counter_Type_T type, int apiIdx,
+                                  Fam_Profile_Time total) {
+        profileData[apiIdx][type].total.fetch_add(total,
+                                                  boost::memory_order_seq_cst);
     }
 
     void fam_total_api_time(int apiIdx) {
-        profileData[apiIdx][FAM_CNTR_API].total +=
-            profileData[apiIdx][FAM_CNTR_ALLOCATOR].total +
-            profileData[apiIdx][FAM_CNTR_OPS].total;
+        uint64_t total = profileData[apiIdx][FAM_CNTR_ALLOCATOR].total.load(
+                             boost::memory_order_seq_cst) +
+                         profileData[apiIdx][FAM_CNTR_OPS].total.load(
+                             boost::memory_order_seq_cst);
+        profileData[apiIdx][FAM_CNTR_API].total.fetch_add(
+            total, boost::memory_order_seq_cst);
     }
 
     void fam_dump_profile_banner(void) {
@@ -614,7 +631,7 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     //
     optValueMap = new std::map<std::string, const void *>();
 
-    optValueMap->insert({ supportedOptionList[VERSION], strdup("0.0.1") });
+    optValueMap->insert({supportedOptionList[VERSION], strdup("0.0.1")});
 
     memoryServerCount = 1;
 
@@ -625,8 +642,8 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         // cout << "RUNTIME option is NONE" << endl;
         *peId = 0;
         *peCnt = 1;
-        optValueMap->insert({ supportedOptionList[PE_COUNT], peCnt });
-        optValueMap->insert({ supportedOptionList[PE_ID], peId });
+        optValueMap->insert({supportedOptionList[PE_COUNT], peCnt});
+        optValueMap->insert({supportedOptionList[PE_ID], peId});
     } else {
         // Initialize PMI Runtime
         if (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMI2_STR) == 0) {
@@ -663,8 +680,8 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             throw Fam_Exception(message.str().c_str());
         }
 
-        optValueMap->insert({ supportedOptionList[PE_COUNT], peCnt });
-        optValueMap->insert({ supportedOptionList[PE_ID], peId });
+        optValueMap->insert({supportedOptionList[PE_COUNT], peCnt});
+        optValueMap->insert({supportedOptionList[PE_ID], peId});
     }
 
     if (strcmp(famOptions.allocator, FAM_OPTIONS_NVMM_STR) == 0) {
@@ -689,10 +706,12 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
 
         memoryServerCount = memoryServerList.size();
 
-        for (auto it=memoryServerList.begin(); it!=memoryServerList.end(); ++it) {
-            if (it->first >= memoryServerCount ) {
-                message << "Fam Invalid memory server ID specified: " << it->first 
-                   << " should be less than memory server count" ;
+        for (auto it = memoryServerList.begin(); it != memoryServerList.end();
+             ++it) {
+            if (it->first >= memoryServerCount) {
+                message << "Fam Invalid memory server ID specified: "
+                        << it->first
+                        << " should be less than memory server count";
                 throw Fam_InvalidOption_Exception(message.str().c_str());
             }
         }
@@ -729,8 +748,8 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     else
         famOptions.defaultRegionName = strdup("Default");
 
-    optValueMap->insert({ supportedOptionList[DEFAULT_REGION_NAME],
-                          famOptions.defaultRegionName });
+    optValueMap->insert({supportedOptionList[DEFAULT_REGION_NAME],
+                         famOptions.defaultRegionName});
 
     if (options && options->memoryServer)
         famOptions.memoryServer = strdup(options->memoryServer);
@@ -738,15 +757,14 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
         famOptions.memoryServer = strdup("0:127.0.0.1");
 
     optValueMap->insert(
-        { supportedOptionList[MEMORY_SERVER], famOptions.memoryServer });
+        {supportedOptionList[MEMORY_SERVER], famOptions.memoryServer});
 
     if (options && options->grpcPort)
         famOptions.grpcPort = strdup(options->grpcPort);
     else
         famOptions.grpcPort = strdup("8787");
 
-    optValueMap->insert(
-        { supportedOptionList[GRPC_PORT], famOptions.grpcPort });
+    optValueMap->insert({supportedOptionList[GRPC_PORT], famOptions.grpcPort});
 
     if (options && options->libfabricPort)
         famOptions.libfabricPort = strdup(options->libfabricPort);
@@ -754,15 +772,15 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
         famOptions.libfabricPort = strdup("7500");
 
     optValueMap->insert(
-        { supportedOptionList[LIBFABRIC_PORT], famOptions.libfabricPort });
+        {supportedOptionList[LIBFABRIC_PORT], famOptions.libfabricPort});
 
     if (options && options->libfabricProvider)
         famOptions.libfabricProvider = strdup(options->libfabricProvider);
     else
         famOptions.libfabricProvider = strdup("sockets");
 
-    optValueMap->insert({ supportedOptionList[LIBFABRIC_PROVIDER],
-                          famOptions.libfabricProvider });
+    optValueMap->insert({supportedOptionList[LIBFABRIC_PROVIDER],
+                         famOptions.libfabricProvider});
 
     if (options && options->famThreadModel)
         famOptions.famThreadModel = strdup(options->famThreadModel);
@@ -779,7 +797,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
         throw Fam_InvalidOption_Exception(message.str().c_str());
     }
     optValueMap->insert(
-        { supportedOptionList[FAM_THREAD_MODEL], famOptions.famThreadModel });
+        {supportedOptionList[FAM_THREAD_MODEL], famOptions.famThreadModel});
 
     if (options && options->allocator)
         famOptions.allocator = strdup(options->allocator);
@@ -793,8 +811,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
         throw Fam_InvalidOption_Exception(message.str().c_str());
     }
 
-    optValueMap->insert(
-        { supportedOptionList[ALLOCATOR], famOptions.allocator });
+    optValueMap->insert({supportedOptionList[ALLOCATOR], famOptions.allocator});
 
     if (options && options->famContextModel)
         famOptions.famContextModel = strdup(options->famContextModel);
@@ -811,7 +828,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
         throw Fam_InvalidOption_Exception(message.str().c_str());
     }
     optValueMap->insert(
-        { supportedOptionList[FAM_CONTEXT_MODEL], famOptions.famContextModel });
+        {supportedOptionList[FAM_CONTEXT_MODEL], famOptions.famContextModel});
 
     if (options && options->runtime)
         famOptions.runtime = strdup(options->runtime);
@@ -824,14 +841,14 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
                 << famOptions.runtime;
         throw Fam_InvalidOption_Exception(message.str().c_str());
     }
-    optValueMap->insert({ supportedOptionList[RUNTIME], famOptions.runtime });
+    optValueMap->insert({supportedOptionList[RUNTIME], famOptions.runtime});
 
     if (options && options->numConsumer)
         famOptions.numConsumer = strdup(options->numConsumer);
     else
         famOptions.numConsumer = strdup("1");
     optValueMap->insert(
-        { supportedOptionList[NUM_CONSUMER], famOptions.numConsumer });
+        {supportedOptionList[NUM_CONSUMER], famOptions.numConsumer});
 
     return ret;
 }
@@ -1695,9 +1712,12 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
  * @param destOffset - byte offset within the space defined by the dest
  * descriptor to which memory should be copied.
  * @param nbytes - number of bytes to be copied
+ *
+ * Note : In case of copy operation across memoryserver this API is blocking
+ * and no need to wait on copy.
  */
 void *fam::Impl_::fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
-                           Fam_Descriptor **dest, uint64_t destOffset,
+                           Fam_Descriptor *dest, uint64_t destOffset,
                            uint64_t nbytes) {
     void *result = NULL;
     FAM_CNTR_INC_API(fam_copy);
@@ -1706,10 +1726,11 @@ void *fam::Impl_::fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
         throw Fam_InvalidOption_Exception("Invalid Options");
     }
 
-    int ret = validate_item(src);
+    int retS = validate_item(src);
+    int retD = validate_item(dest);
     FAM_PROFILE_END_ALLOCATOR(fam_copy);
     FAM_PROFILE_START_OPS(fam_copy);
-    if (ret == 0) {
+    if (retS == 0 && retD == 0) {
         result = famOps->copy(src, srcOffset, dest, destOffset, nbytes);
     }
     FAM_PROFILE_END_OPS(fam_copy);
@@ -4179,9 +4200,12 @@ void fam::fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_InvalidOption_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
  *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_OUTOFRANGE, FAM_ERR_GRPC
+ *
+ * Note : In case of copy operation across memoryserver this API is blocking
+ * and no need to wait on copy.
  */
 void *fam::fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
-                    Fam_Descriptor **dest, uint64_t destOffset,
+                    Fam_Descriptor *dest, uint64_t destOffset,
                     uint64_t nbytes) {
     return pimpl_->fam_copy(src, srcOffset, dest, destOffset, nbytes);
 }

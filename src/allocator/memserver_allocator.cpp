@@ -849,10 +849,10 @@ int Memserver_Allocator::open_heap(uint64_t regionId) {
     return ALLOC_NO_ERROR;
 }
 
-int Memserver_Allocator::copy(uint64_t regionId, uint64_t srcOffset,
-                              uint64_t srcCopyStart, uint64_t destOffset,
-                              uint64_t destCopyStart, uint32_t uid,
-                              uint32_t gid, size_t nbytes) {
+int Memserver_Allocator::copy(uint64_t srcRegionId, uint64_t srcOffset,
+                              uint64_t srcCopyStart, uint64_t destRegionId,
+                              uint64_t destOffset, uint64_t destCopyStart,
+                              uint32_t uid, uint32_t gid, size_t nbytes) {
     ostringstream message;
     message << "Error While copying from dataitem : ";
     Fam_DataItem_Metadata srcDataitem;
@@ -860,19 +860,19 @@ int Memserver_Allocator::copy(uint64_t regionId, uint64_t srcOffset,
     void *srcStart;
     void *destStart;
 
-    get_dataitem(regionId, srcOffset, uid, gid, srcDataitem);
+    get_dataitem(srcRegionId, srcOffset, uid, gid, srcDataitem);
 
-    get_dataitem(regionId, destOffset, uid, gid, destDataitem);
+    get_dataitem(destRegionId, destOffset, uid, gid, destDataitem);
 
     if ((srcCopyStart + nbytes) < srcDataitem.size)
-        srcStart = get_local_pointer(regionId, srcOffset + srcCopyStart);
+        srcStart = get_local_pointer(srcRegionId, srcOffset + srcCopyStart);
     else {
         message << "Source offset or size is beyond dataitem boundary";
         throw Memserver_Exception(OUT_OF_RANGE, message.str().c_str());
     }
 
     if ((destCopyStart + nbytes) < destDataitem.size)
-        destStart = get_local_pointer(regionId, destOffset + destCopyStart);
+        destStart = get_local_pointer(destRegionId, destOffset + destCopyStart);
     else {
         message << "Destination offset or size is beyond dataitem boundary";
         throw Memserver_Exception(OUT_OF_RANGE, message.str().c_str());

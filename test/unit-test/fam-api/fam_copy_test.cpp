@@ -44,8 +44,9 @@ using namespace openfam;
 int main() {
     fam *my_fam = new fam();
     Fam_Options fam_opts;
-    Fam_Region_Descriptor *desc;
-    Fam_Descriptor *item;
+    Fam_Region_Descriptor *srcDesc, *destDesc;
+    Fam_Descriptor *srcItem;
+    Fam_Descriptor *destItem[MESSAGE_SIZE];
 
     memset((void *)&fam_opts, 0, sizeof(Fam_Options));
 
@@ -60,24 +61,42 @@ int main() {
         cout << "fam initialization successful" << endl;
     }
 
-    desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
-    if (desc == NULL) {
+    srcDesc = my_fam->fam_create_region("srcRegion", 8192, 0777, RAID1);
+    if (srcDesc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
     // Allocating data items in the created region
-    item = my_fam->fam_allocate("first", 128, 0777, desc);
-    if (item == NULL) {
+    srcItem = my_fam->fam_allocate("first", 128, 0777, srcDesc);
+    if (srcItem == NULL) {
         cout << "fam allocation of data item 'first' failed" << endl;
         exit(1);
     }
+
+    destDesc = my_fam->fam_create_region("destRegion", 8192, 0777, RAID1);
+    if (destDesc == NULL) {
+        cout << "fam create region failed" << endl;
+        exit(1);
+    }
+
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
+        // Allocating data items in the created region
+        char itemInfo[255];
+        sprintf(itemInfo, "second_%d", i);
+        destItem[i] = my_fam->fam_allocate(itemInfo, 128, 0777, destDesc);
+        if (destItem == NULL) {
+            cout << "fam allocation of data item 'first' failed" << endl;
+            exit(1);
+        }
+    }
+
     int ret = 0;
 
     char *local = strdup("Test message");
 
     cout << "Content of source dataitem : " << local << endl;
     try {
-        ret = my_fam->fam_put_blocking(local, item, 0, 13);
+        ret = my_fam->fam_put_blocking(local, srcItem, 0, 13);
         if (ret < 0) {
             cout << "fam_put failed" << endl;
             exit(1);
@@ -94,17 +113,11 @@ int main() {
     }
 
     void *waitObj[MESSAGE_SIZE];
-    Fam_Descriptor *dest[MESSAGE_SIZE];
-    /*
-            for (int i = 0; i < MESSAGE_SIZE; i++) {
-            dest[i] = new Fam_Descriptor();
-        }
-    */
     for (int i = 0; i < MESSAGE_SIZE; i++) {
         cout << "Copy " << i << " : Copying first " << i + 1 << " characters"
              << endl;
         try {
-            waitObj[i] = my_fam->fam_copy(item, 0, &dest[i], 0, i + 1);
+            waitObj[i] = my_fam->fam_copy(srcItem, 0, destItem[i], 0, i + 1);
         } catch (Fam_Exception &e) {
             cout << "Exception caught" << endl;
             cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -129,7 +142,7 @@ int main() {
     for (int i = 0; i < MESSAGE_SIZE; i++) {
         try {
 
-            ret = my_fam->fam_get_blocking(local2, dest[i], 0, 13);
+            ret = my_fam->fam_get_blocking(local2, destItem[i], 0, 13);
             if (ret < 0) {
                 cout << "fam_get failed" << endl;
             }
@@ -152,18 +165,22 @@ int main() {
     }
 
     // Deallocating data items
-    if (item != NULL) {
-        my_fam->fam_deallocate(item);
+    if (srcItem != NULL) {
+        my_fam->fam_deallocate(srcItem);
     }
 
     for (int i = 0; i < MESSAGE_SIZE; i++) {
-        if (dest[i] != NULL)
-            my_fam->fam_deallocate(dest[i]);
+        if (destItem[i] != NULL)
+            my_fam->fam_deallocate(destItem[i]);
     }
 
     // Destroying the region
-    if (desc != NULL) {
-        my_fam->fam_destroy_region(desc);
+    if (srcDesc != NULL) {
+        my_fam->fam_destroy_region(srcDesc);
+    }
+
+    if (destDesc != NULL) {
+        my_fam->fam_destroy_region(destDesc);
     }
 
     my_fam->fam_finalize("default");

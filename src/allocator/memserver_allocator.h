@@ -96,9 +96,9 @@ class Memserver_Allocator {
                                    uint32_t uid, uint32_t gid);
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
     int open_heap(uint64_t regionId);
-    int copy(uint64_t regionId, uint64_t srcOffset, uint64_t srcCopyStart,
-             uint64_t destOffset, uint64_t destCopyStart, uint32_t uid,
-             uint32_t gid, size_t nbytes);
+    int copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcCopyStart,
+             uint64_t destRegionId, uint64_t destOffset, uint64_t destCopyStart,
+             uint32_t uid, uint32_t gid, size_t nbytes);
 
   private:
     MemoryManager *memoryManager;
