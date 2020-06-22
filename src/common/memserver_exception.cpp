@@ -89,8 +89,11 @@ Memserver_Exception::convert_to_famerror(enum Memserver_Error serverErr) {
     case NO_LOCAL_POINTER:
     case OPS_INIT_FAILED:
     case FENCE_REG_FAILED:
+    case FENCE_DEREG_FAILED:
     case REGION_NAME_TOO_LONG:
     case DATAITEM_NAME_TOO_LONG:
+    case ITEM_REGISTRATION_FAILED:
+    case ITEM_DEREGISTRATION_FAILED:
     default:
         return FAM_ERR_RESOURCE;
     }

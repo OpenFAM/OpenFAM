@@ -1,5 +1,5 @@
 /*
- * fam_rpc_service_impl.h
+ * fam_cis_server.h
  * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -28,8 +28,8 @@
  *
  */
 
-#ifndef FAM_RPC_SERVICE_H
-#define FAM_RPC_SERVICE_H
+#ifndef FAM_CIS_SERVER_H
+#define FAM_CIS_SERVER_H
 
 #include <iostream>
 #include <map>
@@ -38,10 +38,8 @@
 
 #include "grpcpp/grpcpp.h"
 
-#include "allocator/memserver_allocator.h"
-#include "allocator/rbtree.h"
-#include "metadata/fam_metadata_manager.h"
-#include "rpc/fam_rpc.grpc.pb.h"
+#include "cis/fam_cis_direct.h"
+#include "cis/fam_cis_rpc.grpc.pb.h"
 
 #include "common/fam_internal.h"
 #include "common/fam_libfabric.h"
@@ -53,9 +51,6 @@
 #include <nvmm/heap.h>
 
 namespace openfam {
-#define NOT_PERMITTED -3
-#define ITEM_REGISTRATION_FAILED -4
-#define ITEM_DEREGISTRATION_FAILED -5
 
 #define CAS_LOCK_CNT 128
 #define LOCKHASH(offset) (offset >> 7) % CAS_LOCK_CNT
@@ -71,22 +66,16 @@ using grpc::ServerCompletionQueue;
 using grpc::ServerContext;
 using grpc::Status;
 
-#define FAM_UNIMPLEMENTED_RPC_SERVICE()                                        \
-    {                                                                          \
-        cout << "Reached server..." << __func__                                \
-             << " is Not Yet Implemented...!!!" << endl;                       \
-    }
-
-class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
+class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
   public:
-    Fam_Rpc_Service_Impl() {}
+    Fam_CIS_Server() {}
 
-    ~Fam_Rpc_Service_Impl();
+    ~Fam_CIS_Server();
 
-    void rpc_service_initialize(char *name, char *service, char *provider,
-                                Memserver_Allocator *memAlloc);
+    void cis_server_initialize(char *name, char *service, char *provider,
+                               Fam_CIS_Direct *famCIS);
 
-    void rpc_service_finalize();
+    void cis_server_finalize();
 
     ::grpc::Status signal_start(::grpc::ServerContext *context,
                                 const ::Fam_Request *request,
@@ -149,6 +138,7 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
     check_permission_get_item_info(::grpc::ServerContext *context,
                                    const ::Fam_Dataitem_Request *request,
                                    ::Fam_Dataitem_Response *response) override;
+
     ::grpc::Status get_stat_info(::grpc::ServerContext *context,
                                  const ::Fam_Dataitem_Request *request,
                                  ::Fam_Dataitem_Response *response) override;
@@ -168,7 +158,7 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
 
   protected:
     uint64_t port;
-    Memserver_Allocator *allocator;
+    Fam_CIS_Direct *famCIS;
     Fam_Ops_Libfabric *famOps;
     int libfabricProgressMode;
     std::thread progressThread;
@@ -185,15 +175,15 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
     uint64_t generate_access_key(uint64_t regionId, uint64_t dataitemId,
                                  bool permission);
 
-    int deregister_memory(uint64_t regionId, uint64_t offset);
-    int deregister_region_memory(uint64_t regionId);
+    void deregister_memory(uint64_t regionId, uint64_t offset);
+    void deregister_region_memory(uint64_t regionId);
 
-    int register_memory(Fam_DataItem_Metadata dataitem, void *&localPointer,
-                        uint32_t uid, uint32_t gid, uint64_t &key);
+    void register_memory(Fam_Region_Item_Info info, uint32_t uid, uint32_t gid,
+                         uint64_t &key);
 
-    int register_fence_memory();
+    void register_fence_memory();
 
-    int deregister_fence_memory();
+    void deregister_fence_memory();
 };
 
 } // namespace openfam

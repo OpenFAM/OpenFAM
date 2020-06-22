@@ -53,7 +53,7 @@ void *thr_func1(void *arg) {
     my_fam = new fam();
     memset((void *)&fam_opts, 0, sizeof(Fam_Options));
 
-    fam_opts.allocator = strdup("NVMM");
+    fam_opts.allocator = strdup("SHM");
     fam_opts.runtime = strdup("NONE");
 
     if (my_fam->fam_initialize("default", &fam_opts) < 0) {
@@ -62,7 +62,6 @@ void *thr_func1(void *arg) {
     } else {
         cout << "fam initialization successful" << endl;
     }
-
 
     desc1 = my_fam->fam_lookup_region("test111");
     if (desc1 == NULL) {
@@ -82,19 +81,19 @@ void *thr_func1(void *arg) {
         exit(1);
     }
 
-    item2 =  my_fam->fam_lookup("second", "test112");
+    item2 = my_fam->fam_lookup("second", "test112");
     if (item2 == NULL) {
         cout << "fam lookup of data item 'second' failed" << endl;
         exit(1);
     }
 
-    item1 =  my_fam->fam_lookup("first", "test111");
+    item1 = my_fam->fam_lookup("first", "test111");
     if (item1 == NULL) {
         cout << "fam lookup of data item 'first' failed" << endl;
         exit(1);
     }
 
-    item3 =  my_fam->fam_lookup("third", "test113");
+    item3 = my_fam->fam_lookup("third", "test113");
     if (item3 == NULL) {
         cout << "fam lookup of data item 'third' failed" << endl;
         exit(1);
@@ -119,7 +118,7 @@ int main() {
     my_fam = new fam();
     memset((void *)&fam_opts, 0, sizeof(Fam_Options));
 
-    fam_opts.allocator = strdup("NVMM");
+    fam_opts.allocator = strdup("SHM");
     fam_opts.runtime = strdup("NONE");
 
     if (my_fam->fam_initialize("default", &fam_opts) < 0) {
@@ -147,7 +146,7 @@ int main() {
         exit(1);
     }
 
-    //Allocating data items in the created region
+    // Allocating data items in the created region
     item1 = my_fam->fam_allocate("first", 1024, 0777, desc1);
     if (item1 == NULL) {
         cout << "fam allocation of data item 'first' failed" << endl;
@@ -188,6 +187,6 @@ int main() {
 
     my_fam->fam_finalize("default");
     cout << "fam finalize successful" << endl;
-    
+
     return 0;
 }

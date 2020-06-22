@@ -34,8 +34,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "cis/fam_cis_client.h"
 #include "common/fam_libfabric.h"
-#include "rpc/fam_rpc_client.h"
 #include <fam/fam.h>
 
 #include "common/fam_test_config.h"
@@ -47,7 +47,7 @@ using namespace openfam;
 
 int NUM_ITERATIONS;
 int *myPE;
-Fam_Rpc_Client *rpc;
+Fam_CIS_Client *cis;
 fam *my_fam;
 Fam_Options fam_opts;
 Fam_Descriptor *item;
@@ -60,14 +60,14 @@ uint64_t gDataSize = 256;
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
 #define RESET_PROFILE()                                                        \
     {                                                                          \
-        rpc->reset_profile();                                                  \
+        cis->reset_profile(0);                                                 \
         my_fam->fam_barrier_all();                                             \
     }
 
 #define GENERATE_PROFILE()                                                     \
     {                                                                          \
         if (*myPE == 0)                                                        \
-            rpc->generate_profile();                                           \
+            cis->generate_profile(0);                                          \
         my_fam->fam_barrier_all();                                             \
     }
 #else
@@ -299,8 +299,13 @@ int main(int argc, char **argv) {
     }
 
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-    const char *ip = strdup(TEST_MEMSERVER_IP);
-    EXPECT_NO_THROW(rpc = new Fam_Rpc_Client(ip, atoi(TEST_GRPC_PORT)));
+    const char *memoryServers = strdup(TEST_MEMSERVER_IP);
+    std::string delimiter1 = ",";
+    std::string delimiter2 = ":";
+    MemServerMap memoryServerList =
+        parse_memserver_list(memoryServers, delimiter1, delimiter2);
+    EXPECT_NO_THROW(
+        cis = new Fam_CIS_Client(memoryServerList, atoi(TEST_GRPC_PORT)));
 #endif
     my_fam = new fam();
 
@@ -331,7 +336,7 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-	EXPECT_NO_THROW(rpc->reset_profile());
+    EXPECT_NO_THROW(cis->reset_profile(0));
     EXPECT_NO_THROW(fabric_reset_profile());
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
 #endif

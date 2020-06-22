@@ -22,18 +22,18 @@
 
 add_subdirectory(allocator)
 add_subdirectory(common)
+add_subdirectory(cis)
 add_subdirectory(fam-api)
 add_subdirectory(memory-node)
 add_subdirectory(metadata)
 add_subdirectory(bitmap-manager)
-add_subdirectory(rpc)
 
 add_library(openfam SHARED ${LIBOPENFAM_SRC})
 
 if(USE_BOOST_FIBER)
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_fiber boost_context pmix pmi2 fambitmap)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_system boost_fiber boost_context pmix pmi2 fambitmap)
 else()
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_context pmix pmi2 fambitmap)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_system boost_context pmix pmi2 fambitmap)
 endif()
 add_executable (memoryserver ${MEMORYSERVER_SRC})
 

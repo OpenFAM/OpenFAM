@@ -46,14 +46,12 @@
 #include "common/fam_internal.h"
 #include "common/memserver_exception.h"
 #include "fam/fam.h"
-#include "metadata/fam_metadata_manager.h"
 
 #define MIN_OBJ_SIZE 128
 #define MIN_REGION_SIZE (1UL << 20)
 
 using namespace std;
 using namespace nvmm;
-using namespace metadata;
 
 namespace openfam {
 
@@ -73,36 +71,14 @@ class Memserver_Allocator {
                       size_t nbytes);
     int allocate(string name, uint64_t regionId, size_t nbytes,
                  uint64_t &offset, mode_t permission, uint32_t uid,
-                 uint32_t gid, Fam_DataItem_Metadata &dataitem,
-                 void *&localPointer);
+                 uint32_t gid, void *&localPointer);
     int deallocate(uint64_t regionId, uint64_t offset, uint32_t uid,
                    uint32_t gid);
-    int change_region_permission(uint64_t regionId, mode_t permission,
-                                 uint32_t uid, uint32_t gid);
-    int change_dataitem_permission(uint64_t regionId, uint64_t offset,
-                                   mode_t permission, uint32_t uid,
-                                   uint32_t gid);
-    int get_region(string name, uint32_t uid, uint32_t gid,
-                   Fam_Region_Metadata &region);
-    int get_region(uint64_t regionId, uint32_t uid, uint32_t gid,
-                   Fam_Region_Metadata &region);
-    bool check_region_permission(Fam_Region_Metadata region, bool op,
-                                 uint32_t uid, uint32_t gid);
-    int get_dataitem(string itemName, string regionName, uint32_t uid,
-                     uint32_t gid, Fam_DataItem_Metadata &dataitem);
-    int get_dataitem(uint64_t regionId, uint64_t offset, uint32_t uid,
-                     uint32_t gid, Fam_DataItem_Metadata &dataitem);
-    bool check_dataitem_permission(Fam_DataItem_Metadata dataitem, bool op,
-                                   uint32_t uid, uint32_t gid);
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
     int open_heap(uint64_t regionId);
-    int copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcCopyStart,
-             uint64_t destRegionId, uint64_t destOffset, uint64_t destCopyStart,
-             uint32_t uid, uint32_t gid, size_t nbytes);
 
   private:
     MemoryManager *memoryManager;
-    FAM_Metadata_Manager *metadataManager;
     HeapMap *heapMap;
     pthread_mutex_t heapMapLock;
     HeapMap::iterator get_heap(uint64_t regionId, Heap *&heap);

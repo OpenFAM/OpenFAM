@@ -59,10 +59,10 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
     char *service = strdup(TEST_LIBFABRIC_PORT);
     char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
     // initialize gRPC client
-    std::map <uint64_t, string> nameMap;
+    std::map<uint64_t, string> nameMap;
     nameMap.insert({0, name});
-    Fam_Allocator_Grpc *famAllocator =
-        new Fam_Allocator_Grpc(nameMap, atoi(TEST_GRPC_PORT));
+    Fam_Allocator_Client *famAllocator =
+        new Fam_Allocator_Client(nameMap, atoi(TEST_GRPC_PORT));
 
     Fam_Ops_Libfabric *famOps = new Fam_Ops_Libfabric(
         name, service, false, provider, FAM_THREAD_MULTIPLE, famAllocator,
@@ -82,7 +82,7 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
     EXPECT_THROW(fabric_write(invalidKey, message, 25, 0,
                               (*famOps->get_fiAddrs())[nodeId],
                               famOps->get_defaultCtx(item)),
-                              Fam_Datapath_Exception);
+                 Fam_Datapath_Exception);
 
     char *buff = (char *)malloc(1024);
     memset(buff, 0, 1024);
@@ -90,7 +90,7 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
     EXPECT_THROW(fabric_read(invalidKey, buff, 25, 0,
                              (*famOps->get_fiAddrs())[nodeId],
                              famOps->get_defaultCtx(item)),
-                             Fam_Datapath_Exception);
+                 Fam_Datapath_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));

@@ -56,8 +56,7 @@ Fam_Region_Descriptor *Fam_Allocator_NVMM::create_region(
     try {
         allocator->create_region(name, regionId, (size_t)nbytes, permissions,
                                  uid, gid);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -82,8 +81,7 @@ void Fam_Allocator_NVMM::destroy_region(Fam_Region_Descriptor *descriptor) {
     descriptor->set_desc_status(DESC_INVALID);
     try {
         allocator->destroy_region(globalDescriptor.regionId, uid, gid);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -100,8 +98,7 @@ int Fam_Allocator_NVMM::resize_region(Fam_Region_Descriptor *descriptor,
     try {
         ret = allocator->resize_region(globalDescriptor.regionId, uid, gid,
                                        nbytes);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -122,8 +119,7 @@ Fam_Descriptor *Fam_Allocator_NVMM::allocate(const char *name, uint64_t nbytes,
         allocator->allocate(name, globalDescriptor.regionId, nbytes, offset,
                             accessPermissions, uid, gid, dataitem,
                             localPointer);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -156,8 +152,7 @@ void Fam_Allocator_NVMM::deallocate(Fam_Descriptor *descriptor) {
     try {
         allocator->deallocate(globalDescriptor.regionId,
                               globalDescriptor.offset, uid, gid);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -173,8 +168,7 @@ int Fam_Allocator_NVMM::change_permission(Fam_Region_Descriptor *descriptor,
     try {
         allocator->change_region_permission(globalDescriptor.regionId,
                                             accessPermissions, uid, gid);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -191,8 +185,7 @@ int Fam_Allocator_NVMM::change_permission(Fam_Descriptor *descriptor,
         allocator->change_dataitem_permission(globalDescriptor.regionId,
                                               globalDescriptor.offset,
                                               accessPermissions, uid, gid);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -205,8 +198,7 @@ Fam_Allocator_NVMM::lookup_region(const char *name, uint64_t memoryServerId) {
 
     try {
         allocator->get_region(name, uid, gid, region);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -235,8 +227,7 @@ Fam_Descriptor *Fam_Allocator_NVMM::lookup(const char *itemName,
     uint64_t key;
     try {
         allocator->get_dataitem(itemName, regionName, uid, gid, dataitem);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -261,8 +252,7 @@ Fam_Descriptor *Fam_Allocator_NVMM::lookup(const char *itemName,
         try {
             localPointer = allocator->get_local_pointer(dataitem.regionId,
                                                         dataitem.offset);
-        }
-        catch (Memserver_Exception &e) {
+        } catch (Memserver_Exception &e) {
             throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                           e.fam_error_msg());
         }
@@ -289,8 +279,7 @@ Fam_Region_Item_Info Fam_Allocator_NVMM::check_permission_get_info(
     // find if dataitem present
     try {
         allocator->get_region(globalDescriptor.regionId, uid, gid, region);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -314,8 +303,7 @@ Fam_Allocator_NVMM::check_permission_get_info(Fam_Descriptor *descriptor) {
     try {
         allocator->get_dataitem(globalDescriptor.regionId,
                                 globalDescriptor.offset, uid, gid, dataitem);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -331,8 +319,7 @@ Fam_Allocator_NVMM::check_permission_get_info(Fam_Descriptor *descriptor) {
 
     try {
         allocator->open_heap(globalDescriptor.regionId);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -341,8 +328,7 @@ Fam_Allocator_NVMM::check_permission_get_info(Fam_Descriptor *descriptor) {
     try {
         base = allocator->get_local_pointer(globalDescriptor.regionId,
                                             globalDescriptor.offset);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -391,8 +377,7 @@ void *Fam_Allocator_NVMM::fam_map(Fam_Descriptor *descriptor) {
     try {
         allocator->get_dataitem(globalDescriptor.regionId,
                                 globalDescriptor.offset, uid, gid, dataitem);
-    }
-    catch (Memserver_Exception &e) {
+    } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -401,8 +386,7 @@ void *Fam_Allocator_NVMM::fam_map(Fam_Descriptor *descriptor) {
         try {
             localPtr = allocator->get_local_pointer(globalDescriptor.regionId,
                                                     globalDescriptor.offset);
-        }
-        catch (Memserver_Exception &e) {
+        } catch (Memserver_Exception &e) {
             throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                           e.fam_error_msg());
         }
@@ -410,8 +394,7 @@ void *Fam_Allocator_NVMM::fam_map(Fam_Descriptor *descriptor) {
         try {
             localPtr = allocator->get_local_pointer(globalDescriptor.regionId,
                                                     globalDescriptor.offset);
-        }
-        catch (Memserver_Exception &e) {
+        } catch (Memserver_Exception &e) {
             throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                           e.fam_error_msg());
         }

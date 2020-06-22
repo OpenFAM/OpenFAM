@@ -32,13 +32,11 @@
 #include <string>
 #include <unistd.h>
 
-#include "allocator/fam_allocator.h"
-#include "allocator/fam_allocator_grpc.h"
-#include "allocator/fam_allocator_nvmm.h"
+#include "allocator/fam_allocator_client.h"
 #include "common/fam_libfabric.h"
 #include "common/fam_ops.h"
 #include "common/fam_ops_libfabric.h"
-#include "common/fam_ops_nvmm.h"
+#include "common/fam_ops_shm.h"
 #include "common/fam_options.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
@@ -357,7 +355,7 @@ class fam::Impl_ {
     Fam_Options famOptions;
     std::map<std::string, const void *> *optValueMap;
     Fam_Ops *famOps;
-    Fam_Allocator *famAllocator;
+    Fam_Allocator_Client *famAllocator;
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Runtime *famRuntime;
@@ -365,39 +363,6 @@ class fam::Impl_ {
     uint64_t generate_memory_server_id(const char *name) {
         std::uint64_t hashVal = std::hash<std::string>{}(name);
         return hashVal % memoryServerCount;
-    }
-    MemServerMap parse_memserver_list(std::string memServer,
-                                      std::string delimiter1,
-                                      std::string delimiter2) {
-        MemServerMap memoryServerList;
-        uint64_t prev1 = 0, pos1 = 0;
-        do {
-            pos1 = memServer.find(delimiter1, prev1);
-            if (pos1 == string::npos)
-                pos1 = memServer.length();
-            std::string token = memServer.substr(prev1, pos1 - prev1);
-            if (!token.empty()) {
-                uint64_t prev2 = 0, pos2 = 0, count = 0, nodeid = 0;
-                do {
-                    pos2 = token.find(delimiter2, prev2);
-                    if (pos2 == string::npos)
-                        pos2 = token.length();
-                    std::string token2 = token.substr(prev2, pos2 - prev2);
-                    if (!token2.empty()) {
-                        if (count % 2 == 0) {
-                            nodeid = stoull(token2);
-                        } else {
-                            memoryServerList.insert({nodeid, token2});
-                        }
-                        count++;
-                    }
-                    prev2 = pos2 + delimiter2.length();
-                } while (pos2 < token.length() && prev2 < token.length());
-            }
-            prev1 = pos1 + delimiter1.length();
-        } while (pos1 < memServer.length() && prev1 < memServer.length());
-
-        return memoryServerList;
     }
 
 #ifdef FAM_PROFILE
@@ -638,7 +603,6 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         return ret;
     }
     if (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) == 0) {
-        // cout << "RUNTIME option is NONE" << endl;
         *peId = 0;
         *peCnt = 1;
         optValueMap->insert({supportedOptionList[PE_COUNT], peCnt});
@@ -683,11 +647,11 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         optValueMap->insert({supportedOptionList[PE_ID], peId});
     }
 
-    if (strcmp(famOptions.allocator, FAM_OPTIONS_NVMM_STR) == 0) {
+    if (strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) == 0) {
         // initialize NVMM client
-        famAllocator = new Fam_Allocator_NVMM();
-        famOps = new Fam_Ops_NVMM(famThreadModel, famContextModel, famAllocator,
-                                  atoi(famOptions.numConsumer));
+        famAllocator = new Fam_Allocator_Client();
+        famOps = new Fam_Ops_SHM(famThreadModel, famContextModel, famAllocator,
+                                 atoi(famOptions.numConsumer));
         ret = famOps->initialize();
     } else {
         std::string memoryServer = famOptions.memoryServer;
@@ -714,8 +678,8 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
                 throw Fam_InvalidOption_Exception(message.str().c_str());
             }
         }
-        famAllocator =
-            new Fam_Allocator_Grpc(memoryServerList, atoi(famOptions.grpcPort));
+        famAllocator = new Fam_Allocator_Client(memoryServerList,
+                                                atoi(famOptions.grpcPort));
         famOps = new Fam_Ops_Libfabric(
             memoryServerList, famOptions.libfabricPort, false,
             famOptions.libfabricProvider, famThreadModel, famAllocator,
@@ -803,7 +767,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     else
         famOptions.allocator = strdup("grpc");
 
-    if ((strcmp(famOptions.allocator, FAM_OPTIONS_NVMM_STR) != 0) &&
+    if ((strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) != 0) &&
         (strcmp(famOptions.allocator, FAM_OPTIONS_GRPC_STR) != 0)) {
         message << "Invalid value specified for Allocator: "
                 << famOptions.famThreadModel;
@@ -877,13 +841,13 @@ void fam::Impl_::clean_fam_options() {
 int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
-    Fam_Region_Item_Info itemInfo;
+    Fam_Region_Item_Info info;
 
     if (key == FAM_KEY_UNINITIALIZED) {
-        itemInfo = famAllocator->check_permission_get_info(descriptor);
-        descriptor->bind_key(itemInfo.key);
-        descriptor->set_size(itemInfo.size);
-        descriptor->set_base_address(itemInfo.base);
+        info = famAllocator->check_permission_get_info(descriptor);
+        descriptor->bind_key(info.key);
+        descriptor->set_size(info.size);
+        descriptor->set_base_address(info.base);
     }
 
     if (key == FAM_KEY_INVALID) {
@@ -1095,9 +1059,9 @@ int fam::Impl_::fam_resize_region(Fam_Region_Descriptor *descriptor,
                                   uint64_t nbytes) {
     FAM_CNTR_INC_API(fam_resize_region);
     FAM_PROFILE_START_ALLOCATOR(fam_resize_region);
-    auto ret = famAllocator->resize_region(descriptor, nbytes);
+    famAllocator->resize_region(descriptor, nbytes);
     FAM_PROFILE_END_ALLOCATOR(fam_resize_region);
-    return ret;
+    return 0;
 }
 
 /**
@@ -1155,9 +1119,9 @@ int fam::Impl_::fam_change_permissions(Fam_Descriptor *descriptor,
                                        mode_t accessPermissions) {
     FAM_CNTR_INC_API(fam_change_permissions);
     FAM_PROFILE_START_ALLOCATOR(fam_change_permissions);
-    auto ret = famAllocator->change_permission(descriptor, accessPermissions);
+    famAllocator->change_permission(descriptor, accessPermissions);
     FAM_PROFILE_END_ALLOCATOR(fam_change_permissions);
-    return ret;
+    return 0;
 }
 
 /**
@@ -1171,9 +1135,9 @@ int fam::Impl_::fam_change_permissions(Fam_Region_Descriptor *descriptor,
                                        mode_t accessPermissions) {
     FAM_CNTR_INC_API(fam_change_permissions);
     FAM_PROFILE_START_ALLOCATOR(fam_change_permissions);
-    auto ret = famAllocator->change_permission(descriptor, accessPermissions);
+    famAllocator->change_permission(descriptor, accessPermissions);
     FAM_PROFILE_END_ALLOCATOR(fam_change_permissions);
-    return ret;
+    return 0;
 }
 
 /**
@@ -1230,7 +1194,6 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
         message << "Descriptor is no longer valid" << endl;
         throw Fam_Exception(message.str().c_str());
     } else {
-
         regionInfo = famAllocator->check_permission_get_info(descriptor);
         famInfo->size = regionInfo.size;
         famInfo->perm = regionInfo.perm;

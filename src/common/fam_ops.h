@@ -42,8 +42,8 @@
 using namespace std;
 using namespace openfam;
 
-#define int_ true
-#define void_
+#define int__ true
+#define void__
 #define ptr__ (void *)NULL
 #define FAM_OPS_UNIMPLEMENTED(type)                                            \
     {                                                                          \

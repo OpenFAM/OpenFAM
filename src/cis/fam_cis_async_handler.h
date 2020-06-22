@@ -27,10 +27,10 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-#ifndef FAM_RPC_SERVER_H
-#define FAM_RPC_SERVER_H
+#ifndef FAM_CIS_ASYNC_HANDLER_H
+#define FAM_CIS_ASYNC_HANDLER_H
 
-#include "fam_rpc_service_impl.h"
+#include "cis/fam_cis_server.h"
 
 #include <boost/atomic.hpp>
 #include <chrono>
@@ -46,61 +46,61 @@ using namespace std;
 using namespace chrono;
 
 namespace openfam {
-MEMSERVER_PROFILE_START(RPC_SERVER)
+MEMSERVER_PROFILE_START(CIS_ASYNC)
 
 #ifdef MEMSERVER_PROFILE
-#define RPC_SERVER_PROFILE_START_OPS()                                         \
+#define CIS_ASYNC_PROFILE_START_OPS()                                          \
     {                                                                          \
-        Profile_Time start = RPC_SERVER_get_time();
+        Profile_Time start = CIS_ASYNC_get_time();
 
-#define RPC_SERVER_PROFILE_END_OPS(apiIdx)                                     \
-    Profile_Time end = RPC_SERVER_get_time();                                  \
-    Profile_Time total = RPC_SERVER_time_diff_nanoseconds(start, end);         \
-    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(RPC_SERVER, prof_##apiIdx, total)       \
+#define CIS_ASYNC_PROFILE_END_OPS(apiIdx)                                      \
+    Profile_Time end = CIS_ASYNC_get_time();                                   \
+    Profile_Time total = CIS_ASYNC_time_diff_nanoseconds(start, end);          \
+    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(CIS_ASYNC, prof_##apiIdx, total)        \
     }
-#define RPC_SERVER_PROFILE_DUMP() rpc_server_profile_end()
+#define CIS_ASYNC_PROFILE_DUMP() cis_async_profile_end()
 #else
-#define RPC_SERVER_PROFILE_START_OPS()
-#define RPC_SERVER_PROFILE_END_OPS(apiIdx)
-#define RPC_SERVER_PROFILE_DUMP()
+#define CIS_ASYNC_PROFILE_START_OPS()
+#define CIS_ASYNC_PROFILE_END_OPS(apiIdx)
+#define CIS_ASYNC_PROFILE_DUMP()
 #endif
 
-void rpc_server_profile_end() {
-    MEMSERVER_PROFILE_END(RPC_SERVER)
-    MEMSERVER_DUMP_PROFILE_BANNER(RPC_SERVER)
+void cis_async_profile_end() {
+    MEMSERVER_PROFILE_END(CIS_ASYNC)
+    MEMSERVER_DUMP_PROFILE_BANNER(CIS_ASYNC)
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
-    MEMSERVER_DUMP_PROFILE_DATA(RPC_SERVER, name, prof_##name)
-#include "rpc/rpc_server_counters.tbl"
+    MEMSERVER_DUMP_PROFILE_DATA(CIS_ASYNC, name, prof_##name)
+#include "cis/cis_async_counters.tbl"
 
 #undef MEMSERVER_COUNTER
-#define MEMSERVER_COUNTER(name) MEMSERVER_PROFILE_TOTAL(RPC_SERVER, prof_##name)
-#include "rpc/rpc_server_counters.tbl"
-    MEMSERVER_DUMP_PROFILE_SUMMARY(RPC_SERVER)
+#define MEMSERVER_COUNTER(name) MEMSERVER_PROFILE_TOTAL(CIS_ASYNC, prof_##name)
+#include "cis/cis_async_counters.tbl"
+    MEMSERVER_DUMP_PROFILE_SUMMARY(CIS_ASYNC)
 }
 
-typedef Fam_Rpc::WithAsyncMethod_copy<Fam_Rpc_Service_Impl> sType;
+typedef Fam_CIS_Rpc::WithAsyncMethod_copy<Fam_CIS_Server> sType;
 
-class Fam_Rpc_Server {
+class Fam_CIS_Async_Handler {
   public:
-    Fam_Rpc_Server(uint64_t rpcPort, char *name, char *libfabricPort,
-                   char *provider)
+    Fam_CIS_Async_Handler(uint64_t rpcPort, char *name, char *libfabricPort,
+                          char *provider)
         : serverAddress(name), port(rpcPort) {
-        allocator = new Memserver_Allocator();
+        famCIS = new Fam_CIS_Direct();
         service = new sType();
-        MEMSERVER_PROFILE_INIT(RPC_SERVER);
-        MEMSERVER_PROFILE_START_TIME(RPC_SERVER);
-        service->rpc_service_initialize(name, libfabricPort, provider,
-                                        allocator);
+        MEMSERVER_PROFILE_INIT(CIS_ASYNC);
+        MEMSERVER_PROFILE_START_TIME(CIS_ASYNC);
+        service->cis_server_initialize(name, libfabricPort, provider, famCIS);
     }
 
-    ~Fam_Rpc_Server() { delete service; }
+    ~Fam_CIS_Async_Handler() { delete service; }
 
     void dump_profile() {
-        RPC_SERVER_PROFILE_DUMP();
+        CIS_ASYNC_PROFILE_DUMP();
         service->dump_profile();
     }
-    void rpc_server_finalize() { service->rpc_service_finalize(); }
+
+    void cis_async_handler_finalize() { service->cis_server_finalize(); }
 
     void run() {
         char address[ADDR_SIZE + sizeof(uint64_t)];
@@ -126,32 +126,33 @@ class Fam_Rpc_Server {
 #endif
 
         // Spawn a seperate thread to handle asynchronous service
-        std::thread async_service_handler(&Fam_Rpc_Server::HandleRpcs<sType>,
-                                          this, service, cq.get(), allocator);
+        std::thread async_service_handler(
+            &Fam_CIS_Async_Handler::HandleRpcs<sType>, this, service, cq.get(),
+            famCIS);
 
         server->Wait();
         async_service_handler.join();
     }
 
   private:
-    Memserver_Allocator *allocator;
+    Fam_CIS_Direct *famCIS;
     class CallData {
       public:
         // Take in the "service" instance (in this case representing an
         // asynchronous server) and the completion queue "cq" used for
         // asynchronous communication with the gRPC runtime.
         CallData(sType *service, ServerCompletionQueue *cq,
-                 Memserver_Allocator *memAlloc)
+                 Fam_CIS_Direct *famCIS)
             : ret(0), service(service), cq(cq), responder(&ctx),
               status(CREATE) {
-            allocator = memAlloc;
+            this->famCIS = famCIS;
             // Invoke the serving logic right away.
             Proceed();
         }
 
         void Proceed() {
             if (status == CREATE) {
-                RPC_SERVER_PROFILE_START_OPS()
+                CIS_ASYNC_PROFILE_START_OPS()
                 // Make this instance progress to the PROCESS state.
                 status = PROCESS;
                 // As part of the initial CREATE state, we *request* that the
@@ -161,23 +162,22 @@ class Fam_Rpc_Server {
                 // requests concurrently), in this case the memory address of
                 // this CallData instance.
                 service->Requestcopy(&ctx, &request, &responder, cq, cq, this);
-                RPC_SERVER_PROFILE_END_OPS(copy_create);
+                CIS_ASYNC_PROFILE_END_OPS(copy_create);
             } else if (status == PROCESS) {
-                RPC_SERVER_PROFILE_START_OPS()
+                CIS_ASYNC_PROFILE_START_OPS()
                 // Spawn a new CallData instance to serve new clients while we
                 // process the one for this CallData. The instance will
                 // deallocate itself as part of its FINISH state.
 
-                new CallData(service, cq, allocator);
+                new CallData(service, cq, famCIS);
                 // copy the data from source dataitem to target dataitem
                 grpcStatus = Status::OK;
                 try {
-                    ret = allocator->copy(
-                        request.srcregionid(), request.srcoffset(),
-                        request.srccopystart(), request.destregionid(),
-                        request.destoffset(), request.destcopystart(),
-                        request.uid(), request.gid(),
-                        (size_t)request.copysize());
+                    famCIS->copy(request.srcregionid(), request.srcoffset(),
+                                 request.srccopystart(), request.destregionid(),
+                                 request.destoffset(), request.destcopystart(),
+                                 request.copysize(), 0, request.uid(),
+                                 request.gid());
                 } catch (Memserver_Exception &e) {
                     response.set_errorcode(e.fam_error());
                     response.set_errormsg(e.fam_error_msg());
@@ -189,13 +189,13 @@ class Fam_Rpc_Server {
                 // identifying tag for the event.
                 status = FINISH;
                 responder.Finish(response, grpcStatus, this);
-                RPC_SERVER_PROFILE_END_OPS(copy_process);
+                CIS_ASYNC_PROFILE_END_OPS(copy_process);
             } else {
-                RPC_SERVER_PROFILE_START_OPS()
+                CIS_ASYNC_PROFILE_START_OPS()
                 GPR_ASSERT(status == FINISH);
                 // Once in the FINISH state, deallocate ourselves (CallData).
                 delete this;
-                RPC_SERVER_PROFILE_END_OPS(copy_finish);
+                CIS_ASYNC_PROFILE_END_OPS(copy_finish);
             }
         }
 
@@ -213,7 +213,7 @@ class Fam_Rpc_Server {
         // the client.
         ServerContext ctx;
 
-        Memserver_Allocator *allocator;
+        Fam_CIS_Direct *famCIS;
         // What we get from the client.
         Fam_Copy_Request request;
         // What we send back to the client.
@@ -231,9 +231,9 @@ class Fam_Rpc_Server {
     // This can be run in multiple threads if needed.
     template <class Service>
     void HandleRpcs(Service *service, ServerCompletionQueue *cq,
-                    Memserver_Allocator *allocator) {
+                    Fam_CIS_Direct *famCIS) {
         // Spawn a new CallData instance to serve new clients.
-        new CallData(service, cq, allocator);
+        new CallData(service, cq, famCIS);
         void *tag; // uniquely identifies a request.
         bool ok;
         while (true) {

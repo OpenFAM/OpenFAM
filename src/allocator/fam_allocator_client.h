@@ -1,5 +1,5 @@
 /*
- * fam_allocator_nvmm.h
+ * fam_allocator_client.h
  * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,19 +27,21 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-#ifndef FAM_ALLOCATOR_NVMM_H_
-#define FAM_ALLOCATOR_NVMM_H_
+#ifndef FAM_ALLOCATOR_CLIENT_H_
+#define FAM_ALLOCATOR_CLIENT_H_
 
-#include "allocator/fam_allocator.h"
-#include "allocator/memserver_allocator.h"
-#include "metadata/fam_metadata_manager.h"
-
-using namespace metadata;
+#include "cis/fam_cis_client.h"
+#include "cis/fam_cis_direct.h"
 
 namespace openfam {
-class Fam_Allocator_NVMM : public Fam_Allocator {
+
+class Fam_Allocator_Client {
   public:
-    Fam_Allocator_NVMM();
+    Fam_Allocator_Client(MemServerMap name, uint64_t port);
+
+    Fam_Allocator_Client();
+
+    ~Fam_Allocator_Client();
 
     void allocator_initialize();
 
@@ -50,35 +52,37 @@ class Fam_Allocator_NVMM : public Fam_Allocator {
                                          Fam_Redundancy_Level redundancyLevel,
                                          uint64_t memoryServerId);
     void destroy_region(Fam_Region_Descriptor *descriptor);
-    int resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
+    void resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
 
     Fam_Descriptor *allocate(const char *name, uint64_t nbytes,
                              mode_t accessPermissions,
                              Fam_Region_Descriptor *region);
     void deallocate(Fam_Descriptor *descriptor);
 
-    int change_permission(Fam_Region_Descriptor *descriptor,
-                          mode_t accessPermissions);
-    int change_permission(Fam_Descriptor *descriptor, mode_t accessPermissions);
-    bool check_permission(Fam_Descriptor *descriptor);
+    void change_permission(Fam_Region_Descriptor *descriptor,
+                           mode_t accessPermissions);
+    void change_permission(Fam_Descriptor *descriptor,
+                           mode_t accessPermissions);
     Fam_Region_Descriptor *lookup_region(const char *name,
                                          uint64_t memoryServerId);
     Fam_Descriptor *lookup(const char *itemName, const char *regionName,
                            uint64_t memoryServerId);
     Fam_Region_Item_Info
     check_permission_get_info(Fam_Region_Descriptor *descriptor);
-    Fam_Region_Item_Info check_permission_get_info(Fam_Descriptor *descriptor);
-    Fam_Region_Item_Info get_stat_info(Fam_Descriptor *descriptor);
-    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
-               uint64_t destOffset, uint64_t nbytes) {
-        return NULL;
-    }
 
-    void wait_for_copy(void *waitObj) {}
+    Fam_Region_Item_Info check_permission_get_info(Fam_Descriptor *descriptor);
+
+    Fam_Region_Item_Info get_stat_info(Fam_Descriptor *descriptor);
+
+    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
+               uint64_t destOffset, uint64_t nbytes);
+
+    void wait_for_copy(void *waitObj);
+
     /**
-     * fam_map - Map a data item in FAM to the process virtual address space.
+     * fam_map - Map a data item in FAM to the process address space.
      * @param descriptor - Descriptor associated with the data item in FAM.
-     * @return - A pointer in the PE’s virtual address space that can be used
+     * @return - A pointer in the PE’s address space that can be used
      * to directly manipulate contents of FAM.
      */
     void *fam_map(Fam_Descriptor *descriptor);
@@ -91,26 +95,29 @@ class Fam_Allocator_NVMM : public Fam_Allocator {
      * to be unmapped.
      */
     void fam_unmap(void *local, Fam_Descriptor *descriptor);
-    int get_addr_size(size_t *addrSize, uint64_t nodeId) { return 0; }
-    int get_addr(void *addr, size_t addrSize, uint64_t nodeId) { return 0; }
 
     /**
      * acquire_CAS_lock - Acquire the mutex lock to perform
      * 128-bit CAS operation.
      * @param descriptor - Descriptor associated with the data item in FAM
      */
-    void acquire_CAS_lock(Fam_Descriptor *descriptor) {}
+    void acquire_CAS_lock(Fam_Descriptor *descriptor);
     /**
      * release_CAS_lock - Release the mutex lock acquired to perform
      * 128-bit CAS operation.
      * @param descriptor - Descriptor associated with the data item in FAM
      */
-    void release_CAS_lock(Fam_Descriptor *descriptor) {}
+    void release_CAS_lock(Fam_Descriptor *descriptor);
+
+    int get_addr_size(size_t *addrSize, uint64_t nodeId);
+
+    int get_addr(void *addr, size_t addrSize, uint64_t nodeId);
 
   private:
-    Memserver_Allocator *allocator;
+    Fam_CIS *famCIS;
     uint32_t uid;
     uint32_t gid;
 };
+
 } // namespace openfam
-#endif /* end of FAM_ALLOCATOR_NVMM_H_ */
+#endif /* end of FAM_ALLOCATOR_CLIENT_H_ */

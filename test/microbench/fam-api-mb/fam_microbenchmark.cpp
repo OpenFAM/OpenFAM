@@ -35,8 +35,8 @@
 
 #include <fam/fam.h>
 
+#include "cis/fam_cis_client.h"
 #include "common/fam_test_config.h"
-#include "rpc/fam_rpc_client.h"
 #define NUM_ITERATIONS 100
 #define BIG_REGION_SIZE 21474836480
 #define SMALL_REGION_SIZE 1073741824
@@ -50,7 +50,7 @@ using namespace openfam;
 int *myPE;
 int NUM_MM_ITERATIONS;
 int DATA_ITEM_SIZE;
-Fam_Rpc_Client *rpc;
+Fam_CIS_Client *cis;
 fam *my_fam;
 Fam_Options fam_opts;
 Fam_Descriptor *item;
@@ -61,14 +61,14 @@ size_t test_item_size;
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
 #define RESET_PROFILE()                                                        \
     {                                                                          \
-        rpc->reset_profile();                                                  \
+        cis->reset_profile(0);                                                 \
         my_fam->fam_barrier_all();                                             \
     }
 
 #define GENERATE_PROFILE()                                                     \
     {                                                                          \
         if (*myPE == 0)                                                        \
-            rpc->generate_profile();                                           \
+            cis->generate_profile(0);                                          \
         my_fam->fam_barrier_all();                                             \
     }
 #else
@@ -2493,8 +2493,13 @@ int main(int argc, char **argv) {
 // Note:this test can not be run with multiple memory server model, when memory
 // server profiling is enabled.
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-    const char *ip = strdup(TEST_MEMSERVER_IP);
-    EXPECT_NO_THROW(rpc = new Fam_Rpc_Client(ip, atoi(TEST_GRPC_PORT)));
+    const char *memoryServers = strdup(TEST_MEMSERVER_IP);
+    std::string delimiter1 = ",";
+    std::string delimiter2 = ":";
+    MemServerMap memoryServerList =
+        parse_memserver_list(memoryServers, delimiter1, delimiter2);
+    EXPECT_NO_THROW(
+        cis = new Fam_CIS_Client(memoryServerList, atoi(TEST_GRPC_PORT)));
 #endif
 
     my_fam = new fam();

@@ -235,17 +235,6 @@ class Fam_Region_Descriptor {
 };
 
 /**
- * Structure defining information like size and key of region/dataitem
- * */
-typedef struct {
-    uint64_t key;
-    uint64_t size;
-    mode_t perm;
-    void *base;
-    char *name;
-} Fam_Region_Item_Info;
-
-/**
  * Structure defining FAM options. This structure holds system wide information
  * required to initialize the OpenFAM library and the associated program using
  * the library. It is expected to evolve over time as the library is
