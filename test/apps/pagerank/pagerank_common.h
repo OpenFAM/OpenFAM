@@ -176,13 +176,8 @@ void *spmv_malloc(uint64_t size) {
 
 int spmv_fam_read(char *buf, Fam_Descriptor *dataitem, uint64_t offset,
                   uint64_t size) {
-    int ret;
     try {
-        ret = my_fam->fam_get_blocking(buf, dataitem, offset, size);
-        if (ret < 0) {
-            fam_stream << "fam_get failed" << endl;
-            return -1;
-        }
+        my_fam->fam_get_blocking(buf, dataitem, offset, size);
     }
     catch (Fam_Exception &e) {
         cout << "FAM Exception caught" << endl;
@@ -246,7 +241,6 @@ Fam_Descriptor *spmv_get_dataitem(const char *dataitemName) {
 int spmv_fam_write(char *inpBuf, const char *dataitemName, uint64_t offset,
                    uint64_t size) {
     Fam_Descriptor *dataitem = NULL;
-    int ret;
 
     // Lookup config dataitem
     try {
@@ -259,11 +253,7 @@ int spmv_fam_write(char *inpBuf, const char *dataitemName, uint64_t offset,
         return -1;
     }
     try {
-        ret = my_fam->fam_put_blocking(inpBuf, dataitem, offset, size);
-        if (ret < 0) {
-            fam_stream << "fam_put failed" << endl;
-            exit(1);
-        }
+        my_fam->fam_put_blocking(inpBuf, dataitem, offset, size);
     }
     catch (Fam_Exception &e) {
         fam_stream << "Exception caught" << endl;
@@ -276,14 +266,8 @@ int spmv_fam_write(char *inpBuf, const char *dataitemName, uint64_t offset,
 
 int spmv_fam_write(char *inpBuf, Fam_Descriptor *dataitem, uint64_t offset,
                    uint64_t size) {
-    int ret;
-
     try {
-        ret = my_fam->fam_put_blocking(inpBuf, dataitem, offset, size);
-        if (ret < 0) {
-            fam_stream << "fam_put failed" << endl;
-            exit(1);
-        }
+        my_fam->fam_put_blocking(inpBuf, dataitem, offset, size);
     }
     catch (Fam_Exception &e) {
         fam_stream << "Exception caught" << endl;

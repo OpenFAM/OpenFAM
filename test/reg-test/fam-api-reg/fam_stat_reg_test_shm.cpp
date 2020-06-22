@@ -263,11 +263,11 @@ TEST(FamStat, FamStatFailure) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
-    EXPECT_THROW(my_fam->fam_deallocate(item1), Fam_Allocator_Exception);
-    EXPECT_THROW(my_fam->fam_destroy_region(desc1), Fam_Allocator_Exception);
+    EXPECT_THROW(my_fam->fam_deallocate(item1), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_destroy_region(desc1), Fam_Exception);
 
-    EXPECT_THROW(my_fam->fam_deallocate(item2), Fam_Allocator_Exception);
-    EXPECT_THROW(my_fam->fam_destroy_region(desc2), Fam_Allocator_Exception);
+    EXPECT_THROW(my_fam->fam_deallocate(item2), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_destroy_region(desc2), Fam_Exception);
 
     EXPECT_THROW(my_fam->fam_stat((Fam_Region_Descriptor *)desc, info),
                  Fam_Exception);

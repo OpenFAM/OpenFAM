@@ -32,6 +32,7 @@
 
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string.h>
 #include <sys/uio.h>
 #include <thread>
@@ -48,6 +49,7 @@
 
 #include "allocator/fam_allocator_client.h"
 #include "common/fam_context.h"
+#include "common/fam_internal.h"
 #include "common/fam_ops.h"
 #include "common/fam_options.h"
 #include "fam/fam.h"
@@ -324,23 +326,29 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     std::map<uint64_t, Fam_Region_Map_t *> *get_fiMrs() { return fiMrs; };
     Fam_Context *get_defaultCtx(uint64_t nodeId) {
         auto obj = defContexts->find(nodeId);
-        if (obj == defContexts->end())
-            throw Fam_Datapath_Exception("Context for memserver not found");
-        else
+        if (obj == defContexts->end()) {
+            std::ostringstream message;
+            ERROR_MSG(message, "Context for memserver not found");
+            throw Fam_Datapath_Exception(message.str().c_str());
+        } else
             return obj->second;
     }
     Fam_Context *get_defaultCtx(Fam_Region_Descriptor *descriptor) {
         auto obj = defContexts->find(descriptor->get_memserver_id());
-        if (obj == defContexts->end())
-            throw Fam_Datapath_Exception("Context for memserver not found");
-        else
+        if (obj == defContexts->end()) {
+            std::ostringstream message;
+            ERROR_MSG(message, "Context for memserver not found");
+            throw Fam_Datapath_Exception(message.str().c_str());
+        } else
             return obj->second;
     };
     Fam_Context *get_defaultCtx(Fam_Descriptor *descriptor) {
         auto obj = defContexts->find(descriptor->get_memserver_id());
-        if (obj == defContexts->end())
-            throw Fam_Datapath_Exception("Context for memserver not found");
-        else
+        if (obj == defContexts->end()) {
+            std::ostringstream message;
+            ERROR_MSG(message, "Context for memserver not found");
+            throw Fam_Datapath_Exception(message.str().c_str());
+        } else
             return obj->second;
     };
     pthread_rwlock_t *get_mr_lock() { return &fiMrLock; };

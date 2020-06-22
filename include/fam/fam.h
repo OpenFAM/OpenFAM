@@ -277,7 +277,7 @@ class fam {
      * @see #fam_finalize()
      * @see #Fam_Options
      */
-    int fam_initialize(const char *groupName, Fam_Options *options);
+    void fam_initialize(const char *groupName, Fam_Options *options);
 
     /**
      * Finalize the fam library. Once finalized, the process can continue work,
@@ -381,7 +381,7 @@ class fam {
      * @see #fam_create_region
      * @see #fam_destroy_region
      */
-    int fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
+    void fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
 
     /**
      * Allocate some unnamed space within a region. Allocates an area of FAM
@@ -415,8 +415,8 @@ class fam {
      * @return - 0 on success, 1 for unsuccessful completion, negative number on
      * an exception
      */
-    int fam_change_permissions(Fam_Descriptor *descriptor,
-                               mode_t accessPermissions);
+    void fam_change_permissions(Fam_Descriptor *descriptor,
+                                mode_t accessPermissions);
 
     /**
      * Change permissions associated with a region descriptor.
@@ -425,8 +425,8 @@ class fam {
      * @return - 0 on success, 1 for unsuccessful completion, negative number on
      * an exception
      */
-    int fam_change_permissions(Fam_Region_Descriptor *descriptor,
-                               mode_t accessPermissions);
+    void fam_change_permissions(Fam_Region_Descriptor *descriptor,
+                                mode_t accessPermissions);
 
     /**
      * Get the size, permissions and name of the dataitem  associated
@@ -464,8 +464,8 @@ class fam {
      * @return - 0 for successful completion, 1 for unsuccessful, and a negative
      * number in case of exceptions
      */
-    int fam_get_blocking(void *local, Fam_Descriptor *descriptor,
-                         uint64_t offset, uint64_t nbytes);
+    void fam_get_blocking(void *local, Fam_Descriptor *descriptor,
+                          uint64_t offset, uint64_t nbytes);
 
     /**
      * Initiate a copy of data from FAM to node local memory. Do not wait until
@@ -491,8 +491,8 @@ class fam {
      * @return - 0 for successful completion, 1 for unsuccessful completion,
      * negative number in case of exceptions
      */
-    int fam_put_blocking(void *local, Fam_Descriptor *descriptor,
-                         uint64_t offset, uint64_t nbytes);
+    void fam_put_blocking(void *local, Fam_Descriptor *descriptor,
+                          uint64_t offset, uint64_t nbytes);
 
     /**
      * Initiate a copy of data from local memory to FAM, returning before copy
@@ -548,9 +548,9 @@ class fam {
      * negative number in case of exception
      * @see #fam_scatter_strided
      */
-    int fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                            uint64_t nElements, uint64_t firstElement,
-                            uint64_t stride, uint64_t elementSize);
+    void fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                             uint64_t nElements, uint64_t firstElement,
+                             uint64_t stride, uint64_t elementSize);
 
     /**
      * Gather data from FAM to local memory, blocking while copy is complete
@@ -568,9 +568,9 @@ class fam {
      * negative number in case errors
      * @see #fam_scatter_indexed
      */
-    int fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                            uint64_t nElements, uint64_t *elementIndex,
-                            uint64_t elementSize);
+    void fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                             uint64_t nElements, uint64_t *elementIndex,
+                             uint64_t elementSize);
 
     /**
      * Initiate a gather of data from FAM to local memory, return before
@@ -627,9 +627,9 @@ class fam {
      * negative number in case errors
      * @see #fam_gather_strided
      */
-    int fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                             uint64_t nElements, uint64_t firstElement,
-                             uint64_t stride, uint64_t elementSize);
+    void fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t nElements, uint64_t firstElement,
+                              uint64_t stride, uint64_t elementSize);
 
     /**
      * Scatter data from local memory to FAM.
@@ -646,9 +646,9 @@ class fam {
      * negative number in case errors
      * @see #fam_gather_indexed
      */
-    int fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                             uint64_t nElements, uint64_t *elementIndex,
-                             uint64_t elementSize);
+    void fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t nElements, uint64_t *elementIndex,
+                              uint64_t elementSize);
 
     /**
      * initiate a scatter data from local memory to FAM.

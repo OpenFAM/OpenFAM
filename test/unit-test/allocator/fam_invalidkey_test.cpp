@@ -72,11 +72,11 @@ int main() {
     // Initialize openFAM API
     fam_opts.memoryServer = strdup(TEST_MEMORY_SERVER);
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     // Create Region

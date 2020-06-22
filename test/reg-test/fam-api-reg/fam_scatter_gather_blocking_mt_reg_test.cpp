@@ -109,7 +109,7 @@ void *thr_func_index_expect_failure(void *arg) {
     uint64_t indexes[] = {0, 7, 3, 5, 8, 1, 2, 4, 6, 9};
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, item, 10, indexes, sizeof(int)),
-        Fam_Datapath_Exception);
+        Fam_Exception);
 
     int *local2 = (int *)malloc(10 * sizeof(int));
 
@@ -128,7 +128,7 @@ void *thr_func_stride_expect_failure(void *arg) {
 
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, item, 5, 2, 3, sizeof(int)),
-        Fam_Datapath_Exception);
+        Fam_Exception);
 
     int *local2 = (int *)malloc(10 * sizeof(int));
 

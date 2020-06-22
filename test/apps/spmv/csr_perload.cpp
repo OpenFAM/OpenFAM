@@ -127,14 +127,8 @@ void spmv_read_config_file(char *configFilename, int &matRowCount,
 
 int spmv_fam_write(char *inpBuf, Fam_Descriptor *dataitem, uint64_t offset,
                    uint64_t size) {
-    int ret;
-
     try {
-        ret = my_fam->fam_put_blocking(inpBuf, dataitem, offset, size);
-        if (ret < 0) {
-            cout << "fam_put failed" << endl;
-            exit(1);
-        }
+        my_fam->fam_put_blocking(inpBuf, dataitem, offset, size);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;

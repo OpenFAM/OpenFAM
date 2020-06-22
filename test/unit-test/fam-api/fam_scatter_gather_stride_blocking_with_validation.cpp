@@ -56,11 +56,11 @@ int main() {
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
     fam_opts.libfabricPort = strdup(TEST_LIBFABRIC_PORT);
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful." << endl;
     }
 
     desc = my_fam->fam_create_region("sg_test", 1048576, 0777, RAID1);

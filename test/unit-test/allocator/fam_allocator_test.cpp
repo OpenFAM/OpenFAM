@@ -55,11 +55,13 @@ int main() {
     fam_opts.memoryServer = strdup(TEST_MEMORY_SERVER);
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    fam_opts.allocator = strdup("NVMM");
+    fam_opts.runtime = strdup("NONE");
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     // Create Region

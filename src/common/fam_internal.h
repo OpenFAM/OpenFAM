@@ -75,6 +75,7 @@
 
 #include "nvmm/epoch_manager.h"
 #include "nvmm/memory_manager.h"
+#include "fam/fam_exception.h"
 #include <nvmm/fam.h>
 
 using namespace famradixtree;
@@ -177,6 +178,68 @@ inline void openfam_invalidate(void *addr, uint64_t size) {
     fam_invalidate(addr, size);
 #endif
 }
+
+/*
+ * These derived exception classes are currently being used
+ * internally by OpenFAM. All the OpenFAM api return only
+ * Fam_Exception objects.
+ *
+ */
+template <typename T> void log_msg(std::ostringstream &message, T const &f) {
+    message << f;
+}
+
+template <typename T, typename... Args>
+void log_msg(std::ostringstream &message, T const &f, Args const &... args) {
+    message << f << ":";
+    log_msg(message, args...);
+}
+
+#define ERROR_MSG(message, ...)                                                \
+    log_msg(message, __func__, __LINE__, __VA_ARGS__)
+
+class Fam_InvalidOption_Exception : public Fam_Exception {
+  public:
+    Fam_InvalidOption_Exception();
+    Fam_InvalidOption_Exception(const char *msg);
+};
+
+class Fam_Permission_Exception : public Fam_Exception {
+  public:
+    Fam_Permission_Exception();
+    Fam_Permission_Exception(const char *msg);
+};
+
+class Fam_Timeout_Exception : public Fam_Exception {
+  public:
+    Fam_Timeout_Exception();
+    Fam_Timeout_Exception(const char *msg);
+};
+
+class Fam_Datapath_Exception : public Fam_Exception {
+  public:
+    Fam_Datapath_Exception();
+    Fam_Datapath_Exception(const char *msg);
+    Fam_Datapath_Exception(enum Fam_Error fErr, const char *msg);
+};
+
+class Fam_Allocator_Exception : public Fam_Exception {
+  public:
+    Fam_Allocator_Exception();
+    Fam_Allocator_Exception(enum Fam_Error fErr, const char *msg);
+};
+
+class Fam_Pmi_Exception : public Fam_Exception {
+  public:
+    Fam_Pmi_Exception();
+    Fam_Pmi_Exception(const char *msg);
+};
+
+class Fam_Unimplemented_Exception : public Fam_Exception {
+  public:
+    Fam_Unimplemented_Exception();
+    Fam_Unimplemented_Exception(const char *msg);
+};
 
 } // namespace openfam
 

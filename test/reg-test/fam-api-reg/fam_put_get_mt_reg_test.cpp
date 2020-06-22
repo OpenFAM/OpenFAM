@@ -426,7 +426,7 @@ void *thr_func5_no_put(void *arg) {
     // Put blocking
     EXPECT_THROW(
         my_fam->fam_put_blocking(local, items[msg_no], (uint64_t)off, MSG_SIZE),
-        Fam_Datapath_Exception);
+        Fam_Exception);
 
     free(local);
     free((void *)dataItem);
@@ -503,7 +503,7 @@ void *thr_func6_get(void *arg) {
     sleep(1);
     EXPECT_THROW(my_fam->fam_get_blocking(local2, items[msg_no], (uint64_t)off,
                                           MSG_SIZE),
-                 Fam_Datapath_Exception);
+                 Fam_Exception);
     free(local);
     free(local2);
     pthread_exit(NULL);

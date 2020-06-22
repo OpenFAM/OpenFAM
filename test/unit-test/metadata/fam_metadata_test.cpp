@@ -36,6 +36,7 @@
 #include "common/fam_test_config.h"
 
 #include <fam/fam.h>
+#include <fam/fam_exception.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -61,11 +62,11 @@ int main(int argc, char *argv[]) {
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
     fam_opts.runtime = strdup("NONE");
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     Fam_Region_Descriptor *desc[2];

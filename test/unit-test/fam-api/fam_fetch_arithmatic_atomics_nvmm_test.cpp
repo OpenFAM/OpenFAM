@@ -63,11 +63,11 @@ int main() {
 
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
 
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
@@ -86,7 +86,7 @@ int main() {
     int32_t valueInt32 = 0xAAAA;
     try {
         my_fam->fam_set(item, 0, valueInt32);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -95,7 +95,7 @@ int main() {
     valueInt32 = 0x1;
     try {
         valueInt32 = my_fam->fam_fetch_add(item, 0, valueInt32);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -104,7 +104,7 @@ int main() {
 
     try {
         valueInt32 = my_fam->fam_fetch_int32(item, 0);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -114,7 +114,7 @@ int main() {
     valueInt32 = 0x1;
     try {
         valueInt32 = my_fam->fam_fetch_subtract(item, 0, valueInt32);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -123,7 +123,7 @@ int main() {
 
     try {
         valueInt32 = my_fam->fam_fetch_int32(item, 0);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -134,7 +134,7 @@ int main() {
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
     try {
         my_fam->fam_set(item, 0, valueInt64);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -143,7 +143,7 @@ int main() {
     valueInt64 = 0x1;
     try {
         valueInt64 = my_fam->fam_fetch_add(item, 0, valueInt64);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -152,7 +152,7 @@ int main() {
 
     try {
         valueInt64 = my_fam->fam_fetch_int64(item, 0);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -162,7 +162,7 @@ int main() {
     valueInt64 = 0x1;
     try {
         valueInt64 = my_fam->fam_fetch_subtract(item, 0, valueInt64);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -171,7 +171,7 @@ int main() {
 
     try {
         valueInt64 = my_fam->fam_fetch_int64(item, 0);
-    } catch (Fam_Permission_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
