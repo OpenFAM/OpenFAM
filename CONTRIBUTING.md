@@ -74,6 +74,30 @@ As a developer, you can push the changes from your devel branch to your reposito
 
 Note that push will only push the changes to your forked repository in github.  
 
+## Code formating
+We use git-clang-format tool to maintain the code format. Refer to ".clang-format" file for clang-format parameters.
+Before commit (after staging changes using git add) please run git-clang-format.
+Follow the below steps:
+    
+1. Make sure git-clang-format (>=6.0 or <=9) is installed in the system.  
+   In Ubuntu the binary is found in clang-format-6.0 package (>=6.0 and <=9).  
+   In Centos the package is "llvm-toolset-7.0-git-clang-format-7.0.1-1.el7.x86_64".  
+   It is dependent on llvm-toolset-7.0-clang-libs-7.0.1-1.el7.x86_64 and 
+   llvm-toolset-7.0-clang-7.0.1-1.el7.x86_64.
+2. Add git-clang-format location to PATH.   
+   In Ubuntu the default path is /usr/lib/llvm-6.0/bin/  
+   In Centos the default path is /opt/rh/llvm-toolset-7.0/root/usr/bin/  
+3. Add the modified files to staging area. (using command git add).  
+4. Run git-clang-format command -  
+   git-clang-format --style=file -v --extensions cpp,h  
+5. Verify the changes using git diff.
+6. Stage the changes and commit. 
+
+Note : To install the package in Centos you might have to do these:  
+sudo yum install yum-utils  
+sudo yum install centos-release-scl  
+sudo yum-config-manager --enable rhel-server-rhscl-7-rpms  
+
 ## Submit the changes to the mainline  
 When your changes in forked repository are ready to be committed to the mainline initiate a pull request.  
 This can be triggered by clicking on the green button on the left top corner in [your repository](https://github.com/your-user-name/OpenFAM)
