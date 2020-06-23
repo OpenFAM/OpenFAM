@@ -71,15 +71,17 @@ int main() {
         exit(1);
     }
     int ret = 0;
-
-    uint64_t regionSize = my_fam->fam_size(desc);
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+    my_fam->fam_stat(desc, info);
+    uint64_t regionSize = info->size;
 
     cout << "Region size : " << regionSize << endl;
 
-    uint64_t itemSize = my_fam->fam_size(item);
+    my_fam->fam_stat(item, info);
+    uint64_t itemSize = info->size;
 
     cout << "Item size : " << itemSize << endl;
-
+    free(info);
     Fam_Global_Descriptor globalDescriptor = item->get_global_descriptor();
 
     Fam_Descriptor *itemCopy = new Fam_Descriptor(globalDescriptor);

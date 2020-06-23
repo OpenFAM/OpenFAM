@@ -111,6 +111,20 @@ typedef enum {
 } Fam_Redundancy_Level;
 
 /**
+ * Enumeration defining descriptor update on several  fields.
+ */
+typedef enum {
+    /** Descriptor is invalid */
+    DESC_INVALID,
+    /** Descriptor is initialized*/
+    DESC_INIT_DONE,
+    /** Descriptor is initialized, but valid key isnt present*/
+    DESC_INIT_DONE_BUT_KEY_NOT_VALID,
+    /** Descriptor is uninitialized*/
+    DESC_UNINITIALIZED
+} Fam_Descriptor_Status;
+
+/**
  * FAM Global descriptor represents both the region and data item in FAM.
  */
 typedef struct {
@@ -123,6 +137,12 @@ typedef struct {
     uint64_t offset;
 } Fam_Global_Descriptor;
 
+typedef struct {
+    uint64_t key;
+    uint64_t size;
+    mode_t perm;
+    char *name;
+} Fam_Stat;
 /**
  * Structure defining a FAM descriptor. Descriptors are PE independent data
  * structures that enable the OpenFAM library to uniquely locate an area of
@@ -151,10 +171,18 @@ class Fam_Descriptor {
     void set_context(void *context);
     void set_base_address(void *address);
     void *get_base_address();
-    // set size
+    // get status
+    int get_desc_status();
+    // put status
+    void set_desc_status(int update_status);
+    // set size, perm and name.
     void set_size(uint64_t itemSize);
-    // get size
+    void set_perm(mode_t perm);
+    void set_name(char *name);
+    // get size, perm and name.
     uint64_t get_size();
+    mode_t get_perm();
+    char *get_name();
     // get memory server id
     uint64_t get_memserver_id();
 
@@ -186,10 +214,18 @@ class Fam_Region_Descriptor {
     void *get_context();
     // set context
     void set_context(void *context);
-    // set size
-    void set_size(uint64_t regionSize);
-    // get size
+    // get status
+    int get_desc_status();
+    // put status
+    void set_desc_status(int update_status);
+    // set size, perm and name.
+    void set_size(uint64_t itemSize);
+    void set_perm(mode_t perm);
+    void set_name(char *name);
+    // get size, perm and name.
     uint64_t get_size();
+    mode_t get_perm();
+    char *get_name();
     // get memory server id
     uint64_t get_memserver_id();
 
@@ -206,6 +242,7 @@ typedef struct {
     uint64_t size;
     mode_t perm;
     void *base;
+    char *name;
 } Fam_Region_Item_Info;
 
 /**
@@ -403,18 +440,23 @@ class fam {
                                mode_t accessPermissions);
 
     /**
-     * Get the size of the dataitem  associated with a region descriptor.
-     * @param descriptor - descriptor associated with some dataitem
-     * @return - size of the dataitem
+     * Get the size, permissions and name of the dataitem  associated
+     * with a data item descriptor.
+     * @param descriptor - descriptor associated with some dataitem.
+     * @param famInfo - structure that holds aforementioned info.
+     * @return - none
      */
-    uint64_t fam_size(Fam_Descriptor *descriptor);
+    void fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo);
 
     /**
-     * Get the size of the region  associated with a region descriptor.
+     * Get the size, permissions and name of the region associated
+     * with a region descriptor.
+     * Get the size of the region associated with a region descriptor.
      * @param descriptor - descriptor associated with some region
-     * @return - size of the region
+     * @param famInfo - structure that holds aforementioned info.
+     * @return - none
      */
-    uint64_t fam_size(Fam_Region_Descriptor *descriptor);
+    void fam_stat(Fam_Region_Descriptor *descriptor, Fam_Stat *famInfo);
 
     // DATA READ AND WRITE Group. These APIs read and write data in FAM and copy
     // data between local DRAM and FAM.

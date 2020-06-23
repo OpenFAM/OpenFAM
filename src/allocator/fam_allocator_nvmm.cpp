@@ -68,6 +68,10 @@ Fam_Region_Descriptor *Fam_Allocator_NVMM::create_region(
 
     Fam_Region_Descriptor *region =
         new Fam_Region_Descriptor(globalDescriptor, nbytes);
+    region->set_size(nbytes);
+    region->set_perm(permissions);
+    region->set_name((char *)name);
+    region->set_desc_status(DESC_INIT_DONE);
     return region;
 }
 
@@ -75,6 +79,7 @@ void Fam_Allocator_NVMM::destroy_region(Fam_Region_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
 
+    descriptor->set_desc_status(DESC_INVALID);
     try {
         allocator->destroy_region(globalDescriptor.regionId, uid, gid);
     }
@@ -135,6 +140,10 @@ Fam_Descriptor *Fam_Allocator_NVMM::allocate(const char *name, uint64_t nbytes,
     }
     dataItemDesc->set_base_address(localPointer);
     dataItemDesc->bind_key(key);
+    dataItemDesc->set_size(nbytes);
+    dataItemDesc->set_perm(accessPermissions);
+    dataItemDesc->set_name((char *)name);
+    dataItemDesc->set_desc_status(DESC_INIT_DONE);
 
     return dataItemDesc;
 }
@@ -142,6 +151,7 @@ Fam_Descriptor *Fam_Allocator_NVMM::allocate(const char *name, uint64_t nbytes,
 void Fam_Allocator_NVMM::deallocate(Fam_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
+    descriptor->set_desc_status(DESC_INVALID);
 
     try {
         allocator->deallocate(globalDescriptor.regionId,
@@ -207,6 +217,10 @@ Fam_Allocator_NVMM::lookup_region(const char *name, uint64_t memoryServerId) {
         globalDescriptor.offset = region.offset;
         Fam_Region_Descriptor *regionDesc =
             new Fam_Region_Descriptor(globalDescriptor, region.size);
+        regionDesc->set_size(region.size);
+        regionDesc->set_perm(region.perm);
+        regionDesc->set_name(region.name);
+        regionDesc->set_desc_status(DESC_INIT_DONE);
         return regionDesc;
     } else {
         throw Fam_Allocator_Exception(FAM_ERR_NOPERM,
@@ -255,6 +269,10 @@ Fam_Descriptor *Fam_Allocator_NVMM::lookup(const char *itemName,
 
         dataItemDesc->set_base_address(localPointer);
         dataItemDesc->bind_key(key);
+        dataItemDesc->set_size(dataitem.size);
+        dataItemDesc->set_perm(dataitem.perm);
+        dataItemDesc->set_name(dataitem.name);
+        dataItemDesc->set_desc_status(DESC_INIT_DONE);
         return dataItemDesc;
     } else {
         throw Fam_Allocator_Exception(FAM_ERR_NOPERM,
@@ -279,7 +297,9 @@ Fam_Region_Item_Info Fam_Allocator_NVMM::check_permission_get_info(
 
     Fam_Region_Item_Info regionInfo;
     regionInfo.size = region.size;
-
+    regionInfo.perm = region.perm;
+    regionInfo.name = strdup(region.name);
+    descriptor->set_desc_status(DESC_INIT_DONE);
     return regionInfo;
 }
 
@@ -331,6 +351,33 @@ Fam_Allocator_NVMM::check_permission_get_info(Fam_Descriptor *descriptor) {
     itemInfo.size = dataitem.size;
     itemInfo.base = base;
     itemInfo.perm = dataitem.perm;
+    itemInfo.name = strdup(dataitem.name);
+    descriptor->set_desc_status(DESC_INIT_DONE);
+
+    return itemInfo;
+}
+
+Fam_Region_Item_Info
+Fam_Allocator_NVMM::get_stat_info(Fam_Descriptor *descriptor) {
+    Fam_Global_Descriptor globalDescriptor =
+        descriptor->get_global_descriptor();
+    Fam_DataItem_Metadata dataitem;
+
+    // find if dataitem present
+    try {
+        allocator->get_dataitem(globalDescriptor.regionId,
+                                globalDescriptor.offset, uid, gid, dataitem);
+    } catch (Memserver_Exception &e) {
+        throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
+                                      e.fam_error_msg());
+    }
+
+    Fam_Region_Item_Info itemInfo;
+    itemInfo.size = dataitem.size;
+    itemInfo.perm = dataitem.perm;
+    itemInfo.name = strdup(dataitem.name);
+    descriptor->set_desc_status(DESC_INIT_DONE);
+
     return itemInfo;
 }
 
