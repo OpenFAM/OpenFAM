@@ -71,14 +71,18 @@ int main() {
         exit(1);
     }
     int ret = 0;
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+    my_fam->fam_stat(desc, info);
 
-    uint64_t regionSize = my_fam->fam_size(desc);
+    uint64_t regionSize = info->size;
 
     cout << "Region size : " << regionSize << endl;
+    my_fam->fam_stat(item, info);
 
-    uint64_t itemSize = my_fam->fam_size(item);
+    uint64_t itemSize = info->size;
 
     cout << "Item size : " << itemSize << endl;
+    free(info);
     char *local = strdup("Test message");
     try {
         ret = my_fam->fam_put_blocking(local, item, 0, 13);

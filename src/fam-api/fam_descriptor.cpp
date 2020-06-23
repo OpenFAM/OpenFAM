@@ -47,7 +47,10 @@ class Fam_Descriptor::FamDescriptorImpl_ {
         key = FAM_KEY_UNINITIALIZED;
         context = NULL;
         base = NULL;
-        size = itemSize;
+        desc_update_status = DESC_UNINITIALIZED;
+        regionInfo.size = itemSize;
+        regionInfo.perm = 0;
+        regionInfo.name = NULL;
     }
 
     FamDescriptorImpl_(Fam_Global_Descriptor globalDesc) {
@@ -55,7 +58,10 @@ class Fam_Descriptor::FamDescriptorImpl_ {
         key = FAM_KEY_UNINITIALIZED;
         context = NULL;
         base = NULL;
-        size = 0;
+        desc_update_status = DESC_UNINITIALIZED;
+        regionInfo.size = 0;
+        regionInfo.perm = 0;
+        regionInfo.name = NULL;
     }
 
     FamDescriptorImpl_() {
@@ -63,7 +69,10 @@ class Fam_Descriptor::FamDescriptorImpl_ {
         key = FAM_KEY_UNINITIALIZED;
         context = NULL;
         base = NULL;
-        size = 0;
+        desc_update_status = DESC_UNINITIALIZED;
+        regionInfo.size = 0;
+        regionInfo.perm = 0;
+        regionInfo.name = NULL;
     }
 
     ~FamDescriptorImpl_() {
@@ -71,7 +80,10 @@ class Fam_Descriptor::FamDescriptorImpl_ {
         key = FAM_KEY_UNINITIALIZED;
         context = NULL;
         base = NULL;
-        size = 0;
+        desc_update_status = DESC_INVALID;
+        regionInfo.size = 0;
+        regionInfo.perm = 0;
+        regionInfo.name = NULL;
     }
 
     Fam_Global_Descriptor get_global_descriptor() { return this->gDescriptor; }
@@ -93,12 +105,31 @@ class Fam_Descriptor::FamDescriptorImpl_ {
 
     void *get_base_address() { return base; }
 
+    void set_desc_status(int update_status) {
+        desc_update_status = update_status;
+    }
+    int get_desc_status() { return desc_update_status; }
+
     void set_size(uint64_t itemSize) {
-        if (size == 0)
-            size = itemSize;
+        if (regionInfo.size == 0)
+            regionInfo.size = itemSize;
     }
 
-    uint64_t get_size() { return size; }
+    uint64_t get_size() { return regionInfo.size; }
+
+    void set_perm(mode_t itemPerm) {
+        if (regionInfo.perm == 0)
+            regionInfo.perm = itemPerm;
+    }
+
+    mode_t get_perm() { return regionInfo.perm; }
+
+    void set_name(char *itemName) {
+        if (regionInfo.name == NULL)
+            regionInfo.name = itemName;
+    }
+
+    char *get_name() { return regionInfo.name; }
 
     uint64_t get_memserver_id() {
         return (gDescriptor.regionId) >> MEMSERVERID_SHIFT;
@@ -110,7 +141,8 @@ class Fam_Descriptor::FamDescriptorImpl_ {
     uint64_t key;
     void *context;
     void *base;
-    uint64_t size;
+    int desc_update_status;
+    Fam_Region_Item_Info regionInfo;
 };
 
 Fam_Descriptor::Fam_Descriptor(Fam_Global_Descriptor gDescriptor,
@@ -144,6 +176,11 @@ void Fam_Descriptor::set_base_address(void *address) {
 
 void *Fam_Descriptor::get_base_address() { return fdimpl_->get_base_address(); }
 
+void Fam_Descriptor::set_desc_status(int desc_update_status) {
+    return fdimpl_->set_desc_status(desc_update_status);
+}
+int Fam_Descriptor::get_desc_status() { return fdimpl_->get_desc_status(); }
+
 void Fam_Descriptor::set_size(uint64_t itemSize) {
     return fdimpl_->set_size(itemSize);
 }
@@ -153,6 +190,16 @@ uint64_t Fam_Descriptor::get_size() { return fdimpl_->get_size(); }
 uint64_t Fam_Descriptor::get_memserver_id() {
     return fdimpl_->get_memserver_id();
 }
+void Fam_Descriptor::set_perm(mode_t regionPerm) {
+    fdimpl_->set_perm(regionPerm);
+}
+
+mode_t Fam_Descriptor::get_perm() { return fdimpl_->get_perm(); }
+
+void Fam_Descriptor::set_name(char *itemName) { fdimpl_->set_name(itemName); }
+
+char *Fam_Descriptor::get_name() { return fdimpl_->get_name(); }
+
 /*
  * Internal implementation of Fam_Region_Descriptor
  */
@@ -162,25 +209,37 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
                              uint64_t regionSize) {
         gDescriptor = globalDesc;
         context = NULL;
-        size = regionSize;
+        desc_update_status = DESC_UNINITIALIZED;
+        regionInfo.size = regionSize;
+        regionInfo.perm = 0;
+        regionInfo.name = NULL;
     }
 
     FamRegionDescriptorImpl_() {
         gDescriptor = { FAM_INVALID_REGION, 0 };
         context = NULL;
-        size = 0;
+        desc_update_status = DESC_UNINITIALIZED;
+        regionInfo.size = 0;
+        regionInfo.perm = 0;
+        regionInfo.name = NULL;
     }
 
     FamRegionDescriptorImpl_(Fam_Global_Descriptor globalDesc) {
         gDescriptor = globalDesc;
         context = NULL;
-        size = 0;
+        desc_update_status = DESC_UNINITIALIZED;
+        regionInfo.size = 0;
+        regionInfo.perm = 0;
+        regionInfo.name = NULL;
     }
 
     ~FamRegionDescriptorImpl_() {
         gDescriptor = { FAM_INVALID_REGION, 0 };
         context = NULL;
-        size = 0;
+        desc_update_status = DESC_INVALID;
+        regionInfo.size = 0;
+        regionInfo.perm = 0;
+        regionInfo.name = NULL;
     }
 
     Fam_Global_Descriptor get_global_descriptor() { return this->gDescriptor; }
@@ -189,21 +248,41 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
 
     void *get_context() { return context; }
 
+    void set_desc_status(int update_status) {
+        desc_update_status = update_status;
+    }
+    int get_desc_status() { return desc_update_status; }
+
     void set_size(uint64_t regionSize) {
-        if (size == 0)
-            size = regionSize;
+        if (regionInfo.size == 0)
+            regionInfo.size = regionSize;
     }
 
-    uint64_t get_size() { return size; }
+    uint64_t get_size() { return regionInfo.size; }
 
     uint64_t get_memserver_id() {
         return (gDescriptor.regionId) >> MEMSERVERID_SHIFT;
     }
 
+    void set_perm(mode_t itemPerm) {
+        if (regionInfo.perm == 0)
+            regionInfo.perm = itemPerm;
+    }
+
+    mode_t get_perm() { return regionInfo.perm; }
+
+    void set_name(char *itemName) {
+        if (regionInfo.name == 0)
+            regionInfo.name = itemName;
+    }
+
+    char *get_name() { return regionInfo.name; }
+
   private:
     Fam_Global_Descriptor gDescriptor;
     void *context;
-    uint64_t size;
+    int desc_update_status;
+    Fam_Region_Item_Info regionInfo;
 };
 
 Fam_Region_Descriptor::Fam_Region_Descriptor(Fam_Global_Descriptor gDescriptor,
@@ -232,11 +311,30 @@ void Fam_Region_Descriptor::set_context(void *ctx) {
 
 void *Fam_Region_Descriptor::get_context() { return frdimpl_->get_context(); }
 
+void Fam_Region_Descriptor::set_desc_status(int desc_update_status) {
+    frdimpl_->set_desc_status(desc_update_status);
+}
+int Fam_Region_Descriptor::get_desc_status() {
+    return frdimpl_->get_desc_status();
+}
+
 void Fam_Region_Descriptor::set_size(uint64_t regionSize) {
     frdimpl_->set_size(regionSize);
 }
 
 uint64_t Fam_Region_Descriptor::get_size() { return frdimpl_->get_size(); }
+
+void Fam_Region_Descriptor::set_perm(mode_t regionPerm) {
+    frdimpl_->set_perm(regionPerm);
+}
+
+mode_t Fam_Region_Descriptor::get_perm() { return frdimpl_->get_perm(); }
+
+void Fam_Region_Descriptor::set_name(char *regionName) {
+    frdimpl_->set_name(regionName);
+}
+
+char *Fam_Region_Descriptor::get_name() { return frdimpl_->get_name(); }
 
 uint64_t Fam_Region_Descriptor::get_memserver_id() {
     return frdimpl_->get_memserver_id();

@@ -151,6 +151,12 @@ Fam_Allocator_Grpc::check_permission_get_info(Fam_Descriptor *descriptor) {
     return rpcClient->check_permission_get_info(descriptor);
 }
 
+Fam_Region_Item_Info
+Fam_Allocator_Grpc::get_stat_info(Fam_Descriptor *descriptor) {
+    Fam_Rpc_Client *rpcClient = get_rpc_client(descriptor->get_memserver_id());
+    return rpcClient->get_stat_info(descriptor);
+}
+
 void *Fam_Allocator_Grpc::copy(Fam_Descriptor *src, uint64_t srcOffset,
                                Fam_Descriptor *dest, uint64_t destOffset,
                                uint64_t nbytes) {

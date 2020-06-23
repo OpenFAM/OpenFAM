@@ -55,7 +55,9 @@ TEST(FamResize, ResizeSuccess) {
     EXPECT_NE((void *)NULL, desc);
 
     uint64_t regionSize;
-    EXPECT_NO_THROW(regionSize = my_fam->fam_size(desc));
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+    regionSize = info->size;
 
     EXPECT_EQ(regionSize, 8192);
 
@@ -66,13 +68,15 @@ TEST(FamResize, ResizeSuccess) {
     EXPECT_NO_THROW(descCopy = my_fam->fam_lookup_region(testRegion));
     EXPECT_NE((void *)NULL, descCopy);
 
-    EXPECT_NO_THROW(regionSize = my_fam->fam_size(descCopy));
+    EXPECT_NO_THROW(my_fam->fam_stat(descCopy, info));
+    regionSize = info->size;
 
     EXPECT_EQ(regionSize, 16384);
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete desc;
+    free(info);
 
     free((void *)testRegion);
 }
@@ -90,8 +94,9 @@ TEST(FamResize, MultiAllocationMultiResizeSuccess) {
     EXPECT_NE((void *)NULL, desc);
 
     uint64_t regionSize;
-    EXPECT_NO_THROW(regionSize = my_fam->fam_size(desc));
-
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+    regionSize = info->size;
     EXPECT_EQ(regionSize, 1048576);
 
     uint32_t iCount = 0;
@@ -104,8 +109,9 @@ TEST(FamResize, MultiAllocationMultiResizeSuccess) {
             iCount++;
         } catch (Fam_Exception &e) {
             try {
-                my_fam->fam_resize_region(desc, my_fam->fam_size(desc) *
-                                                    (resizeCount + 2));
+                EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+                regionSize = info->size;
+                my_fam->fam_resize_region(desc, info->size * (resizeCount + 2));
             } catch (Fam_Exception &e) {
                 break;
             }
@@ -121,7 +127,7 @@ TEST(FamResize, MultiAllocationMultiResizeSuccess) {
     }
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
-
+    free(info);
     delete desc;
 
     free((void *)testRegion);
@@ -140,7 +146,8 @@ TEST(FamResize, MultiAllocationMultiResizeFail) {
     EXPECT_NE((void *)NULL, desc);
 
     uint64_t regionSize;
-    EXPECT_NO_THROW(regionSize = my_fam->fam_size(desc));
+    EXPECT_NO_THROW(my_fam->fam_stat(desc,info));
+    regionSize  = info->size; 
 
     EXPECT_EQ(regionSize, 1048576);
 
@@ -154,12 +161,16 @@ TEST(FamResize, MultiAllocationMultiResizeFail) {
             iCount++;
         } catch (Fam_Exception &e) {
             if(resizeCount < 128) { 
-				EXPECT_NO_THROW(my_fam->fam_resize_region(
-                	desc, my_fam->fam_size(desc) * (resizeCount + 2)));
-			else {
-				EXPECT_THROW(my_fam->fam_resize_region(
-                    desc, my_fam->fam_size(desc) * (resizeCount + 2)), Fam_Allocator_Exception);
-			}
+                EXPECT_NO_THROW(my_fam->fam_stat(desc,info));
+                regionSize  = info->size; 
+                EXPECT_NO_THROW(my_fam->fam_resize_region(
+                desc, regionSize * (resizeCount + 2)));
+            } else {
+                EXPECT_NO_THROW(my_fam->fam_stat(desc,info));
+                regionSize  = info->size; 
+                EXPECT_THROW(my_fam->fam_resize_region(
+                desc, regionSize * (resizeCount + 2)), Fam_Allocator_Exception);
+            }
             resizeCount++;
             continue;
         }
@@ -174,6 +185,7 @@ TEST(FamResize, MultiAllocationMultiResizeFail) {
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete desc;
+    free(info);
 
     free((void *)testRegion);
 }

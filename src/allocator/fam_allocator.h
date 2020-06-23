@@ -70,6 +70,7 @@ class Fam_Allocator {
     check_permission_get_info(Fam_Region_Descriptor *descriptor) = 0;
     virtual Fam_Region_Item_Info
     check_permission_get_info(Fam_Descriptor *descriptor) = 0;
+    virtual Fam_Region_Item_Info get_stat_info(Fam_Descriptor *descriptor) = 0;
 
     virtual void *copy(Fam_Descriptor *src, uint64_t srcOffset,
                        Fam_Descriptor *dest, uint64_t destOffset,

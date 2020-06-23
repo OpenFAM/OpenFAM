@@ -139,9 +139,8 @@ class fam::Impl_ {
     int fam_change_permissions(Fam_Region_Descriptor *descriptor,
                                mode_t accessPermissions);
 
-    uint64_t fam_size(Fam_Descriptor *descriptor);
-
-    uint64_t fam_size(Fam_Region_Descriptor *descriptor);
+    void fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo);
+    void fam_stat(Fam_Region_Descriptor *descriptor, Fam_Stat *famInfo);
 
     int fam_get_blocking(void *local, Fam_Descriptor *descriptor,
                          uint64_t offset, uint64_t nbytes);
@@ -1178,36 +1177,64 @@ int fam::Impl_::fam_change_permissions(Fam_Region_Descriptor *descriptor,
 }
 
 /**
- * Get the size of the dataitem  associated with a region descriptor.
- * @param descriptor - descriptor associated with some dataitem
- * @return - size of the dataitem
+ * Get the size, permissions and name of the data item associated with
+ * a data item descriptor.
+ * @param descriptor - descriptor associated with some data item.
+ * @param famInfo - Structure that holds the size, permission and
+ * name info for the specified data item descriptor.
+ * @return - none
+ * @throws Fam_Exception - if invalid Fam_Descriptor is passed.
  */
-uint64_t fam::Impl_::fam_size(Fam_Descriptor *descriptor) {
-    uint64_t size = descriptor->get_size();
+void fam::Impl_::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
+
     Fam_Region_Item_Info itemInfo;
-    if (size == 0) {
-        itemInfo = famAllocator->check_permission_get_info(descriptor);
-        descriptor->set_size(itemInfo.size);
-        return descriptor->get_size();
+
+    if ((descriptor->get_desc_status() == DESC_INIT_DONE) ||
+        (descriptor->get_desc_status() == DESC_INIT_DONE_BUT_KEY_NOT_VALID)) {
+        famInfo->size = descriptor->get_size();
+        famInfo->perm = descriptor->get_perm();
+        famInfo->name = descriptor->get_name();
+
+    } else if (descriptor->get_desc_status() == DESC_INVALID) {
+        std::ostringstream message;
+        message << "Descriptor is no longer valid" << endl;
+        throw Fam_Exception(message.str().c_str());
     } else {
-        return descriptor->get_size();
+        itemInfo = famAllocator->get_stat_info(descriptor);
+        famInfo->size = itemInfo.size;
+        famInfo->perm = itemInfo.perm;
+        famInfo->name = itemInfo.name;
     }
 }
 
 /**
- * Get the size of the region  associated with a region descriptor.
- * @param descriptor - descriptor associated with some region
- * @return - size of the region
+ * Get the size, permissions and name of the region associated
+ * with a region descriptor.
+ * @param descriptor - descriptor associated with some region.
+ * @param famInfo - Structure that holds the size, permission and
+ * name infor for the specified region descriptor.
+ * @return - none
+ * @throws Fam_Exception - if invalid Fam_Region_Descriptor is passed.
  */
-uint64_t fam::Impl_::fam_size(Fam_Region_Descriptor *descriptor) {
-    uint64_t size = descriptor->get_size();
+void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
+                          Fam_Stat *famInfo) {
     Fam_Region_Item_Info regionInfo;
-    if (size == 0) {
-        regionInfo = famAllocator->check_permission_get_info(descriptor);
-        descriptor->set_size(regionInfo.size);
-        return descriptor->get_size();
+
+    if ((descriptor->get_desc_status() == DESC_INIT_DONE) ||
+        (descriptor->get_desc_status() == DESC_INIT_DONE_BUT_KEY_NOT_VALID)) {
+        famInfo->size = descriptor->get_size();
+        famInfo->perm = descriptor->get_perm();
+        famInfo->name = descriptor->get_name();
+    } else if (descriptor->get_desc_status() == DESC_INVALID) {
+        std::ostringstream message;
+        message << "Descriptor is no longer valid" << endl;
+        throw Fam_Exception(message.str().c_str());
     } else {
-        return descriptor->get_size();
+
+        regionInfo = famAllocator->check_permission_get_info(descriptor);
+        famInfo->size = regionInfo.size;
+        famInfo->perm = regionInfo.perm;
+        famInfo->name = regionInfo.name;
     }
 }
 
@@ -3837,21 +3864,28 @@ int fam::fam_change_permissions(Fam_Region_Descriptor *descriptor,
 }
 
 /**
- * Get the size of the dataitem  associated with a region descriptor.
- * @param descriptor - descriptor associated with some dataitem
- * @return - size of the dataitem
+ * Get the size, permissions and name of the data item associated with
+ * a data item descriptor.
+ * @param descriptor - descriptor associated with some data item.
+ * @param famInfo - Structure that holds the size, permission and
+ * name info for the specified data item descriptor.
+ * @return - none
  */
-uint64_t fam::fam_size(Fam_Descriptor *descriptor) {
-    return pimpl_->fam_size(descriptor);
+
+void fam::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
+    return pimpl_->fam_stat(descriptor, famInfo);
 }
 
 /**
- * Get the size of the region  associated with a region descriptor.
- * @param descriptor - descriptor associated with some region
- * @return - size of the region
+ * Get the size, permissions and name of the region associated
+ * with a region descriptor.
+ * @param descriptor - descriptor associated with some region.
+ * @param famInfo - Structure that holds the size, permission and
+ * name info for the specified region descriptor.
+ * @return - none
  */
-uint64_t fam::fam_size(Fam_Region_Descriptor *descriptor) {
-    return pimpl_->fam_size(descriptor);
+void fam::fam_stat(Fam_Region_Descriptor *descriptor, Fam_Stat *famInfo) {
+    return pimpl_->fam_stat(descriptor, famInfo);
 }
 
 // DATA READ AND WRITE Group. These APIs read and write data in FAM and copy
