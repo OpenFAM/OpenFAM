@@ -52,6 +52,8 @@ service Fam_Rpc {
         returns (Fam_Region_Response) {}
     rpc check_permission_get_item_info(Fam_Dataitem_Request)
         returns (Fam_Dataitem_Response) {}
+    rpc get_stat_info(Fam_Dataitem_Request)
+        returns (Fam_Dataitem_Response) {}
 
     rpc copy(Fam_Copy_Request) returns (Fam_Copy_Response) {}
 
@@ -113,6 +115,8 @@ message Fam_Region_Response {
     uint64 size = 3;
     int32 errorcode = 4;
     string errormsg = 5;
+    string name = 6;
+    uint64 perm = 7;
 }
 
 /*
@@ -147,6 +151,8 @@ message Fam_Dataitem_Response {
     uint64 base = 5;
     int32 errorcode = 6;
     string errormsg = 7;
+    string name = 8;
+    uint64 perm = 9;
 }
 
 message Fam_Copy_Request {

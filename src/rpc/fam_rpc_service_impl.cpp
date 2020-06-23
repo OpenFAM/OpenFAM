@@ -450,11 +450,15 @@ Fam_Rpc_Service_Impl::lookup_region(::grpc::ServerContext *context,
         response->set_regionid(region.regionId);
         response->set_offset(region.offset);
         response->set_size(region.size);
+        response->set_perm(region.perm);
+        response->set_name(region.name);
     } else if (allocator->check_region_permission(region, 0, request->uid(),
                                                   request->gid())) {
         response->set_regionid(region.regionId);
         response->set_offset(region.offset);
         response->set_size(region.size);
+        response->set_perm(region.perm);
+        response->set_name(region.name);
     } else {
         response->set_errorcode(FAM_ERR_NOPERM);
         message << "Error while looking up for region : ";
@@ -486,11 +490,15 @@ Fam_Rpc_Service_Impl::lookup(::grpc::ServerContext *context,
         response->set_regionid(dataitem.regionId);
         response->set_offset(dataitem.offset);
         response->set_size(dataitem.size);
+        response->set_perm(dataitem.perm);
+        response->set_name(dataitem.name);
     } else if (allocator->check_dataitem_permission(dataitem, 0, request->uid(),
                                                     request->gid())) {
         response->set_regionid(dataitem.regionId);
         response->set_offset(dataitem.offset);
         response->set_size(dataitem.size);
+        response->set_perm(dataitem.perm);
+        response->set_name(dataitem.name);
     } else {
         response->set_errorcode(FAM_ERR_NOPERM);
         message << "Error while looking up for region : ";
@@ -522,6 +530,8 @@ Fam_Rpc_Service_Impl::lookup(::grpc::ServerContext *context,
     if (allocator->check_region_permission(region, 0, request->uid(),
                                            request->gid())) {
         response->set_size(region.size);
+        response->set_perm(region.perm);
+        response->set_name(region.name);
     } else {
         message << "Error while checking permission and getting info for "
                    "region : ";
@@ -544,6 +554,9 @@ Fam_Rpc_Service_Impl::lookup(::grpc::ServerContext *context,
     try {
         allocator->get_dataitem(request->regionid(), request->offset(),
                                 request->uid(), request->gid(), dataitem);
+        response->set_size(dataitem.size);
+        response->set_perm(dataitem.perm);
+        response->set_name(dataitem.name);
     } catch (Memserver_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -586,8 +599,36 @@ Fam_Rpc_Service_Impl::lookup(::grpc::ServerContext *context,
     else
         response->set_base((uint64_t)0);
     response->set_size(dataitem.size);
+    response->set_perm(dataitem.perm);
+    response->set_name(dataitem.name);
 
     RPC_SERVICE_PROFILE_END_OPS(check_permission_get_item_info);
+
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_Rpc_Service_Impl::get_stat_info(::grpc::ServerContext *context,
+                                    const ::Fam_Dataitem_Request *request,
+                                    ::Fam_Dataitem_Response *response) {
+
+    RPC_SERVICE_PROFILE_START_OPS()
+    Fam_DataItem_Metadata dataitem;
+    ostringstream message;
+    try {
+        allocator->get_dataitem(request->regionid(), request->offset(),
+                                request->uid(), request->gid(), dataitem);
+        response->set_size(dataitem.size);
+        response->set_perm(dataitem.perm);
+        response->set_name(dataitem.name);
+    } catch (Memserver_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+
+    RPC_SERVICE_PROFILE_END_OPS(get_stat_info);
 
     // Return status OK
     return ::grpc::Status::OK;

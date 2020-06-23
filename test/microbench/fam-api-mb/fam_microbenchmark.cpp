@@ -616,14 +616,16 @@ TEST(FamAllocator, FamResizeRegion) {
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     RESET_PROFILE();
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
     for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
-        EXPECT_NO_THROW(my_fam->fam_resize_region(
-            descLocal, my_fam->fam_size(descLocal) * i));
+        EXPECT_NO_THROW(my_fam->fam_stat(descLocal, info));
+        EXPECT_NO_THROW(my_fam->fam_resize_region(descLocal, info->size * i));
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     GENERATE_PROFILE();
     // EXPECT_NO_THROW(rpc->generate_profile());
     EXPECT_NO_THROW(my_fam->fam_destroy_region(descLocal));
+    free(info);
 }
 
 // Test case -  copy and wait test

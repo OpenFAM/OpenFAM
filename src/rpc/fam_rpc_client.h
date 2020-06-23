@@ -195,6 +195,10 @@ class Fam_Rpc_Client {
                 globalDescriptor.offset = res.offset();
                 Fam_Region_Descriptor *region =
                     new Fam_Region_Descriptor(globalDescriptor, nbytes);
+                region->set_name((char *)name);
+                region->set_perm(permission);
+                region->set_desc_status(DESC_INIT_DONE);
+
                 return region;
             }
         } else {
@@ -218,6 +222,7 @@ class Fam_Rpc_Client {
         req.set_regionid(globalDescriptor.regionId & REGIONID_MASK);
         req.set_uid(uid);
         req.set_gid(gid);
+        region->set_desc_status(DESC_INVALID);
 
         ::grpc::Status status = stub->destroy_region(&ctx, req, &res);
 
@@ -310,6 +315,10 @@ class Fam_Rpc_Client {
                     new Fam_Descriptor(globalDescriptor, nbytes);
                 dataItem->bind_key(res.key());
                 dataItem->set_base_address((void *)res.base());
+                dataItem->set_name((char *)name);
+                dataItem->set_perm(permission);
+                dataItem->set_desc_status(DESC_INIT_DONE);
+
                 return dataItem;
             }
         } else {
@@ -336,6 +345,7 @@ class Fam_Rpc_Client {
         req.set_uid(uid);
         req.set_gid(gid);
         req.set_key(dataitem->get_key());
+        dataitem->set_desc_status(DESC_INVALID);
 
         ::grpc::Status status = stub->deallocate(&ctx, req, &res);
 
@@ -443,6 +453,11 @@ class Fam_Rpc_Client {
                 globalDescriptor.offset = res.offset();
                 Fam_Region_Descriptor *region =
                     new Fam_Region_Descriptor(globalDescriptor, res.size());
+                region->set_size(res.size());
+                region->set_perm((mode_t)res.perm());
+                region->set_name((char *)(res.name()).c_str());
+                region->set_desc_status(DESC_INIT_DONE);
+
                 return region;
             }
         } else {
@@ -476,6 +491,11 @@ class Fam_Rpc_Client {
                 Fam_Descriptor *dataItem =
                     new Fam_Descriptor(globalDescriptor, res.size());
                 dataItem->bind_key(FAM_KEY_UNINITIALIZED);
+                dataItem->set_size(res.size());
+                dataItem->set_perm((mode_t)res.perm());
+                dataItem->set_name((char *)(res.name()).c_str());
+                dataItem->set_desc_status(DESC_INIT_DONE_BUT_KEY_NOT_VALID);
+
                 return dataItem;
             }
         } else {
@@ -506,6 +526,10 @@ class Fam_Rpc_Client {
                                               (res.errormsg()).c_str());
             } else {
                 regionInfo.size = res.size();
+                regionInfo.perm = (mode_t)res.perm();
+                regionInfo.name = (char *)(res.name()).c_str();
+                region->set_desc_status(DESC_INIT_DONE);
+
                 return regionInfo;
             }
         } else {
@@ -537,7 +561,43 @@ class Fam_Rpc_Client {
             } else {
                 itemInfo.key = res.key();
                 itemInfo.size = res.size();
+                itemInfo.perm = (mode_t)res.perm();
+                itemInfo.name = (char *)(res.name()).c_str();
+                dataitem->set_desc_status(DESC_INIT_DONE);
                 itemInfo.base = (void *)res.base();
+                return itemInfo;
+            }
+        } else {
+            throw Fam_Allocator_Exception(FAM_ERR_GRPC,
+                                          (status.error_message()).c_str());
+        }
+    }
+
+    Fam_Region_Item_Info get_stat_info(Fam_Descriptor *dataitem) {
+        Fam_Dataitem_Request req;
+        Fam_Dataitem_Response res;
+        ::grpc::ClientContext ctx;
+        Fam_Region_Item_Info itemInfo;
+
+        Fam_Global_Descriptor globalDescriptor =
+            dataitem->get_global_descriptor();
+        req.set_regionid(globalDescriptor.regionId & REGIONID_MASK);
+        req.set_offset(globalDescriptor.offset);
+        req.set_gid(gid);
+        req.set_uid(uid);
+
+        ::grpc::Status status = stub->get_stat_info(&ctx, req, &res);
+
+        if (status.ok()) {
+            if (res.errorcode()) {
+                throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
+                                              (res.errormsg()).c_str());
+            } else {
+                itemInfo.size = res.size();
+                itemInfo.perm = (mode_t)res.perm();
+                itemInfo.name = (char *)(res.name()).c_str();
+                dataitem->set_desc_status(DESC_INIT_DONE_BUT_KEY_NOT_VALID);
+
                 return itemInfo;
             }
         } else {

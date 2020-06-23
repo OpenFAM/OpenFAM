@@ -149,6 +149,9 @@ class Fam_Rpc_Service_Impl : public Fam_Rpc::Service {
     check_permission_get_item_info(::grpc::ServerContext *context,
                                    const ::Fam_Dataitem_Request *request,
                                    ::Fam_Dataitem_Response *response) override;
+    ::grpc::Status get_stat_info(::grpc::ServerContext *context,
+                                 const ::Fam_Dataitem_Request *request,
+                                 ::Fam_Dataitem_Response *response) override;
 
     ::grpc::Status copy(::grpc::ServerContext *context,
                         const ::Fam_Copy_Request *request,
