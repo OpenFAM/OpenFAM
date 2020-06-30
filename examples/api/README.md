@@ -2,11 +2,11 @@
 
 The example programs can be build and run using the following commands:
 
-$> g++ api_fam_add.cpp -o fam_add -I<path_to_OpenFAM>/OpenFAM/include -L<path_to_OpenFAM_build>/OpenFAM/build-rpc/src -lopenfam
+$> g++ api_fam_add.cpp -o fam_add -I<path_to_OpenFAM>/include -L<path_to_OpenFAM_build>/build-rpc/src -lopenfam
 
 To run the program, set the environment variable LD_LIBRARY_PATH to openfam library and thrid-party dependent libraries.
 
-$> export LD_LIBRARY_PATH=<path_to_OpenFAM_build>/OpenFAM/build-rpc/src:<path-to-OpenFAM>/OpenFAM/third-party/build/lib
+$> export LD_LIBRARY_PATH=<path_to_OpenFAM_build>/build-rpc/src:<path-to-OpenFAM>/third-party/build/lib
 $> ./fam_add
 
 

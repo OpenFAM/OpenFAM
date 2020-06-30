@@ -37,6 +37,8 @@ using namespace openfam;
 int main(void) {
     int ret = 0;
     fam *myFam = new fam();
+    Fam_Region_Descriptor *region = NULL;
+    Fam_Descriptor *descriptor = NULL;
     Fam_Options *fm = (Fam_Options *)malloc(sizeof(Fam_Options));
     memset((void *)fm, 0, sizeof(Fam_Options));
     // assume that no specific options are needed by the implementation
@@ -56,9 +58,26 @@ int main(void) {
     // ... Initialization code here
 
     try {
+        // create a 100 MB region with 0777 permissions and RAID5 redundancy
+        region = myFam->fam_create_region("myRegion", (uint64_t)10000000, 0777,
+                                          RAID5);
+        // create 50 element unnamed integer array in FAM with 0600
+        // (read/write by owner) permissions in myRegion
+        descriptor = myFam->fam_allocate("myItem", (uint64_t)(50 * sizeof(int)),
+                                         0600, region);
+        // use the created region and data item...
+        // ... continuation code here
+        //
+    } catch (Fam_Exception &e) {
+        printf("Create region/Allocate Data item failed: %d: %s\n",
+               e.fam_error(), e.fam_error_msg());
+        return -1;
+    }
+
+    try {
         // look up the descriptor to a previously allocated data item
         // (a 50 element integer array)
-        Fam_Descriptor *descriptor = myFam->fam_lookup("myItem", "myRegion");
+        // Fam_Descriptor *descriptor = myFam->fam_lookup("myItem", "myRegion");
         // allocate an integer array and initialize it
         int local[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
         // replace elements 6-15 of the data item in FAM with values in local
@@ -73,8 +92,26 @@ int main(void) {
         ret = -1;
     }
 
+    try {
+        // we are finished. Destroy the region and everything in it
+        myFam->fam_destroy_region(region);
+        // printf("fam_destroy_region successfull\n");
+    } catch (Fam_Exception &e) {
+        printf("Destroy region failed: %d: %s\n", e.fam_error(),
+               e.fam_error_msg());
+        ret = -1;
+    }
+
     // ... Finalization code follows
-    myFam->fam_finalize("myApplication");
-    printf("FAM finalized\n");
+    try {
+        myFam->fam_finalize("myApplication");
+        printf("FAM finalized\n");
+    } catch (Fam_Exception &e) {
+        printf("FAM Finalization failed: %s\n", e.fam_error_msg());
+        myFam->fam_abort(-1); // abort the program
+        // note that fam_abort currently returns after signaling
+        // so we must terminate with the same value
+        return -1;
+    }
     return (ret);
 }

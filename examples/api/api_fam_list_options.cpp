@@ -59,7 +59,16 @@ int main(void) {
         optionName++;
     }
 
-    myFam->fam_finalize("myApplication");
-    printf("FAM finalized\n");
+    // ... Finalization code follows
+    try {
+        myFam->fam_finalize("myApplication");
+        printf("FAM finalized\n");
+    } catch (Fam_Exception &e) {
+        printf("FAM Finalization failed: %s\n", e.fam_error_msg());
+        myFam->fam_abort(-1); // abort the program
+        // note that fam_abort currently returns after signaling
+        // so we must terminate with the same value
+        return -1;
+    }
     return (ret);
 }

@@ -1,5 +1,5 @@
 /*
- * api_fam_destroy_region.cpp
+ * api_fam_create_region.cpp
  * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -53,23 +53,33 @@ int main(void) {
         return -1;
     }
 
-    // ... Initialization code here
-
     try {
-        // get a region descriptor from the metadata service
-        Fam_Region_Descriptor *region = myFam->fam_lookup_region("myRegion");
+        // create a 100 MB region with 0777 permissions and RAID5 redundancy
+        Fam_Region_Descriptor *rd = myFam->fam_create_region(
+            "myRegion", (uint64_t)10000000, 0777, RAID5);
+        // use the created region...
+        if (rd != NULL)
+            printf("fam_create_region successfull\n");
+        // ... continuation code here
+        // we are finished. Destroy the region and everything in it
+        myFam->fam_destroy_region(rd);
+        printf("fam_destroy_region successfull\n");
 
-        // Destory region
-        myFam->fam_destroy_region(region);
-
-        printf("Successully destroyed region\n");
-
-    } catch (Fam_Exception &e) {
-        printf("fam API failed: %d: %s\n", e.fam_error(), e.fam_error_msg());
+    } catch (Fam_Allocator_Exception &e) {
+        printf("Create/Destroy region failed: %d: %s\n", e.fam_error(),
+               e.fam_error_msg());
         ret = -1;
     }
 
-    myFam->fam_finalize("myApplication");
-    printf("FAM finalized\n");
+    try {
+        myFam->fam_finalize("myApplication");
+        printf("FAM finalized\n");
+    } catch (Fam_Exception &e) {
+        printf("FAM Finalization failed: %s\n", e.fam_error_msg());
+        myFam->fam_abort(-1); // abort the program
+        // note that fam_abort currently returns after signaling
+        // so we must terminate with the same value
+        return -1;
+    }
     return (ret);
 }

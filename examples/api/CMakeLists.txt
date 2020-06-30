@@ -22,7 +22,7 @@
 
 enable_testing()
 include_directories(${PROJECT_BINARY_DIR}/test) # private headers (test)
-add_custom_target(examples ${CMAKE_CTEST_COMMAND} --force-new-ctest-process)
+add_custom_target(examples-api ${CMAKE_CTEST_COMMAND} --force-new-ctest-process)
 
 function (add_fam_test file_name)
     add_executable(${file_name} ${file_name}.cpp)
@@ -31,8 +31,8 @@ function (add_fam_test file_name)
 endfunction()
 
 #add tests
-add_fam_test(api_fam_create_region)
-add_fam_test(api_fam_allocate)
+add_fam_test(api_fam_create_destroy_region)
+add_fam_test(api_fam_allocate_deallocate)
 add_fam_test(api_fam_get_option)
 add_fam_test(api_fam_initialze)
 add_fam_test(api_fam_list_options)
@@ -66,7 +66,4 @@ add_fam_test(api_fam_set)
 add_fam_test(api_fam_subtract)
 add_fam_test(api_fam_swap)
 add_fam_test(api_fam_xor)
-
 add_fam_test(api_fam_resize_region)
-add_fam_test(api_fam_deallocate)
-add_fam_test(api_fam_destroy_region)
