@@ -273,7 +273,6 @@ class fam {
      * method called when a process uses the OpenFAM library.
      * @param groupName - name of the group of cooperating PEs.
      * @param options - options structure containing initialization choices
-     * @return - {true(0), false(1), errNo(<0)}
      * @see #fam_finalize()
      * @see #Fam_Options
      */
@@ -376,8 +375,6 @@ class fam {
      * @param descriptor - descriptor associated with the previously created
      * region
      * @param nbytes - new requested size of the allocated space
-     * @return - 0 on success, 1 for unsuccessful completion, negative number on
-     * an exception
      * @see #fam_create_region
      * @see #fam_destroy_region
      */
@@ -412,8 +409,6 @@ class fam {
      * Change permissions associated with a data item descriptor.
      * @param descriptor - descriptor associated with some data item
      * @param accessPermissions - new permissions for the data item
-     * @return - 0 on success, 1 for unsuccessful completion, negative number on
-     * an exception
      */
     void fam_change_permissions(Fam_Descriptor *descriptor,
                                 mode_t accessPermissions);
@@ -422,8 +417,6 @@ class fam {
      * Change permissions associated with a region descriptor.
      * @param descriptor - descriptor associated with some region
      * @param accessPermissions - new permissions for the region
-     * @return - 0 on success, 1 for unsuccessful completion, negative number on
-     * an exception
      */
     void fam_change_permissions(Fam_Region_Descriptor *descriptor,
                                 mode_t accessPermissions);
@@ -461,8 +454,6 @@ class fam {
      * @param offset - byte offset within the space defined by the descriptor
      * from where memory should be copied
      * @param nbytes - number of bytes to be copied from global to local memory
-     * @return - 0 for successful completion, 1 for unsuccessful, and a negative
-     * number in case of exceptions
      */
     void fam_get_blocking(void *local, Fam_Descriptor *descriptor,
                           uint64_t offset, uint64_t nbytes);
@@ -488,8 +479,6 @@ class fam {
      * @param offset - byte offset within the region defined by the descriptor
      * to where data should be copied
      * @param nbytes - number of bytes to be copied from local to FAM
-     * @return - 0 for successful completion, 1 for unsuccessful completion,
-     * negative number in case of exceptions
      */
     void fam_put_blocking(void *local, Fam_Descriptor *descriptor,
                           uint64_t offset, uint64_t nbytes);
@@ -544,8 +533,6 @@ class fam {
      * access
      * @param stride - stride in elements
      * @param elementSize - size of the element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case of exception
      * @see #fam_scatter_strided
      */
     void fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
@@ -564,8 +551,6 @@ class fam {
      * @param nElements - number of elements to be gathered in local memory
      * @param elementIndex - array of element indexes in FAM to fetch
      * @param elementSize - size of each element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
      * @see #fam_scatter_indexed
      */
     void fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
@@ -623,8 +608,6 @@ class fam {
      * the strided access
      * @param stride - stride in elements
      * @param elementSize - size of each element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
      * @see #fam_gather_strided
      */
     void fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
@@ -642,8 +625,6 @@ class fam {
      * @param nElements - number of elements to be scattered from local memory
      * @param elementIndex - array containing element indexes
      * @param elementSize - size of the element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
      * @see #fam_gather_indexed
      */
     void fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
@@ -663,8 +644,6 @@ class fam {
      * the strided access
      * @param stride - stride in elements
      * @param elementSize - size of each element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
      * @see #fam_gather_strided
      */
     void fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
@@ -682,8 +661,6 @@ class fam {
      * @param nElements - number of elements to be scattered from local memory
      * @param elementIndex - array containing element indexes
      * @param elementSize - size of the element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
      * @see #fam_gather_indexed
      */
     void fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
