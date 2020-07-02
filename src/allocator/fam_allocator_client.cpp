@@ -1,6 +1,6 @@
 /*
  * fam_allocator_client.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -255,6 +255,11 @@ Fam_Allocator_Client::check_permission_get_info(Fam_Descriptor *descriptor) {
         Fam_Region_Item_Info info = famCIS->check_permission_get_item_info(
             regionId, offset, memoryServerId, uid, gid);
         descriptor->set_desc_status(DESC_INIT_DONE);
+        descriptor->bind_key(info.key);
+        descriptor->set_name(info.name);
+        descriptor->set_perm(info.perm);
+        descriptor->set_size(info.size);
+        descriptor->set_base_address(info.base);
         return info;
     } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
@@ -273,6 +278,9 @@ Fam_Allocator_Client::get_stat_info(Fam_Descriptor *descriptor) {
         Fam_Region_Item_Info info =
             famCIS->get_stat_info(regionId, offset, memoryServerId, uid, gid);
         descriptor->set_desc_status(DESC_INIT_DONE_BUT_KEY_NOT_VALID);
+        descriptor->set_name(info.name);
+        descriptor->set_perm(info.perm);
+        descriptor->set_size(info.size);
         return info;
     } catch (Memserver_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),

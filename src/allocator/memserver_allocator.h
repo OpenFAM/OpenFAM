@@ -74,6 +74,7 @@ class Memserver_Allocator {
                  uint32_t gid, void *&localPointer);
     int deallocate(uint64_t regionId, uint64_t offset, uint32_t uid,
                    uint32_t gid);
+    void copy(void *dest, void *src, uint64_t nbytes);
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
     int open_heap(uint64_t regionId);
 

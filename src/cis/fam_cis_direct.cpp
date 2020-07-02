@@ -1,6 +1,6 @@
 /*
  * fam_cis_direct.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -629,8 +629,6 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
         }
     }
 
-    // info.regionId = dataitem.regionId;
-    // info.offset = dataitem.offset;
     info.size = dataitem.size;
     info.perm = dataitem.perm;
     info.name = (char *)malloc(metadataManager->metadata_maxkeylen());
@@ -722,7 +720,7 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
             << "Failed to get local pointer to source or destination dataitem";
         throw Memserver_Exception(NULL_POINTER_ACCESS, message.str().c_str());
     } else {
-        fam_memcpy(destStart, srcStart, nbytes);
+        allocator->copy(destStart, srcStart, nbytes);
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_copy);
     return destStart;

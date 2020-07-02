@@ -841,13 +841,9 @@ void fam::Impl_::clean_fam_options() {
 int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
-    Fam_Region_Item_Info info;
 
     if (key == FAM_KEY_UNINITIALIZED) {
-        info = famAllocator->check_permission_get_info(descriptor);
-        descriptor->bind_key(info.key);
-        descriptor->set_size(info.size);
-        descriptor->set_base_address(info.base);
+        famAllocator->check_permission_get_info(descriptor);
     }
 
     if (key == FAM_KEY_INVALID) {

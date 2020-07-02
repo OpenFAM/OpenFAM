@@ -1,6 +1,6 @@
 /*
  * fam_cis_client.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -107,8 +107,6 @@ Fam_CIS_Server_Info *Fam_CIS_Client::get_server_info(uint64_t memoryServerId) {
         throw Fam_Allocator_Exception(FAM_ERR_RPC_STUB_NOTFOUND,
                                       "RPC stub not found");
     }
-    // Fam_CIS_Server_Info *server = obj->second;
-    // return std::move(server->stub);
     return obj->second;
 }
 
@@ -135,15 +133,7 @@ void Fam_CIS_Client::generate_profile(uint64_t memoryServerId) {
     ::grpc::Status status = server->stub->generate_profile(&ctx, req, &res);
 #endif
 }
-/**
- * Creates a Region in FAM
- * @param name-Name of the reion to be created
- * @param nbytes - size of the region
- * @param permissions - Permission with which the region needs to be created
- * @param redundancyLevel - Redundancy level of FAM
- * @return - pointer to Fam_Region_Descriptor
- * @see fam_rpc.proto
- **/
+
 Fam_Region_Item_Info
 Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
                               Fam_Redundancy_Level redundancyLevel,
@@ -177,11 +167,6 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     }
 }
 
-/**
- * Destroys a Region in FAM
- * @param region - Descriptor of a region to be destroyed
- * @see fam_rpc.proto
- **/
 void Fam_CIS_Client::destroy_region(uint64_t regionId, uint64_t memoryServerId,
                                     uint32_t uid, uint32_t gid) {
     Fam_Region_Request req;
@@ -209,14 +194,6 @@ void Fam_CIS_Client::destroy_region(uint64_t regionId, uint64_t memoryServerId,
     }
 }
 
-/**
- * Resize a Region existing in FAM
- * @param region - Fam region descriptor of a region which needs to be
- *resized
- * @param nbytes - new size of the region
- * @return - 1/0
- * @see fam_rpc.proto
- **/
 void Fam_CIS_Client::resize_region(uint64_t regionId, size_t nbytes,
                                    uint64_t memoryServerId, uint32_t uid,
                                    uint32_t gid) {
@@ -246,16 +223,6 @@ void Fam_CIS_Client::resize_region(uint64_t regionId, size_t nbytes,
     }
 }
 
-/**
- * Allocate data item within the specified region
- * @param name - name of the data item
- * @param namelen - no. charecter in name
- * @param nbytes - size of the data item
- * @param region - Fam region descriptor of a region within which data
- *item needs to be created
- * @return -  pointer to Fam_Descriptor
- * @see fam_rpc.proto
- **/
 Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
                                               mode_t permission,
                                               uint64_t regionId,
@@ -296,12 +263,6 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
     }
 }
 
-/**
- * deallocates the data item
- * @param dataitem - Fam data item descriptor which needs to be
- *deallocated
- * @see fam_rpc.proto
- **/
 void Fam_CIS_Client::deallocate(uint64_t regionId, uint64_t offset,
                                 uint64_t memoryServerId, uint32_t uid,
                                 uint32_t gid) {
@@ -313,7 +274,6 @@ void Fam_CIS_Client::deallocate(uint64_t regionId, uint64_t offset,
     req.set_offset(offset);
     req.set_uid(uid);
     req.set_gid(gid);
-    // req.set_key(key);
 
     Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
 
@@ -332,12 +292,6 @@ void Fam_CIS_Client::deallocate(uint64_t regionId, uint64_t offset,
     }
 }
 
-/**
- * Chenages the permission of a region
- * @param desc - Descriptor of a region whose permissions needs to be
- *changed
- * @param permission - new permission
- **/
 void Fam_CIS_Client::change_region_permission(uint64_t regionId,
                                               mode_t permission,
                                               uint64_t memoryServerId,
@@ -369,12 +323,6 @@ void Fam_CIS_Client::change_region_permission(uint64_t regionId,
     }
 }
 
-/**
- * Chenages the permission of a dataitem
- * @param desc - Descriptor of a dataitem whose permissions needs to be
- *changed
- * @param permission - new permission
- **/
 void Fam_CIS_Client::change_dataitem_permission(uint64_t regionId,
                                                 uint64_t offset,
                                                 mode_t permission,

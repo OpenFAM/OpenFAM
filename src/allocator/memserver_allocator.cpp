@@ -402,6 +402,11 @@ int Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset,
     }
     return ALLOC_NO_ERROR;
 }
+
+void Memserver_Allocator::copy(void *dest, void *src, uint64_t nbytes) {
+    fam_memcpy(dest, src, nbytes);
+}
+
 void *Memserver_Allocator::get_local_pointer(uint64_t regionId,
                                              uint64_t offset) {
     ostringstream message;
