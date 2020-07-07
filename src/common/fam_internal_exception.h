@@ -1,5 +1,5 @@
 /*
- * fam_exception.cpp
+ * fam/fam_exception.h
  * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -27,19 +27,64 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
+#ifndef MEMSERVER_EXCEPTION_H
+#define MEMSERVER_EXCEPTION_H
 
-#include "common/memserver_exception.h"
+#include <exception>
+#include <string>
 
+#include "fam/fam_exception.h"
+
+#define MIN_ERR_VAL -50
+
+using namespace std;
 namespace openfam {
 
-Memserver_Exception::Memserver_Exception(enum Memserver_Error serverErr,
-                                         const char *msg) {
-    famErrMsg = msg;
-    famErr = convert_to_famerror(serverErr);
-}
+enum Internal_Error {
+    ALLOC_NO_ERROR = 0,
+    REGION_EXIST = MIN_ERR_VAL,
+    DATAITEM_EXIST,
+    DESTROY_REGION_NOT_PERMITTED,
+    DATAITEM_ALLOC_NOT_PERMITTED,
+    DATAITEM_DEALLOC_NOT_PERMITTED,
+    REGION_NOT_INSERTED,
+    DATAITEM_NOT_INSERTED,
+    REGION_NOT_FOUND,
+    DATAITEM_NOT_FOUND,
+    REGION_NOT_REMOVED,
+    DATAITEM_NOT_REMOVED,
+    HEAP_NOT_FOUND,
+    HEAP_NOT_CREATED,
+    HEAP_NOT_DESTROYED,
+    HEAP_NOT_OPENED,
+    HEAP_NOT_CLOSED,
+    HEAP_ALLOCATE_FAILED,
+    HEAP_NO_LOCALPTR,
+    RBT_HEAP_NOT_INSERTED,
+    RBT_HEAP_NOT_REMOVED,
+    RBT_HEAP_NOT_FOUND,
+    REGION_PERM_MODIFY_NOT_PERMITTED,
+    ITEM_PERM_MODIFY_NOT_PERMITTED,
+    NO_PERMISSION,
+    NO_FREE_POOLID,
+    NULL_POINTER_ACCESS,
+    OUT_OF_RANGE,
+    UNIMPLEMENTED,
+    NO_LOCAL_POINTER,
+    OPS_INIT_FAILED,
+    FENCE_REG_FAILED,
+    FENCE_DEREG_FAILED,
+    HEAP_MERGE_FAILED,
+    REGION_NAME_TOO_LONG,
+    DATAITEM_NAME_TOO_LONG,
+    REGION_RESIZE_NOT_PERMITTED,
+    REGION_NOT_MODIFIED,
+    RESIZE_FAILED,
+    ITEM_REGISTRATION_FAILED,
+    ITEM_DEREGISTRATION_FAILED
+};
 
-enum Fam_Error
-Memserver_Exception::convert_to_famerror(enum Memserver_Error serverErr) {
+inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     switch (serverErr) {
     case REGION_EXIST:
     case DATAITEM_EXIST:
@@ -89,10 +134,27 @@ Memserver_Exception::convert_to_famerror(enum Memserver_Error serverErr) {
     case NO_LOCAL_POINTER:
     case OPS_INIT_FAILED:
     case FENCE_REG_FAILED:
+    case FENCE_DEREG_FAILED:
     case REGION_NAME_TOO_LONG:
     case DATAITEM_NAME_TOO_LONG:
+    case ITEM_REGISTRATION_FAILED:
+    case ITEM_DEREGISTRATION_FAILED:
     default:
         return FAM_ERR_RESOURCE;
     }
 }
+
+class Memserver_Exception : public Fam_Exception {
+  public:
+    Memserver_Exception();
+    Memserver_Exception(enum Internal_Error serverErr, const char *msg);
+};
+
+class CIS_Exception : public Fam_Exception {
+  public:
+    CIS_Exception();
+    CIS_Exception(enum Internal_Error serverErr, const char *msg);
+    CIS_Exception(enum Fam_Error serverErr, const char *msg);
+};
 } // namespace openfam
+#endif

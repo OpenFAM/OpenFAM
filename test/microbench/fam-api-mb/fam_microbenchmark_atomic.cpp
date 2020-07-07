@@ -33,8 +33,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "cis/fam_cis_client.h"
 #include "common/fam_libfabric.h"
-#include "rpc/fam_rpc_client.h"
 #include <fam/fam.h>
 
 #include "common/fam_test_config.h"
@@ -47,7 +47,7 @@ using namespace std;
 using namespace openfam;
 
 int *myPE;
-Fam_Rpc_Client *rpc;
+Fam_CIS_Client *cis;
 fam *my_fam;
 Fam_Options fam_opts;
 Fam_Descriptor *item;
@@ -289,8 +289,13 @@ int main(int argc, char **argv) {
     const char *testRegion = get_uniq_str("testGlobal", my_fam);
 
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-    const char *ip = strdup(TEST_MEMSERVER_IP);
-    EXPECT_NO_THROW(rpc = new Fam_Rpc_Client(ip, atoi(TEST_GRPC_PORT)));
+    const char *memoryServers = strdup(TEST_MEMSERVER_IP);
+    std::string delimiter1 = ",";
+    std::string delimiter2 = ":";
+    CISServerMap memoryServerList =
+        parse_memserver_list(memoryServers, delimiter1, delimiter2);
+    EXPECT_NO_THROW(
+        cis = new Fam_CIS_Client(memoryServerList, atoi(TEST_GRPC_PORT)));
 #endif
     EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(
@@ -316,7 +321,7 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-	EXPECT_NO_THROW(rpc->reset_profile());
+    EXPECT_NO_THROW(cis->reset_profile(0));
     EXPECT_NO_THROW(fabric_reset_profile());
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
 #endif

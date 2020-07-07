@@ -146,7 +146,7 @@ if (ARG_ALLOCATOR)
 	set( TEST_ALLOCATOR ${ARG_ALLOCATOR})
 endif()
 
-if (${TEST_ALLOCATOR} STREQUAL "NVMM") 
+if (${TEST_ALLOCATOR} STREQUAL "SHM") 
 	add_definitions(-DSHM)
 endif()
 

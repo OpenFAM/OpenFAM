@@ -20,21 +20,17 @@
  #
  #
 
-
 set(LIBOPENFAM_SRC
   ${LIBOPENFAM_SRC}
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_grpc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_nvmm.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_client.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/memserver_allocator.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/rbtree.c
   PARENT_SCOPE
   )
 
 set(MEMORYSERVER_SRC
   ${MEMORYSERVER_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_client.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/memserver_allocator.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_grpc.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_nvmm.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/rbtree.c
   PARENT_SCOPE
   )
+

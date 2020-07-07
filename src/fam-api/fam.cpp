@@ -1,8 +1,9 @@
 /*
  * fam.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -32,13 +33,11 @@
 #include <string>
 #include <unistd.h>
 
-#include "allocator/fam_allocator.h"
-#include "allocator/fam_allocator_grpc.h"
-#include "allocator/fam_allocator_nvmm.h"
+#include "allocator/fam_allocator_client.h"
 #include "common/fam_libfabric.h"
 #include "common/fam_ops.h"
 #include "common/fam_ops_libfabric.h"
-#include "common/fam_ops_nvmm.h"
+#include "common/fam_ops_shm.h"
 #include "common/fam_options.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
@@ -357,7 +356,7 @@ class fam::Impl_ {
     Fam_Options famOptions;
     std::map<std::string, const void *> *optValueMap;
     Fam_Ops *famOps;
-    Fam_Allocator *famAllocator;
+    Fam_Allocator_Client *famAllocator;
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Runtime *famRuntime;
@@ -365,39 +364,6 @@ class fam::Impl_ {
     uint64_t generate_memory_server_id(const char *name) {
         std::uint64_t hashVal = std::hash<std::string>{}(name);
         return hashVal % memoryServerCount;
-    }
-    MemServerMap parse_memserver_list(std::string memServer,
-                                      std::string delimiter1,
-                                      std::string delimiter2) {
-        MemServerMap memoryServerList;
-        uint64_t prev1 = 0, pos1 = 0;
-        do {
-            pos1 = memServer.find(delimiter1, prev1);
-            if (pos1 == string::npos)
-                pos1 = memServer.length();
-            std::string token = memServer.substr(prev1, pos1 - prev1);
-            if (!token.empty()) {
-                uint64_t prev2 = 0, pos2 = 0, count = 0, nodeid = 0;
-                do {
-                    pos2 = token.find(delimiter2, prev2);
-                    if (pos2 == string::npos)
-                        pos2 = token.length();
-                    std::string token2 = token.substr(prev2, pos2 - prev2);
-                    if (!token2.empty()) {
-                        if (count % 2 == 0) {
-                            nodeid = stoull(token2);
-                        } else {
-                            memoryServerList.insert({nodeid, token2});
-                        }
-                        count++;
-                    }
-                    prev2 = pos2 + delimiter2.length();
-                } while (pos2 < token.length() && prev2 < token.length());
-            }
-            prev1 = pos1 + delimiter1.length();
-        } while (pos1 < memServer.length() && prev1 < memServer.length());
-
-        return memoryServerList;
     }
 
 #ifdef FAM_PROFILE
@@ -638,7 +604,6 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         return ret;
     }
     if (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) == 0) {
-        // cout << "RUNTIME option is NONE" << endl;
         *peId = 0;
         *peCnt = 1;
         optValueMap->insert({supportedOptionList[PE_COUNT], peCnt});
@@ -683,16 +648,16 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         optValueMap->insert({supportedOptionList[PE_ID], peId});
     }
 
-    if (strcmp(famOptions.allocator, FAM_OPTIONS_NVMM_STR) == 0) {
+    if (strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) == 0) {
         // initialize NVMM client
-        famAllocator = new Fam_Allocator_NVMM();
-        famOps = new Fam_Ops_NVMM(famThreadModel, famContextModel, famAllocator,
-                                  atoi(famOptions.numConsumer));
+        famAllocator = new Fam_Allocator_Client();
+        famOps = new Fam_Ops_SHM(famThreadModel, famContextModel, famAllocator,
+                                 atoi(famOptions.numConsumer));
         ret = famOps->initialize();
     } else {
         std::string memoryServer = famOptions.memoryServer;
 
-        MemServerMap memoryServerList;
+        CISServerMap memoryServerList;
         std::string delimiter1 = ",";
         std::string delimiter2 = ":";
 
@@ -714,8 +679,8 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
                 throw Fam_InvalidOption_Exception(message.str().c_str());
             }
         }
-        famAllocator =
-            new Fam_Allocator_Grpc(memoryServerList, atoi(famOptions.grpcPort));
+        famAllocator = new Fam_Allocator_Client(memoryServerList,
+                                                atoi(famOptions.grpcPort));
         famOps = new Fam_Ops_Libfabric(
             memoryServerList, famOptions.libfabricPort, false,
             famOptions.libfabricProvider, famThreadModel, famAllocator,
@@ -803,7 +768,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     else
         famOptions.allocator = strdup("grpc");
 
-    if ((strcmp(famOptions.allocator, FAM_OPTIONS_NVMM_STR) != 0) &&
+    if ((strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) != 0) &&
         (strcmp(famOptions.allocator, FAM_OPTIONS_GRPC_STR) != 0)) {
         message << "Invalid value specified for Allocator: "
                 << famOptions.famThreadModel;
@@ -877,13 +842,9 @@ void fam::Impl_::clean_fam_options() {
 int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
     std::ostringstream message;
     uint64_t key = descriptor->get_key();
-    Fam_Region_Item_Info itemInfo;
 
     if (key == FAM_KEY_UNINITIALIZED) {
-        itemInfo = famAllocator->check_permission_get_info(descriptor);
-        descriptor->bind_key(itemInfo.key);
-        descriptor->set_size(itemInfo.size);
-        descriptor->set_base_address(itemInfo.base);
+        famAllocator->check_permission_get_info(descriptor);
     }
 
     if (key == FAM_KEY_INVALID) {
@@ -994,7 +955,7 @@ const void *fam::Impl_::fam_get_option(char *optionName) {
  * @return - The descriptor to the region. Null if no such region exists, or if
  * the caller does not have access.
  * @throws Fam_Allocator_Exception - excptObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @see #fam_lookup
  */
 Fam_Region_Descriptor *fam::Impl_::fam_lookup_region(const char *name) {
@@ -1013,7 +974,7 @@ Fam_Region_Descriptor *fam::Impl_::fam_lookup_region(const char *name) {
  * @return descriptor to the data item if found. Null if no such data item is
  * registered, or if the caller does not have access.
  * @throws Fam_Allocator_Exception - excptObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @see #fam_lookup_region
  */
 Fam_Descriptor *fam::Impl_::fam_lookup(const char *itemName,
@@ -1042,7 +1003,7 @@ Fam_Descriptor *fam::Impl_::fam_lookup(const char *itemName,
  * @param permissions - access permissions to be used for the region
  * @param redundancyLevel - desired redundancy level for the region
  * @throws Fam_Allocator_Exception - excptObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_ALREADYEXIST, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_ALREADYEXIST, FAM_ERR_RPC
  * @return - Region_Descriptor for the created region
  * @see #fam_resize_region
  * @see #fam_destroy_region
@@ -1066,7 +1027,7 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
  * currently using the region to finish.
  * @param descriptor - descriptor for the region
  * @throws Fam_Allocator_Exception - excptObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @see #fam_create_region
  * @see #fam_resize_region
  */
@@ -1085,7 +1046,7 @@ void fam::Impl_::fam_destroy_region(Fam_Region_Descriptor *descriptor) {
  * @param descriptor - descriptor associated with the previously created region
  * @param nbytes - new requested size of the allocated space
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_ALREADYEXIST, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_ALREADYEXIST, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 on success, 1 for unsuccessful completion, negative number on an
  * exception
  * @see #fam_create_region
@@ -1095,9 +1056,9 @@ int fam::Impl_::fam_resize_region(Fam_Region_Descriptor *descriptor,
                                   uint64_t nbytes) {
     FAM_CNTR_INC_API(fam_resize_region);
     FAM_PROFILE_START_ALLOCATOR(fam_resize_region);
-    auto ret = famAllocator->resize_region(descriptor, nbytes);
+    famAllocator->resize_region(descriptor, nbytes);
     FAM_PROFILE_END_ALLOCATOR(fam_resize_region);
-    return ret;
+    return 0;
 }
 
 /**
@@ -1155,9 +1116,9 @@ int fam::Impl_::fam_change_permissions(Fam_Descriptor *descriptor,
                                        mode_t accessPermissions) {
     FAM_CNTR_INC_API(fam_change_permissions);
     FAM_PROFILE_START_ALLOCATOR(fam_change_permissions);
-    auto ret = famAllocator->change_permission(descriptor, accessPermissions);
+    famAllocator->change_permission(descriptor, accessPermissions);
     FAM_PROFILE_END_ALLOCATOR(fam_change_permissions);
-    return ret;
+    return 0;
 }
 
 /**
@@ -1171,9 +1132,9 @@ int fam::Impl_::fam_change_permissions(Fam_Region_Descriptor *descriptor,
                                        mode_t accessPermissions) {
     FAM_CNTR_INC_API(fam_change_permissions);
     FAM_PROFILE_START_ALLOCATOR(fam_change_permissions);
-    auto ret = famAllocator->change_permission(descriptor, accessPermissions);
+    famAllocator->change_permission(descriptor, accessPermissions);
     FAM_PROFILE_END_ALLOCATOR(fam_change_permissions);
-    return ret;
+    return 0;
 }
 
 /**
@@ -1230,7 +1191,6 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
         message << "Descriptor is no longer valid" << endl;
         throw Fam_Exception(message.str().c_str());
     } else {
-
         regionInfo = famAllocator->check_permission_get_info(descriptor);
         famInfo->size = regionInfo.size;
         famInfo->perm = regionInfo.perm;
@@ -3721,7 +3681,7 @@ const void *fam::fam_get_option(char *optionName) {
  * Look up a region in FAM by name in the name service.
  * @param name - name of the region.
  * @throws Fam_Allocator_Exception - excptObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - The descriptor to the region. Null if no such region exists, or if
  * the caller does not have access.
  * @see #fam_lookup
@@ -3735,7 +3695,7 @@ Fam_Region_Descriptor *fam::fam_lookup_region(const char *name) {
  * @param itemName - name of the data item
  * @param regionName - name of the region containing the data item
  * @throws Fam_Allocator_Exception - excptObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return descriptor to the data item if found. Null if no such data item is
  * registered, or if the caller does not have access.
  * @see #fam_lookup_region
@@ -3760,7 +3720,7 @@ Fam_Descriptor *fam::fam_lookup(const char *itemName, const char *regionName) {
  * @param permissions - access permissions to be used for the region
  * @param redundancyLevel - desired redundancy level for the region
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_ALREADYEXIST, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_ALREADYEXIST, FAM_ERR_RPC
  * @return - Region_Descriptor for the created region
  * @see #fam_resize_region
  * @see #fam_destroy_region
@@ -3777,7 +3737,7 @@ fam::fam_create_region(const char *name, uint64_t size, mode_t permissions,
  * currently using the region to finish.
  * @param descriptor - descriptor for the region
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @see #fam_create_region
  * @see #fam_resize_region
  */
@@ -3809,7 +3769,7 @@ int fam::fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes) {
  * @param region - descriptor of the region within which the space is being
  * allocated. If not present or null, a default region is used.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_ALREADYEXIST, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_ALREADYEXIST, FAM_ERR_RPC
  * @return - descriptor that can be used within the program to refer to this
  * space
  * @see #fam_deallocate()
@@ -3828,7 +3788,7 @@ Fam_Descriptor *fam::fam_allocate(const char *name, uint64_t nbytes,
  * Deallocate allocated space in memory
  * @param descriptor - descriptor associated with the space.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @see #fam_allocate()
  */
 void fam::fam_deallocate(Fam_Descriptor *descriptor) {
@@ -3840,7 +3800,7 @@ void fam::fam_deallocate(Fam_Descriptor *descriptor) {
  * @param descriptor - descriptor associated with some data item
  * @param accessPermissions - new permissions for the data item
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 on success, 1 for unsuccessful completion, negative number on an
  * exception
  */
@@ -3854,7 +3814,7 @@ int fam::fam_change_permissions(Fam_Descriptor *descriptor,
  * @param descriptor - descriptor associated with some region
  * @param accessPermissions - new permissions for the region
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 on success, 1 for unsuccessful completion, negative number on an
  * exception
  */
@@ -3906,7 +3866,7 @@ void fam::fam_stat(Fam_Region_Descriptor *descriptor, Fam_Stat *famInfo) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 for successful completion, 1 for unsuccessful, and a negative
  * number in case of exceptions
  */
@@ -3927,7 +3887,7 @@ int fam::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_InvalidOption_Exception.
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
                               uint64_t offset, uint64_t nbytes) {
@@ -3946,7 +3906,7 @@ void fam::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 for successful completion, 1 for unsuccessful completion,
  * negative number in case of exceptions
  */
@@ -3967,7 +3927,7 @@ int fam::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_InvalidOption_Exception.
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
                               uint64_t offset, uint64_t nbytes) {
@@ -4018,7 +3978,7 @@ void fam::fam_unmap(void *local, Fam_Descriptor *descriptor) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 for normal completion, 1 in case of unsuccessful completion,
  * negative number in case of exception
  * @see #fam_scatter_strided
@@ -4046,7 +4006,7 @@ int fam::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 for normal completion, 1 in case of unsuccessful completion,
  * negative number in case errors
  * @see #fam_scatter_indexed
@@ -4074,7 +4034,7 @@ int fam::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_InvalidOption_Exception.
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @see #fam_scatter_strided
  */
 void fam::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
@@ -4099,7 +4059,7 @@ void fam::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_InvalidOption_Exception.
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @see #fam_scatter_indexed
  */
 void fam::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
@@ -4126,7 +4086,7 @@ void fam::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 for normal completion, 1 in case of unsuccessful completion,
  * negative number in case errors
  * @see #fam_gather_strided
@@ -4153,7 +4113,7 @@ int fam::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 for normal completion, 1 in case of unsuccessful completion,
  * negative number in case errors
  * @see #fam_gather_indexed
@@ -4181,7 +4141,7 @@ int fam::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_InvalidOption_Exception.
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 for normal completion, 1 in case of unsuccessful completion,
  * negative number in case errors
  * @see #fam_gather_strided
@@ -4207,7 +4167,7 @@ void fam::fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @throws Fam_InvalidOption_Exception.
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - 0 for normal completion, 1 in case of unsuccessful completion,
  * negative number in case errors
  * @see #fam_gather_indexed
@@ -4233,7 +4193,7 @@ void fam::fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @param nbytes - number of bytes to be copied
  * @throws Fam_InvalidOption_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_OUTOFRANGE, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_OUTOFRANGE, FAM_ERR_RPC
  *
  * Note : In case of copy operation across memoryserver this API is blocking
  * and no need to wait on copy.
@@ -4260,7 +4220,7 @@ void fam::fam_copy_wait(void *waitObj) { pimpl_->fam_copy_wait(waitObj); }
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value) {
     pimpl_->fam_set(descriptor, offset, value);
@@ -4294,7 +4254,7 @@ void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, double value) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, int32_t value) {
     pimpl_->fam_add(descriptor, offset, value);
@@ -4326,7 +4286,7 @@ void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, double value) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                        int32_t value) {
@@ -4364,7 +4324,7 @@ void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, int32_t value) {
     pimpl_->fam_min(descriptor, offset, value);
@@ -4396,7 +4356,7 @@ void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, double value) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, int32_t value) {
     pimpl_->fam_max(descriptor, offset, value);
@@ -4428,7 +4388,7 @@ void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, double value) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_and(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
     pimpl_->fam_and(descriptor, offset, value);
@@ -4448,7 +4408,7 @@ void fam::fam_and(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
     pimpl_->fam_or(descriptor, offset, value);
@@ -4468,7 +4428,7 @@ void fam::fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_xor(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
     pimpl_->fam_xor(descriptor, offset, value);
@@ -4488,7 +4448,7 @@ void fam::fam_xor(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - value from the given location in FAM
  */
 int32_t fam::fam_fetch_int32(Fam_Descriptor *descriptor, uint64_t offset) {
@@ -4524,7 +4484,7 @@ double fam::fam_fetch_double(Fam_Descriptor *descriptor, uint64_t offset) {
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 int32_t fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
@@ -4564,7 +4524,7 @@ double fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 int32_t fam::fam_compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
@@ -4598,7 +4558,7 @@ int128_t fam::fam_compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 int32_t fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
@@ -4637,7 +4597,7 @@ double fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 int32_t fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
@@ -4677,7 +4637,7 @@ double fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 int32_t fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
@@ -4717,7 +4677,7 @@ double fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 int32_t fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
@@ -4757,7 +4717,7 @@ double fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 uint32_t fam::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
@@ -4781,7 +4741,7 @@ uint64_t fam::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 uint32_t fam::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
@@ -4805,7 +4765,7 @@ uint64_t fam::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  * @throws Fam_Allocator_Exception - exceptionObj->fam_error() may return:
- *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_GRPC
+ *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  * @return - old value from the given location in FAM
  */
 uint32_t fam::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,

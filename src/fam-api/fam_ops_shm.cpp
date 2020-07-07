@@ -1,8 +1,9 @@
 /*
- * fam_ops_nvmm.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * fam_ops_shm.cpp
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -36,10 +37,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "allocator/fam_allocator_nvmm.h"
 #include "common/fam_context.h"
 #include "common/fam_ops.h"
-#include "common/fam_ops_nvmm.h"
+#include "common/fam_ops_shm.h"
 #include "common/fam_util_atomic.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
@@ -47,8 +47,8 @@
 
 using namespace std;
 namespace openfam {
-Fam_Ops_NVMM::Fam_Ops_NVMM(Fam_Thread_Model famTM, Fam_Context_Model famCM,
-                           Fam_Allocator *famAlloc, uint64_t numConsumer) {
+Fam_Ops_SHM::Fam_Ops_SHM(Fam_Thread_Model famTM, Fam_Context_Model famCM,
+                         Fam_Allocator_Client *famAlloc, uint64_t numConsumer) {
     asyncQHandler = new Fam_Async_QHandler(numConsumer);
     famThreadModel = famTM;
     famContextModel = famCM;
@@ -56,9 +56,9 @@ Fam_Ops_NVMM::Fam_Ops_NVMM(Fam_Thread_Model famTM, Fam_Context_Model famCM,
     contexts = new std::map<uint64_t, Fam_Context *>();
 }
 
-Fam_Ops_NVMM::~Fam_Ops_NVMM() { finalize(); }
+Fam_Ops_SHM::~Fam_Ops_SHM() { finalize(); }
 
-int Fam_Ops_NVMM::initialize() {
+int Fam_Ops_SHM::initialize() {
     // Initialize the mutex lock
     if (famContextModel == FAM_CONTEXT_REGION)
         (void)pthread_mutex_init(&ctxLock, NULL);
@@ -72,7 +72,7 @@ int Fam_Ops_NVMM::initialize() {
     return 0;
 }
 
-void Fam_Ops_NVMM::finalize() {
+void Fam_Ops_SHM::finalize() {
     if (contexts != NULL) {
         for (auto fam_ctx : *contexts) {
             delete fam_ctx.second;
@@ -81,7 +81,7 @@ void Fam_Ops_NVMM::finalize() {
     }
 }
 
-Fam_Context *Fam_Ops_NVMM::get_context(Fam_Descriptor *descriptor) {
+Fam_Context *Fam_Ops_SHM::get_context(Fam_Descriptor *descriptor) {
 
     std::ostringstream message;
     // Case - FAM_CONTEXT_DEFAULT
@@ -117,8 +117,8 @@ Fam_Context *Fam_Ops_NVMM::get_context(Fam_Descriptor *descriptor) {
     }
 }
 
-int Fam_Ops_NVMM::put_blocking(void *local, Fam_Descriptor *descriptor,
-                               uint64_t offset, uint64_t nbytes) {
+int Fam_Ops_SHM::put_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t offset, uint64_t nbytes) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -149,8 +149,8 @@ int Fam_Ops_NVMM::put_blocking(void *local, Fam_Descriptor *descriptor,
     return FAM_SUCCESS;
 }
 
-int Fam_Ops_NVMM::get_blocking(void *local, Fam_Descriptor *descriptor,
-                               uint64_t offset, uint64_t nbytes) {
+int Fam_Ops_SHM::get_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t offset, uint64_t nbytes) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -181,9 +181,9 @@ int Fam_Ops_NVMM::get_blocking(void *local, Fam_Descriptor *descriptor,
     return FAM_SUCCESS;
 }
 
-int Fam_Ops_NVMM::gather_blocking(void *local, Fam_Descriptor *descriptor,
-                                  uint64_t nElements, uint64_t firstElement,
-                                  uint64_t stride, uint64_t elementSize) {
+int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
+                                 uint64_t nElements, uint64_t firstElement,
+                                 uint64_t stride, uint64_t elementSize) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -222,9 +222,9 @@ int Fam_Ops_NVMM::gather_blocking(void *local, Fam_Descriptor *descriptor,
     return FAM_SUCCESS;
 }
 
-int Fam_Ops_NVMM::gather_blocking(void *local, Fam_Descriptor *descriptor,
-                                  uint64_t nElements, uint64_t *elementIndex,
-                                  uint64_t elementSize) {
+int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
+                                 uint64_t nElements, uint64_t *elementIndex,
+                                 uint64_t elementSize) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -266,9 +266,9 @@ int Fam_Ops_NVMM::gather_blocking(void *local, Fam_Descriptor *descriptor,
     return FAM_SUCCESS;
 }
 
-int Fam_Ops_NVMM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                                   uint64_t nElements, uint64_t firstElement,
-                                   uint64_t stride, uint64_t elementSize) {
+int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                                  uint64_t nElements, uint64_t firstElement,
+                                  uint64_t stride, uint64_t elementSize) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -307,9 +307,9 @@ int Fam_Ops_NVMM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     return FAM_SUCCESS;
 }
 
-int Fam_Ops_NVMM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                                   uint64_t nElements, uint64_t *elementIndex,
-                                   uint64_t elementSize) {
+int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                                  uint64_t nElements, uint64_t *elementIndex,
+                                  uint64_t elementSize) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -351,8 +351,8 @@ int Fam_Ops_NVMM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     return FAM_SUCCESS;
 }
 
-void Fam_Ops_NVMM::put_nonblocking(void *local, Fam_Descriptor *descriptor,
-                                   uint64_t offset, uint64_t nbytes) {
+void Fam_Ops_SHM::put_nonblocking(void *local, Fam_Descriptor *descriptor,
+                                  uint64_t offset, uint64_t nbytes) {
     void *base = descriptor->get_base_address();
     uint64_t itemSize = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -375,8 +375,8 @@ void Fam_Ops_NVMM::put_nonblocking(void *local, Fam_Descriptor *descriptor,
     return;
 }
 
-void Fam_Ops_NVMM::get_nonblocking(void *local, Fam_Descriptor *descriptor,
-                                   uint64_t offset, uint64_t nbytes) {
+void Fam_Ops_SHM::get_nonblocking(void *local, Fam_Descriptor *descriptor,
+                                  uint64_t offset, uint64_t nbytes) {
     void *base = descriptor->get_base_address();
     uint64_t itemSize = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -400,9 +400,9 @@ void Fam_Ops_NVMM::get_nonblocking(void *local, Fam_Descriptor *descriptor,
     return;
 }
 
-void Fam_Ops_NVMM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
-                                      uint64_t nElements, uint64_t firstElement,
-                                      uint64_t stride, uint64_t elementSize) {
+void Fam_Ops_SHM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
+                                     uint64_t nElements, uint64_t firstElement,
+                                     uint64_t stride, uint64_t elementSize) {
     void *base = descriptor->get_base_address();
     uint64_t itemSize = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -433,10 +433,9 @@ void Fam_Ops_NVMM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     return;
 }
 
-void Fam_Ops_NVMM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
-                                      uint64_t nElements,
-                                      uint64_t *elementIndex,
-                                      uint64_t elementSize) {
+void Fam_Ops_SHM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
+                                     uint64_t nElements, uint64_t *elementIndex,
+                                     uint64_t elementSize) {
     void *base = descriptor->get_base_address();
     uint64_t itemSize = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -467,10 +466,9 @@ void Fam_Ops_NVMM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     return;
 }
 
-void Fam_Ops_NVMM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
-                                       uint64_t nElements,
-                                       uint64_t firstElement, uint64_t stride,
-                                       uint64_t elementSize) {
+void Fam_Ops_SHM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
+                                      uint64_t nElements, uint64_t firstElement,
+                                      uint64_t stride, uint64_t elementSize) {
     void *base = descriptor->get_base_address();
     uint64_t itemSize = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -500,10 +498,10 @@ void Fam_Ops_NVMM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
 
     return;
 }
-void Fam_Ops_NVMM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
-                                       uint64_t nElements,
-                                       uint64_t *elementIndex,
-                                       uint64_t elementSize) {
+void Fam_Ops_SHM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
+                                      uint64_t nElements,
+                                      uint64_t *elementIndex,
+                                      uint64_t elementSize) {
     void *base = descriptor->get_base_address();
     uint64_t itemSize = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -533,7 +531,7 @@ void Fam_Ops_NVMM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
     return;
 }
 
-void Fam_Ops_NVMM::quiet_context(Fam_Context *famCtx) {
+void Fam_Ops_SHM::quiet_context(Fam_Context *famCtx) {
 
     // Take Fam_Context write lock
     famCtx->aquire_WRLock();
@@ -546,7 +544,7 @@ void Fam_Ops_NVMM::quiet_context(Fam_Context *famCtx) {
     return;
 }
 
-void Fam_Ops_NVMM::quiet(Fam_Region_Descriptor *descriptor) {
+void Fam_Ops_SHM::quiet(Fam_Region_Descriptor *descriptor) {
 
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
         quiet_context(get_defaultCtx());
@@ -583,33 +581,31 @@ void Fam_Ops_NVMM::quiet(Fam_Region_Descriptor *descriptor) {
     }
 }
 
-void Fam_Ops_NVMM::abort(int status) FAM_OPS_UNIMPLEMENTED(void_);
+void Fam_Ops_SHM::abort(int status) FAM_OPS_UNIMPLEMENTED(void__);
 
-void *Fam_Ops_NVMM::copy(Fam_Descriptor *src, uint64_t srcOffset,
-                         Fam_Descriptor *dest, uint64_t destOffset,
-                         uint64_t nbytes) {
+void *Fam_Ops_SHM::copy(Fam_Descriptor *src, uint64_t srcOffset,
+                        Fam_Descriptor *dest, uint64_t destOffset,
+                        uint64_t nbytes) {
     void *baseSrc = src->get_base_address();
     void *baseDest = dest->get_base_address();
-    Fam_Region_Item_Info srcItemInfo =
-        famAllocator->check_permission_get_info(src);
-    Fam_Region_Item_Info destItemInfo =
+    Fam_Region_Item_Info srcInfo = famAllocator->check_permission_get_info(src);
+    Fam_Region_Item_Info destInfo =
         famAllocator->check_permission_get_info(dest);
-    
-	if ((srcOffset > srcItemInfo.size) ||
-        ((srcOffset + nbytes) > srcItemInfo.size)) {
+
+    if ((srcOffset > srcInfo.size) || ((srcOffset + nbytes) > srcInfo.size)) {
         throw Fam_Allocator_Exception(
             FAM_ERR_OUTOFRANGE,
             "Source offset or size is beyond dataitem boundary");
     }
 
-    if ((destOffset > destItemInfo.size) ||
-        ((destOffset + nbytes) > destItemInfo.size)) {
+    if ((destOffset > destInfo.size) ||
+        ((destOffset + nbytes) > destInfo.size)) {
         throw Fam_Allocator_Exception(
             FAM_ERR_OUTOFRANGE,
             "Destination offset or size is beyond dataitem boundary");
     }
-    
-	Copy_Tag *tag = new Copy_Tag();
+
+    Copy_Tag *tag = new Copy_Tag();
     tag->copyDone.store(false, boost::memory_order_seq_cst);
 
     Fam_Ops_Info opsInfo = {COPY, baseSrc, baseDest, nbytes, 0, 0, 0, 0, tag};
@@ -618,12 +614,12 @@ void *Fam_Ops_NVMM::copy(Fam_Descriptor *src, uint64_t srcOffset,
     return (void *)tag;
 }
 
-void Fam_Ops_NVMM::wait_for_copy(void *waitObj) {
+void Fam_Ops_SHM::wait_for_copy(void *waitObj) {
     asyncQHandler->wait_for_copy(waitObj);
 }
 
-void Fam_Ops_NVMM::fence(Fam_Region_Descriptor *descriptor)
-    FAM_OPS_UNIMPLEMENTED(void_);
+void Fam_Ops_SHM::fence(Fam_Region_Descriptor *descriptor)
+    FAM_OPS_UNIMPLEMENTED(void__);
 
 /*
  * Atomic group, libfam_atomic needs the region to be registerd.
@@ -637,8 +633,8 @@ void Fam_Ops_NVMM::fence(Fam_Region_Descriptor *descriptor)
  * Or else it can cause crashes.
  *
  */
-void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
-                              int32_t value) {
+void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
+                             int32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -656,8 +652,8 @@ void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_32_write((int32_t *)((char *)base + offset), value);
 }
 
-void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
-                              int64_t value) {
+void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
+                             int64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -675,8 +671,8 @@ void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_64_write((int64_t *)((char *)base + offset), value);
 }
 
-void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
-                              int128_t value) {
+void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
+                             int128_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -696,8 +692,8 @@ void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_128_write((int64_t *)((char *)base + offset), oldValueStore.i64);
 }
 
-void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint32_t value) {
+void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -715,8 +711,8 @@ void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_32_write((int32_t *)((char *)base + offset), value);
 }
 
-void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint64_t value) {
+void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -734,8 +730,8 @@ void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_64_write((int64_t *)((char *)base + offset), value);
 }
 
-void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
-                              float value) {
+void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
+                             float value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -753,8 +749,8 @@ void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_32_write((int32_t *)((char *)base + offset), *buff);
 }
 
-void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
-                              double value) {
+void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
+                             double value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -772,8 +768,8 @@ void Fam_Ops_NVMM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_64_write((int64_t *)((char *)base + offset), *buff);
 }
 
-void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
-                              int32_t value) {
+void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
+                             int32_t value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -791,8 +787,8 @@ void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_32_fetch_add((int32_t *)((char *)base + offset), value);
 }
 
-void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
-                              int64_t value) {
+void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
+                             int64_t value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -810,8 +806,8 @@ void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_64_fetch_add((int64_t *)((char *)base + offset), value);
 }
 
-void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint32_t value) {
+void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint32_t value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -829,8 +825,8 @@ void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_32_fetch_add((int32_t *)((char *)base + offset), value);
 }
 
-void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint64_t value) {
+void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint64_t value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -848,8 +844,8 @@ void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     fam_atomic_64_fetch_add((int64_t *)((char *)base + offset), value);
 }
 
-void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
-                              float value) {
+void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
+                             float value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -869,8 +865,8 @@ void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
-                              double value) {
+void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
+                             double value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -890,33 +886,33 @@ void Fam_Ops_NVMM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
-                                   int32_t value) {
+void Fam_Ops_SHM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
+                                  int32_t value) {
     atomic_add(descriptor, offset, -value);
 }
-void Fam_Ops_NVMM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
-                                   int64_t value) {
+void Fam_Ops_SHM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
+                                  int64_t value) {
     atomic_add(descriptor, offset, -value);
 }
-void Fam_Ops_NVMM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
-                                   uint32_t value) {
+void Fam_Ops_SHM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
+                                  uint32_t value) {
     atomic_add(descriptor, offset, -value);
 }
-void Fam_Ops_NVMM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
-                                   uint64_t value) {
+void Fam_Ops_SHM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
+                                  uint64_t value) {
     atomic_add(descriptor, offset, -value);
 }
-void Fam_Ops_NVMM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
-                                   float value) {
+void Fam_Ops_SHM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
+                                  float value) {
     atomic_add(descriptor, offset, -value);
 }
-void Fam_Ops_NVMM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
-                                   double value) {
+void Fam_Ops_SHM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
+                                  double value) {
     atomic_add(descriptor, offset, -value);
 }
 
-void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
-                              int32_t value) {
+void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
+                             int32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -936,8 +932,8 @@ void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
-                              int64_t value) {
+void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
+                             int64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -956,8 +952,8 @@ void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint32_t value) {
+void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -977,8 +973,8 @@ void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint64_t value) {
+void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -997,8 +993,8 @@ void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
-                              float value) {
+void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
+                             float value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1017,8 +1013,8 @@ void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
-                              double value) {
+void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
+                             double value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1038,8 +1034,8 @@ void Fam_Ops_NVMM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
-                              int32_t value) {
+void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
+                             int32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1059,8 +1055,8 @@ void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
-                              int64_t value) {
+void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
+                             int64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1079,8 +1075,8 @@ void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint32_t value) {
+void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1100,8 +1096,8 @@ void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint64_t value) {
+void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1120,8 +1116,8 @@ void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
-                              float value) {
+void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
+                             float value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1140,8 +1136,8 @@ void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
-                              double value) {
+void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
+                             double value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1161,8 +1157,8 @@ void Fam_Ops_NVMM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint32_t value) {
+void Fam_Ops_SHM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1182,8 +1178,8 @@ void Fam_Ops_NVMM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint64_t value) {
+void Fam_Ops_SHM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1202,8 +1198,8 @@ void Fam_Ops_NVMM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
-                             uint32_t value) {
+void Fam_Ops_SHM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
+                            uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1222,8 +1218,8 @@ void Fam_Ops_NVMM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
-                             uint64_t value) {
+void Fam_Ops_SHM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
+                            uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1242,8 +1238,8 @@ void Fam_Ops_NVMM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint32_t value) {
+void Fam_Ops_SHM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1262,8 +1258,8 @@ void Fam_Ops_NVMM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-void Fam_Ops_NVMM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
-                              uint64_t value) {
+void Fam_Ops_SHM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
+                             uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1282,8 +1278,8 @@ void Fam_Ops_NVMM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
         (void *)((char *)base + offset), (void *)&value, result);
 }
 
-int32_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
-                                   int32_t oldValue, int32_t newValue) {
+int32_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
+                                  int32_t oldValue, int32_t newValue) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1303,8 +1299,8 @@ int32_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                        oldValue, newValue);
 }
 
-int64_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
-                                   int64_t oldValue, int64_t newValue) {
+int64_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
+                                  int64_t oldValue, int64_t newValue) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1325,8 +1321,8 @@ int64_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                        oldValue, newValue);
 }
 
-int128_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
-                                    int128_t oldValue, int128_t newValue) {
+int128_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
+                                   int128_t oldValue, int128_t newValue) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1353,8 +1349,8 @@ int128_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
     return ResultValueStore.i128;
 }
 
-uint32_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
-                                    uint32_t oldValue, uint32_t newValue) {
+uint32_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
+                                   uint32_t oldValue, uint32_t newValue) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1374,8 +1370,8 @@ uint32_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                        oldValue, newValue);
 }
 
-uint64_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
-                                    uint64_t oldValue, uint64_t newValue) {
+uint64_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
+                                   uint64_t oldValue, uint64_t newValue) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1395,8 +1391,8 @@ uint64_t Fam_Ops_NVMM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                        oldValue, newValue);
 }
 
-int32_t Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
-                           int32_t value) {
+int32_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
+                          int32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1414,8 +1410,8 @@ int32_t Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     return fam_atomic_32_swap((int32_t *)((char *)base + offset), value);
 }
 
-int64_t Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
-                           int64_t value) {
+int64_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
+                          int64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1433,8 +1429,8 @@ int64_t Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     return fam_atomic_64_swap((int64_t *)((char *)base + offset), value);
 }
 
-uint32_t Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
-                            uint32_t value) {
+uint32_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
+                           uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1452,8 +1448,8 @@ uint32_t Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     return fam_atomic_32_swap((int32_t *)((char *)base + offset), value);
 }
 
-uint64_t Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
-                            uint64_t value) {
+uint64_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
+                           uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1471,8 +1467,8 @@ uint64_t Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     return fam_atomic_64_swap((int64_t *)((char *)base + offset), value);
 }
 
-float Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
-                         float value) {
+float Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
+                        float value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1494,8 +1490,8 @@ float Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     return *floatResult;
 }
 
-double Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
-                          double value) {
+double Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
+                         double value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1517,8 +1513,8 @@ double Fam_Ops_NVMM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     return *doubleResult;
 }
 
-int32_t Fam_Ops_NVMM::atomic_fetch_int32(Fam_Descriptor *descriptor,
-                                         uint64_t offset) {
+int32_t Fam_Ops_SHM::atomic_fetch_int32(Fam_Descriptor *descriptor,
+                                        uint64_t offset) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1536,8 +1532,8 @@ int32_t Fam_Ops_NVMM::atomic_fetch_int32(Fam_Descriptor *descriptor,
     return fam_atomic_32_read((int32_t *)((char *)base + offset));
 }
 
-int64_t Fam_Ops_NVMM::atomic_fetch_int64(Fam_Descriptor *descriptor,
-                                         uint64_t offset) {
+int64_t Fam_Ops_SHM::atomic_fetch_int64(Fam_Descriptor *descriptor,
+                                        uint64_t offset) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1555,8 +1551,8 @@ int64_t Fam_Ops_NVMM::atomic_fetch_int64(Fam_Descriptor *descriptor,
     return fam_atomic_64_read((int64_t *)((char *)base + offset));
 }
 
-int128_t Fam_Ops_NVMM::atomic_fetch_int128(Fam_Descriptor *descriptor,
-                                           uint64_t offset) {
+int128_t Fam_Ops_SHM::atomic_fetch_int128(Fam_Descriptor *descriptor,
+                                          uint64_t offset) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1578,8 +1574,8 @@ int128_t Fam_Ops_NVMM::atomic_fetch_int128(Fam_Descriptor *descriptor,
     return ResultValueStore.i128;
 }
 
-uint32_t Fam_Ops_NVMM::atomic_fetch_uint32(Fam_Descriptor *descriptor,
-                                           uint64_t offset) {
+uint32_t Fam_Ops_SHM::atomic_fetch_uint32(Fam_Descriptor *descriptor,
+                                          uint64_t offset) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1597,8 +1593,8 @@ uint32_t Fam_Ops_NVMM::atomic_fetch_uint32(Fam_Descriptor *descriptor,
     return fam_atomic_32_read((int32_t *)((char *)base + offset));
 }
 
-uint64_t Fam_Ops_NVMM::atomic_fetch_uint64(Fam_Descriptor *descriptor,
-                                           uint64_t offset) {
+uint64_t Fam_Ops_SHM::atomic_fetch_uint64(Fam_Descriptor *descriptor,
+                                          uint64_t offset) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1616,8 +1612,8 @@ uint64_t Fam_Ops_NVMM::atomic_fetch_uint64(Fam_Descriptor *descriptor,
     return fam_atomic_64_read((int64_t *)((char *)base + offset));
 }
 
-float Fam_Ops_NVMM::atomic_fetch_float(Fam_Descriptor *descriptor,
-                                       uint64_t offset) {
+float Fam_Ops_SHM::atomic_fetch_float(Fam_Descriptor *descriptor,
+                                      uint64_t offset) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1636,8 +1632,8 @@ float Fam_Ops_NVMM::atomic_fetch_float(Fam_Descriptor *descriptor,
     return *result;
 }
 
-double Fam_Ops_NVMM::atomic_fetch_double(Fam_Descriptor *descriptor,
-                                         uint64_t offset) {
+double Fam_Ops_SHM::atomic_fetch_double(Fam_Descriptor *descriptor,
+                                        uint64_t offset) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1656,8 +1652,8 @@ double Fam_Ops_NVMM::atomic_fetch_double(Fam_Descriptor *descriptor,
     return *result;
 }
 
-int32_t Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
-                                       uint64_t offset, int32_t value) {
+int32_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
+                                      uint64_t offset, int32_t value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1676,8 +1672,8 @@ int32_t Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
     return fam_atomic_32_fetch_add((int32_t *)((char *)base + offset), value);
 }
 
-int64_t Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
-                                       uint64_t offset, int64_t value) {
+int64_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
+                                      uint64_t offset, int64_t value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1696,8 +1692,8 @@ int64_t Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
     return fam_atomic_64_fetch_add((int64_t *)((char *)base + offset), value);
 }
 
-uint32_t Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint32_t value) {
+uint32_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint32_t value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1716,8 +1712,8 @@ uint32_t Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
     return fam_atomic_32_fetch_add((int32_t *)((char *)base + offset), value);
 }
 
-uint64_t Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint64_t value) {
+uint64_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint64_t value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1736,8 +1732,8 @@ uint64_t Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
     return fam_atomic_64_fetch_add((int64_t *)((char *)base + offset), value);
 }
 
-float Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
-                                     uint64_t offset, float value) {
+float Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
+                                    float value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1760,8 +1756,8 @@ float Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-double Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
-                                      uint64_t offset, double value) {
+double Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
+                                     uint64_t offset, double value) {
 
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
@@ -1784,38 +1780,38 @@ double Fam_Ops_NVMM::atomic_fetch_add(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-int32_t Fam_Ops_NVMM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
-                                            uint64_t offset, int32_t value) {
+int32_t Fam_Ops_SHM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
+                                           uint64_t offset, int32_t value) {
     return atomic_fetch_add(descriptor, offset, -value);
 }
 
-int64_t Fam_Ops_NVMM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
-                                            uint64_t offset, int64_t value) {
+int64_t Fam_Ops_SHM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
+                                           uint64_t offset, int64_t value) {
     return atomic_fetch_add(descriptor, offset, -value);
 }
 
-uint32_t Fam_Ops_NVMM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
-                                             uint64_t offset, uint32_t value) {
+uint32_t Fam_Ops_SHM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
+                                            uint64_t offset, uint32_t value) {
     return atomic_fetch_add(descriptor, offset, -value);
 }
 
-uint64_t Fam_Ops_NVMM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
-                                             uint64_t offset, uint64_t value) {
+uint64_t Fam_Ops_SHM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
+                                            uint64_t offset, uint64_t value) {
     return atomic_fetch_add(descriptor, offset, -value);
 }
 
-float Fam_Ops_NVMM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
-                                          uint64_t offset, float value) {
+float Fam_Ops_SHM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
+                                         uint64_t offset, float value) {
     return atomic_fetch_add(descriptor, offset, -value);
 }
 
-double Fam_Ops_NVMM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
-                                           uint64_t offset, double value) {
+double Fam_Ops_SHM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
+                                          uint64_t offset, double value) {
     return atomic_fetch_add(descriptor, offset, -value);
 }
 
-int32_t Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
-                                       uint64_t offset, int32_t value) {
+int32_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
+                                      uint64_t offset, int32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1838,8 +1834,8 @@ int32_t Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-int64_t Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
-                                       uint64_t offset, int64_t value) {
+int64_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
+                                      uint64_t offset, int64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1861,8 +1857,8 @@ int64_t Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint32_t Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint32_t value) {
+uint32_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1885,8 +1881,8 @@ uint32_t Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint64_t Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint64_t value) {
+uint64_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1908,8 +1904,8 @@ uint64_t Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-float Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
-                                     uint64_t offset, float value) {
+float Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
+                                    float value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1931,8 +1927,8 @@ float Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-double Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
-                                      uint64_t offset, double value) {
+double Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
+                                     uint64_t offset, double value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1955,8 +1951,8 @@ double Fam_Ops_NVMM::atomic_fetch_min(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-int32_t Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
-                                       uint64_t offset, int32_t value) {
+int32_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
+                                      uint64_t offset, int32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -1979,8 +1975,8 @@ int32_t Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-int64_t Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
-                                       uint64_t offset, int64_t value) {
+int64_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
+                                      uint64_t offset, int64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2002,8 +1998,8 @@ int64_t Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint32_t Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint32_t value) {
+uint32_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2026,8 +2022,8 @@ uint32_t Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint64_t Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint64_t value) {
+uint64_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2049,8 +2045,8 @@ uint64_t Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-float Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
-                                     uint64_t offset, float value) {
+float Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
+                                    float value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2072,8 +2068,8 @@ float Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-double Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
-                                      uint64_t offset, double value) {
+double Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
+                                     uint64_t offset, double value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2096,8 +2092,8 @@ double Fam_Ops_NVMM::atomic_fetch_max(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint32_t Fam_Ops_NVMM::atomic_fetch_and(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint32_t value) {
+uint32_t Fam_Ops_SHM::atomic_fetch_and(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2120,8 +2116,8 @@ uint32_t Fam_Ops_NVMM::atomic_fetch_and(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint64_t Fam_Ops_NVMM::atomic_fetch_and(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint64_t value) {
+uint64_t Fam_Ops_SHM::atomic_fetch_and(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2143,8 +2139,8 @@ uint64_t Fam_Ops_NVMM::atomic_fetch_and(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint32_t Fam_Ops_NVMM::atomic_fetch_or(Fam_Descriptor *descriptor,
-                                       uint64_t offset, uint32_t value) {
+uint32_t Fam_Ops_SHM::atomic_fetch_or(Fam_Descriptor *descriptor,
+                                      uint64_t offset, uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2166,8 +2162,8 @@ uint32_t Fam_Ops_NVMM::atomic_fetch_or(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint64_t Fam_Ops_NVMM::atomic_fetch_or(Fam_Descriptor *descriptor,
-                                       uint64_t offset, uint64_t value) {
+uint64_t Fam_Ops_SHM::atomic_fetch_or(Fam_Descriptor *descriptor,
+                                      uint64_t offset, uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2189,8 +2185,8 @@ uint64_t Fam_Ops_NVMM::atomic_fetch_or(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint32_t Fam_Ops_NVMM::atomic_fetch_xor(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint32_t value) {
+uint32_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint32_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
@@ -2212,8 +2208,8 @@ uint32_t Fam_Ops_NVMM::atomic_fetch_xor(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-uint64_t Fam_Ops_NVMM::atomic_fetch_xor(Fam_Descriptor *descriptor,
-                                        uint64_t offset, uint64_t value) {
+uint64_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
+                                       uint64_t offset, uint64_t value) {
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();

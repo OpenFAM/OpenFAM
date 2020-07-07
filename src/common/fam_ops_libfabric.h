@@ -35,6 +35,7 @@
 #include <string.h>
 #include <sys/uio.h>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 #include <rdma/fabric.h>
@@ -45,8 +46,7 @@
 #include <rdma/fi_eq.h>
 #include <rdma/fi_rma.h>
 
-#include "allocator/fam_allocator.h"
-#include "allocator/fam_allocator_grpc.h"
+#include "allocator/fam_allocator_client.h"
 #include "common/fam_context.h"
 #include "common/fam_ops.h"
 #include "common/fam_options.h"
@@ -79,12 +79,12 @@ class Fam_Ops_Libfabric : public Fam_Ops {
      */
     Fam_Ops_Libfabric(const char *name, const char *service, bool is_source,
                       char *provider, Fam_Thread_Model famTM,
-                      Fam_Allocator *famAlloc,
+                      Fam_Allocator_Client *famAlloc,
                       Fam_Context_Model famCM = FAM_CONTEXT_DEFAULT);
 
     Fam_Ops_Libfabric(MemServerMap name, const char *service, bool is_source,
                       char *provider, Fam_Thread_Model famTM,
-                      Fam_Allocator *famAlloc,
+                      Fam_Allocator_Client *famAlloc,
                       Fam_Context_Model famCM = FAM_CONTEXT_DEFAULT);
     /**
      * Initialize the libfabric library. This method is required to be the first
@@ -381,7 +381,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     std::map<uint64_t, Fam_Context *> *defContexts;
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
-    Fam_Allocator *famAllocator;
+    Fam_Allocator_Client *famAllocator;
 };
 } // namespace openfam
 #endif

@@ -61,7 +61,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(const char *memServerName,
                                      const char *libfabricPort, bool source,
                                      char *libfabricProvider,
                                      Fam_Thread_Model famTM,
-                                     Fam_Allocator *famAlloc,
+                                     Fam_Allocator_Client *famAlloc,
                                      Fam_Context_Model famCM) {
     std::ostringstream message;
     name.insert({0, memServerName});
@@ -95,7 +95,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(MemServerMap memServerList,
                                      const char *libfabricPort, bool source,
                                      char *libfabricProvider,
                                      Fam_Thread_Model famTM,
-                                     Fam_Allocator *famAlloc,
+                                     Fam_Allocator_Client *famAlloc,
                                      Fam_Context_Model famCM) {
     std::ostringstream message;
     name = memServerList;
@@ -1715,7 +1715,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_xor(Fam_Descriptor *descriptor,
     return old;
 }
 
-void Fam_Ops_Libfabric::abort(int status) FAM_OPS_UNIMPLEMENTED(void_);
+void Fam_Ops_Libfabric::abort(int status) FAM_OPS_UNIMPLEMENTED(void__);
 
 void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                                    int128_t value) {
