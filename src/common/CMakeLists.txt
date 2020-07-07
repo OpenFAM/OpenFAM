@@ -25,13 +25,13 @@ set(LIBOPENFAM_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_async_qhandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/memserver_exception.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   PARENT_SCOPE
   )
 set(MEMORYSERVER_SRC
   ${MEMORYSERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/memserver_exception.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   PARENT_SCOPE
   )

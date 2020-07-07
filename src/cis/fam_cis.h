@@ -34,6 +34,7 @@
 #include <sys/types.h>
 
 #include "common/fam_internal.h"
+#include "common/fam_internal_exception.h"
 #include "fam/fam.h"
 
 using namespace std;

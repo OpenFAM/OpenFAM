@@ -114,7 +114,7 @@ namespace openfam {
 #define DATAITEMID_MASK ((1UL << DATAITEMID_BITS) - 1)
 #define DATAITEMID_SHIFT 1
 
-using MemServerMap = std::map<uint64_t, std::string>;
+using CISServerMap = std::map<uint64_t, std::string>;
 
 /**
  *  DataItem Metadata descriptor
@@ -126,13 +126,16 @@ typedef struct {
     uint64_t size;
     mode_t perm;
     void *base;
-    char *name;
+    char name[RadixTree::MAX_KEY_LEN];
+    ;
+    size_t maxNameLen;
+    // char *name;
 } Fam_Region_Item_Info;
 
-inline MemServerMap parse_memserver_list(std::string memServer,
+inline CISServerMap parse_memserver_list(std::string memServer,
                                          std::string delimiter1,
                                          std::string delimiter2) {
-    MemServerMap memoryServerList;
+    CISServerMap memoryServerList;
     uint64_t prev1 = 0, pos1 = 0;
     do {
         pos1 = memServer.find(delimiter1, prev1);

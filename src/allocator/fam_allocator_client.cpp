@@ -37,13 +37,18 @@
 using namespace std;
 
 namespace openfam {
-Fam_Allocator_Client::Fam_Allocator_Client(MemServerMap servers,
+Fam_Allocator_Client::Fam_Allocator_Client(CISServerMap servers,
                                            uint64_t port) {
     if (servers.size() == 0) {
-        throw Fam_Allocator_Exception(FAM_ERR_MEMSERVER_LIST_EMPTY,
-                                      "server name not found");
+        throw Fam_Allocator_Exception(FAM_ERR_CIS_SERVER_LIST_EMPTY,
+                                      "CIS server name not found");
     }
-    famCIS = new Fam_CIS_Client(servers, port);
+    try {
+        famCIS = new Fam_CIS_Client(servers, port);
+    } catch (Fam_Exception &e) {
+        throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
+                                      e.fam_error_msg());
+    }
     uid = (uint32_t)getuid();
     gid = (uint32_t)getgid();
 }
@@ -67,7 +72,7 @@ Fam_Region_Descriptor *Fam_Allocator_Client::create_region(
     try {
         info = famCIS->create_region(name, nbytes, permissions, redundancyLevel,
                                      memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -91,7 +96,7 @@ void Fam_Allocator_Client::destroy_region(Fam_Region_Descriptor *descriptor) {
     descriptor->set_desc_status(DESC_INVALID);
     try {
         famCIS->destroy_region(regionId, memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -105,7 +110,7 @@ void Fam_Allocator_Client::resize_region(Fam_Region_Descriptor *descriptor,
     uint64_t memoryServerId = descriptor->get_memserver_id();
     try {
         famCIS->resize_region(regionId, nbytes, memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -122,7 +127,7 @@ Fam_Descriptor *Fam_Allocator_Client::allocate(const char *name,
     try {
         info = famCIS->allocate(name, nbytes, accessPermissions, regionId,
                                 memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -146,7 +151,7 @@ void Fam_Allocator_Client::deallocate(Fam_Descriptor *descriptor) {
     descriptor->set_desc_status(DESC_INVALID);
     try {
         famCIS->deallocate(regionId, offset, memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -161,7 +166,7 @@ void Fam_Allocator_Client::change_permission(Fam_Region_Descriptor *descriptor,
     try {
         famCIS->change_region_permission(regionId, accessPermissions,
                                          memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -177,7 +182,7 @@ void Fam_Allocator_Client::change_permission(Fam_Descriptor *descriptor,
     try {
         famCIS->change_dataitem_permission(regionId, offset, accessPermissions,
                                            memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -189,7 +194,7 @@ Fam_Allocator_Client::lookup_region(const char *name,
     Fam_Region_Item_Info info;
     try {
         info = famCIS->lookup_region(name, memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -211,7 +216,7 @@ Fam_Descriptor *Fam_Allocator_Client::lookup(const char *itemName,
     Fam_Region_Item_Info info;
     try {
         info = famCIS->lookup(itemName, regionName, memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -238,7 +243,7 @@ Fam_Region_Item_Info Fam_Allocator_Client::check_permission_get_info(
             regionId, memoryServerId, uid, gid);
         descriptor->set_desc_status(DESC_INIT_DONE);
         return info;
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -261,7 +266,7 @@ Fam_Allocator_Client::check_permission_get_info(Fam_Descriptor *descriptor) {
         descriptor->set_size(info.size);
         descriptor->set_base_address(info.base);
         return info;
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -282,7 +287,7 @@ Fam_Allocator_Client::get_stat_info(Fam_Descriptor *descriptor) {
         descriptor->set_perm(info.perm);
         descriptor->set_size(info.size);
         return info;
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -317,7 +322,7 @@ void *Fam_Allocator_Client::copy(Fam_Descriptor *src, uint64_t srcCopyStart,
         return famCIS->copy(srcRegionId, srcOffset, srcCopyStart, destRegionId,
                             destOffset, destCopyStart, nbytes, memoryServerId,
                             uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
@@ -335,11 +340,11 @@ void *Fam_Allocator_Client::fam_map(Fam_Descriptor *descriptor) {
     uint64_t memoryServerId = descriptor->get_memserver_id();
     try {
         return famCIS->fam_map(regionId, offset, memoryServerId, uid, gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }
-} // namespace openfam
+}
 
 void Fam_Allocator_Client::fam_unmap(void *local, Fam_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
@@ -350,7 +355,7 @@ void Fam_Allocator_Client::fam_unmap(void *local, Fam_Descriptor *descriptor) {
     try {
         return famCIS->fam_unmap(local, regionId, offset, memoryServerId, uid,
                                  gid);
-    } catch (Memserver_Exception &e) {
+    } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
     }

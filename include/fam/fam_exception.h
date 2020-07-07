@@ -47,7 +47,7 @@ enum Fam_Error {
     FAM_ERR_NOTFOUND,
     FAM_ERR_ALREADYEXIST,
     FAM_ERR_ALLOCATOR,
-    FAM_ERR_GRPC,
+    FAM_ERR_RPC,
     FAM_ERR_PMI,
     FAM_ERR_OUTOFRANGE,
     FAM_ERR_NULLPTR,
@@ -55,7 +55,7 @@ enum Fam_Error {
     FAM_ERR_RESOURCE,
     FAM_ERR_INVALIDOP,
     FAM_ERR_RPC_STUB_NOTFOUND,
-    FAM_ERR_MEMSERVER_LIST_EMPTY
+    FAM_ERR_CIS_SERVER_LIST_EMPTY
 };
 
 class Fam_Exception : public std::exception {

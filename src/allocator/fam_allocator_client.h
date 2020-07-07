@@ -37,7 +37,7 @@ namespace openfam {
 
 class Fam_Allocator_Client {
   public:
-    Fam_Allocator_Client(MemServerMap name, uint64_t port);
+    Fam_Allocator_Client(CISServerMap name, uint64_t port);
 
     Fam_Allocator_Client();
 

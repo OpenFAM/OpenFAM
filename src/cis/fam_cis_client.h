@@ -42,7 +42,6 @@
 
 #include "cis/fam_cis.h"
 #include "cis/fam_cis_rpc.grpc.pb.h"
-#include "fam/fam_exception.h"
 using namespace std;
 
 #define FAM_UNIMPLEMENTED_GRPC()                                               \
@@ -93,7 +92,7 @@ using Server_List = std::map<uint64_t, Fam_CIS_Server_Info *>;
 
 class Fam_CIS_Client : public Fam_CIS {
   public:
-    Fam_CIS_Client(MemServerMap servers, uint64_t port);
+    Fam_CIS_Client(CISServerMap servers, uint64_t port);
 
     ~Fam_CIS_Client();
 

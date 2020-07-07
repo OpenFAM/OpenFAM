@@ -1,8 +1,9 @@
 /*
  * fam_cis_server.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -85,12 +86,12 @@ void Fam_CIS_Server::progress_thread() {
 }
 void Fam_CIS_Server::cis_server_initialize(char *name, char *service,
                                            char *provider,
-                                           Fam_CIS_Direct *famCIS) {
+                                           Fam_CIS_Direct *__famCIS) {
     ostringstream message;
     message << "Error while initializing RPC service : ";
     numClients = 0;
     shouldShutdown = false;
-    this->famCIS = famCIS;
+    famCIS = __famCIS;
     MEMSERVER_PROFILE_INIT(CIS_SERVER)
     MEMSERVER_PROFILE_START_TIME(CIS_SERVER)
     fiMrs = NULL;
@@ -102,7 +103,7 @@ void Fam_CIS_Server::cis_server_initialize(char *name, char *service,
     int ret = famOps->initialize();
     if (ret < 0) {
         message << "famOps initialization failed";
-        throw Memserver_Exception(OPS_INIT_FAILED, message.str().c_str());
+        throw CIS_Exception(OPS_INIT_FAILED, message.str().c_str());
     }
     struct fi_info *fi = famOps->get_fi();
     if (fi->domain_attr->control_progress == FI_PROGRESS_MANUAL ||
@@ -212,7 +213,7 @@ Fam_CIS_Server::create_region(::grpc::ServerContext *context,
                                      (mode_t)request->perm(),
                                      static_cast<Fam_Redundancy_Level>(0), 0,
                                      request->uid(), request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -234,7 +235,7 @@ Fam_CIS_Server::destroy_region(::grpc::ServerContext *context,
     try {
         famCIS->destroy_region(request->regionid(), 0, request->uid(),
                                request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -256,7 +257,7 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
     try {
         famCIS->resize_region(request->regionid(), request->size(), 0,
                               request->uid(), request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -274,15 +275,13 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
     ostringstream message;
     Fam_Region_Item_Info info;
     uint64_t key;
-    // void *localPointer;
     try {
         info = famCIS->allocate(request->name(), (size_t)request->size(),
                                 (mode_t)request->perm(), request->regionid(), 0,
                                 request->uid(), request->gid());
         // Generate and register key for datapath access
         register_memory(info, request->uid(), request->gid(), key);
-        //                          localPointer);
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -310,7 +309,7 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
         famCIS->deallocate(request->regionid(), request->offset(), 0,
                            request->uid(), request->gid());
         deregister_memory(request->regionid(), request->offset());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -331,7 +330,7 @@ Fam_CIS_Server::change_region_permission(::grpc::ServerContext *context,
         famCIS->change_region_permission(request->regionid(),
                                          (mode_t)request->perm(), 0,
                                          request->uid(), request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -350,7 +349,7 @@ Fam_CIS_Server::change_region_permission(::grpc::ServerContext *context,
         famCIS->change_dataitem_permission(
             request->regionid(), request->offset(), (mode_t)request->perm(), 0,
             request->uid(), request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -371,7 +370,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     try {
         info = famCIS->lookup_region(request->name(), 0, request->uid(),
                                      request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -382,7 +381,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
-    free(info.name);
+    response->set_maxnamelen(info.maxNameLen);
 
     CIS_SERVER_PROFILE_END_OPS(lookup_region);
     return ::grpc::Status::OK;
@@ -397,7 +396,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     try {
         info = famCIS->lookup(request->name(), request->regionname(), 0,
                               request->uid(), request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -408,7 +407,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
-    free(info.name);
+    response->set_maxnamelen(info.maxNameLen);
     // Return status OK
     CIS_SERVER_PROFILE_END_OPS(lookup);
     return ::grpc::Status::OK;
@@ -424,7 +423,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     try {
         info = famCIS->check_permission_get_region_info(
             request->regionid(), 0, request->uid(), request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -433,7 +432,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
-    free(info.name);
+    response->set_maxnamelen(info.maxNameLen);
     CIS_SERVER_PROFILE_END_OPS(check_permission_get_region_info);
     return ::grpc::Status::OK;
 }
@@ -446,14 +445,12 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     ostringstream message;
     Fam_Region_Item_Info info;
     uint64_t key;
-    // void *localPointer;
     try {
         info = famCIS->check_permission_get_item_info(
             request->regionid(), request->offset(), 0, request->uid(),
             request->gid());
         register_memory(info, request->uid(), request->gid(), key);
-        //                              localPointer);
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -463,7 +460,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
-    free(info.name);
+    response->set_maxnamelen(info.maxNameLen);
     if (strncmp(famOps->get_provider(), "verbs", 5) == 0)
         response->set_base((uint64_t)info.base);
     else
@@ -487,7 +484,7 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
         info = famCIS->check_permission_get_item_info(
             request->regionid(), request->offset(), 0, request->uid(),
             request->gid());
-    } catch (Memserver_Exception &e) {
+    } catch (CIS_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -495,7 +492,7 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
-    free(info.name);
+    response->set_maxnamelen(info.maxNameLen);
 
     CIS_SERVER_PROFILE_END_OPS(get_stat_info);
 
@@ -541,7 +538,7 @@ void Fam_CIS_Server::register_fence_memory() {
                                  1, mr);
         if (ret < 0) {
             message << "failed to register with fabric";
-            throw Memserver_Exception(FENCE_REG_FAILED, message.str().c_str());
+            throw CIS_Exception(FENCE_REG_FAILED, message.str().c_str());
         }
         fenceMr = mr;
     }
@@ -549,7 +546,6 @@ void Fam_CIS_Server::register_fence_memory() {
 
 void Fam_CIS_Server::register_memory(Fam_Region_Item_Info info, uint32_t uid,
                                      uint32_t gid, uint64_t &key) {
-    // void *&localPointer) {
     CIS_SERVER_PROFILE_START_OPS()
     ostringstream message;
     message << "Error while registering memory : ";
@@ -564,7 +560,6 @@ void Fam_CIS_Server::register_memory(Fam_Region_Item_Info info, uint32_t uid,
     Fam_Region_Map_t *fiRegionMapDiscard = NULL;
 
     void *localPointer = info.base;
-    // famCIS->get_local_pointer(info.regionId, info.offset);
 
     if (info.key == (FAM_WRITE_KEY_SHM | FAM_READ_KEY_SHM)) {
         key = mrkey = generate_access_key(info.regionId, dataitemId, 1);
@@ -574,7 +569,7 @@ void Fam_CIS_Server::register_memory(Fam_Region_Item_Info info, uint32_t uid,
         rwflag = 0;
     } else {
         message << "not permitted to access dataitem";
-        throw Memserver_Exception(NO_PERMISSION, message.str().c_str());
+        throw CIS_Exception(NO_PERMISSION, message.str().c_str());
     }
 
     // register the data item with required permission with libfabric
@@ -623,8 +618,8 @@ void Fam_CIS_Server::register_memory(Fam_Region_Item_Info info, uint32_t uid,
         if (ret < 0) {
             pthread_rwlock_unlock(&fiRegionMap->fiRegionLock);
             message << "failed to register with fabric";
-            throw Memserver_Exception(ITEM_REGISTRATION_FAILED,
-                                      message.str().c_str());
+            throw CIS_Exception(ITEM_REGISTRATION_FAILED,
+                                message.str().c_str());
         }
 
         fiRegionMap->fiRegionMrs->insert({key, mr});
@@ -646,8 +641,7 @@ void Fam_CIS_Server::deregister_fence_memory() {
         ret = fabric_deregister_mr(fenceMr);
         if (ret < 0) {
             message << "failed to deregister with fabric";
-            throw Memserver_Exception(FENCE_DEREG_FAILED,
-                                      message.str().c_str());
+            throw CIS_Exception(FENCE_DEREG_FAILED, message.str().c_str());
         }
     }
     fenceMr = 0;
@@ -689,8 +683,8 @@ void Fam_CIS_Server::deregister_memory(uint64_t regionId, uint64_t offset) {
         if (ret < 0) {
             pthread_rwlock_unlock(&fiRegionMap->fiRegionLock);
             message << "failed to deregister with fabric";
-            throw Memserver_Exception(ITEM_DEREGISTRATION_FAILED,
-                                      message.str().c_str());
+            throw CIS_Exception(ITEM_DEREGISTRATION_FAILED,
+                                message.str().c_str());
         }
         fiRegionMap->fiRegionMrs->erase(rMr);
     }
@@ -700,8 +694,8 @@ void Fam_CIS_Server::deregister_memory(uint64_t regionId, uint64_t offset) {
         if (ret < 0) {
             pthread_rwlock_unlock(&fiRegionMap->fiRegionLock);
             message << "failed to deregister with fabric";
-            throw Memserver_Exception(ITEM_DEREGISTRATION_FAILED,
-                                      message.str().c_str());
+            throw CIS_Exception(ITEM_DEREGISTRATION_FAILED,
+                                message.str().c_str());
         }
         fiRegionMap->fiRegionMrs->erase(rwMr);
     }

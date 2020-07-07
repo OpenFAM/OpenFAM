@@ -40,7 +40,7 @@
 using namespace std;
 namespace openfam {
 
-enum Memserver_Error {
+enum Internal_Error {
     ALLOC_NO_ERROR = 0,
     REGION_EXIST = MIN_ERR_VAL,
     DATAITEM_EXIST,
@@ -84,11 +84,77 @@ enum Memserver_Error {
     ITEM_DEREGISTRATION_FAILED
 };
 
+inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
+    switch (serverErr) {
+    case REGION_EXIST:
+    case DATAITEM_EXIST:
+        return FAM_ERR_ALREADYEXIST;
+
+    case REGION_NOT_FOUND:
+    case DATAITEM_NOT_FOUND:
+        return FAM_ERR_NOTFOUND;
+
+    case DESTROY_REGION_NOT_PERMITTED:
+    case DATAITEM_ALLOC_NOT_PERMITTED:
+    case DATAITEM_DEALLOC_NOT_PERMITTED:
+    case REGION_PERM_MODIFY_NOT_PERMITTED:
+    case ITEM_PERM_MODIFY_NOT_PERMITTED:
+    case REGION_RESIZE_NOT_PERMITTED:
+    case NO_PERMISSION:
+        return FAM_ERR_NOPERM;
+
+    case OUT_OF_RANGE:
+        return FAM_ERR_OUTOFRANGE;
+
+    case NULL_POINTER_ACCESS:
+        return FAM_ERR_NULLPTR;
+
+    case UNIMPLEMENTED:
+        return FAM_ERR_UNIMPL;
+
+    case ALLOC_NO_ERROR:
+    case REGION_NOT_INSERTED:
+    case DATAITEM_NOT_INSERTED:
+    case REGION_NOT_REMOVED:
+    case DATAITEM_NOT_REMOVED:
+    case REGION_NOT_MODIFIED:
+    case HEAP_NOT_FOUND:
+    case HEAP_NOT_CREATED:
+    case HEAP_NOT_DESTROYED:
+    case HEAP_NOT_OPENED:
+    case HEAP_NOT_CLOSED:
+    case HEAP_ALLOCATE_FAILED:
+    case HEAP_MERGE_FAILED:
+    case HEAP_NO_LOCALPTR:
+    case RESIZE_FAILED:
+    case RBT_HEAP_NOT_INSERTED:
+    case RBT_HEAP_NOT_REMOVED:
+    case RBT_HEAP_NOT_FOUND:
+    case NO_FREE_POOLID:
+    case NO_LOCAL_POINTER:
+    case OPS_INIT_FAILED:
+    case FENCE_REG_FAILED:
+    case FENCE_DEREG_FAILED:
+    case REGION_NAME_TOO_LONG:
+    case DATAITEM_NAME_TOO_LONG:
+    case ITEM_REGISTRATION_FAILED:
+    case ITEM_DEREGISTRATION_FAILED:
+    default:
+        return FAM_ERR_RESOURCE;
+    }
+}
+
 class Memserver_Exception : public Fam_Exception {
   public:
     Memserver_Exception();
-    Memserver_Exception(enum Memserver_Error serverErr, const char *msg);
-    enum Fam_Error convert_to_famerror(enum Memserver_Error serverErr);
+    Memserver_Exception(enum Internal_Error serverErr, const char *msg);
+};
+
+class CIS_Exception : public Fam_Exception {
+  public:
+    CIS_Exception();
+    CIS_Exception(enum Internal_Error serverErr, const char *msg);
+    CIS_Exception(enum Fam_Error serverErr, const char *msg);
 };
 } // namespace openfam
 #endif

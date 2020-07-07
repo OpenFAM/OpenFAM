@@ -32,7 +32,7 @@
 
 namespace openfam {
 
-Fam_CIS_Client::Fam_CIS_Client(MemServerMap servers, uint64_t port) {
+Fam_CIS_Client::Fam_CIS_Client(CISServerMap servers, uint64_t port) {
     std::ostringstream message;
 
     /** Creating a channel and stub **/
@@ -42,7 +42,7 @@ Fam_CIS_Client::Fam_CIS_Client(MemServerMap servers, uint64_t port) {
             grpc::CreateChannel(name, ::grpc::InsecureChannelCredentials()));
         if (!stub) {
             message << "Fam Grpc Initialialization failed: stub is null";
-            throw Fam_Allocator_Exception(FAM_ERR_GRPC, message.str().c_str());
+            throw CIS_Exception(FAM_ERR_RPC, message.str().c_str());
         }
 
         Fam_Request req;
@@ -52,8 +52,7 @@ Fam_CIS_Client::Fam_CIS_Client(MemServerMap servers, uint64_t port) {
         /** sending a start signal to server **/
         ::grpc::Status status = stub->signal_start(&ctx, req, &res);
         if (!status.ok()) {
-            throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                          (status.error_message()).c_str());
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
         }
 
         size_t FabricAddrSize = res.addrnamelen();
@@ -104,8 +103,7 @@ Fam_CIS_Client::~Fam_CIS_Client() {
 Fam_CIS_Server_Info *Fam_CIS_Client::get_server_info(uint64_t memoryServerId) {
     auto obj = serversInfo.find(memoryServerId);
     if (obj == serversInfo.end()) {
-        throw Fam_Allocator_Exception(FAM_ERR_RPC_STUB_NOTFOUND,
-                                      "RPC stub not found");
+        throw CIS_Exception(FAM_ERR_RPC_STUB_NOTFOUND, "RPC stub not found");
     }
     return obj->second;
 }
@@ -152,8 +150,8 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     ::grpc::Status status = server->stub->create_region(&ctx, req, &res);
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             Fam_Region_Item_Info info;
             info.regionId =
@@ -162,8 +160,7 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
             return info;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -183,14 +180,13 @@ void Fam_CIS_Client::destroy_region(uint64_t regionId, uint64_t memoryServerId,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             return;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -212,14 +208,13 @@ void Fam_CIS_Client::resize_region(uint64_t regionId, size_t nbytes,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             return;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -247,8 +242,8 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             Fam_Region_Item_Info info;
             info.regionId = res.regionid() | (nodeId << MEMSERVERID_SHIFT);
@@ -258,8 +253,7 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
             return info;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -281,14 +275,13 @@ void Fam_CIS_Client::deallocate(uint64_t regionId, uint64_t offset,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             return;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -312,14 +305,13 @@ void Fam_CIS_Client::change_region_permission(uint64_t regionId,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             return;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -345,14 +337,13 @@ void Fam_CIS_Client::change_dataitem_permission(uint64_t regionId,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             return;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -373,8 +364,8 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             Fam_Region_Item_Info info;
             info.regionId =
@@ -382,12 +373,11 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
             info.offset = res.offset();
             info.size = res.size();
             info.perm = (mode_t)res.perm();
-            info.name = (char *)(res.name()).c_str();
+            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
             return info;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -409,8 +399,8 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             Fam_Region_Item_Info info;
             info.regionId =
@@ -419,12 +409,11 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
             info.key = FAM_KEY_UNINITIALIZED;
             info.size = res.size();
             info.perm = (mode_t)res.perm();
-            info.name = (char *)(res.name()).c_str();
+            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
             return info;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -445,18 +434,17 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             Fam_Region_Item_Info info;
             info.size = res.size();
             info.perm = (mode_t)res.perm();
-            info.name = (char *)(res.name()).c_str();
+            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
             return info;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -479,20 +467,19 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_item_info(
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             Fam_Region_Item_Info info;
             info.key = res.key();
             info.base = (void *)res.base();
             info.size = res.size();
             info.perm = (mode_t)res.perm();
-            info.name = (char *)(res.name()).c_str();
+            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
             return info;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -515,18 +502,17 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             Fam_Region_Item_Info info;
             info.size = res.size();
             info.perm = (mode_t)res.perm();
-            info.name = (char *)(res.name()).c_str();
+            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
             return info;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
@@ -581,7 +567,7 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
     ::grpc::CompletionQueue *cq = server->cq;
 
     if (!tagIn) {
-        throw Fam_Allocator_Exception(FAM_ERR_INVALID, "Copy tag is null");
+        throw CIS_Exception(FAM_ERR_INVALID, "Copy tag is null");
     }
 
     if (tagIn->isCompleted) {
@@ -589,8 +575,8 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
             if (tagIn->res.errorcode()) {
                 res = tagIn->res;
                 delete tagIn;
-                throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                              res.errormsg().c_str());
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
             } else {
                 delete tagIn;
                 return;
@@ -598,8 +584,7 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
         } else {
             status = tagIn->status;
             delete tagIn;
-            throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                          (status.error_message()).c_str());
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
         }
     } else {
 
@@ -608,8 +593,7 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
             // The tag is the memory location of Fam_Copy_Tag object
             tagCompleted = static_cast<Fam_Copy_Tag *>(got_tag);
             if (!tagCompleted) {
-                throw Fam_Allocator_Exception(FAM_ERR_INVALID,
-                                              "Copy tag is null");
+                throw CIS_Exception(FAM_ERR_INVALID, "Copy tag is null");
             }
             tagCompleted->isCompleted = true;
             // Verify that the request was completed successfully. Note
@@ -622,8 +606,8 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
             if (tagCompleted->res.errorcode()) {
                 res = tagCompleted->res;
                 delete tagCompleted;
-                throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                              res.errormsg().c_str());
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
             } else {
                 delete tagCompleted;
                 return;
@@ -631,8 +615,7 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
         } else {
             status = tagCompleted->status;
             delete tagCompleted;
-            throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                          (status.error_message()).c_str());
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
         }
     }
 }
@@ -664,14 +647,13 @@ void Fam_CIS_Client::acquire_CAS_lock(uint64_t offset,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             return;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
@@ -689,22 +671,20 @@ void Fam_CIS_Client::release_CAS_lock(uint64_t offset,
 
     if (status.ok()) {
         if (res.errorcode()) {
-            throw Fam_Allocator_Exception((enum Fam_Error)res.errorcode(),
-                                          (res.errormsg()).c_str());
+            throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                (res.errormsg()).c_str());
         } else {
             return;
         }
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_GRPC,
-                                      (status.error_message()).c_str());
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 }
 
 int Fam_CIS_Client::get_addr_size(size_t *addrSize, uint64_t memoryServerId) {
     auto obj = serversInfo.find(memoryServerId);
     if (obj == serversInfo.end()) {
-        throw Fam_Allocator_Exception(FAM_ERR_RPC_STUB_NOTFOUND,
-                                      "RPC stub not found");
+        throw CIS_Exception(FAM_ERR_RPC_STUB_NOTFOUND, "RPC stub not found");
     }
     Fam_CIS_Server_Info *server = obj->second;
     *addrSize = server->memServerFabricAddrSize;
@@ -717,8 +697,7 @@ int Fam_CIS_Client::get_addr(void *addr, size_t addrSize,
                              uint64_t memoryServerId) {
     auto obj = serversInfo.find(memoryServerId);
     if (obj == serversInfo.end()) {
-        throw Fam_Allocator_Exception(FAM_ERR_RPC_STUB_NOTFOUND,
-                                      "RPC stub not found");
+        throw CIS_Exception(FAM_ERR_RPC_STUB_NOTFOUND, "RPC stub not found");
     }
     Fam_CIS_Server_Info *server = obj->second;
 

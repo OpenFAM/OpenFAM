@@ -142,10 +142,10 @@ class Fam_CIS_Async_Handler {
         // asynchronous server) and the completion queue "cq" used for
         // asynchronous communication with the gRPC runtime.
         CallData(sType *service, ServerCompletionQueue *cq,
-                 Fam_CIS_Direct *famCIS)
+                 Fam_CIS_Direct *__famCIS)
             : ret(0), service(service), cq(cq), responder(&ctx),
               status(CREATE) {
-            this->famCIS = famCIS;
+            famCIS = __famCIS;
             // Invoke the serving logic right away.
             Proceed();
         }

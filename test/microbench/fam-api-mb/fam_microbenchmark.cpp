@@ -2496,7 +2496,7 @@ int main(int argc, char **argv) {
     const char *memoryServers = strdup(TEST_MEMSERVER_IP);
     std::string delimiter1 = ",";
     std::string delimiter2 = ":";
-    MemServerMap memoryServerList =
+    CISServerMap memoryServerList =
         parse_memserver_list(memoryServers, delimiter1, delimiter2);
     EXPECT_NO_THROW(
         cis = new Fam_CIS_Client(memoryServerList, atoi(TEST_GRPC_PORT)));
