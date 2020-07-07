@@ -113,9 +113,8 @@ Fam_Context *Fam_Ops_SHM::get_context(Fam_Descriptor *descriptor) {
         (void)pthread_mutex_unlock(&ctxLock);
         return ctx;
     } else {
-        ERROR_MSG(message, "Fam Invalid Option FAM_CONTEXT_MODEL",
-                  famContextModel);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Fam Invalid Option FAM_CONTEXT_MODEL: " << famContextModel;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 }
 
@@ -126,15 +125,13 @@ int Fam_Ops_SHM::put_blocking(void *local, Fam_Descriptor *descriptor,
     uint64_t key = descriptor->get_key();
 
     if ((offset > size) || ((offset + nbytes) > size)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        std::ostringstream message;
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     void *dest = (void *)((uint64_t)base + offset);
@@ -158,16 +155,15 @@ int Fam_Ops_SHM::get_blocking(void *local, Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + nbytes) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to read from dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to read from dataitem");
     }
 
     void *src = (void *)((uint64_t)base + offset);
@@ -192,7 +188,6 @@ int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     void *src;
     void *dest;
@@ -200,13 +195,13 @@ int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
     if (((firstElement * elementSize) > size) ||
         ((firstElement * elementSize) + elementSize * stride * nElements) >
             size) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to read from dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to read from dataitem");
     }
 
     Fam_Context *famCtx = get_context(descriptor);
@@ -234,7 +229,6 @@ int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     void *src;
     void *dest;
@@ -246,13 +240,13 @@ int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
     }
 
     if ((maxOffset > size) || ((maxOffset + elementSize) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to read from dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to read from dataitem");
     }
 
     Fam_Context *famCtx = get_context(descriptor);
@@ -279,7 +273,6 @@ int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     void *src;
     void *dest;
@@ -287,13 +280,13 @@ int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     if (((firstElement * elementSize) > size) ||
         ((firstElement * elementSize) + elementSize * stride * nElements) >
             size) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     Fam_Context *famCtx = get_context(descriptor);
@@ -321,7 +314,6 @@ int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     void *src;
     void *dest;
@@ -333,13 +325,13 @@ int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     }
 
     if ((maxOffset > size) || ((maxOffset + elementSize) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     Fam_Context *famCtx = get_context(descriptor);
@@ -600,20 +592,17 @@ void *Fam_Ops_SHM::copy(Fam_Descriptor *src, uint64_t srcOffset,
     Fam_Region_Item_Info srcInfo = famAllocator->check_permission_get_info(src);
     Fam_Region_Item_Info destInfo =
         famAllocator->check_permission_get_info(dest);
-    std::ostringstream message;
 
     if ((srcOffset > srcInfo.size) || ((srcOffset + nbytes) > srcInfo.size)) {
-        ERROR_MSG(message, "Source offset or size is beyond dataitem boundary");
-        throw Fam_Allocator_Exception(FAM_ERR_OUTOFRANGE,
-                                      message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "Source offset or size is beyond dataitem boundary");
     }
 
     if ((destOffset > destInfo.size) ||
         ((destOffset + nbytes) > destInfo.size)) {
-        ERROR_MSG(message,
-                  "Destination offset or size is beyond dataitem boundary");
-        throw Fam_Allocator_Exception(FAM_ERR_OUTOFRANGE,
-                                      message.str().c_str());
+        THROW_ERRNO_MSG(
+            Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+            "Destination offset or size is beyond dataitem boundary");
     }
 
     Copy_Tag *tag = new Copy_Tag();
@@ -649,16 +638,15 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     fam_atomic_32_write((int32_t *)((char *)base + offset), value);
@@ -669,16 +657,15 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     fam_atomic_64_write((int64_t *)((char *)base + offset), value);
@@ -689,16 +676,15 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int128_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     int128store oldValueStore;
@@ -711,16 +697,15 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     fam_atomic_32_write((int32_t *)((char *)base + offset), value);
@@ -731,16 +716,15 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     fam_atomic_64_write((int64_t *)((char *)base + offset), value);
@@ -751,16 +735,15 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     int32_t *buff = reinterpret_cast<int32_t *>(&value);
     fam_atomic_32_write((int32_t *)((char *)base + offset), *buff);
@@ -771,16 +754,15 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     int64_t *buff = reinterpret_cast<int64_t *>(&value);
     fam_atomic_64_write((int64_t *)((char *)base + offset), *buff);
@@ -792,16 +774,15 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     fam_atomic_32_fetch_add((int32_t *)((char *)base + offset), value);
 }
@@ -812,16 +793,15 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     fam_atomic_64_fetch_add((int64_t *)((char *)base + offset), value);
 }
@@ -832,16 +812,15 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     fam_atomic_32_fetch_add((int32_t *)((char *)base + offset), value);
 }
@@ -852,16 +831,15 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     fam_atomic_64_fetch_add((int64_t *)((char *)base + offset), value);
 }
@@ -872,16 +850,15 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_SUM][FLOAT](
@@ -894,16 +871,15 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_SUM][DOUBLE](
@@ -940,16 +916,15 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     void *result;
@@ -962,16 +937,15 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MIN][INT64](
@@ -983,16 +957,15 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     void *result;
@@ -1005,16 +978,15 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MIN][UINT64](
@@ -1026,16 +998,15 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MIN][FLOAT](
@@ -1047,16 +1018,15 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     void *result;
@@ -1069,16 +1039,15 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     void *result;
@@ -1091,18 +1060,16 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
-
     void *result;
     fam_atomic_readwrite_handlers[FAM_MAX][INT64](
         (void *)((char *)base + offset), (void *)&value, result);
@@ -1113,16 +1080,15 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     void *result;
@@ -1135,16 +1101,15 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MAX][UINT64](
@@ -1156,16 +1121,15 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MAX][FLOAT](
@@ -1177,16 +1141,15 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     void *result;
@@ -1199,16 +1162,15 @@ void Fam_Ops_SHM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     void *result;
@@ -1221,16 +1183,15 @@ void Fam_Ops_SHM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BAND][UINT64](
@@ -1242,16 +1203,15 @@ void Fam_Ops_SHM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BOR][UINT32](
@@ -1263,16 +1223,15 @@ void Fam_Ops_SHM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BOR][UINT64](
@@ -1284,16 +1243,15 @@ void Fam_Ops_SHM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BXOR][UINT32](
@@ -1305,16 +1263,15 @@ void Fam_Ops_SHM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_WRITE_KEY_SHM) != FAM_WRITE_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BXOR][UINT64](
@@ -1327,16 +1284,15 @@ int32_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     return fam_atomic_32_compare_store((int32_t *)((char *)base + offset),
@@ -1349,17 +1305,16 @@ int64_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     return fam_atomic_64_compare_store((int64_t *)((char *)base + offset),
@@ -1372,17 +1327,16 @@ int128_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int128_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     int128store oldValueStore;
     int128store newValueStore;
@@ -1400,17 +1354,16 @@ uint32_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     return fam_atomic_32_compare_store((int32_t *)((char *)base + offset),
@@ -1422,17 +1375,16 @@ uint64_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     return fam_atomic_64_compare_store((int64_t *)((char *)base + offset),
@@ -1444,17 +1396,16 @@ int32_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     return fam_atomic_32_swap((int32_t *)((char *)base + offset), value);
 }
@@ -1464,17 +1415,16 @@ int64_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     return fam_atomic_64_swap((int64_t *)((char *)base + offset), value);
 }
@@ -1484,17 +1434,16 @@ uint32_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     return fam_atomic_32_swap((int32_t *)((char *)base + offset), value);
 }
@@ -1504,17 +1453,16 @@ uint64_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     return fam_atomic_64_swap((int64_t *)((char *)base + offset), value);
 }
@@ -1524,17 +1472,16 @@ float Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     int32_t *buff = reinterpret_cast<int32_t *>(&value);
     int32_t result =
@@ -1548,17 +1495,16 @@ double Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     int64_t *buff = reinterpret_cast<int64_t *>(&value);
     int64_t result =
@@ -1572,16 +1518,15 @@ int32_t Fam_Ops_SHM::atomic_fetch_int32(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     return fam_atomic_32_read((int32_t *)((char *)base + offset));
@@ -1592,16 +1537,15 @@ int64_t Fam_Ops_SHM::atomic_fetch_int64(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     return fam_atomic_64_read((int64_t *)((char *)base + offset));
@@ -1612,16 +1556,15 @@ int128_t Fam_Ops_SHM::atomic_fetch_int128(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int128_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     int128store ResultValueStore;
@@ -1636,16 +1579,15 @@ uint32_t Fam_Ops_SHM::atomic_fetch_uint32(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     return fam_atomic_32_read((int32_t *)((char *)base + offset));
@@ -1656,16 +1598,15 @@ uint64_t Fam_Ops_SHM::atomic_fetch_uint64(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
 
     return fam_atomic_64_read((int64_t *)((char *)base + offset));
@@ -1676,16 +1617,15 @@ float Fam_Ops_SHM::atomic_fetch_float(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     int32_t buff = fam_atomic_32_read((int32_t *)((char *)base + offset));
     float *result = reinterpret_cast<float *>(&buff);
@@ -1697,16 +1637,15 @@ double Fam_Ops_SHM::atomic_fetch_double(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_READ_KEY_SHM) != FAM_READ_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to write into dataitem");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to write into dataitem");
     }
     int64_t buff = fam_atomic_64_read((int64_t *)((char *)base + offset));
     double *result = reinterpret_cast<double *>(&buff);
@@ -1719,17 +1658,16 @@ int32_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     return fam_atomic_32_fetch_add((int32_t *)((char *)base + offset), value);
 }
@@ -1740,17 +1678,16 @@ int64_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     return fam_atomic_64_fetch_add((int64_t *)((char *)base + offset), value);
 }
@@ -1761,17 +1698,16 @@ uint32_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     return fam_atomic_32_fetch_add((int32_t *)((char *)base + offset), value);
 }
@@ -1782,17 +1718,16 @@ uint64_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     return fam_atomic_64_fetch_add((int64_t *)((char *)base + offset), value);
 }
@@ -1803,17 +1738,16 @@ float Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_SUM][FLOAT](
@@ -1828,17 +1762,16 @@ double Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_SUM][DOUBLE](
@@ -1882,17 +1815,16 @@ int32_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     void *result;
@@ -1907,17 +1839,16 @@ int64_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MIN][INT64](
@@ -1931,17 +1862,16 @@ uint32_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     void *result;
@@ -1956,17 +1886,16 @@ uint64_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MIN][UINT64](
@@ -1980,17 +1909,16 @@ float Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MIN][FLOAT](
@@ -2004,17 +1932,16 @@ double Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     void *result;
@@ -2029,17 +1956,16 @@ int32_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     void *result;
@@ -2054,17 +1980,16 @@ int64_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(int64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MAX][INT64](
@@ -2078,17 +2003,16 @@ uint32_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     void *result;
@@ -2103,17 +2027,16 @@ uint64_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MAX][UINT64](
@@ -2127,17 +2050,16 @@ float Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(float)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_MAX][FLOAT](
@@ -2151,17 +2073,16 @@ double Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(double)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     void *result;
@@ -2176,17 +2097,16 @@ uint32_t Fam_Ops_SHM::atomic_fetch_and(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
 
     void *result;
@@ -2201,17 +2121,16 @@ uint64_t Fam_Ops_SHM::atomic_fetch_and(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BAND][UINT64](
@@ -2225,17 +2144,16 @@ uint32_t Fam_Ops_SHM::atomic_fetch_or(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BOR][UINT32](
@@ -2249,17 +2167,16 @@ uint64_t Fam_Ops_SHM::atomic_fetch_or(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BOR][UINT64](
@@ -2273,17 +2190,16 @@ uint32_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint32_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BXOR][UINT32](
@@ -2297,17 +2213,16 @@ uint64_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
     void *base = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
     uint64_t key = descriptor->get_key();
-    std::ostringstream message;
 
     if ((offset > size) || ((offset + sizeof(uint64_t)) > size)) {
-        ERROR_MSG(message, "offset or data size is out of bound");
-        throw Fam_Datapath_Exception(FAM_ERR_OUTOFRANGE, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_OUTOFRANGE,
+                        "offset or data size is out of bound");
     }
 
     if ((key & FAM_RW_KEY_SHM) != FAM_RW_KEY_SHM) {
-        ERROR_MSG(message, "not permitted to either read or write, "
-                           "need both read and write permission");
-        throw Fam_Datapath_Exception(FAM_ERR_NOPERM, message.str().c_str());
+        THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
+                        "not permitted to either read or write, "
+                        "need both read and write permission");
     }
     void *result;
     fam_atomic_readwrite_handlers[FAM_BXOR][UINT64](

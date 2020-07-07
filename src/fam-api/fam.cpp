@@ -600,8 +600,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     if (grpName)
         groupName = strdup(grpName);
     else {
-        ERROR_MSG(message, "Fam Invalid Option specified: GroupName");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Fam Invalid Option specified: GroupName";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     // Initialize Options
     //
@@ -625,35 +625,33 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             famRuntime = new Pmi2_Runtime();
             if (PMI2_SUCCESS != (ret = famRuntime->runtime_init())) {
                 // Raising an exception will make the use of pmix mandatory.
-                ERROR_MSG(message, "Fam PMI2 Runtime initialization failed",
-                          ret);
-                throw Fam_Pmi_Exception(message.str().c_str());
+                message << "Fam PMI2 Runtime initialization failed: " << ret;
+                THROW_ERR_MSG(Fam_Pmi_Exception, message.str().c_str());
             }
         } else {
             // initialize PMIX
             famRuntime = new Pmix_Runtime();
             if (PMIX_SUCCESS != (ret = famRuntime->runtime_init())) {
                 // Raising an exception will make the use of pmix mandatory.
-                ERROR_MSG(message, "Fam PMIx Runtime initialization failed",
-                          ret);
-                throw Fam_Pmi_Exception(message.str().c_str());
+                message << "Fam PMIx Runtime initialization failed: " << ret;
+                THROW_ERR_MSG(Fam_Pmi_Exception, message.str().c_str());
             }
         }
         // Add PE_COUNT and PE_ID to optValueMap
 
         *peCnt = famRuntime->num_pes();
         if (*peCnt < 0) {
-            ERROR_MSG(message, "PMIx Runtime Failed to get PE_COUNT", *peCnt);
+            message << "PMIx Runtime Failed to get PE_COUNT: " << *peCnt;
             free(peCnt);
-            throw Fam_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Pmi_Exception, message.str().c_str());
         }
 
         *peId = famRuntime->my_pe();
         if (*peId < 0) {
-            ERROR_MSG(message, "PMIx Runtime Failed to get PE_ID", *peId);
+            message << "PMIx Runtime Failed to get PE_ID: " << *peId;
             free(peCnt);
             free(peId);
-            throw Fam_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Pmi_Exception, message.str().c_str());
         }
 
         optValueMap->insert({supportedOptionList[PE_COUNT], peCnt});
@@ -677,8 +675,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             parse_memserver_list(memoryServer, delimiter1, delimiter2);
 
         if (memoryServerList.size() == 0) {
-            ERROR_MSG(message, "Memory server list not found");
-            throw Fam_InvalidOption_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                          "Memory server list not found");
         }
 
         memoryServerCount = memoryServerList.size();
@@ -686,10 +684,11 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         for (auto it = memoryServerList.begin(); it != memoryServerList.end();
              ++it) {
             if (it->first >= memoryServerCount) {
-                ERROR_MSG(message, "Fam Invalid memory server ID specified ",
-                          it->first,
-                          " should be less than memory server count");
-                throw Fam_InvalidOption_Exception(message.str().c_str());
+                message << "Fam Invalid memory server ID specified: "
+                        << it->first
+                        << " should be less than memory server count";
+                THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                              message.str().c_str());
             }
         }
         famAllocator = new Fam_Allocator_Client(memoryServerList,
@@ -701,11 +700,11 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
 
         ret = famOps->initialize();
         if (ret < 0) {
-            ERROR_MSG(message, "Fam libfabric initialization failed",
-                      fabric_strerror(ret));
+            message << "Fam libfabric initialization failed: "
+                    << fabric_strerror(ret);
             if (famRuntime != NULL)
                 famRuntime->runtime_fini();
-            throw Fam_Datapath_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
         }
     }
     FAM_PROFILE_START_TIME();
@@ -768,9 +767,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     else if (strcmp(famOptions.famThreadModel, FAM_THREAD_MULTIPLE_STR) == 0)
         famThreadModel = FAM_THREAD_MULTIPLE;
     else {
-        ERROR_MSG(message, "Invalid value specified for famThreadModel",
-                  famOptions.famThreadModel);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Invalid value specified for famThreadModel: "
+                << famOptions.famThreadModel;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     optValueMap->insert(
         {supportedOptionList[FAM_THREAD_MODEL], famOptions.famThreadModel});
@@ -782,9 +781,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
 
     if ((strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) != 0) &&
         (strcmp(famOptions.allocator, FAM_OPTIONS_GRPC_STR) != 0)) {
-        ERROR_MSG(message, "Invalid value specified for Allocator",
-                  famOptions.famThreadModel);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Invalid value specified for Allocator: "
+                << famOptions.famThreadModel;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
     optValueMap->insert({supportedOptionList[ALLOCATOR], famOptions.allocator});
@@ -799,9 +798,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     else if (strcmp(famOptions.famContextModel, FAM_CONTEXT_REGION_STR) == 0)
         famContextModel = FAM_CONTEXT_REGION;
     else {
-        ERROR_MSG(message, "Invalid value specified for famContextModel",
-                  famOptions.famContextModel);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Invalid value specified for famContextModel: "
+                << famOptions.famContextModel;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     optValueMap->insert(
         {supportedOptionList[FAM_CONTEXT_MODEL], famOptions.famContextModel});
@@ -813,9 +812,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     if ((strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMI2_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMIX_STR) != 0)) {
-        ERROR_MSG(message, "Invalid value specified for Runtime",
-                  famOptions.runtime);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Invalid value specified for Runtime: "
+                << famOptions.runtime;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     optValueMap->insert({supportedOptionList[RUNTIME], famOptions.runtime});
 
@@ -860,8 +859,8 @@ int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
     }
 
     if (key == FAM_KEY_INVALID) {
-        ERROR_MSG(message, "Invalid Key Passed");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Invalid Key Passed" << endl;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     return 0;
 }
@@ -949,8 +948,8 @@ const void *fam::Impl_::fam_get_option(char *optionName) {
     auto opt = optValueMap->find(optionName);
     if (opt == optValueMap->end()) {
         std::ostringstream message;
-        ERROR_MSG(message, "Fam Option not supported", optionName);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Fam Option not supported: " << optionName;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     } else {
         if (strncmp(optionName, "PE", 2) == 0) {
             int *optVal = (int *)malloc(sizeof(int));
@@ -1168,7 +1167,7 @@ void fam::Impl_::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
     } else if (descriptor->get_desc_status() == DESC_INVALID) {
         std::ostringstream message;
         message << "Descriptor is no longer valid" << endl;
-        throw Fam_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     } else {
         itemInfo = famAllocator->get_stat_info(descriptor);
         famInfo->size = itemInfo.size;
@@ -1198,7 +1197,7 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
     } else if (descriptor->get_desc_status() == DESC_INVALID) {
         std::ostringstream message;
         message << "Descriptor is no longer valid" << endl;
-        throw Fam_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     } else {
         regionInfo = famAllocator->check_permission_get_info(descriptor);
         famInfo->size = regionInfo.size;
@@ -1220,9 +1219,7 @@ void *fam::Impl_::fam_map(Fam_Descriptor *descriptor) {
     FAM_CNTR_INC_API(fam_map);
     FAM_PROFILE_START_ALLOCATOR(fam_map);
     if (descriptor == NULL) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
     int ret = validate_item(descriptor);
     FAM_PROFILE_END_ALLOCATOR(fam_map);
@@ -1251,9 +1248,7 @@ void fam::Impl_::fam_unmap(void *local, Fam_Descriptor *descriptor) {
     FAM_CNTR_INC_API(fam_unmap);
     FAM_PROFILE_START_ALLOCATOR(fam_unmap);
     if (descriptor == NULL || local == NULL) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1295,8 +1290,7 @@ void fam::Impl_::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_get_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_get_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nbytes == 0)) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
     ret = validate_item(descriptor);
     FAM_PROFILE_END_ALLOCATOR(fam_get_blocking);
@@ -1324,9 +1318,7 @@ void fam::Impl_::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_get_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_get_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nbytes == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
     int ret = validate_item(descriptor);
     FAM_PROFILE_END_ALLOCATOR(fam_get_nonblocking);
@@ -1362,9 +1354,7 @@ void fam::Impl_::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_put_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_put_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nbytes == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     ret = validate_item(descriptor);
@@ -1391,9 +1381,7 @@ void fam::Impl_::fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_put_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_put_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nbytes == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1433,9 +1421,7 @@ void fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_gather_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_gather_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1470,9 +1456,7 @@ void fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_gather_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_gather_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1507,9 +1491,7 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_gather_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_gather_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1544,9 +1526,7 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_gather_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_gather_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1584,9 +1564,7 @@ void fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_scatter_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_scatter_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1622,9 +1600,7 @@ void fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_scatter_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_scatter_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1662,9 +1638,7 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
     FAM_CNTR_INC_API(fam_scatter_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_scatter_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1701,9 +1675,7 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
     FAM_CNTR_INC_API(fam_scatter_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_scatter_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1740,9 +1712,7 @@ void *fam::Impl_::fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
     FAM_CNTR_INC_API(fam_copy);
     FAM_PROFILE_START_ALLOCATOR(fam_copy);
     if ((src == NULL) || (nbytes == 0)) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int retS = validate_item(src);
@@ -1760,9 +1730,7 @@ void fam::Impl_::fam_copy_wait(void *waitObj) {
     FAM_CNTR_INC_API(fam_copy_wait);
     FAM_PROFILE_START_ALLOCATOR(fam_copy_wait);
     if (waitObj == NULL) {
-        std::ostringstream message;
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     famOps->wait_for_copy(waitObj);
@@ -1787,8 +1755,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1806,8 +1773,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1826,8 +1792,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1847,8 +1812,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1867,8 +1831,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1887,8 +1850,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1907,8 +1869,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1935,8 +1896,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1955,8 +1915,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1975,8 +1934,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1995,8 +1953,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2015,8 +1972,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2035,8 +1991,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2064,8 +2019,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2084,8 +2038,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2104,8 +2057,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2124,8 +2076,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2144,8 +2095,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2164,8 +2114,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2193,8 +2142,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2213,8 +2161,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2233,8 +2180,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2253,8 +2199,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2273,8 +2218,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2293,8 +2237,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2322,8 +2265,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2342,8 +2284,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2362,8 +2303,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2382,8 +2322,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2402,8 +2341,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2422,8 +2360,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2451,8 +2388,7 @@ void fam::Impl_::fam_and(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_and);
     FAM_PROFILE_START_ALLOCATOR(fam_and);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2471,8 +2407,7 @@ void fam::Impl_::fam_and(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_and);
     FAM_PROFILE_START_ALLOCATOR(fam_and);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2500,8 +2435,7 @@ void fam::Impl_::fam_or(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_or);
     FAM_PROFILE_START_ALLOCATOR(fam_or);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2520,8 +2454,7 @@ void fam::Impl_::fam_or(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_or);
     FAM_PROFILE_START_ALLOCATOR(fam_or);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2549,8 +2482,7 @@ void fam::Impl_::fam_xor(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_xor);
     FAM_PROFILE_START_ALLOCATOR(fam_xor);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2569,8 +2501,7 @@ void fam::Impl_::fam_xor(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_xor);
     FAM_PROFILE_START_ALLOCATOR(fam_xor);
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2600,8 +2531,7 @@ int32_t fam::Impl_::fam_fetch_int32(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     int32_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2621,8 +2551,7 @@ int64_t fam::Impl_::fam_fetch_int64(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     int64_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2642,8 +2571,7 @@ int128_t fam::Impl_::fam_fetch_int128(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     int128_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2664,8 +2592,7 @@ uint32_t fam::Impl_::fam_fetch_uint32(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     uint32_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2685,8 +2612,7 @@ uint64_t fam::Impl_::fam_fetch_uint64(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     uint64_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2705,8 +2631,7 @@ float fam::Impl_::fam_fetch_float(Fam_Descriptor *descriptor, uint64_t offset) {
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     float res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2726,8 +2651,7 @@ double fam::Impl_::fam_fetch_double(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     double res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2757,8 +2681,7 @@ int32_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     int32_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2778,8 +2701,7 @@ int64_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     int64_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2799,8 +2721,7 @@ uint32_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     uint32_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2820,8 +2741,7 @@ uint64_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     uint64_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2841,8 +2761,7 @@ float fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     float res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2862,8 +2781,7 @@ double fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     double res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2896,8 +2814,7 @@ int32_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     int32_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2918,8 +2835,7 @@ int64_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     int64_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2940,8 +2856,7 @@ uint32_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     uint32_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2962,8 +2877,7 @@ uint64_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     uint64_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2984,8 +2898,7 @@ int128_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     int128_t res = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3014,8 +2927,7 @@ int32_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     int32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3035,8 +2947,7 @@ int64_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     int64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3056,8 +2967,7 @@ uint32_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3078,8 +2988,7 @@ uint64_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3100,8 +3009,7 @@ float fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     float old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3121,8 +3029,7 @@ double fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     double old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3152,8 +3059,7 @@ int32_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     int32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3173,8 +3079,7 @@ int64_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     int64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3195,8 +3100,7 @@ uint32_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3217,8 +3121,7 @@ uint64_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3238,8 +3141,7 @@ float fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     float old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3259,8 +3161,7 @@ double fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     double old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3291,8 +3192,7 @@ int32_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     int32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3312,8 +3212,7 @@ int64_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     int64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3333,8 +3232,7 @@ uint32_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3354,8 +3252,7 @@ uint64_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3375,8 +3272,7 @@ float fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     float old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3396,8 +3292,7 @@ double fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     double old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3428,8 +3323,7 @@ int32_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     int32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3449,8 +3343,7 @@ int64_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     int64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3470,8 +3363,7 @@ uint32_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3491,8 +3383,7 @@ uint64_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3512,8 +3403,7 @@ float fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     float old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3533,8 +3423,7 @@ double fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     double old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3565,8 +3454,7 @@ uint32_t fam::Impl_::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_and);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3586,8 +3474,7 @@ uint64_t fam::Impl_::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_and);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3618,8 +3505,7 @@ uint32_t fam::Impl_::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_or);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3639,8 +3525,7 @@ uint64_t fam::Impl_::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_or);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3671,8 +3556,7 @@ uint32_t fam::Impl_::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_xor);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3692,8 +3576,7 @@ uint64_t fam::Impl_::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_xor);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        ERROR_MSG(message, "Invalid Options");
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);

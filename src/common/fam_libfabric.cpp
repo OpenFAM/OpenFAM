@@ -553,7 +553,7 @@ int fabric_deregister_mr(fid_mr *&mr) {
 }
 
 int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
-    std::ostringstream message;
+
     if (ret) {
         if (ret == -FI_EAGAIN) {
             struct fi_cq_err_entry err;
@@ -561,23 +561,21 @@ int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
             if (ret == 1) {
                 const char *errmsg = fi_cq_strerror(
                     famCtx->get_txcq(), err.prov_errno, err.err_data, NULL, 0);
-                ERROR_MSG(message, errmsg);
-                throw Fam_Datapath_Exception(message.str().c_str());
+                THROW_ERR_MSG(Fam_Datapath_Exception, errmsg);
             } else if (ret && ret != -FI_EAGAIN) {
-                ERROR_MSG(message, "Reading from fabric CQ failed");
-                throw Fam_Datapath_Exception(message.str().c_str());
+                THROW_ERR_MSG(Fam_Datapath_Exception,
+                              "Reading from fabric CQ failed");
             }
 
             (*retry_cnt)++;
             if ((*retry_cnt) <= MAX_RETRY_CNT) {
                 return 1;
             } else {
-                ERROR_MSG(message, "Fabric max retry count exceeded");
-                throw Fam_Datapath_Exception(message.str().c_str());
+                THROW_ERR_MSG(Fam_Timeout_Exception,
+                              "Fabric max retry count exceeded");
             }
         } else {
-            ERROR_MSG(message, fabric_strerror((int)ret));
-            throw Fam_Datapath_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Datapath_Exception, fabric_strerror((int)ret));
         }
     }
 
@@ -591,7 +589,6 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
     int timeout_retry_cnt = 0;
     int timeout_wait_retry_cnt = 0;
     uint64_t success, failure, reqcnt;
-    std::ostringstream message;
     do {
         success = (uint64_t)ctx->internal[0];
         failure = (uint64_t)ctx->internal[1];
@@ -608,9 +605,7 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
             int err = errptr->err;
             free(ctx->internal[3]);
 
-            ERROR_MSG(message, errmsg);
-            throw Fam_Datapath_Exception(get_fam_error(err),
-                                         message.str().c_str());
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, get_fam_error(err), errmsg);
         }
 
         memset(&entry, 0, sizeof(entry));
@@ -633,9 +628,9 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
                 usleep(FABRIC_TIMEOUT * 1000);
                 continue;
             } else {
-                ERROR_MSG(message,
-                          "fi_cq_read timeout retry count exceeded INT_MAX");
-                throw Fam_Timeout_Exception(message.str().c_str());
+                THROW_ERR_MSG(
+                    Fam_Timeout_Exception,
+                    "fi_cq_read timeout retry count exceeded INT_MAX");
             }
         }
         if (ret < 0) {
@@ -650,9 +645,9 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
                         (uint64_t *)&((fi_context *)err.op_context)
                             ->internal[1],
                         one);
-                    ERROR_MSG(message, errmsg);
-                    throw Fam_Datapath_Exception(get_fam_error(err.err),
-                                                 message.str().c_str());
+
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
+                                    get_fam_error(err.err), errmsg);
                 } else {
                     if ((fi_context *)err.op_context != NULL) {
                         __sync_fetch_and_add(
@@ -673,8 +668,8 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx) {
                 }
 
             } else if (ret && ret != -FI_EAGAIN) {
-                ERROR_MSG(message, "Reading from fabric CQ failed");
-                throw Fam_Datapath_Exception(message.str().c_str());
+                THROW_ERR_MSG(Fam_Datapath_Exception,
+                              "Reading from fabric CQ failed");
             }
         }
     } while (success < reqcnt);
@@ -1436,7 +1431,6 @@ void fabric_put_quiet(Fam_Context *famCtx) {
     ssize_t ret = 0;
     uint64_t txLastFailCnt = famCtx->get_num_tx_fail_cnt();
     int timeout_wait_retry_cnt = 0;
-    std::ostringstream message;
 
     txcnt = famCtx->get_num_tx_ops();
     do {
@@ -1457,9 +1451,8 @@ void fabric_put_quiet(Fam_Context *famCtx) {
                         fi_cq_strerror(famCtx->get_txcq(), err.prov_errno,
                                        err.err_data, NULL, 0);
                     famCtx->inc_num_tx_fail_cnt(txfail - txLastFailCnt);
-                    ERROR_MSG(message, errmsg);
-                    throw Fam_Datapath_Exception(get_fam_error(err.err),
-                                                 message.str().c_str());
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
+                                    get_fam_error(err.err), errmsg);
                 }
             } while (ret < 0 &&
                      ((ret == -FI_EAGAIN) || (ret == -FI_ETIMEDOUT)));
@@ -1471,8 +1464,8 @@ void fabric_put_quiet(Fam_Context *famCtx) {
             timeout_wait_retry_cnt++;
             usleep(FABRIC_TIMEOUT * 1000);
         } else {
-            ERROR_MSG(message, "Timeout retry count exceeded INT_MAX");
-            throw Fam_Timeout_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Timeout_Exception,
+                          "Timeout retry count exceeded INT_MAX");
         }
     } while ((txsuccess + txfail) < txcnt);
 
@@ -1491,7 +1484,6 @@ void fabric_get_quiet(Fam_Context *famCtx) {
     uint64_t rxLastFailCnt = famCtx->get_num_rx_fail_cnt();
     int timeout_wait_retry_cnt = 0;
     rxcnt = famCtx->get_num_rx_ops();
-    std::ostringstream message;
 
     do {
 
@@ -1513,9 +1505,8 @@ void fabric_get_quiet(Fam_Context *famCtx) {
                         fi_cq_strerror(famCtx->get_txcq(), err.prov_errno,
                                        err.err_data, NULL, 0);
                     famCtx->inc_num_rx_fail_cnt(rxfail - rxLastFailCnt);
-                    ERROR_MSG(message, errmsg);
-                    throw Fam_Datapath_Exception(get_fam_error(err.err),
-                                                 message.str().c_str());
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
+                                    get_fam_error(err.err), errmsg);
                 }
             } while (ret < 0 &&
                      ((ret == -FI_EAGAIN) || (ret == -FI_ETIMEDOUT)));
@@ -1527,8 +1518,8 @@ void fabric_get_quiet(Fam_Context *famCtx) {
             timeout_wait_retry_cnt++;
             usleep(FABRIC_TIMEOUT * 1000);
         } else {
-            ERROR_MSG(message, "Timeout retry count exceeded INT_MAX");
-            throw Fam_Timeout_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Timeout_Exception,
+                          "Timeout retry count exceeded INT_MAX");
         }
     } while ((rxsuccess + rxfail) < rxcnt);
 

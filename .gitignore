@@ -1,8 +1,8 @@
 build/
-src/rpc/fam_rpc.grpc.pb.cc
-src/rpc/fam_rpc.grpc.pb.h
-src/rpc/fam_rpc.pb.cc
-src/rpc/fam_rpc.pb.h
+src/cis/fam_cis_rpc.grpc.pb.cc
+src/cis/fam_cis_rpc.grpc.pb.h
+src/cis/fam_cis_rpc.pb.cc
+src/cis/fam_cis_rpc.pb.h
 third-party/build/
 third-party/grpc/
 third-party/libfabric/

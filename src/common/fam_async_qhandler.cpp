@@ -45,7 +45,6 @@
 #endif
 
 #include <iostream>
-#include <sstream>
 
 #include "common/fam_async_qhandler.h"
 #include "common/fam_internal.h"
@@ -120,12 +119,10 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
             while (writeCQ->pop(err)) {
                 if (!(err->get_error_code()))
                     return;
-                else {
-                    std::ostringstream message;
-                    ERROR_MSG(message, err->get_error_msg());
-                    throw Fam_Datapath_Exception(err->get_error_code(),
-                                                 message.str().c_str());
-                }
+                else
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
+                                    err->get_error_code(),
+                                    err->get_error_msg());
             }
         }
     }
@@ -143,12 +140,10 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
             while (readCQ->pop(err)) {
                 if (!(err->get_error_code()))
                     return;
-                else {
-                    std::ostringstream message;
-                    ERROR_MSG(message, err->get_error_msg());
-                    throw Fam_Datapath_Exception(err->get_error_code(),
-                                                 message.str().c_str());
-                }
+                else
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
+                                    err->get_error_code(),
+                                    err->get_error_msg());
             }
         }
     }
@@ -184,10 +179,8 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
             break;
         }
         default: {
-            std::ostringstream message;
-            ERROR_MSG(message, "invalid operation request");
-            throw Fam_Datapath_Exception(FAM_ERR_INVALIDOP,
-                                         message.str().c_str());
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_INVALIDOP,
+                            "invalid operation request");
         }
         }
         return;

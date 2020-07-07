@@ -185,18 +185,20 @@ inline void openfam_invalidate(void *addr, uint64_t size) {
  * Fam_Exception objects.
  *
  */
-template <typename T> void log_msg(std::ostringstream &message, T const &f) {
-    message << f;
-}
 
-template <typename T, typename... Args>
-void log_msg(std::ostringstream &message, T const &f, Args const &... args) {
-    message << f << ":";
-    log_msg(message, args...);
-}
+#define THROW_ERR_MSG(exception, message_str)                                  \
+    do {                                                                       \
+        std::ostringstream errMsgStr;                                          \
+        errMsgStr << __func__ << ":" << __LINE__ << ":" << message_str;        \
+        throw exception(errMsgStr.str().c_str());                              \
+    } while (0)
 
-#define ERROR_MSG(message, ...)                                                \
-    log_msg(message, __func__, __LINE__, __VA_ARGS__)
+#define THROW_ERRNO_MSG(exception, error_no, message_str)                      \
+    do {                                                                       \
+        std::ostringstream errMsgStr;                                          \
+        errMsgStr << __func__ << ":" << __LINE__ << ":" << message_str;        \
+        throw exception(error_no, errMsgStr.str().c_str());                    \
+    } while (0)
 
 class Fam_InvalidOption_Exception : public Fam_Exception {
   public:

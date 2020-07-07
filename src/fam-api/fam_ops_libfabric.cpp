@@ -87,10 +87,9 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(const char *memServerName,
     serverAddrName = NULL;
 
     if (!isSource && famAllocator == NULL) {
-        ERROR_MSG(message,
-                  "Fam Invalid Option Fam_Alloctor: NULL value specified",
-                  famContextModel);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Fam Invalid Option Fam_Alloctor: NULL value specified"
+                << famContextModel;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 }
 Fam_Ops_Libfabric::Fam_Ops_Libfabric(MemServerMap memServerList,
@@ -122,10 +121,9 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(MemServerMap memServerList,
     serverAddrName = NULL;
 
     if (!isSource && famAllocator == NULL) {
-        ERROR_MSG(message,
-                  "Fam Invalid Option Fam_Alloctor: NULL value specified",
-                  famContextModel);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Fam Invalid Option Fam_Alloctor: NULL value specified"
+                << famContextModel;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 }
 
@@ -134,9 +132,8 @@ int Fam_Ops_Libfabric::initialize() {
     int ret = 0;
 
     if (name.size() == 0) {
-        ERROR_MSG(message,
-                  "Libfabric initialize: memory server name not specified");
-        throw Fam_Datapath_Exception(message.str().c_str());
+        message << "Libfabric initialize: memory server name not specified";
+        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
     }
 
     // Initialize the mutex lock
@@ -169,17 +166,17 @@ int Fam_Ops_Libfabric::initialize() {
             // Request memory server address from famAllocator
             ret = famAllocator->get_addr_size(&serverAddrNameLen, nodeId);
             if (serverAddrNameLen <= 0) {
-                ERROR_MSG(message, "Fam allocator get_addr_size failed");
-                throw Fam_Allocator_Exception(FAM_ERR_ALLOCATOR,
-                                              message.str().c_str());
+                message << "Fam allocator get_addr_size failed";
+                THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_ALLOCATOR,
+                                message.str().c_str());
             }
             serverAddrName = calloc(1, serverAddrNameLen);
             ret = famAllocator->get_addr(serverAddrName, serverAddrNameLen,
                                          nodeId);
             if (ret < 0) {
-                ERROR_MSG(message, "Fam Allocator get_addr failed");
-                throw Fam_Allocator_Exception(FAM_ERR_ALLOCATOR,
-                                              message.str().c_str());
+                message << "Fam Allocator get_addr failed";
+                THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_ALLOCATOR,
+                                message.str().c_str());
             }
 
             // Initialize defaultCtx
@@ -204,25 +201,25 @@ int Fam_Ops_Libfabric::initialize() {
             Fam_Context *tmpCtx = new Fam_Context(fi, domain, famThreadModel);
             ret = fabric_enable_bind_ep(fi, av, eq, tmpCtx->get_ep());
             if (ret < 0) {
-                ERROR_MSG(message, "Fam libfabric fabric_enable_bind_ep failed",
-                          fabric_strerror(ret));
-                throw Fam_Datapath_Exception(message.str().c_str());
+                message << "Fam libfabric fabric_enable_bind_ep failed: "
+                        << fabric_strerror(ret);
+                THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
             }
 
             serverAddrNameLen = 0;
             ret = fabric_getname_len(tmpCtx->get_ep(), &serverAddrNameLen);
             if (serverAddrNameLen <= 0) {
-                ERROR_MSG(message, "Fam libfabric fabric_getname_len failed",
-                          fabric_strerror(ret));
-                throw Fam_Datapath_Exception(message.str().c_str());
+                message << "Fam libfabric fabric_getname_len failed: "
+                        << fabric_strerror(ret);
+                THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
             }
             serverAddrName = calloc(1, serverAddrNameLen);
             ret = fabric_getname(tmpCtx->get_ep(), serverAddrName,
                                  &serverAddrNameLen);
             if (ret < 0) {
-                ERROR_MSG(message, "Fam libfabric fabric_getname failed",
-                          fabric_strerror(ret));
-                throw Fam_Datapath_Exception(message.str().c_str());
+                message << "Fam libfabric fabric_getname failed: "
+                        << fabric_strerror(ret);
+                THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
             }
 
             // Save this context to defContexts on memoryserver
@@ -261,9 +258,9 @@ Fam_Context *Fam_Ops_Libfabric::get_context(Fam_Descriptor *descriptor) {
             if (ret < 0) {
                 // ctx mutex unlock
                 (void)pthread_mutex_unlock(&ctxLock);
-                ERROR_MSG(message, "Fam libfabric fabric_enable_bind_ep failed",
-                          fabric_strerror(ret));
-                throw Fam_Datapath_Exception(message.str().c_str());
+                message << "Fam libfabric fabric_enable_bind_ep failed: "
+                        << fabric_strerror(ret);
+                THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
             }
         } else {
             ctx = ctxObj->second;
@@ -274,9 +271,8 @@ Fam_Context *Fam_Ops_Libfabric::get_context(Fam_Descriptor *descriptor) {
         (void)pthread_mutex_unlock(&ctxLock);
         return ctx;
     } else {
-        ERROR_MSG(message, "Fam Invalid Option FAM_CONTEXT_MODEL",
-                  famContextModel);
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Fam Invalid Option FAM_CONTEXT_MODEL: " << famContextModel;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 }
 

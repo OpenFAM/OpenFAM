@@ -55,8 +55,6 @@ int main() {
     fam_opts.memoryServer = strdup(TEST_MEMORY_SERVER);
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
-    fam_opts.allocator = strdup("NVMM");
-    fam_opts.runtime = strdup("NONE");
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
