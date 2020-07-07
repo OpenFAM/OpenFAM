@@ -50,20 +50,25 @@ typedef enum NVMM_Counter_Enum {
     NVMM_COUNTER_MAX
 } NVMM_Counter_Enum_T;
 
-typedef enum Rpc_Service_Counter_Enum {
-#include "rpc/rpc_service_counters.tbl"
-    RPC_SERVICE_COUNTER_MAX
-} Rpc_Service_Counter_Enum_T;
+typedef enum CIS_Server_Counter_Enum {
+#include "cis/cis_server_counters.tbl"
+    CIS_SERVER_COUNTER_MAX
+} CIS_Server_Counter_Enum_T;
 
-typedef enum Rpc_Server_Counter_Enum {
-#include "rpc/rpc_server_counters.tbl"
-    RPC_SERVER_COUNTER_MAX
-} Rpc_Server_Counter_Enum_T;
+typedef enum CIS_Async_Counter_Enum {
+#include "cis/cis_async_counters.tbl"
+    CIS_ASYNC_COUNTER_MAX
+} CIS_Async_Counter_Enum_T;
 
 typedef enum Metadata_Counter_Enum {
 #include "metadata/metadata_counters.tbl"
     METADATA_COUNTER_MAX
 } Metadata_Counter_Enum_T;
+
+typedef enum CIS_Direct_Counter_Enum {
+#include "cis/cis_direct_counters.tbl"
+    CIS_DIRECT_COUNTER_MAX
+} CIS_Direct_Counter_Enum_T;
 
 #define MEMSERVER_PROFILE_START(PROFILE_NAME)                                  \
     struct PROFILE_NAME##_Counter_St {                                         \

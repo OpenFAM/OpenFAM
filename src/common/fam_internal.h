@@ -65,10 +65,21 @@
 #define FAM_INTERNAL_H_
 
 #include <iostream>
-#include <stdint.h>   // needed for uint64_t etc.
+#include <map>
+#include <stdint.h> // needed for uint64_t etc.
+#include <string>
 #include <sys/stat.h> // needed for mode_t
 
+#include "radixtree/kvs.h"
+#include "radixtree/radix_tree.h"
+
+#include "nvmm/epoch_manager.h"
+#include "nvmm/memory_manager.h"
 #include <nvmm/fam.h>
+
+using namespace famradixtree;
+using namespace nvmm;
+using namespace std;
 
 #ifdef __cplusplus
 /** C++ Header
@@ -83,11 +94,11 @@ namespace openfam {
 #define FAM_WRITE_KEY_SHM ((uint64_t)0x2)
 #define FAM_RW_KEY_SHM (FAM_READ_KEY_SHM | FAM_WRITE_KEY_SHM)
 
-#define FAM_KEY_UNINITIALIZED ((uint64_t) - 1)
-#define FAM_KEY_INVALID ((uint64_t) - 2)
-#define FAM_FENCE_KEY ((uint64_t) - 4)
-#define INVALID_OFFSET ((uint64_t) - 1)
-#define FAM_INVALID_REGION ((uint64_t) - 1)
+#define FAM_KEY_UNINITIALIZED ((uint64_t)-1)
+#define FAM_KEY_INVALID ((uint64_t)-2)
+#define FAM_FENCE_KEY ((uint64_t)-4)
+#define INVALID_OFFSET ((uint64_t)-1)
+#define FAM_INVALID_REGION ((uint64_t)-1)
 /*
  * Region id 5-15 are reserved for MODC
  * Region id 16-20 are reserved for OpenFAM
@@ -102,6 +113,58 @@ namespace openfam {
 #define DATAITEMID_BITS 33
 #define DATAITEMID_MASK ((1UL << DATAITEMID_BITS) - 1)
 #define DATAITEMID_SHIFT 1
+
+using CISServerMap = std::map<uint64_t, std::string>;
+
+/**
+ *  DataItem Metadata descriptor
+ */
+typedef struct {
+    uint64_t regionId;
+    uint64_t offset;
+    uint64_t key;
+    uint64_t size;
+    mode_t perm;
+    void *base;
+    char name[RadixTree::MAX_KEY_LEN];
+    ;
+    size_t maxNameLen;
+    // char *name;
+} Fam_Region_Item_Info;
+
+inline CISServerMap parse_memserver_list(std::string memServer,
+                                         std::string delimiter1,
+                                         std::string delimiter2) {
+    CISServerMap memoryServerList;
+    uint64_t prev1 = 0, pos1 = 0;
+    do {
+        pos1 = memServer.find(delimiter1, prev1);
+        if (pos1 == string::npos)
+            pos1 = memServer.length();
+        std::string token = memServer.substr(prev1, pos1 - prev1);
+        if (!token.empty()) {
+            uint64_t prev2 = 0, pos2 = 0, count = 0, nodeid = 0;
+            do {
+                pos2 = token.find(delimiter2, prev2);
+                if (pos2 == string::npos)
+                    pos2 = token.length();
+                std::string token2 = token.substr(prev2, pos2 - prev2);
+                if (!token2.empty()) {
+                    if (count % 2 == 0) {
+                        nodeid = stoull(token2);
+                    } else {
+                        memoryServerList.insert({nodeid, token2});
+                    }
+                    count++;
+                }
+                prev2 = pos2 + delimiter2.length();
+            } while (pos2 < token.length() && prev2 < token.length());
+        }
+        prev1 = pos1 + delimiter1.length();
+    } while (pos1 < memServer.length() && prev1 < memServer.length());
+
+    return memoryServerList;
+}
 
 inline void openfam_persist(void *addr, uint64_t size) {
 #ifdef USE_FAM_PERSIST

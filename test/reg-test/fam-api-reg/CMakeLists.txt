@@ -65,6 +65,7 @@ add_fam_test(fam_mm_reg_test)
 add_fam_test(fam_copy_reg_test)
 add_fam_test(fam_put_get_mt_reg_test)
 add_fam_test(fam_scatter_gather_blocking_mt_reg_test)
+add_fam_test(fam_stat_reg_test)
 
 
 if (${TEST_ALLOCATOR} STREQUAL "grpc")
@@ -109,5 +110,3 @@ endif()
 #add_fam_test(fam_put_get_nb_mt_reg_test)
 #add_fam_test(fam_scatter_gather_nonblocking_mt_reg_test)
 #add_fam_test(fam_swap_atomics_mt_reg_test)
-add_fam_test(fam_stat_reg_test)
-add_fam_test(fam_stat_reg_test_shm)

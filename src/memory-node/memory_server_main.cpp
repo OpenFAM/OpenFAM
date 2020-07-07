@@ -32,12 +32,12 @@
 #include <signal.h>
 #endif
 
-#include "rpc/fam_rpc_server.h"
+#include "cis/fam_cis_async_handler.h"
 #include <iostream>
 using namespace std;
 using namespace openfam;
 
-#ifdef OPENFAM_VERSION 
+#ifdef OPENFAM_VERSION
 #define MEMORYSERVER_VERSION OPENFAM_VERSION
 #else
 #define MEMORYSERVER_VERSION "0.0.0"
@@ -52,12 +52,12 @@ void signal_handler(int signum) {
 }
 #endif
 
-Fam_Rpc_Server *rpcService;
+Fam_CIS_Async_Handler *cisServer;
 
 #ifdef MEMSERVER_PROFILE
 void profile_dump_handler(int signum) {
     cout << "Dumping memory server profile data....!! #" << signum << endl;
-    rpcService->dump_profile();
+    cisServer->dump_profile();
 }
 #endif
 
@@ -73,12 +73,10 @@ int main(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
             (std::string(argv[i]) == "--version")) {
-            cout << "Memory Server version : "
-                 << MEMORYSERVER_VERSION
-                 << "\n";
+            cout << "Memory Server version : " << MEMORYSERVER_VERSION << "\n";
             exit(0);
         } else if ((std::string(argv[i]) == "-h") ||
-            (std::string(argv[i]) == "--help")) {
+                   (std::string(argv[i]) == "--help")) {
             cout << "Usage : \n"
                  << "\t./memoryserver <options> \n"
                  << "\n"
@@ -122,22 +120,23 @@ int main(int argc, char *argv[]) {
 #ifdef MEMSERVER_PROFILE
     signal(SIGINT, profile_dump_handler);
 #endif
-    rpcService = NULL;
+    cisServer = NULL;
     try {
-        rpcService = new Fam_Rpc_Server(rpcPort, name, libfabricPort, provider);
-        rpcService->run();
+        cisServer =
+            new Fam_CIS_Async_Handler(rpcPort, name, libfabricPort, provider);
+        cisServer->run();
     } catch (Memserver_Exception &e) {
-        if (rpcService) {
-            rpcService->rpc_server_finalize();
-            delete rpcService;
+        if (cisServer) {
+            cisServer->cis_async_handler_finalize();
+            delete cisServer;
         }
         cout << "Error code: " << e.fam_error() << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
     }
 
-    if (rpcService) {
-        rpcService->rpc_server_finalize();
-        delete rpcService;
+    if (cisServer) {
+        cisServer->cis_async_handler_finalize();
+        delete cisServer;
     }
 
     return 0;

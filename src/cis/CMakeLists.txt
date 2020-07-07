@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -22,21 +22,25 @@
 
 
 #compile .proto filr using protoc compiler
-execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --grpc_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --plugin=protoc-gen-grpc=${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.proto
-                COMMAND  ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --cpp_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.proto)
+execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --grpc_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --plugin=protoc-gen-grpc=${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.proto
+                COMMAND  ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --cpp_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.proto)
 
 #Add the .pb.cc and .grpc.pb.cc file path to LIBOPENFAM_SRC 
 set(LIBOPENFAM_SRC
   ${LIBOPENFAM_SRC}
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.grpc.pb.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.pb.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.grpc.pb.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.pb.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_client.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_direct.cpp
   PARENT_SCOPE
   )
 
 set(MEMORYSERVER_SRC
   ${MEMORYSERVER_SRC}
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.grpc.pb.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc.pb.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_rpc_service_impl.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.grpc.pb.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.pb.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_client.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_server.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_direct.cpp
   PARENT_SCOPE
   )

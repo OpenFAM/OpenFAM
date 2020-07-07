@@ -1,8 +1,9 @@
 /*
- * fam_ops_nvmm.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * fam_ops_shm.h
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -27,8 +28,8 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-#ifndef FAM_OPS_NVMM_H
-#define FAM_OPS_NVMM_H
+#ifndef FAM_OPS_SHM_H
+#define FAM_OPS_SHM_H
 
 #include <iostream>
 #include <map>
@@ -39,6 +40,7 @@
 
 #include <nvmm/fam.h>
 
+#include "allocator/fam_allocator_client.h"
 #include "common/fam_async_qhandler.h"
 #include "common/fam_context.h"
 #include "common/fam_ops.h"
@@ -50,11 +52,11 @@ enum { INT32 = 0, UINT32, INT64, UINT64, FLOAT, DOUBLE };
 
 using namespace std;
 namespace openfam {
-class Fam_Ops_NVMM : public Fam_Ops {
+class Fam_Ops_SHM : public Fam_Ops {
   public:
-    Fam_Ops_NVMM(Fam_Thread_Model famTM, Fam_Context_Model famCM,
-                 Fam_Allocator *famAlloc, uint64_t numConsumer);
-    ~Fam_Ops_NVMM();
+    Fam_Ops_SHM(Fam_Thread_Model famTM, Fam_Context_Model famCM,
+                Fam_Allocator_Client *famAlloc, uint64_t numConsumer);
+    ~Fam_Ops_SHM();
 
     int initialize();
 
@@ -292,7 +294,7 @@ class Fam_Ops_NVMM : public Fam_Ops {
     std::map<uint64_t, Fam_Context *> *contexts;
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
-    Fam_Allocator *famAllocator;
+    Fam_Allocator_Client *famAllocator;
 };
 } // end namespace openfam
 #endif

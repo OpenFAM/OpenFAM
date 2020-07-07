@@ -51,10 +51,10 @@
 #include <rdma/fi_eq.h>
 #include <rdma/fi_rma.h>
 
+#include "cis/fam_cis_rpc.grpc.pb.h"
 #include "common/fam_context.h"
 #include "common/fam_options.h"
 #include "fam/fam_exception.h"
-#include "rpc/fam_rpc.grpc.pb.h"
 
 namespace openfam {
 int fabric_initialize(const char *name, const char *service, bool source,

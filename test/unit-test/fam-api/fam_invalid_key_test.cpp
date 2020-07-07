@@ -61,11 +61,11 @@ int main() {
     char *name = strdup("127.0.0.1");
     char *service = strdup(TEST_LIBFABRIC_PORT);
     char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
-    std::map <uint64_t, string> nameMap;
+    std::map<uint64_t, string> nameMap;
     nameMap.insert({0, name});
     // initialize gRPC client
-    Fam_Allocator_Grpc *famAllocator =
-        new Fam_Allocator_Grpc(nameMap, atoi(TEST_GRPC_PORT));
+    Fam_Allocator_Client *famAllocator =
+        new Fam_Allocator_Client(nameMap, atoi(TEST_GRPC_PORT));
 
     Fam_Ops_Libfabric *famOps = new Fam_Ops_Libfabric(
         name, service, false, provider, FAM_THREAD_MULTIPLE, famAllocator,
@@ -115,9 +115,9 @@ int main() {
 
     // Write with valid key
     try {
-        ret =
-            fabric_write(item->get_key(), message, 25, 0,
-                         (*famOps->get_fiAddrs())[nodeId], famOps->get_defaultCtx(item));
+        ret = fabric_write(item->get_key(), message, 25, 0,
+                           (*famOps->get_fiAddrs())[nodeId],
+                           famOps->get_defaultCtx(item));
         if (ret < 0) {
             cout << "fabric write failed" << endl;
             exit(1);
@@ -136,9 +136,9 @@ int main() {
 
     // Read with valid key
     try {
-        ret =
-            fabric_read(item->get_key(), buff, 25, 0,
-                        (*famOps->get_fiAddrs())[nodeId], famOps->get_defaultCtx(item));
+        ret = fabric_read(item->get_key(), buff, 25, 0,
+                          (*famOps->get_fiAddrs())[nodeId],
+                          famOps->get_defaultCtx(item));
         if (ret < 0) {
             cout << "fabric read failed" << endl;
             exit(1);
@@ -169,9 +169,9 @@ int main() {
     uint64_t invalidKey = -1;
     // Write with invalid key
     try {
-        ret =
-            fabric_write(invalidKey, message, 25, 0,
-                         (*famOps->get_fiAddrs())[nodeId], famOps->get_defaultCtx(item));
+        ret = fabric_write(invalidKey, message, 25, 0,
+                           (*famOps->get_fiAddrs())[nodeId],
+                           famOps->get_defaultCtx(item));
 
         if (ret < 0) {
             cout << "fabric write failed" << endl;
@@ -187,7 +187,8 @@ int main() {
     memset(buff, 0, 1024);
     // Read with invalid key
     try {
-        ret = fabric_read(invalidKey, buff, 25, 0, (*famOps->get_fiAddrs())[nodeId],
+        ret = fabric_read(invalidKey, buff, 25, 0,
+                          (*famOps->get_fiAddrs())[nodeId],
                           famOps->get_defaultCtx(item));
 
         if (ret < 0) {

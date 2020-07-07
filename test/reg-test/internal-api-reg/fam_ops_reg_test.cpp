@@ -38,7 +38,7 @@
 
 #include "common/fam_ops.h"
 #include "common/fam_ops_libfabric.h"
-#include "common/fam_ops_nvmm.h"
+#include "common/fam_ops_shm.h"
 
 #include "common/fam_test_config.h"
 
@@ -66,8 +66,7 @@ TEST(FamOpsLibfabricInternal, FamUnimplemented) {
 // Test case#2
 TEST(FamOpsNvmmInternal, FamUnimplemented) {
 
-    famOps =
-        new Fam_Ops_NVMM(FAM_THREAD_MULTIPLE, FAM_CONTEXT_DEFAULT, NULL, 1);
+    famOps = new Fam_Ops_SHM(FAM_THREAD_MULTIPLE, FAM_CONTEXT_DEFAULT, NULL, 1);
 
     EXPECT_THROW(famOps->abort(0), Fam_Unimplemented_Exception);
 
