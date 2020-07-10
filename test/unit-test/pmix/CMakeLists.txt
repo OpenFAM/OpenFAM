@@ -25,9 +25,6 @@ function (add_pmix_test file_name)
 	add_test(NAME ${file_name} COMMAND ${PROJECT_SOURCE_DIR}/third-party/build/bin/mpirun --allow-run-as-root -np 2 ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
 	#add_test(NAME ${file_name} COMMAND ${CMAKE_CURRENT_BINARY_DIR}/../third-party/build/bin/mpirun --allow-run-as-root -np 2 ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
 endfunction()
-install (FILES "${PROJECT_SOURCE_DIR}/test/setup.sh" PERMISSIONS OWNER_READ OWNER_WRITE
-        OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-        DESTINATION ${PROJECT_BINARY_DIR})
 #add tests
 if (${TEST_RUNTIME} STREQUAL "PMI2")
 	add_pmix_test(pmi2_test)
