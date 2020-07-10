@@ -1,4 +1,4 @@
-# PE config file
+# Placeholder for CIS config file
 
 # IP address of CIS server 
 cis_ip: 127.0.0.1
@@ -17,3 +17,10 @@ allocator : "grpc"
 
 # Fam thread model: default is FAM_THREAD_SERIALIZE. Other option is FAM_THREAD_MULTIPLE.
 thread_model: FAM_THREAD_SERIALIZE
+
+other_ip :
+- 0:<ip_address_1>
+- 1:<ip_address_2>
+- 3:<ip_address_3>
+- 2:<ip_address_4>
+

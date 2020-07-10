@@ -53,5 +53,23 @@ std::vector<std::string> yaml_config_info::get_value_list(std::string key) {
 }
 
 int yaml_config_info::get_value_type(std::string key) {
-    return (int)(config[key].Type());
+    int type = 0;
+    switch ((int)(config[key].Type())) {
+    case Undefined:
+        type = Undefined;
+        break;
+    case Null:
+        type = Null;
+        break;
+    case Scalar:
+        type = Scalar;
+        break;
+    case Sequence:
+        type = Sequence;
+        break;
+    case Map:
+        type = Map;
+        break;
+    }
+    return type;
 }

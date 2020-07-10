@@ -46,6 +46,14 @@ int main(int argc, char **argv) {
         cout << " allocator value: " << info.get_key_value("allocator")
              << " cis ip: " << info.get_key_value("cis_ip");
         cout << " provider value: " << info.get_key_value("provider") << endl;
+        int data_type = info.get_value_type("other_ip");
+        ;
+        if (data_type == Sequence) {
+            vector<string> other_ips;
+            other_ips = info.get_value_list("other_ip");
+            for (unsigned int i = 0; i < other_ips.size(); ++i)
+                cout << "otherip value " << other_ips[i] << std::endl;
+        }
         cout << " runtime value: " << info.get_key_value("runtime") << endl;
 
     } catch (Fam_InvalidOption_Exception &e) {
