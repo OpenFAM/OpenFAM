@@ -1,0 +1,18 @@
+
+
+fam_config_info.cpp is a test program written to parse contents of yaml
+configuration files using the APIs defined as part of file 
+src/common/yaml_config_info.h.
+
+The file will be compiled as part of OpenFAM build.
+
+To run the program, goto build directory:
+./config/fam_config_info <config_file>
+
+wherein config_file can be any of the following files:
+  - cis_config.yaml
+  - memsrv_config.yaml
+  - metadata_config.yaml
+  - pe_config.yaml
+
+Note: If key is not defined in the yaml file, an exception is raised.
