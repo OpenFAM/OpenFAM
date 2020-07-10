@@ -2,7 +2,7 @@
 #include <yaml-cpp/node/type.h>
 #include <yaml-cpp/yaml.h>
 
-enum { Undefined = 0, Null, Scalar, Sequence, Map };
+enum { KEY_UNDEFINED = 0, KEY_NULL, KEY_SCALAR, KEY_SEQUENCE, KEY_MAP };
 
 using namespace openfam;
 class yaml_config_info : public config_info {
@@ -55,20 +55,20 @@ std::vector<std::string> yaml_config_info::get_value_list(std::string key) {
 int yaml_config_info::get_value_type(std::string key) {
     int type = 0;
     switch ((int)(config[key].Type())) {
-    case Undefined:
-        type = Undefined;
+    case YAML::NodeType::Undefined:
+        type = KEY_UNDEFINED;
         break;
-    case Null:
-        type = Null;
+    case YAML::NodeType::Null:
+        type = KEY_NULL;
         break;
-    case Scalar:
-        type = Scalar;
+    case YAML::NodeType::Scalar:
+        type = KEY_SCALAR;
         break;
-    case Sequence:
-        type = Sequence;
+    case YAML::NodeType::Sequence:
+        type = KEY_SEQUENCE;
         break;
-    case Map:
-        type = Map;
+    case YAML::NodeType::Map:
+        type = KEY_MAP;
         break;
     }
     return type;

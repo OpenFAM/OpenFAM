@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
         cout << " provider value: " << info.get_key_value("provider") << endl;
         int data_type = info.get_value_type("other_ip");
         ;
-        if (data_type == Sequence) {
+        if (data_type == KEY_SEQUENCE) {
             vector<string> other_ips;
             other_ips = info.get_value_list("other_ip");
             for (unsigned int i = 0; i < other_ips.size(); ++i)

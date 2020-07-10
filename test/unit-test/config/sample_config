@@ -1,4 +1,4 @@
-# Placeholder for CIS config file
+# Sample config file
 
 # IP address of CIS server 
 cis_ip: 127.0.0.1
