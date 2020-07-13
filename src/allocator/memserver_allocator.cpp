@@ -167,7 +167,7 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         throw Memserver_Exception(HEAP_NOT_FOUND, message.str().c_str());
     }
     NVMM_PROFILE_START_OPS()
-    ret = heap->Open();
+    ret = heap->Open(NVMM_NO_BG_THREAD);
     NVMM_PROFILE_END_OPS(Heap_Open)
     if (ret != NO_ERROR) {
         message << "Can not open heap";
@@ -456,7 +456,7 @@ int Memserver_Allocator::open_heap(uint64_t regionId) {
             throw Memserver_Exception(HEAP_NOT_OPENED, message.str().c_str());
         }
         NVMM_PROFILE_START_OPS()
-        heap->Open();
+        heap->Open(NVMM_NO_BG_THREAD);
         NVMM_PROFILE_END_OPS(Heap_Open)
         NVMM_PROFILE_START_OPS()
         pthread_mutex_lock(&heapMapLock);
