@@ -1,8 +1,8 @@
 /*
  * fam.h
- * Copyright (c) 2017, 2018 Hewlett Packard Enterprise Development, LP. All
- * rights reserved. Redistribution and use in source and binary forms, with or
- * without modification, are permitted provided that the following conditions
+ * Copyright (c) 2017, 2018, 2020 Hewlett Packard Enterprise Development, LP.
+ * All rights reserved. Redistribution and use in source and binary forms, with
+ * or without modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
@@ -39,6 +39,10 @@
  * to OpenFAM-API version 1.04 Modified Oct 5, 2018, by Sharad Singhal to
  * include C++ definitions Modifed Oct 22, 2018 by Sharad Singhal to separate
  * out C and C11 definitions
+ * Modified July 14, 2020, by Faizan Barmawer to add fam_stat API definition,
+ * change signature of fam_initialize, fam_resize_region, fam_copy,
+ * fam*_blocking APIs, fam_change_permissions and removed fam_size API
+ * definition
  *
  * Work in progress, UNSTABLE
  * Uses _Generic and 128-bit integer types, tested under gcc 6.3.0. May require
