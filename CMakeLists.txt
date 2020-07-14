@@ -196,4 +196,11 @@ add_subdirectory(examples/api)
 #
 # find src include -regex '.*\.\(c\|cpp\|h\)$' -print | xargs clang-format -i -style="{BasedOnStyle: llvm, IndentWidth: 4}"
 #
+install (FILES "${PROJECT_SOURCE_DIR}/test/setup.sh" PERMISSIONS OWNER_READ OWNER_WRITE
+        OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+        DESTINATION ${PROJECT_BINARY_DIR})
+
+install (FILES "${PROJECT_SOURCE_DIR}/test/unit-test/config/sample_config" PERMISSIONS OWNER_READ OWNER_WRITE
+        GROUP_READ WORLD_READ
+        DESTINATION ${PROJECT_BINARY_DIR}/test/unit-test/config/)
 
