@@ -29,6 +29,7 @@
  */
 
 #include "fam/fam_exception.h"
+#include "common/fam_internal.h"
 namespace openfam {
 
 Fam_Exception::Fam_Exception() : Fam_Exception("Unknown error") {}

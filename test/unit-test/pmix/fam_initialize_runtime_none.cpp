@@ -55,7 +55,7 @@ int main() {
         my_fam->fam_initialize("default", &fam_opts);
         my_fam->fam_finalize("default");
 
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed:" << e.fam_error_msg() << endl;
     }
 }

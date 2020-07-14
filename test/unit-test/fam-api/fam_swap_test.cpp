@@ -65,11 +65,11 @@ int main() {
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
     fam_opts.libfabricPort = strdup(TEST_LIBFABRIC_PORT);
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
@@ -88,11 +88,7 @@ int main() {
     int32_t valueInt32 = 0xAAAAAAAA;
     try {
         my_fam->fam_set(item, 0, valueInt32);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -100,11 +96,7 @@ int main() {
 
     try {
         my_fam->fam_quiet();
-    } catch (Fam_Datapath_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Timeout_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -113,11 +105,7 @@ int main() {
     valueInt32 = 0x11111111;
     try {
         my_fam->fam_swap(item, 0, valueInt32);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -125,11 +113,7 @@ int main() {
 
     try {
         valueInt32 = my_fam->fam_fetch_int32(item, 0);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -140,11 +124,7 @@ int main() {
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
     try {
         my_fam->fam_set(item, 0, valueInt64);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -152,11 +132,7 @@ int main() {
 
     try {
         my_fam->fam_quiet();
-    } catch (Fam_Datapath_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Timeout_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -165,11 +141,7 @@ int main() {
     valueInt64 = 0x1111111111111111;
     try {
         my_fam->fam_swap(item, 0, valueInt64);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -177,11 +149,7 @@ int main() {
 
     try {
         valueInt64 = my_fam->fam_fetch_int64(item, 0);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -192,11 +160,7 @@ int main() {
     uint32_t valueUint32 = 0xBBBBBBBB;
     try {
         my_fam->fam_set(item, 0, valueUint32);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -204,11 +168,7 @@ int main() {
 
     try {
         my_fam->fam_quiet();
-    } catch (Fam_Datapath_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Timeout_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -217,11 +177,7 @@ int main() {
     valueUint32 = 0x11111111;
     try {
         my_fam->fam_swap(item, 0, valueUint32);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -229,11 +185,7 @@ int main() {
 
     try {
         valueUint32 = my_fam->fam_fetch_uint32(item, 0);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -244,11 +196,7 @@ int main() {
     uint64_t valueUint64 = 0xBBBBBBBBBBBBBBBB;
     try {
         my_fam->fam_set(item, 0, valueUint64);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -256,11 +204,7 @@ int main() {
 
     try {
         my_fam->fam_quiet();
-    } catch (Fam_Datapath_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Timeout_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -269,11 +213,7 @@ int main() {
     valueUint64 = 0x1111111111111111;
     try {
         my_fam->fam_swap(item, 0, valueUint64);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -281,11 +221,7 @@ int main() {
 
     try {
         valueUint64 = my_fam->fam_fetch_uint64(item, 0);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -296,11 +232,7 @@ int main() {
     float valueFloat = 3.3f;
     try {
         my_fam->fam_set(item, 0, valueFloat);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -308,11 +240,7 @@ int main() {
 
     try {
         my_fam->fam_quiet();
-    } catch (Fam_Datapath_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Timeout_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -321,11 +249,7 @@ int main() {
     valueFloat = 10.5f;
     try {
         my_fam->fam_swap(item, 0, valueFloat);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -333,11 +257,7 @@ int main() {
 
     try {
         valueFloat = my_fam->fam_fetch_float(item, 0);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -348,11 +268,7 @@ int main() {
     double valueDouble = 3.3e+38;
     try {
         my_fam->fam_set(item, 0, valueDouble);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -360,11 +276,7 @@ int main() {
 
     try {
         my_fam->fam_quiet();
-    } catch (Fam_Datapath_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Timeout_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -373,11 +285,7 @@ int main() {
     valueDouble = 6.5e+38;
     try {
         my_fam->fam_swap(item, 0, valueDouble);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -385,11 +293,7 @@ int main() {
 
     try {
         valueDouble = my_fam->fam_fetch_double(item, 0);
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;

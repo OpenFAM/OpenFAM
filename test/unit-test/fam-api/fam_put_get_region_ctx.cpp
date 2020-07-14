@@ -78,21 +78,10 @@ int main() {
         cout << "Error: " << e.fam_error() << endl;
     }
 
-    int ret = 0;
-
     char *local = strdup("Test message");
     try {
-        ret = my_fam->fam_put_blocking(local, item, 0, 13);
-        if (ret < 0) {
-            cout << "fam_put failed" << endl;
-            exit(1);
-        }
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-
-    } catch (Fam_Datapath_Exception &e) {
+        my_fam->fam_put_blocking(local, item, 0, 13);
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -100,17 +89,8 @@ int main() {
     // allocate local memory to receive 20 elements
     char *local2 = (char *)malloc(20);
     try {
-
-        ret = my_fam->fam_get_blocking(local2, item, 0, 13);
-        if (ret < 0) {
-            cout << "fam_get failed" << endl;
-        }
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-
-    } catch (Fam_Datapath_Exception &e) {
+        my_fam->fam_get_blocking(local2, item, 0, 13);
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;

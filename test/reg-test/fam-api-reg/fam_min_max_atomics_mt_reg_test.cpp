@@ -810,98 +810,98 @@ void *thrd_min_max_inv_perms(void *arg) {
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
 #endif
            EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandInt32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandUint32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandInt64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandUint64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandFloat[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandFloat[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandDouble[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandDouble[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
     pthread_exit(NULL);
 }	    
@@ -956,124 +956,124 @@ void *thrd_min_max_inv_perms2(void *arg) {
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandInt32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandInt32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandUint32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandUint32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandInt64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandInt64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandUint64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandUint64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandFloat[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandFloat[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandDouble[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
 
     pthread_exit(NULL);
@@ -1127,123 +1127,123 @@ void *thrd_min_max_inv_offset(void *arg) {
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandInt32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandInt32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandUint32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandUint32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandInt64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandInt64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandUint64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandUint64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandFloat[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandFloat[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_min(item, offset, operandDouble[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
 
     pthread_exit(NULL);
@@ -1299,98 +1299,98 @@ void *thrd_min_max_inv_offset2(void *arg) {
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandInt32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandUint32[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandInt64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandUint64[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandFloat[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandFloat[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 
 #ifdef SHM
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
 #else
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 #endif
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandDouble[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandDouble[1]),
-                Fam_Datapath_Exception);
+                Fam_Exception);
     pthread_exit(NULL);
 }	    
 

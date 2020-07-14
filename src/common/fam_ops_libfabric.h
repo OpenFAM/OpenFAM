@@ -48,6 +48,7 @@
 
 #include "allocator/fam_allocator_client.h"
 #include "common/fam_context.h"
+#include "common/fam_internal.h"
 #include "common/fam_ops.h"
 #include "common/fam_options.h"
 #include "fam/fam.h"
@@ -325,21 +326,24 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     Fam_Context *get_defaultCtx(uint64_t nodeId) {
         auto obj = defContexts->find(nodeId);
         if (obj == defContexts->end())
-            throw Fam_Datapath_Exception("Context for memserver not found");
+            THROW_ERR_MSG(Fam_Datapath_Exception,
+                          "Context for memserver not found");
         else
             return obj->second;
     }
     Fam_Context *get_defaultCtx(Fam_Region_Descriptor *descriptor) {
         auto obj = defContexts->find(descriptor->get_memserver_id());
         if (obj == defContexts->end())
-            throw Fam_Datapath_Exception("Context for memserver not found");
+            THROW_ERR_MSG(Fam_Datapath_Exception,
+                          "Context for memserver not found");
         else
             return obj->second;
     };
     Fam_Context *get_defaultCtx(Fam_Descriptor *descriptor) {
         auto obj = defContexts->find(descriptor->get_memserver_id());
         if (obj == defContexts->end())
-            throw Fam_Datapath_Exception("Context for memserver not found");
+            THROW_ERR_MSG(Fam_Datapath_Exception,
+                          "Context for memserver not found");
         else
             return obj->second;
     };

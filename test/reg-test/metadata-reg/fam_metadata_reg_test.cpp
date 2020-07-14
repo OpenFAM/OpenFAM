@@ -153,7 +153,7 @@ TEST(FamMetadata, RegionFail) {
 
     EXPECT_THROW(
         my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1),
-        Fam_Allocator_Exception);
+        Fam_Exception);
 
     regionId = node.regionId;
 
@@ -186,7 +186,7 @@ TEST(FamMetadata, RegionFail) {
     EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
               manager->metadata_delete_region(testRegion));
 
-    EXPECT_THROW(my_fam->fam_destroy_region(desc), Fam_Allocator_Exception);
+    EXPECT_THROW(my_fam->fam_destroy_region(desc), Fam_Exception);
 
     EXPECT_EQ(META_NO_ERROR,
               manager->metadata_insert_region(regionId, testRegion, regnode));
@@ -326,7 +326,7 @@ TEST(FamMetadata, DataitemFail) {
     EXPECT_NE((void *)NULL, item);
 
     EXPECT_THROW(my_fam->fam_allocate(firstItem, 1024, 0777, desc),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
 
     EXPECT_EQ(META_NO_ERROR,
               manager->metadata_find_dataitem(firstItem, regionId, dinode));
@@ -415,7 +415,7 @@ TEST(FamMetadata, DataitemFail) {
     EXPECT_EQ(META_NO_ERROR,
               manager->metadata_delete_dataitem(dataitemId, testRegion));
 
-    EXPECT_THROW(my_fam->fam_deallocate(item), Fam_Allocator_Exception);
+    EXPECT_THROW(my_fam->fam_deallocate(item), Fam_Exception);
 
     EXPECT_EQ(META_NO_ERROR, manager->metadata_insert_dataitem(
                                  dataitemId, regionId, datanode, firstItem));
@@ -424,7 +424,7 @@ TEST(FamMetadata, DataitemFail) {
 
     EXPECT_EQ(META_NO_ERROR, manager->metadata_delete_region(testRegion));
 
-    EXPECT_THROW(my_fam->fam_destroy_region(desc), Fam_Allocator_Exception);
+    EXPECT_THROW(my_fam->fam_destroy_region(desc), Fam_Exception);
 
     EXPECT_EQ(META_NO_ERROR,
               manager->metadata_insert_region(regionId, testRegion, regnode));

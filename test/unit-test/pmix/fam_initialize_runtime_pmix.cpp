@@ -64,7 +64,7 @@ int main() {
                 "--"
              << endl;
 
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed:" << e.fam_error_msg() << endl;
     }
 }

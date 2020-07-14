@@ -42,9 +42,8 @@ int main(void) {
     // assume that no specific options are needed by the implementation
     fm->runtime = strdup("NONE");
     try {
-        if (myFam->fam_initialize("myApplication", fm) == 0) {
-            printf("FAM initialized\n");
-        }
+        myFam->fam_initialize("myApplication", fm);
+        printf("FAM initialized\n");
     } catch (Fam_Exception &e) {
         printf("FAM Initialization failed: %s\n", e.fam_error_msg());
         myFam->fam_abort(-1); // abort the program
@@ -65,7 +64,7 @@ int main(void) {
         myFam->fam_destroy_region(rd);
         printf("fam_destroy_region successfull\n");
 
-    } catch (Fam_Allocator_Exception &e) {
+    } catch (Fam_Exception &e) {
         printf("Create/Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());
         ret = -1;

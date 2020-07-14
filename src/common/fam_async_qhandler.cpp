@@ -47,6 +47,7 @@
 #include <iostream>
 
 #include "common/fam_async_qhandler.h"
+#include "common/fam_internal.h"
 namespace openfam {
 
 class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
@@ -119,8 +120,9 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                 if (!(err->get_error_code()))
                     return;
                 else
-                    throw Fam_Datapath_Exception(err->get_error_code(),
-                                                 err->get_error_msg());
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
+                                    err->get_error_code(),
+                                    err->get_error_msg());
             }
         }
     }
@@ -139,8 +141,9 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                 if (!(err->get_error_code()))
                     return;
                 else
-                    throw Fam_Datapath_Exception(err->get_error_code(),
-                                                 err->get_error_msg());
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
+                                    err->get_error_code(),
+                                    err->get_error_msg());
             }
         }
     }
@@ -176,8 +179,8 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
             break;
         }
         default: {
-            throw Fam_Datapath_Exception(FAM_ERR_INVALIDOP,
-                                         "invalid operation request");
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_INVALIDOP,
+                            "invalid operation request");
         }
         }
         return;

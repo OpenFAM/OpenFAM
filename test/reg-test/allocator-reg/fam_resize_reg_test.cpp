@@ -239,7 +239,7 @@ TEST(FamResize, MultiPeAllocationResizeSuccess) {
 
         EXPECT_THROW(item2 =
                          my_fam->fam_allocate(secondItem, 524288, 0777, desc),
-                     Fam_Allocator_Exception);
+                     Fam_Exception);
     }
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
@@ -286,8 +286,7 @@ TEST(FamResize, ResizeNoPerm) {
     EXPECT_NE((void *)NULL, desc);
 
     // Resizing the region
-    EXPECT_THROW(my_fam->fam_resize_region(desc, 16384),
-                 Fam_Allocator_Exception);
+    EXPECT_THROW(my_fam->fam_resize_region(desc, 16384), Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
