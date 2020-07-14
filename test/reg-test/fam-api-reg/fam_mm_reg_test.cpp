@@ -110,11 +110,11 @@ TEST(FamMMTest, FamAllocateSameSuccess) {
     EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem, 1024, 0777, desc));
     EXPECT_NE((void *)NULL, item);
     EXPECT_THROW(item = my_fam->fam_allocate(dataItem, 512, 0777, desc),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
     EXPECT_THROW(item = my_fam->fam_allocate(dataItem, 1024, 0444, desc),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
     EXPECT_THROW(item = my_fam->fam_allocate(dataItem, 1024, 0777, desc),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
@@ -159,13 +159,13 @@ TEST(FamMMTest, FamCreateSameRegionDestroysSuccess) {
 
     EXPECT_THROW(desc =
                      my_fam->fam_create_region(testRegion, 4096, 0777, RAID1),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
     EXPECT_THROW(desc =
                      my_fam->fam_create_region(testRegion, 1024, 0777, RAID1),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
     EXPECT_THROW(desc =
                      my_fam->fam_create_region(testRegion, 4096, 0444, RAID1),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
     delete desc;
@@ -217,7 +217,7 @@ TEST(FamMMNegativeTest, FamCreateGreaterBignameRegionFailure) {
         get_uniq_str("testtesttesttesttesttesttesttesttesttest", my_fam);
 
     EXPECT_THROW(my_fam->fam_create_region(testRegion, 4096, 0777, RAID1),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
 }
 
 TEST(FamMMTest, FamCreateBignameRegionDestroySuccess) {

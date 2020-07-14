@@ -82,7 +82,7 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
     EXPECT_THROW(fabric_write(invalidKey, message, 25, 0,
                               (*famOps->get_fiAddrs())[nodeId],
                               famOps->get_defaultCtx(item)),
-                 Fam_Datapath_Exception);
+                 Fam_Exception);
 
     char *buff = (char *)malloc(1024);
     memset(buff, 0, 1024);
@@ -90,7 +90,7 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
     EXPECT_THROW(fabric_read(invalidKey, buff, 25, 0,
                              (*famOps->get_fiAddrs())[nodeId],
                              famOps->get_defaultCtx(item)),
-                 Fam_Datapath_Exception);
+                 Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));

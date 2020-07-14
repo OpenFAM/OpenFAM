@@ -59,8 +59,7 @@ TEST(FamNoPerm, NoPermSuccess) {
     EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024, 0444, desc));
     EXPECT_NE((void *)NULL, item);
 
-    EXPECT_THROW(my_fam->fam_put_blocking(local, item, 0, 13),
-                 Fam_Datapath_Exception);
+    EXPECT_THROW(my_fam->fam_put_blocking(local, item, 0, 13), Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));

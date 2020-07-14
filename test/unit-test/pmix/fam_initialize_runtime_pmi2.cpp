@@ -60,7 +60,7 @@ int main() {
         cout << "Node : " << *myPE << " number of nodes is " << *numPEs << endl;
         my_fam2->fam_finalize("default");
 
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed:" << e.fam_error_msg() << endl;
     }
 }

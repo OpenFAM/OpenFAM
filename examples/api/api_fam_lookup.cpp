@@ -44,9 +44,8 @@ int main(void) {
     // assume that no specific options are needed by the implementation
     fm->runtime = strdup("NONE");
     try {
-        if (myFam->fam_initialize("myApplication", fm) == 0) {
-            printf("FAM initialized\n");
-        }
+        myFam->fam_initialize("myApplication", fm);
+        printf("FAM initialized\n");
     } catch (Fam_Exception &e) {
         printf("FAM Initialization failed: %s\n", e.what());
         myFam->fam_abort(-1); // abort the program
@@ -81,7 +80,7 @@ int main(void) {
             myFam->fam_lookup("myItem", "myRegion");
         if (myregion != NULL && arrayDescriptor != NULL)
             printf("Lookup APIs successful!\n");
-    } catch (Fam_Allocator_Exception &e) {
+    } catch (Fam_Exception &e) {
         printf("Look up failed: %d: %s\n", e.fam_error(), e.what());
         ret = -1;
     }

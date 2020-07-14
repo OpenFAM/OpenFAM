@@ -81,11 +81,11 @@ int main() {
     // Initialize openFAM API
     fam_opts.memoryServer = strdup("0:127.0.0.1");
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     // Create Region
@@ -122,12 +122,7 @@ int main() {
             cout << "fabric write failed" << endl;
             exit(1);
         }
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-        fail++;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -143,12 +138,7 @@ int main() {
             cout << "fabric read failed" << endl;
             exit(1);
         }
-    } catch (Fam_Permission_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-        fail++;
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -177,7 +167,7 @@ int main() {
             cout << "fabric write failed" << endl;
             exit(1);
         }
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
@@ -195,7 +185,7 @@ int main() {
             cout << "fabric read failed" << endl;
             exit(1);
         }
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;

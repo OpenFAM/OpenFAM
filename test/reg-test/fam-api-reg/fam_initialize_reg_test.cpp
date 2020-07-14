@@ -55,8 +55,7 @@ TEST(FamInitialize, InitializeSuccess) {
 
 // Test case#2 initialize with NULL parametes.
 TEST(FamInitialize, InitializeNullTest) {
-    EXPECT_THROW(my_fam->fam_initialize(NULL, NULL),
-                 Fam_InvalidOption_Exception);
+    EXPECT_THROW(my_fam->fam_initialize(NULL, NULL), Fam_Exception);
     EXPECT_NO_THROW(my_fam->fam_finalize(NULL));
 }
 int main(int argc, char **argv) {

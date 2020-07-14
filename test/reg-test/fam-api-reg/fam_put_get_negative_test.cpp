@@ -63,11 +63,10 @@ TEST(FamPutGetT, PutGetFail) {
     char *local2 = (char *)malloc(20);
 
     // No write perm
-    EXPECT_THROW(my_fam->fam_put_blocking(local, item, 0, 13),
-                 Fam_Datapath_Exception);
+    EXPECT_THROW(my_fam->fam_put_blocking(local, item, 0, 13), Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, item, 0, 13));
-    EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+    EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
     // No read permission
     EXPECT_NO_THROW(my_fam->fam_change_permissions(item, 0333));
@@ -82,55 +81,45 @@ TEST(FamPutGetT, PutGetFail) {
 
     // write to invalid offset bigger than alloc size
     EXPECT_THROW(my_fam->fam_put_blocking(local, item, 2048, 13),
-                 Fam_Datapath_Exception);
+                 Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, item, 2048, 13));
-    EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+    EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
     // Read from offset bigger than alloc size
     EXPECT_THROW(my_fam->fam_get_blocking(local2, item, 2048, 13),
-                 Fam_Datapath_Exception);
+                 Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, item, 2048, 13));
-    EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+    EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
     char *local3 = (char *)malloc(8192);
 
     // Read size bigger than alloc size
     EXPECT_THROW(my_fam->fam_get_blocking(local3, item, 0, 8192),
-                 Fam_Datapath_Exception);
+                 Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local3, item, 0, 8192));
-    EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+    EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
     // Pass invalid option
-    EXPECT_THROW(my_fam->fam_put_blocking(NULL, item, 0, 13),
-                 Fam_InvalidOption_Exception);
-    EXPECT_THROW(my_fam->fam_put_blocking(local, NULL, 0, 13),
-                 Fam_InvalidOption_Exception);
-    EXPECT_THROW(my_fam->fam_get_blocking(NULL, item, 0, 13),
-                 Fam_InvalidOption_Exception);
-    EXPECT_THROW(my_fam->fam_get_blocking(local2, NULL, 0, 13),
-                 Fam_InvalidOption_Exception);
+    EXPECT_THROW(my_fam->fam_put_blocking(NULL, item, 0, 13), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_put_blocking(local, NULL, 0, 13), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_get_blocking(NULL, item, 0, 13), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_get_blocking(local2, NULL, 0, 13), Fam_Exception);
 
-    EXPECT_THROW(my_fam->fam_put_nonblocking(NULL, item, 0, 13),
-                 Fam_InvalidOption_Exception);
+    EXPECT_THROW(my_fam->fam_put_nonblocking(NULL, item, 0, 13), Fam_Exception);
     EXPECT_THROW(my_fam->fam_put_nonblocking(local, NULL, 0, 13),
-                 Fam_InvalidOption_Exception);
-    EXPECT_THROW(my_fam->fam_get_nonblocking(NULL, item, 0, 13),
-                 Fam_InvalidOption_Exception);
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_get_nonblocking(NULL, item, 0, 13), Fam_Exception);
     EXPECT_THROW(my_fam->fam_get_nonblocking(local2, NULL, 0, 13),
-                 Fam_InvalidOption_Exception);
+                 Fam_Exception);
 
     // Pass 0 as nbytes
-    EXPECT_THROW(my_fam->fam_put_blocking(local, item, 0, 0),
-                 Fam_InvalidOption_Exception);
-    EXPECT_THROW(my_fam->fam_get_blocking(local, item, 0, 0),
-                 Fam_InvalidOption_Exception);
-    EXPECT_THROW(my_fam->fam_put_nonblocking(local, item, 0, 0),
-                 Fam_InvalidOption_Exception);
-    EXPECT_THROW(my_fam->fam_get_nonblocking(local, item, 0, 0),
-                 Fam_InvalidOption_Exception);
+    EXPECT_THROW(my_fam->fam_put_blocking(local, item, 0, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_get_blocking(local, item, 0, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_put_nonblocking(local, item, 0, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_get_nonblocking(local, item, 0, 0), Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
@@ -169,11 +158,11 @@ TEST(FamPutGetT, ScatterGatherIndexFail) {
     // No write perm
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, item, 5, indexes, sizeof(int)),
-        Fam_Datapath_Exception);
+        Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_scatter_nonblocking(newLocal, item, 5, indexes,
                                                     sizeof(int)));
-    EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+    EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
     // No read permission
     EXPECT_NO_THROW(my_fam->fam_change_permissions(item, 0333));
@@ -190,52 +179,52 @@ TEST(FamPutGetT, ScatterGatherIndexFail) {
     // Pass invalid option
     EXPECT_THROW(
         my_fam->fam_gather_blocking(NULL, item, 5, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_gather_nonblocking(NULL, item, 5, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(NULL, item, 5, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_nonblocking(NULL, item, 5, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_gather_blocking(local2, NULL, 5, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_gather_nonblocking(local2, NULL, 5, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, NULL, 5, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(my_fam->fam_scatter_nonblocking(newLocal, NULL, 5, indexes,
                                                  sizeof(int)),
-                 Fam_InvalidOption_Exception);
+                 Fam_Exception);
 
     // Pass 0 as nelements
     EXPECT_THROW(
         my_fam->fam_gather_blocking(local2, item, 0, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_gather_nonblocking(local2, item, 0, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, item, 0, indexes, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(my_fam->fam_scatter_nonblocking(newLocal, item, 0, indexes,
                                                  sizeof(int)),
-                 Fam_InvalidOption_Exception);
+                 Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
@@ -272,11 +261,11 @@ TEST(FamPutGetT, ScatterGatherStrideFail) {
     // No write perm
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, item, 5, 2, 3, sizeof(int)),
-        Fam_Datapath_Exception);
+        Fam_Exception);
 
     EXPECT_NO_THROW(
         my_fam->fam_scatter_nonblocking(newLocal, item, 5, 2, 3, sizeof(int)));
-    EXPECT_THROW(my_fam->fam_quiet(), Fam_Datapath_Exception);
+    EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
     // No read permission
     EXPECT_NO_THROW(my_fam->fam_change_permissions(item, 0333));
@@ -292,51 +281,51 @@ TEST(FamPutGetT, ScatterGatherStrideFail) {
 
     // Pass invalid option
     EXPECT_THROW(my_fam->fam_gather_blocking(NULL, item, 5, 2, 3, sizeof(int)),
-                 Fam_InvalidOption_Exception);
+                 Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_gather_nonblocking(NULL, item, 5, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(my_fam->fam_scatter_blocking(NULL, item, 5, 2, 3, sizeof(int)),
-                 Fam_InvalidOption_Exception);
+                 Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_nonblocking(NULL, item, 5, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_gather_blocking(local2, NULL, 5, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_gather_nonblocking(local2, NULL, 5, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, NULL, 5, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_nonblocking(newLocal, NULL, 5, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     // Pass 0 as nelements
     EXPECT_THROW(
         my_fam->fam_gather_blocking(local2, item, 0, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_gather_nonblocking(local2, item, 0, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, item, 0, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_THROW(
         my_fam->fam_scatter_nonblocking(newLocal, item, 0, 2, 3, sizeof(int)),
-        Fam_InvalidOption_Exception);
+        Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 

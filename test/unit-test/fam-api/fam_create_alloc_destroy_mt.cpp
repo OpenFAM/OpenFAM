@@ -56,11 +56,11 @@ void *thr_func1(void *arg) {
     fam_opts.allocator = strdup("SHM");
     fam_opts.runtime = strdup("NONE");
 
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     desc1 = my_fam->fam_lookup_region("test111");
@@ -121,11 +121,11 @@ int main() {
     fam_opts.allocator = strdup("SHM");
     fam_opts.runtime = strdup("NONE");
 
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     desc1 = my_fam->fam_create_region("test111", 8192, 0777, RAID1);

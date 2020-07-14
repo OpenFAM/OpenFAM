@@ -34,6 +34,7 @@
 #include <unistd.h>
 
 #include "allocator/fam_allocator_client.h"
+#include "common/fam_internal.h"
 #include "common/fam_libfabric.h"
 #include "common/fam_ops.h"
 #include "common/fam_ops_libfabric.h"
@@ -47,6 +48,16 @@
 #ifdef FAM_PROFILE
 #include "fam_counters.h"
 #endif
+
+// Add this wrapper try catch block to return only Fam_Exception object
+// instead of derived exception class objects, to maintain uniformity in
+// exception handling by the application.
+#define TRY_CATCH_BEGIN try {
+#define RETURN_WITH_FAM_EXCEPTION                                              \
+    }                                                                          \
+    catch (Fam_Exception & e) {                                                \
+        throw e;                                                               \
+    }
 
 using namespace std;
 
@@ -100,7 +111,7 @@ class fam::Impl_ {
             delete famRuntime;
     }
 
-    int fam_initialize(const char *groupName, Fam_Options *options);
+    void fam_initialize(const char *groupName, Fam_Options *options);
 
     void fam_finalize(const char *groupName);
 
@@ -122,7 +133,7 @@ class fam::Impl_ {
 
     void fam_destroy_region(Fam_Region_Descriptor *descriptor);
 
-    int fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
+    void fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
 
     Fam_Descriptor *fam_allocate(uint64_t nbytes, mode_t accessPermissions,
                                  Fam_Region_Descriptor *region);
@@ -132,23 +143,23 @@ class fam::Impl_ {
 
     void fam_deallocate(Fam_Descriptor *descriptor);
 
-    int fam_change_permissions(Fam_Descriptor *descriptor,
-                               mode_t accessPermissions);
+    void fam_change_permissions(Fam_Descriptor *descriptor,
+                                mode_t accessPermissions);
 
-    int fam_change_permissions(Fam_Region_Descriptor *descriptor,
-                               mode_t accessPermissions);
+    void fam_change_permissions(Fam_Region_Descriptor *descriptor,
+                                mode_t accessPermissions);
 
     void fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo);
     void fam_stat(Fam_Region_Descriptor *descriptor, Fam_Stat *famInfo);
 
-    int fam_get_blocking(void *local, Fam_Descriptor *descriptor,
-                         uint64_t offset, uint64_t nbytes);
+    void fam_get_blocking(void *local, Fam_Descriptor *descriptor,
+                          uint64_t offset, uint64_t nbytes);
 
     void fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
                              uint64_t offset, uint64_t nbytes);
 
-    int fam_put_blocking(void *local, Fam_Descriptor *descriptor,
-                         uint64_t offset, uint64_t nbytes);
+    void fam_put_blocking(void *local, Fam_Descriptor *descriptor,
+                          uint64_t offset, uint64_t nbytes);
 
     void fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
                              uint64_t offset, uint64_t nbytes);
@@ -157,13 +168,13 @@ class fam::Impl_ {
 
     void fam_unmap(void *local, Fam_Descriptor *descriptor);
 
-    int fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                            uint64_t nElements, uint64_t firstElement,
-                            uint64_t stride, uint64_t elementSize);
+    void fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                             uint64_t nElements, uint64_t firstElement,
+                             uint64_t stride, uint64_t elementSize);
 
-    int fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                            uint64_t nElements, uint64_t *elementIndex,
-                            uint64_t elementSize);
+    void fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                             uint64_t nElements, uint64_t *elementIndex,
+                             uint64_t elementSize);
 
     void fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
                                 uint64_t nElements, uint64_t firstElement,
@@ -173,13 +184,13 @@ class fam::Impl_ {
                                 uint64_t nElements, uint64_t *elementIndex,
                                 uint64_t elementSize);
 
-    int fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                             uint64_t nElements, uint64_t firstElement,
-                             uint64_t stride, uint64_t elementSize);
+    void fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t nElements, uint64_t firstElement,
+                              uint64_t stride, uint64_t elementSize);
 
-    int fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                             uint64_t nElements, uint64_t *elementIndex,
-                             uint64_t elementSize);
+    void fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t nElements, uint64_t *elementIndex,
+                              uint64_t elementSize);
 
     void fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
                                  uint64_t nElements, uint64_t firstElement,
@@ -577,7 +588,7 @@ class fam::Impl_ {
  * @see #fam_finalize()
  * @see #Fam_Options
  */
-int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
+void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     std::ostringstream message;
     int ret = 0;
     int *peCnt;
@@ -590,7 +601,7 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         groupName = strdup(grpName);
     else {
         message << "Fam Invalid Option specified: GroupName";
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     // Initialize Options
     //
@@ -600,9 +611,8 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
 
     memoryServerCount = 1;
 
-    if ((ret = validate_fam_options(options)) < 0) {
-        return ret;
-    }
+    ret = validate_fam_options(options);
+
     if (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) == 0) {
         *peId = 0;
         *peCnt = 1;
@@ -616,7 +626,7 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             if (PMI2_SUCCESS != (ret = famRuntime->runtime_init())) {
                 // Raising an exception will make the use of pmix mandatory.
                 message << "Fam PMI2 Runtime initialization failed: " << ret;
-                throw Fam_Pmi_Exception(message.str().c_str());
+                THROW_ERR_MSG(Fam_Pmi_Exception, message.str().c_str());
             }
         } else {
             // initialize PMIX
@@ -624,7 +634,7 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             if (PMIX_SUCCESS != (ret = famRuntime->runtime_init())) {
                 // Raising an exception will make the use of pmix mandatory.
                 message << "Fam PMIx Runtime initialization failed: " << ret;
-                throw Fam_Pmi_Exception(message.str().c_str());
+                THROW_ERR_MSG(Fam_Pmi_Exception, message.str().c_str());
             }
         }
         // Add PE_COUNT and PE_ID to optValueMap
@@ -633,7 +643,7 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         if (*peCnt < 0) {
             message << "PMIx Runtime Failed to get PE_COUNT: " << *peCnt;
             free(peCnt);
-            throw Fam_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Pmi_Exception, message.str().c_str());
         }
 
         *peId = famRuntime->my_pe();
@@ -641,7 +651,7 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             message << "PMIx Runtime Failed to get PE_ID: " << *peId;
             free(peCnt);
             free(peId);
-            throw Fam_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Pmi_Exception, message.str().c_str());
         }
 
         optValueMap->insert({supportedOptionList[PE_COUNT], peCnt});
@@ -665,7 +675,8 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             parse_memserver_list(memoryServer, delimiter1, delimiter2);
 
         if (memoryServerList.size() == 0) {
-            throw Fam_InvalidOption_Exception("Memory server list not found");
+            THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                          "Memory server list not found");
         }
 
         memoryServerCount = memoryServerList.size();
@@ -676,7 +687,8 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
                 message << "Fam Invalid memory server ID specified: "
                         << it->first
                         << " should be less than memory server count";
-                throw Fam_InvalidOption_Exception(message.str().c_str());
+                THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                              message.str().c_str());
             }
         }
         famAllocator = new Fam_Allocator_Client(memoryServerList,
@@ -692,11 +704,10 @@ int fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
                     << fabric_strerror(ret);
             if (famRuntime != NULL)
                 famRuntime->runtime_fini();
-            throw Fam_Datapath_Exception(message.str().c_str());
+            THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
         }
     }
     FAM_PROFILE_START_TIME();
-    return ret;
 }
 
 /**
@@ -758,7 +769,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     else {
         message << "Invalid value specified for famThreadModel: "
                 << famOptions.famThreadModel;
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     optValueMap->insert(
         {supportedOptionList[FAM_THREAD_MODEL], famOptions.famThreadModel});
@@ -772,7 +783,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
         (strcmp(famOptions.allocator, FAM_OPTIONS_GRPC_STR) != 0)) {
         message << "Invalid value specified for Allocator: "
                 << famOptions.famThreadModel;
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
     optValueMap->insert({supportedOptionList[ALLOCATOR], famOptions.allocator});
@@ -789,7 +800,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     else {
         message << "Invalid value specified for famContextModel: "
                 << famOptions.famContextModel;
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     optValueMap->insert(
         {supportedOptionList[FAM_CONTEXT_MODEL], famOptions.famContextModel});
@@ -803,7 +814,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMIX_STR) != 0)) {
         message << "Invalid value specified for Runtime: "
                 << famOptions.runtime;
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     optValueMap->insert({supportedOptionList[RUNTIME], famOptions.runtime});
 
@@ -849,7 +860,7 @@ int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
 
     if (key == FAM_KEY_INVALID) {
         message << "Invalid Key Passed" << endl;
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     return 0;
 }
@@ -938,7 +949,7 @@ const void *fam::Impl_::fam_get_option(char *optionName) {
     if (opt == optValueMap->end()) {
         std::ostringstream message;
         message << "Fam Option not supported: " << optionName;
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     } else {
         if (strncmp(optionName, "PE", 2) == 0) {
             int *optVal = (int *)malloc(sizeof(int));
@@ -1052,13 +1063,12 @@ void fam::Impl_::fam_destroy_region(Fam_Region_Descriptor *descriptor) {
  * @see #fam_create_region
  * @see #fam_destroy_region
  */
-int fam::Impl_::fam_resize_region(Fam_Region_Descriptor *descriptor,
-                                  uint64_t nbytes) {
+void fam::Impl_::fam_resize_region(Fam_Region_Descriptor *descriptor,
+                                   uint64_t nbytes) {
     FAM_CNTR_INC_API(fam_resize_region);
     FAM_PROFILE_START_ALLOCATOR(fam_resize_region);
     famAllocator->resize_region(descriptor, nbytes);
     FAM_PROFILE_END_ALLOCATOR(fam_resize_region);
-    return 0;
 }
 
 /**
@@ -1112,13 +1122,12 @@ void fam::Impl_::fam_deallocate(Fam_Descriptor *descriptor) {
  * @return - 0 on success, 1 for unsuccessful completion, negative number on an
  * exception
  */
-int fam::Impl_::fam_change_permissions(Fam_Descriptor *descriptor,
-                                       mode_t accessPermissions) {
+void fam::Impl_::fam_change_permissions(Fam_Descriptor *descriptor,
+                                        mode_t accessPermissions) {
     FAM_CNTR_INC_API(fam_change_permissions);
     FAM_PROFILE_START_ALLOCATOR(fam_change_permissions);
     famAllocator->change_permission(descriptor, accessPermissions);
     FAM_PROFILE_END_ALLOCATOR(fam_change_permissions);
-    return 0;
 }
 
 /**
@@ -1128,13 +1137,12 @@ int fam::Impl_::fam_change_permissions(Fam_Descriptor *descriptor,
  * @return - 0 on success, 1 for unsuccessful completion, negative number on an
  * exception
  */
-int fam::Impl_::fam_change_permissions(Fam_Region_Descriptor *descriptor,
-                                       mode_t accessPermissions) {
+void fam::Impl_::fam_change_permissions(Fam_Region_Descriptor *descriptor,
+                                        mode_t accessPermissions) {
     FAM_CNTR_INC_API(fam_change_permissions);
     FAM_PROFILE_START_ALLOCATOR(fam_change_permissions);
     famAllocator->change_permission(descriptor, accessPermissions);
     FAM_PROFILE_END_ALLOCATOR(fam_change_permissions);
-    return 0;
 }
 
 /**
@@ -1159,7 +1167,7 @@ void fam::Impl_::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
     } else if (descriptor->get_desc_status() == DESC_INVALID) {
         std::ostringstream message;
         message << "Descriptor is no longer valid" << endl;
-        throw Fam_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     } else {
         itemInfo = famAllocator->get_stat_info(descriptor);
         famInfo->size = itemInfo.size;
@@ -1189,7 +1197,7 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
     } else if (descriptor->get_desc_status() == DESC_INVALID) {
         std::ostringstream message;
         message << "Descriptor is no longer valid" << endl;
-        throw Fam_Exception(message.str().c_str());
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     } else {
         regionInfo = famAllocator->check_permission_get_info(descriptor);
         famInfo->size = regionInfo.size;
@@ -1211,7 +1219,7 @@ void *fam::Impl_::fam_map(Fam_Descriptor *descriptor) {
     FAM_CNTR_INC_API(fam_map);
     FAM_PROFILE_START_ALLOCATOR(fam_map);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
     int ret = validate_item(descriptor);
     FAM_PROFILE_END_ALLOCATOR(fam_map);
@@ -1240,7 +1248,7 @@ void fam::Impl_::fam_unmap(void *local, Fam_Descriptor *descriptor) {
     FAM_CNTR_INC_API(fam_unmap);
     FAM_PROFILE_START_ALLOCATOR(fam_unmap);
     if (descriptor == NULL || local == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1273,8 +1281,8 @@ void fam::Impl_::fam_unmap(void *local, Fam_Descriptor *descriptor) {
  * @throws : Fam_Permission_Exception if the given key has incorrect permissions
  * @throws : Fam_Datapath_Exception if libfabric read fails
  */
-int fam::Impl_::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
-                                 uint64_t offset, uint64_t nbytes) {
+void fam::Impl_::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
+                                  uint64_t offset, uint64_t nbytes) {
 
     int ret = 0;
     std::ostringstream message;
@@ -1282,7 +1290,7 @@ int fam::Impl_::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_get_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_get_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nbytes == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
     ret = validate_item(descriptor);
     FAM_PROFILE_END_ALLOCATOR(fam_get_blocking);
@@ -1292,7 +1300,6 @@ int fam::Impl_::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
         ret = famOps->get_blocking(local, descriptor, offset, nbytes);
     }
     FAM_PROFILE_END_OPS(fam_get_blocking);
-    return ret;
 }
 
 /**
@@ -1311,7 +1318,7 @@ void fam::Impl_::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_get_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_get_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nbytes == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
     int ret = validate_item(descriptor);
     FAM_PROFILE_END_ALLOCATOR(fam_get_nonblocking);
@@ -1338,8 +1345,8 @@ void fam::Impl_::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @throws : Fam_Permission_Exception if the given key has incorrect permissions
  * @throws : Fam_Datapath_Exception if libfabric write fails.
  */
-int fam::Impl_::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
-                                 uint64_t offset, uint64_t nbytes) {
+void fam::Impl_::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
+                                  uint64_t offset, uint64_t nbytes) {
 
     int ret = 0;
     std::ostringstream message;
@@ -1347,8 +1354,7 @@ int fam::Impl_::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_put_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_put_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nbytes == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
-        return false;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     ret = validate_item(descriptor);
@@ -1358,7 +1364,6 @@ int fam::Impl_::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
         ret = famOps->put_blocking(local, descriptor, offset, nbytes);
     }
     FAM_PROFILE_END_OPS(fam_put_blocking);
-    return ret;
 }
 
 /**
@@ -1376,7 +1381,7 @@ void fam::Impl_::fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_put_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_put_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nbytes == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1410,13 +1415,13 @@ void fam::Impl_::fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
  * negative number in case of exception
  * @see #fam_scatter_strided
  */
-int fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                                    uint64_t nElements, uint64_t firstElement,
-                                    uint64_t stride, uint64_t elementSize) {
+void fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                                     uint64_t nElements, uint64_t firstElement,
+                                     uint64_t stride, uint64_t elementSize) {
     FAM_CNTR_INC_API(fam_gather_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_gather_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1427,7 +1432,6 @@ int fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
                                       firstElement, stride, elementSize);
     }
     FAM_PROFILE_END_OPS(fam_gather_blocking);
-    return ret;
 }
 
 /**
@@ -1446,13 +1450,13 @@ int fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
  * negative number in case errors
  * @see #fam_scatter_indexed
  */
-int fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                                    uint64_t nElements, uint64_t *elementIndex,
-                                    uint64_t elementSize) {
+void fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                                     uint64_t nElements, uint64_t *elementIndex,
+                                     uint64_t elementSize) {
     FAM_CNTR_INC_API(fam_gather_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_gather_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1463,7 +1467,6 @@ int fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
                                       elementIndex, elementSize);
     }
     FAM_PROFILE_END_OPS(fam_gather_blocking);
-    return ret;
 }
 
 /**
@@ -1488,7 +1491,7 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_gather_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_gather_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1523,7 +1526,7 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     FAM_CNTR_INC_API(fam_gather_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_gather_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1554,14 +1557,14 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
  * negative number in case errors
  * @see #fam_gather_strided
  */
-int fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                                     uint64_t nElements, uint64_t firstElement,
-                                     uint64_t stride, uint64_t elementSize) {
+void fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                                      uint64_t nElements, uint64_t firstElement,
+                                      uint64_t stride, uint64_t elementSize) {
 
     FAM_CNTR_INC_API(fam_scatter_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_scatter_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1572,7 +1575,6 @@ int fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
                                        firstElement, stride, elementSize);
     }
     FAM_PROFILE_END_OPS(fam_scatter_blocking);
-    return ret;
 }
 
 /**
@@ -1590,14 +1592,15 @@ int fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
  * negative number in case errors
  * @see #fam_gather_indexed
  */
-int fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                                     uint64_t nElements, uint64_t *elementIndex,
-                                     uint64_t elementSize) {
+void fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                                      uint64_t nElements,
+                                      uint64_t *elementIndex,
+                                      uint64_t elementSize) {
 
     FAM_CNTR_INC_API(fam_scatter_blocking);
     FAM_PROFILE_START_ALLOCATOR(fam_scatter_blocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1608,7 +1611,6 @@ int fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
                                        elementIndex, elementSize);
     }
     FAM_PROFILE_END_OPS(fam_scatter_blocking);
-    return ret;
 }
 
 /**
@@ -1636,7 +1638,7 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
     FAM_CNTR_INC_API(fam_scatter_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_scatter_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1673,7 +1675,7 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
     FAM_CNTR_INC_API(fam_scatter_nonblocking);
     FAM_PROFILE_START_ALLOCATOR(fam_scatter_nonblocking);
     if ((local == NULL) || (descriptor == NULL) || (nElements == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1710,7 +1712,7 @@ void *fam::Impl_::fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
     FAM_CNTR_INC_API(fam_copy);
     FAM_PROFILE_START_ALLOCATOR(fam_copy);
     if ((src == NULL) || (nbytes == 0)) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int retS = validate_item(src);
@@ -1728,7 +1730,7 @@ void fam::Impl_::fam_copy_wait(void *waitObj) {
     FAM_CNTR_INC_API(fam_copy_wait);
     FAM_PROFILE_START_ALLOCATOR(fam_copy_wait);
     if (waitObj == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     famOps->wait_for_copy(waitObj);
@@ -1753,7 +1755,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1771,7 +1773,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1790,7 +1792,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1810,7 +1812,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1829,7 +1831,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1848,7 +1850,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1867,7 +1869,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_set);
     FAM_PROFILE_START_ALLOCATOR(fam_set);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1894,7 +1896,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1913,7 +1915,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1932,7 +1934,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1951,7 +1953,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1970,7 +1972,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -1989,7 +1991,7 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_add);
     FAM_PROFILE_START_ALLOCATOR(fam_add);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2017,7 +2019,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2036,7 +2038,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2055,7 +2057,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2074,7 +2076,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2093,7 +2095,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2112,7 +2114,7 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_subtract);
     FAM_PROFILE_START_ALLOCATOR(fam_subtract);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2140,7 +2142,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2159,7 +2161,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2178,7 +2180,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2197,7 +2199,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2216,7 +2218,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2235,7 +2237,7 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_min);
     FAM_PROFILE_START_ALLOCATOR(fam_min);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2263,7 +2265,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2282,7 +2284,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2301,7 +2303,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2320,7 +2322,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2339,7 +2341,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2358,7 +2360,7 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_max);
     FAM_PROFILE_START_ALLOCATOR(fam_max);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2386,7 +2388,7 @@ void fam::Impl_::fam_and(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_and);
     FAM_PROFILE_START_ALLOCATOR(fam_and);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2405,7 +2407,7 @@ void fam::Impl_::fam_and(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_and);
     FAM_PROFILE_START_ALLOCATOR(fam_and);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2433,7 +2435,7 @@ void fam::Impl_::fam_or(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_or);
     FAM_PROFILE_START_ALLOCATOR(fam_or);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2452,7 +2454,7 @@ void fam::Impl_::fam_or(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_or);
     FAM_PROFILE_START_ALLOCATOR(fam_or);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2480,7 +2482,7 @@ void fam::Impl_::fam_xor(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_xor);
     FAM_PROFILE_START_ALLOCATOR(fam_xor);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2499,7 +2501,7 @@ void fam::Impl_::fam_xor(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_CNTR_INC_API(fam_xor);
     FAM_PROFILE_START_ALLOCATOR(fam_xor);
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2529,7 +2531,7 @@ int32_t fam::Impl_::fam_fetch_int32(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     int32_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2549,7 +2551,7 @@ int64_t fam::Impl_::fam_fetch_int64(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     int64_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2569,7 +2571,7 @@ int128_t fam::Impl_::fam_fetch_int128(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     int128_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2590,7 +2592,7 @@ uint32_t fam::Impl_::fam_fetch_uint32(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     uint32_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2610,7 +2612,7 @@ uint64_t fam::Impl_::fam_fetch_uint64(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     uint64_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2629,7 +2631,7 @@ float fam::Impl_::fam_fetch_float(Fam_Descriptor *descriptor, uint64_t offset) {
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     float res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2649,7 +2651,7 @@ double fam::Impl_::fam_fetch_double(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch);
     double res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2679,7 +2681,7 @@ int32_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     int32_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2699,7 +2701,7 @@ int64_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     int64_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2719,7 +2721,7 @@ uint32_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     uint32_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2739,7 +2741,7 @@ uint64_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     uint64_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2759,7 +2761,7 @@ float fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     float res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2779,7 +2781,7 @@ double fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_swap);
     double res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2812,7 +2814,7 @@ int32_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     int32_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2833,7 +2835,7 @@ int64_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     int64_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2854,7 +2856,7 @@ uint32_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     uint32_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2875,7 +2877,7 @@ uint64_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     uint64_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2896,7 +2898,7 @@ int128_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_compare_swap);
     int128_t res = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2925,7 +2927,7 @@ int32_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     int32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2945,7 +2947,7 @@ int64_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     int64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2965,7 +2967,7 @@ uint32_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -2986,7 +2988,7 @@ uint64_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3007,7 +3009,7 @@ float fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     float old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3027,7 +3029,7 @@ double fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_add);
     double old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3057,7 +3059,7 @@ int32_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     int32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3077,7 +3079,7 @@ int64_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     int64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3098,7 +3100,7 @@ uint32_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3119,7 +3121,7 @@ uint64_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3139,7 +3141,7 @@ float fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     float old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3159,7 +3161,7 @@ double fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_subtract);
     double old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3190,7 +3192,7 @@ int32_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     int32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3210,7 +3212,7 @@ int64_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     int64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3230,7 +3232,7 @@ uint32_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3250,7 +3252,7 @@ uint64_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3270,7 +3272,7 @@ float fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     float old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3290,7 +3292,7 @@ double fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_min);
     double old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3321,7 +3323,7 @@ int32_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     int32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3341,7 +3343,7 @@ int64_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     int64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3361,7 +3363,7 @@ uint32_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3381,7 +3383,7 @@ uint64_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3401,7 +3403,7 @@ float fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     float old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3421,7 +3423,7 @@ double fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_max);
     double old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3452,7 +3454,7 @@ uint32_t fam::Impl_::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_and);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3472,7 +3474,7 @@ uint64_t fam::Impl_::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_and);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3503,7 +3505,7 @@ uint32_t fam::Impl_::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_or);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3523,7 +3525,7 @@ uint64_t fam::Impl_::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_or);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3554,7 +3556,7 @@ uint32_t fam::Impl_::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_xor);
     uint32_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3574,7 +3576,7 @@ uint64_t fam::Impl_::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_START_ALLOCATOR(fam_fetch_xor);
     uint64_t old = 0;
     if (descriptor == NULL) {
-        throw Fam_InvalidOption_Exception("Invalid Options");
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
 
     int ret = validate_item(descriptor);
@@ -3631,8 +3633,10 @@ void fam::Impl_::fam_quiet(Fam_Region_Descriptor *descriptor) {
  * @see #fam_finalize()
  * @see #Fam_Options
  */
-int fam::fam_initialize(const char *groupName, Fam_Options *options) {
-    return pimpl_->fam_initialize(groupName, options);
+void fam::fam_initialize(const char *groupName, Fam_Options *options) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_initialize(groupName, options);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3642,20 +3646,30 @@ int fam::fam_initialize(const char *groupName, Fam_Options *options) {
  * @see #fam_initialize()
  */
 void fam::fam_finalize(const char *groupName) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_finalize(groupName);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
  * Forcibly terminate all PEs in the same group as the caller
  * @param status - termination status to be returned by the program.
  */
-void fam::fam_abort(int status) { pimpl_->fam_abort(status); }
+void fam::fam_abort(int status) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_abort(status);
+    RETURN_WITH_FAM_EXCEPTION
+}
 
 /**
  * Suspends the execution of the calling PE until all other PEs issue
  * a call to this particular fam_barrier_all() statement
  */
-void fam::fam_barrier_all(void) { pimpl_->fam_barrier_all(); }
+void fam::fam_barrier_all(void) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_barrier_all();
+    RETURN_WITH_FAM_EXCEPTION
+}
 
 /**
  * List known options for this version of the library. Provides a way for
@@ -3664,7 +3678,11 @@ void fam::fam_barrier_all(void) { pimpl_->fam_barrier_all(); }
  * the library
  * @see #fam_get_option()
  */
-const char **fam::fam_list_options(void) { return pimpl_->fam_list_options(); }
+const char **fam::fam_list_options(void) {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_list_options();
+    RETURN_WITH_FAM_EXCEPTION
+}
 
 /**
  * Query the FAM library for an option.
@@ -3674,7 +3692,9 @@ const char **fam::fam_list_options(void) { return pimpl_->fam_list_options(); }
  * @see #fam_list_options()
  */
 const void *fam::fam_get_option(char *optionName) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_get_option(optionName);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3687,7 +3707,9 @@ const void *fam::fam_get_option(char *optionName) {
  * @see #fam_lookup
  */
 Fam_Region_Descriptor *fam::fam_lookup_region(const char *name) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_lookup_region(name);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3701,7 +3723,9 @@ Fam_Region_Descriptor *fam::fam_lookup_region(const char *name) {
  * @see #fam_lookup_region
  */
 Fam_Descriptor *fam::fam_lookup(const char *itemName, const char *regionName) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_lookup(itemName, regionName);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 // ALLOCATION Group
@@ -3728,7 +3752,9 @@ Fam_Descriptor *fam::fam_lookup(const char *itemName, const char *regionName) {
 Fam_Region_Descriptor *
 fam::fam_create_region(const char *name, uint64_t size, mode_t permissions,
                        Fam_Redundancy_Level redundancyLevel, ...) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_create_region(name, size, permissions, redundancyLevel);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3742,7 +3768,9 @@ fam::fam_create_region(const char *name, uint64_t size, mode_t permissions,
  * @see #fam_resize_region
  */
 void fam::fam_destroy_region(Fam_Region_Descriptor *descriptor) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_destroy_region(descriptor);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3756,8 +3784,11 @@ void fam::fam_destroy_region(Fam_Region_Descriptor *descriptor) {
  * @see #fam_create_region
  * @see #fam_destroy_region
  */
-int fam::fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes) {
-    return pimpl_->fam_resize_region(descriptor, nbytes);
+void fam::fam_resize_region(Fam_Region_Descriptor *descriptor,
+                            uint64_t nbytes) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_resize_region(descriptor, nbytes);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3776,12 +3807,16 @@ int fam::fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes) {
  */
 Fam_Descriptor *fam::fam_allocate(uint64_t nbytes, mode_t accessPermissions,
                                   Fam_Region_Descriptor *region) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_allocate(nbytes, accessPermissions, region);
+    RETURN_WITH_FAM_EXCEPTION
 }
 Fam_Descriptor *fam::fam_allocate(const char *name, uint64_t nbytes,
                                   mode_t accessPermissions,
                                   Fam_Region_Descriptor *region) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_allocate(name, nbytes, accessPermissions, region);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3792,7 +3827,9 @@ Fam_Descriptor *fam::fam_allocate(const char *name, uint64_t nbytes,
  * @see #fam_allocate()
  */
 void fam::fam_deallocate(Fam_Descriptor *descriptor) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_deallocate(descriptor);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3804,9 +3841,11 @@ void fam::fam_deallocate(Fam_Descriptor *descriptor) {
  * @return - 0 on success, 1 for unsuccessful completion, negative number on an
  * exception
  */
-int fam::fam_change_permissions(Fam_Descriptor *descriptor,
-                                mode_t accessPermissions) {
-    return pimpl_->fam_change_permissions(descriptor, accessPermissions);
+void fam::fam_change_permissions(Fam_Descriptor *descriptor,
+                                 mode_t accessPermissions) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_change_permissions(descriptor, accessPermissions);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3818,9 +3857,11 @@ int fam::fam_change_permissions(Fam_Descriptor *descriptor,
  * @return - 0 on success, 1 for unsuccessful completion, negative number on an
  * exception
  */
-int fam::fam_change_permissions(Fam_Region_Descriptor *descriptor,
-                                mode_t accessPermissions) {
-    return pimpl_->fam_change_permissions(descriptor, accessPermissions);
+void fam::fam_change_permissions(Fam_Region_Descriptor *descriptor,
+                                 mode_t accessPermissions) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_change_permissions(descriptor, accessPermissions);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3833,7 +3874,9 @@ int fam::fam_change_permissions(Fam_Region_Descriptor *descriptor,
  */
 
 void fam::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_stat(descriptor, famInfo);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3845,7 +3888,9 @@ void fam::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
  * @return - none
  */
 void fam::fam_stat(Fam_Region_Descriptor *descriptor, Fam_Stat *famInfo) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_stat(descriptor, famInfo);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 // DATA READ AND WRITE Group. These APIs read and write data in FAM and copy
@@ -3870,9 +3915,11 @@ void fam::fam_stat(Fam_Region_Descriptor *descriptor, Fam_Stat *famInfo) {
  * @return - 0 for successful completion, 1 for unsuccessful, and a negative
  * number in case of exceptions
  */
-int fam::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
-                          uint64_t offset, uint64_t nbytes) {
-    return pimpl_->fam_get_blocking(local, descriptor, offset, nbytes);
+void fam::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
+                           uint64_t offset, uint64_t nbytes) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_get_blocking(local, descriptor, offset, nbytes);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3891,7 +3938,9 @@ int fam::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
  */
 void fam::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
                               uint64_t offset, uint64_t nbytes) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_get_nonblocking(local, descriptor, offset, nbytes);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3910,9 +3959,11 @@ void fam::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @return - 0 for successful completion, 1 for unsuccessful completion,
  * negative number in case of exceptions
  */
-int fam::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
-                          uint64_t offset, uint64_t nbytes) {
-    return pimpl_->fam_put_blocking(local, descriptor, offset, nbytes);
+void fam::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
+                           uint64_t offset, uint64_t nbytes) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_put_blocking(local, descriptor, offset, nbytes);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3931,7 +3982,9 @@ int fam::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
  */
 void fam::fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
                               uint64_t offset, uint64_t nbytes) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_put_nonblocking(local, descriptor, offset, nbytes);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 // LOAD/STORE sub-group
@@ -3945,7 +3998,9 @@ void fam::fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
  * @see #fam_unmap()
  */
 void *fam::fam_map(Fam_Descriptor *descriptor) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_map(descriptor);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -3956,7 +4011,9 @@ void *fam::fam_map(Fam_Descriptor *descriptor) {
  * @see #fam_map()
  */
 void fam::fam_unmap(void *local, Fam_Descriptor *descriptor) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_unmap(local, descriptor);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 // GATHER/SCATTER subgroup
@@ -3983,11 +4040,13 @@ void fam::fam_unmap(void *local, Fam_Descriptor *descriptor) {
  * negative number in case of exception
  * @see #fam_scatter_strided
  */
-int fam::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                             uint64_t nElements, uint64_t firstElement,
-                             uint64_t stride, uint64_t elementSize) {
-    return pimpl_->fam_gather_blocking(local, descriptor, nElements,
-                                       firstElement, stride, elementSize);
+void fam::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t nElements, uint64_t firstElement,
+                              uint64_t stride, uint64_t elementSize) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_gather_blocking(local, descriptor, nElements, firstElement,
+                                stride, elementSize);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4011,11 +4070,13 @@ int fam::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
  * negative number in case errors
  * @see #fam_scatter_indexed
  */
-int fam::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                             uint64_t nElements, uint64_t *elementIndex,
-                             uint64_t elementSize) {
-    return pimpl_->fam_gather_blocking(local, descriptor, nElements,
-                                       elementIndex, elementSize);
+void fam::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t nElements, uint64_t *elementIndex,
+                              uint64_t elementSize) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_gather_blocking(local, descriptor, nElements, elementIndex,
+                                elementSize);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4040,8 +4101,10 @@ int fam::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
 void fam::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
                                  uint64_t nElements, uint64_t firstElement,
                                  uint64_t stride, uint64_t elementSize) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_gather_nonblocking(local, descriptor, nElements, firstElement,
                                    stride, elementSize);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4065,8 +4128,10 @@ void fam::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
 void fam::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
                                  uint64_t nElements, uint64_t *elementIndex,
                                  uint64_t elementSize) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_gather_nonblocking(local, descriptor, nElements, elementIndex,
                                    elementSize);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4091,11 +4156,13 @@ void fam::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
  * negative number in case errors
  * @see #fam_gather_strided
  */
-int fam::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                              uint64_t nElements, uint64_t firstElement,
-                              uint64_t stride, uint64_t elementSize) {
-    return pimpl_->fam_scatter_blocking(local, descriptor, nElements,
-                                        firstElement, stride, elementSize);
+void fam::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                               uint64_t nElements, uint64_t firstElement,
+                               uint64_t stride, uint64_t elementSize) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_scatter_blocking(local, descriptor, nElements, firstElement,
+                                 stride, elementSize);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4118,11 +4185,13 @@ int fam::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
  * negative number in case errors
  * @see #fam_gather_indexed
  */
-int fam::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                              uint64_t nElements, uint64_t *elementIndex,
-                              uint64_t elementSize) {
-    return pimpl_->fam_scatter_blocking(local, descriptor, nElements,
-                                        elementIndex, elementSize);
+void fam::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                               uint64_t nElements, uint64_t *elementIndex,
+                               uint64_t elementSize) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_scatter_blocking(local, descriptor, nElements, elementIndex,
+                                 elementSize);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4149,8 +4218,10 @@ int fam::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
 void fam::fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
                                   uint64_t nElements, uint64_t firstElement,
                                   uint64_t stride, uint64_t elementSize) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_scatter_nonblocking(local, descriptor, nElements, firstElement,
                                     stride, elementSize);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4175,8 +4246,10 @@ void fam::fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
 void fam::fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
                                   uint64_t nElements, uint64_t *elementIndex,
                                   uint64_t elementSize) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_scatter_nonblocking(local, descriptor, nElements, elementIndex,
                                     elementSize);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 // COPY Subgroup
@@ -4201,10 +4274,17 @@ void fam::fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
 void *fam::fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
                     Fam_Descriptor *dest, uint64_t destOffset,
                     uint64_t nbytes) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_copy(src, srcOffset, dest, destOffset, nbytes);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
-void fam::fam_copy_wait(void *waitObj) { pimpl_->fam_copy_wait(waitObj); }
+void fam::fam_copy_wait(void *waitObj) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_copy_wait(waitObj);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
 
 // ATOMICS Group
 
@@ -4223,25 +4303,39 @@ void fam::fam_copy_wait(void *waitObj) { pimpl_->fam_copy_wait(waitObj); }
  *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_set(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, int64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_set(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, int128_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_set(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_set(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_set(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, float value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_set(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, double value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_set(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4257,22 +4351,34 @@ void fam::fam_set(Fam_Descriptor *descriptor, uint64_t offset, double value) {
  *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, int32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, int64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, float value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, double value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4290,27 +4396,39 @@ void fam::fam_add(Fam_Descriptor *descriptor, uint64_t offset, double value) {
  */
 void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                        int32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                        int64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                        uint32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                        uint64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                        float value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                        double value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4327,22 +4445,34 @@ void fam::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
  *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, int32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, int64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, float value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, double value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4359,22 +4489,34 @@ void fam::fam_min(Fam_Descriptor *descriptor, uint64_t offset, double value) {
  *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, int32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, int64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, float value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, double value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4391,10 +4533,14 @@ void fam::fam_max(Fam_Descriptor *descriptor, uint64_t offset, double value) {
  *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_and(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_and(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_and(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_and(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4411,10 +4557,14 @@ void fam::fam_and(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
  *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_or(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_or(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4431,10 +4581,14 @@ void fam::fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
  *         FAM_ERR_NOPERM, FAM_ERR_NOTFOUND, FAM_ERR_RPC
  */
 void fam::fam_xor(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_xor(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 void fam::fam_xor(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_xor(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 // FETCHING Routines - perform the operation, and return the old value in FAM
@@ -4452,25 +4606,39 @@ void fam::fam_xor(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value) {
  * @return - value from the given location in FAM
  */
 int32_t fam::fam_fetch_int32(Fam_Descriptor *descriptor, uint64_t offset) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_int32(descriptor, offset);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int64_t fam::fam_fetch_int64(Fam_Descriptor *descriptor, uint64_t offset) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_int64(descriptor, offset);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int128_t fam::fam_fetch_int128(Fam_Descriptor *descriptor, uint64_t offset) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_int128(descriptor, offset);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint32_t fam::fam_fetch_uint32(Fam_Descriptor *descriptor, uint64_t offset) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_uint32(descriptor, offset);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_fetch_uint64(Fam_Descriptor *descriptor, uint64_t offset) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_uint64(descriptor, offset);
+    RETURN_WITH_FAM_EXCEPTION
 }
 float fam::fam_fetch_float(Fam_Descriptor *descriptor, uint64_t offset) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_float(descriptor, offset);
+    RETURN_WITH_FAM_EXCEPTION
 }
 double fam::fam_fetch_double(Fam_Descriptor *descriptor, uint64_t offset) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_double(descriptor, offset);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4489,26 +4657,38 @@ double fam::fam_fetch_double(Fam_Descriptor *descriptor, uint64_t offset) {
  */
 int32_t fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
                       int32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_swap(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int64_t fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
                       int64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_swap(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint32_t fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
                        uint32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_swap(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
                        uint64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_swap(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 float fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset, float value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_swap(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 double fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
                      double value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_swap(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4529,23 +4709,33 @@ double fam::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
  */
 int32_t fam::fam_compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                               int32_t oldValue, int32_t newValue) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_compare_swap(descriptor, offset, oldValue, newValue);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int64_t fam::fam_compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                               int64_t oldValue, int64_t newValue) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_compare_swap(descriptor, offset, oldValue, newValue);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint32_t fam::fam_compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                uint32_t oldValue, uint32_t newValue) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_compare_swap(descriptor, offset, oldValue, newValue);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                uint64_t oldValue, uint64_t newValue) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_compare_swap(descriptor, offset, oldValue, newValue);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int128_t fam::fam_compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                int128_t oldValue, int128_t newValue) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_compare_swap(descriptor, offset, oldValue, newValue);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4563,27 +4753,39 @@ int128_t fam::fam_compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
  */
 int32_t fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                            int32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int64_t fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                            int64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint32_t fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                             uint32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                             uint64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 float fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                          float value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 double fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                           double value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_add(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4602,27 +4804,39 @@ double fam::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
  */
 int32_t fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                                 int32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int64_t fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                                 int64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint32_t fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                                  uint32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                                  uint64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 float fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                               float value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 double fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                                double value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_subtract(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4642,27 +4856,39 @@ double fam::fam_fetch_subtract(Fam_Descriptor *descriptor, uint64_t offset,
  */
 int32_t fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
                            int32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int64_t fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
                            int64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint32_t fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
                             uint32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
                             uint64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 float fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
                          float value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 double fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
                           double value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_min(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4682,27 +4908,39 @@ double fam::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
  */
 int32_t fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                            int32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 int64_t fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                            int64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint32_t fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                             uint32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                             uint64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 float fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                          float value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 double fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                           double value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_max(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4722,11 +4960,15 @@ double fam::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
  */
 uint32_t fam::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
                             uint32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_and(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
                             uint64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_and(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4746,11 +4988,15 @@ uint64_t fam::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
  */
 uint32_t fam::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
                            uint32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_or(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
                            uint64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_or(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**
@@ -4770,11 +5016,15 @@ uint64_t fam::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
  */
 uint32_t fam::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
                             uint32_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_xor(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 uint64_t fam::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
                             uint64_t value) {
+    TRY_CATCH_BEGIN
     return pimpl_->fam_fetch_xor(descriptor, offset, value);
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 // MEMORY ORDERING Routines - provide ordering of FAM operations issued by a PE
@@ -4787,7 +5037,11 @@ uint64_t fam::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  */
-void fam::fam_fence() { pimpl_->fam_fence(); }
+void fam::fam_fence() {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_fence();
+    RETURN_WITH_FAM_EXCEPTION
+}
 
 /**
  * fam_quiet - blocks the calling PE thread until all its pending FAM operations
@@ -4797,7 +5051,11 @@ void fam::fam_fence() { pimpl_->fam_fence(); }
  * @throws Fam_Datapath_Exception.
  * @throws Fam_Timeout_Exception.
  */
-void fam::fam_quiet() { pimpl_->fam_quiet(); }
+void fam::fam_quiet() {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_quiet();
+    RETURN_WITH_FAM_EXCEPTION
+}
 
 /**
  * fam() - constructor for fam class

@@ -54,11 +54,11 @@ int main() {
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
     fam_opts.libfabricPort = strdup(TEST_LIBFABRIC_PORT);
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful." << endl;
     }
 
     desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
@@ -91,10 +91,7 @@ int main() {
 
     try {
         my_fam->fam_quiet();
-    } catch (Fam_Timeout_Exception &e) {
-        cout << "fam quiet failed:" << e.fam_error_msg() << endl;
-        exit(1);
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "fam quiet failed:" << e.fam_error_msg() << endl;
         exit(1);
     }
@@ -105,10 +102,7 @@ int main() {
 
     try {
         my_fam->fam_quiet();
-    } catch (Fam_Timeout_Exception &e) {
-        cout << "fam quiet failed:" << e.fam_error_msg() << endl;
-        exit(1);
-    } catch (Fam_Datapath_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "fam quiet failed:" << e.fam_error_msg() << endl;
         exit(1);
     }

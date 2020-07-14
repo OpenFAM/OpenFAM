@@ -77,11 +77,11 @@ int main() {
 
     // Initialize openFAM API
     fam_opts.allocator = strdup("NVMM");
-    if (my_fam->fam_initialize("default", &fam_opts) < 0) {
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
-    } else {
-        cout << "fam initialization successful" << endl;
     }
 
     // Create Region
@@ -97,7 +97,9 @@ int main() {
     }
 
     // Change the permission of region
-    if (my_fam->fam_change_permissions(desc, 0777) < 0) {
+    try {
+        my_fam->fam_change_permissions(desc, 0777);
+    } catch (Fam_Exception &e) {
         cout << "fam change region permission failed" << endl;
         my_fam->fam_destroy_region(desc);
         exit(1);
@@ -125,12 +127,14 @@ int main() {
         // We are expecting an exception here.
         my_fam->fam_destroy_region(desc);
         exit(1);
-    } catch (Fam_InvalidOption_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "fam_map needs write permission" << endl;
     }
 
     // Change the permission of dataitem
-    if (my_fam->fam_change_permissions(item, 0777) < 0) {
+    try {
+        my_fam->fam_change_permissions(item, 0777);
+    } catch (Fam_Exception &e) {
         cout << "fam change region permission failed" << endl;
         my_fam->fam_destroy_region(desc);
         exit(1);

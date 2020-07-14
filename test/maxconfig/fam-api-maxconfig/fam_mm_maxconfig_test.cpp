@@ -62,7 +62,7 @@ TEST(FamMMNegativeTest, FamCreateRegionGreaterMaxSizeFailure) {
 
     EXPECT_THROW(
         my_fam->fam_create_region(testRegion, 2199023255552, 0777, RAID1),
-        Fam_Allocator_Exception);
+        Fam_Exception);
     free((void *)testRegion);
 }
 
@@ -96,7 +96,7 @@ TEST(FamMMNegativeTest, FamAllocateGreaterMaxSizeFailure) {
                                                      0777, RAID1));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_THROW(my_fam->fam_allocate(dataItem, 824633720832, 0444, desc),
-                 Fam_Allocator_Exception);
+                 Fam_Exception);
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
     delete desc;
     free((void *)testRegion);

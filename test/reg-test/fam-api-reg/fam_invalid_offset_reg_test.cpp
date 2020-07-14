@@ -60,7 +60,7 @@ TEST(FamInvalidOffset, InvalidOffsetSuccess) {
     EXPECT_NE((void *)NULL, item);
 
     EXPECT_THROW(my_fam->fam_put_blocking(local, item, 2000, 13),
-                 Fam_Datapath_Exception);
+                 Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));

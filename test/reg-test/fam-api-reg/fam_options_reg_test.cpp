@@ -99,7 +99,7 @@ TEST(FamOption, QueryWithInavlidOption) {
     char *opt;
 
     opt = strdup("NotAnOption");
-    EXPECT_THROW(my_fam->fam_get_option(opt), Fam_InvalidOption_Exception);
+    EXPECT_THROW(my_fam->fam_get_option(opt), Fam_Exception);
     free(opt);
 }
 

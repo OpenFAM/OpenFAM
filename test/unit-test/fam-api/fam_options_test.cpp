@@ -57,10 +57,10 @@ int main() {
         // Throws grpc exception because of wrong grpc port.
         // Continue the test, as this is only to test fam_options.
         my_fam->fam_initialize("default", &fam_opts);
-    } catch (Fam_Allocator_Exception &e) {
-        cout << "fam initialization failed with Fam_Allocator_Exception. "
-                "continue to test fam_list_options."
-             << endl;
+    } catch (Fam_Exception &e) {
+        cout << "fam initialization failed with fam_error:" << e.fam_error()
+             << ":" << e.fam_error_msg()
+             << ", continue to test fam_list_options." << endl;
     }
 
     optList = my_fam->fam_list_options();
@@ -93,7 +93,7 @@ int main() {
         char *badOpt = strdup("badOption");
         char *optValue = (char *)my_fam->fam_get_option(badOpt);
         cout << optList[i] << ":" << optValue << endl;
-    } catch (Fam_InvalidOption_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;

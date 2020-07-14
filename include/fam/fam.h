@@ -1,8 +1,8 @@
 /*
  * fam.h
- * Copyright (c) 2017, 2018 Hewlett Packard Enterprise Development, LP. All
- * rights reserved. Redistribution and use in source and binary forms, with or
- * without modification, are permitted provided that the following conditions
+ * Copyright (c) 2017, 2018, 2020 Hewlett Packard Enterprise Development, LP.
+ * All rights reserved. Redistribution and use in source and binary forms, with
+ * or without modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
@@ -39,6 +39,10 @@
  * to OpenFAM-API version 1.04 Modified Oct 5, 2018, by Sharad Singhal to
  * include C++ definitions Modifed Oct 22, 2018 by Sharad Singhal to separate
  * out C and C11 definitions
+ * Modified July 14, 2020, by Faizan Barmawer to add fam_stat API definition,
+ * change signature of fam_initialize, fam_resize_region, fam_copy,
+ * fam*_blocking APIs, fam_change_permissions and removed fam_size API
+ * definition
  *
  * Work in progress, UNSTABLE
  * Uses _Generic and 128-bit integer types, tested under gcc 6.3.0. May require
@@ -273,16 +277,17 @@ class fam {
      * method called when a process uses the OpenFAM library.
      * @param groupName - name of the group of cooperating PEs.
      * @param options - options structure containing initialization choices
-     * @return - {true(0), false(1), errNo(<0)}
+     * @return - none
      * @see #fam_finalize()
      * @see #Fam_Options
      */
-    int fam_initialize(const char *groupName, Fam_Options *options);
+    void fam_initialize(const char *groupName, Fam_Options *options);
 
     /**
      * Finalize the fam library. Once finalized, the process can continue work,
      * but it is disconnected from the OpenFAM library functions.
      * @param groupName - name of group of cooperating PEs for this job
+     * @return - none
      * @see #fam_initialize()
      */
     void fam_finalize(const char *groupName);
@@ -290,12 +295,14 @@ class fam {
     /**
      * Forcibly terminate all PEs in the same group as the caller
      * @param status - termination status to be returned by the program.
+     * @return - none
      */
     void fam_abort(int status);
 
     /**
      * Suspends the execution of the calling PE until all other PEs issue
      * a call to this particular fam_barrier_all() statement
+     * @return - none
      */
     void fam_barrier_all();
 
@@ -363,6 +370,7 @@ class fam {
      * method call will trigger a delayed free operation to permit other
      * instances currently using the region to finish.
      * @param descriptor - descriptor for the region
+     * @return - none
      * @see #fam_create_region
      * @see #fam_resize_region
      */
@@ -376,12 +384,11 @@ class fam {
      * @param descriptor - descriptor associated with the previously created
      * region
      * @param nbytes - new requested size of the allocated space
-     * @return - 0 on success, 1 for unsuccessful completion, negative number on
-     * an exception
+     * @return - none
      * @see #fam_create_region
      * @see #fam_destroy_region
      */
-    int fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
+    void fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
 
     /**
      * Allocate some unnamed space within a region. Allocates an area of FAM
@@ -404,6 +411,7 @@ class fam {
     /**
      * Deallocate allocated space in memory
      * @param descriptor - descriptor associated with the space.
+     * @return - none
      * @see #fam_allocate()
      */
     void fam_deallocate(Fam_Descriptor *descriptor);
@@ -412,21 +420,19 @@ class fam {
      * Change permissions associated with a data item descriptor.
      * @param descriptor - descriptor associated with some data item
      * @param accessPermissions - new permissions for the data item
-     * @return - 0 on success, 1 for unsuccessful completion, negative number on
-     * an exception
+     * @return - none
      */
-    int fam_change_permissions(Fam_Descriptor *descriptor,
-                               mode_t accessPermissions);
+    void fam_change_permissions(Fam_Descriptor *descriptor,
+                                mode_t accessPermissions);
 
     /**
      * Change permissions associated with a region descriptor.
      * @param descriptor - descriptor associated with some region
      * @param accessPermissions - new permissions for the region
-     * @return - 0 on success, 1 for unsuccessful completion, negative number on
-     * an exception
+     * @return - none
      */
-    int fam_change_permissions(Fam_Region_Descriptor *descriptor,
-                               mode_t accessPermissions);
+    void fam_change_permissions(Fam_Region_Descriptor *descriptor,
+                                mode_t accessPermissions);
 
     /**
      * Get the size, permissions and name of the dataitem  associated
@@ -461,11 +467,10 @@ class fam {
      * @param offset - byte offset within the space defined by the descriptor
      * from where memory should be copied
      * @param nbytes - number of bytes to be copied from global to local memory
-     * @return - 0 for successful completion, 1 for unsuccessful, and a negative
-     * number in case of exceptions
+     * @return - none
      */
-    int fam_get_blocking(void *local, Fam_Descriptor *descriptor,
-                         uint64_t offset, uint64_t nbytes);
+    void fam_get_blocking(void *local, Fam_Descriptor *descriptor,
+                          uint64_t offset, uint64_t nbytes);
 
     /**
      * Initiate a copy of data from FAM to node local memory. Do not wait until
@@ -476,6 +481,7 @@ class fam {
      * @param offset - byte offset within the space defined by the descriptor
      * from where memory should be copied
      * @param nbytes - number of bytes to be copied from global to local memory
+     * @return - none
      */
     void fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
                              uint64_t offset, uint64_t nbytes);
@@ -488,11 +494,10 @@ class fam {
      * @param offset - byte offset within the region defined by the descriptor
      * to where data should be copied
      * @param nbytes - number of bytes to be copied from local to FAM
-     * @return - 0 for successful completion, 1 for unsuccessful completion,
-     * negative number in case of exceptions
+     * @return - none
      */
-    int fam_put_blocking(void *local, Fam_Descriptor *descriptor,
-                         uint64_t offset, uint64_t nbytes);
+    void fam_put_blocking(void *local, Fam_Descriptor *descriptor,
+                          uint64_t offset, uint64_t nbytes);
 
     /**
      * Initiate a copy of data from local memory to FAM, returning before copy
@@ -503,6 +508,7 @@ class fam {
      * @param offset - byte offset within the region defined by the descriptor
      * to where data should be copied
      * @param nbytes - number of bytes to be copied from local to FAM
+     * @return - none
      */
     void fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
                              uint64_t offset, uint64_t nbytes);
@@ -524,6 +530,7 @@ class fam {
      * @param local - pointer within the process virtual address space to be
      * unmapped
      * @param descriptor - descriptor for the FAM to be unmapped
+     * @return - none
      * @see #fam_map()
      */
     void fam_unmap(void *local, Fam_Descriptor *descriptor);
@@ -544,13 +551,12 @@ class fam {
      * access
      * @param stride - stride in elements
      * @param elementSize - size of the element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case of exception
+     * @return - none
      * @see #fam_scatter_strided
      */
-    int fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                            uint64_t nElements, uint64_t firstElement,
-                            uint64_t stride, uint64_t elementSize);
+    void fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                             uint64_t nElements, uint64_t firstElement,
+                             uint64_t stride, uint64_t elementSize);
 
     /**
      * Gather data from FAM to local memory, blocking while copy is complete
@@ -564,13 +570,12 @@ class fam {
      * @param nElements - number of elements to be gathered in local memory
      * @param elementIndex - array of element indexes in FAM to fetch
      * @param elementSize - size of each element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
+     * @return - none
      * @see #fam_scatter_indexed
      */
-    int fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
-                            uint64_t nElements, uint64_t *elementIndex,
-                            uint64_t elementSize);
+    void fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
+                             uint64_t nElements, uint64_t *elementIndex,
+                             uint64_t elementSize);
 
     /**
      * Initiate a gather of data from FAM to local memory, return before
@@ -586,6 +591,7 @@ class fam {
      * access
      * @param stride - stride in elements
      * @param elementSize - size of the element in bytes
+     * @return - none
      * @see #fam_scatter_strided
      */
     void fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
@@ -604,6 +610,7 @@ class fam {
      * @param nElements - number of elements to be gathered in local memory
      * @param elementIndex - array of element indexes in FAM to fetch
      * @param elementSize - size of each element in bytes
+     * @return - none
      * @see #fam_scatter_indexed
      */
     void fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
@@ -623,13 +630,12 @@ class fam {
      * the strided access
      * @param stride - stride in elements
      * @param elementSize - size of each element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
+     * @return - none
      * @see #fam_gather_strided
      */
-    int fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                             uint64_t nElements, uint64_t firstElement,
-                             uint64_t stride, uint64_t elementSize);
+    void fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t nElements, uint64_t firstElement,
+                              uint64_t stride, uint64_t elementSize);
 
     /**
      * Scatter data from local memory to FAM.
@@ -642,13 +648,12 @@ class fam {
      * @param nElements - number of elements to be scattered from local memory
      * @param elementIndex - array containing element indexes
      * @param elementSize - size of the element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
+     * @return - none
      * @see #fam_gather_indexed
      */
-    int fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
-                             uint64_t nElements, uint64_t *elementIndex,
-                             uint64_t elementSize);
+    void fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
+                              uint64_t nElements, uint64_t *elementIndex,
+                              uint64_t elementSize);
 
     /**
      * initiate a scatter data from local memory to FAM.
@@ -663,8 +668,7 @@ class fam {
      * the strided access
      * @param stride - stride in elements
      * @param elementSize - size of each element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
+     * @return - none
      * @see #fam_gather_strided
      */
     void fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
@@ -682,8 +686,7 @@ class fam {
      * @param nElements - number of elements to be scattered from local memory
      * @param elementIndex - array containing element indexes
      * @param elementSize - size of the element in bytes
-     * @return - 0 for normal completion, 1 in case of unsuccessful completion,
-     * negative number in case errors
+     * @return - none
      * @see #fam_gather_indexed
      */
     void fam_scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
@@ -702,6 +705,8 @@ class fam {
      * @param destOffset - byte offset within the space defined by the dest
      * descriptor to which memory should be copied.
      * @param nbytes - number of bytes to be copied
+     * @return - a pointer to the wait object for the copy operation
+     * @see #fam_copy_wait
      */
     void *fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
                    Fam_Descriptor *dest, uint64_t destOffset, uint64_t nbytes);
@@ -709,6 +714,7 @@ class fam {
     /**
      * Wait for copy operation correspond to the wait object passed to complete
      * @param waitObj - unique tag to copy operation
+     * @return - none
      */
     void fam_copy_wait(void *waitObj);
     // ATOMICS Group
@@ -722,6 +728,7 @@ class fam {
      * @param offset - byte offset within the data item of the value to be
      * updated
      * @param value - value to be set at the given location
+     * @return - none
      */
     void fam_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
     void fam_set(Fam_Descriptor *descriptor, uint64_t offset, int64_t value);
@@ -739,6 +746,7 @@ class fam {
      * updated
      * @param value - value to be added to the existing value at the given
      * location
+     * @return - none
      */
     void fam_add(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
     void fam_add(Fam_Descriptor *descriptor, uint64_t offset, int64_t value);
@@ -755,6 +763,7 @@ class fam {
      * updated
      * @param value - value to be subtracted from the existing value at the
      * given location
+     * @return - none
      */
     void fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
                       int32_t value);
@@ -776,6 +785,7 @@ class fam {
      * updated
      * @param value - value to be compared to the existing value at the given
      * location
+     * @return - none
      */
     void fam_min(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
     void fam_min(Fam_Descriptor *descriptor, uint64_t offset, int64_t value);
@@ -792,6 +802,7 @@ class fam {
      * updated
      * @param value - value to be compared to the existing value at the given
      * location
+     * @return - none
      */
     void fam_max(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
     void fam_max(Fam_Descriptor *descriptor, uint64_t offset, int64_t value);
@@ -808,6 +819,7 @@ class fam {
      * updated
      * @param value - value to be combined with the existing value at the given
      * location
+     * @return - none
      */
     void fam_and(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value);
     void fam_and(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value);
@@ -820,6 +832,7 @@ class fam {
      * updated
      * @param value - value to be combined with the existing value at the given
      * location
+     * @return - none
      */
     void fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value);
     void fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value);
@@ -832,6 +845,7 @@ class fam {
      * updated
      * @param value - value to be combined with the existing value at the given
      * location
+     * @return - none
      */
     void fam_xor(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value);
     void fam_xor(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value);
@@ -1051,6 +1065,7 @@ class fam {
      * operations issued by the calling thread after the fence Note that method
      * this does NOT order load/store accesses by the processor to FAM enabled
      * by fam_map().
+     * @return - none
      */
     void fam_fence(void);
 
@@ -1059,6 +1074,7 @@ class fam {
      * operations (put, scatter, atomics, copy) are completed. Note that method
      * this does NOT order or wait for completion of load/store accesses by the
      * processor to FAM enabled by fam_map().
+     * @return - none
      */
     void fam_quiet(void);
 
