@@ -7,7 +7,6 @@ enum { KEY_UNDEFINED = 0, KEY_NULL, KEY_SCALAR, KEY_SEQUENCE, KEY_MAP };
 using namespace openfam;
 class yaml_config_info : public config_info {
   public:
-    yaml_config_info(){};
     yaml_config_info(std::string file_name) {
         try {
             config = YAML::LoadFile(file_name);

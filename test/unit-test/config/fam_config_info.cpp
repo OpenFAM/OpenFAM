@@ -28,7 +28,7 @@
  *
  */
 
-#include "../src/common/yaml_config_info.h"
+#include "common/yaml_config_info.h"
 #include <iostream>
 #include <map>
 #include <string.h>
@@ -40,20 +40,33 @@ int main(int argc, char **argv) {
         exit(1);
     }
     char *filename = argv[1];
+    config_info *info = NULL;
     try {
-        yaml_config_info info(filename);
+        info = new yaml_config_info(filename);
 
-        std::string allocator = info.get_key_value("allocator");
+        std::string allocator = info->get_key_value("allocator");
         if (allocator.compare("grpc") == 0) {
             cout << " allocator value: " << allocator << endl;
+        } else {
+            cout << "Unexpected allocator value: " << allocator << endl;
+            delete info;
+            exit(1);
         }
-        std::string cis_ip = info.get_key_value("cis_ip");
+        std::string cis_ip = info->get_key_value("cis_ip");
         if (cis_ip.compare("127.0.0.1") == 0) {
             cout << " cis_ip value: " << cis_ip << endl;
+        } else {
+            cout << "Unexpected cis_ip value: " << cis_ip << endl;
+            delete info;
+            exit(1);
         }
-        std::string provider = info.get_key_value("provider");
+        std::string provider = info->get_key_value("provider");
         if (provider.compare("sockets") == 0) {
             cout << " provider value: " << provider << endl;
+        } else {
+            cout << "Unexpected provider value: " << provider << endl;
+            delete info;
+            exit(1);
         }
         vector<string> ips;
         ips.push_back("0:<ip_address_1>");
@@ -61,20 +74,26 @@ int main(int argc, char **argv) {
         ips.push_back("3:<ip_address_3>");
         ips.push_back("2:<ip_address_4>");
 
-        int data_type = info.get_value_type("other_ip");
+        int data_type = info->get_value_type("other_ip");
         ;
         if (data_type == KEY_SEQUENCE) {
             vector<string> other_ips;
-            other_ips = info.get_value_list("other_ip");
+            other_ips = info->get_value_list("other_ip");
             for (unsigned int i = 0; i < other_ips.size(); ++i)
                 if (other_ips[i].compare(ips[i]) == 0) {
                     cout << "otherip value " << other_ips[i] << std::endl;
+                } else {
+                    cout << "Unexpected otherip value: " << other_ips[i]
+                         << endl;
+                    delete info;
+                    exit(1);
                 }
         }
-
+        delete info;
     } catch (Fam_Exception &e) {
         cout << "Exception found when accessing config file :" << filename
              << e.fam_error_msg() << endl;
+        delete info;
         exit(1);
     }
 }
