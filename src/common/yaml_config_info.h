@@ -7,28 +7,33 @@ enum { KEY_UNDEFINED = 0, KEY_NULL, KEY_SCALAR, KEY_SEQUENCE, KEY_MAP };
 using namespace openfam;
 class yaml_config_info : public config_info {
   public:
-    yaml_config_info() {}
-    void config_init(std::string file_name);
+    yaml_config_info(){};
+    yaml_config_info(std::string file_name) {
+        try {
+            config = YAML::LoadFile(file_name);
+        } catch (std::exception &e) {
+            std::ostringstream message;
+            message << "Fam Config: Invalid Configuration file - " << file_name;
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
+    }
     std::string get_key_value(std::string key);
     std::vector<std::string> get_value_list(std::string key);
     int get_value_type(std::string key);
-    ~yaml_config_info() {}
+    ~yaml_config_info(){};
 
   private:
     YAML::Node config;
 };
 
-void yaml_config_info::config_init(std::string file_name) {
-    config = YAML::LoadFile(file_name);
-}
 std::string yaml_config_info::get_key_value(std::string key) {
     std::string value;
     if (config[key]) {
         value = (config[key].as<std::string>());
     } else {
         std::ostringstream message;
-        message << "Fam Invalid Key Fam_Config: Key doesn't exist - " << key;
-        throw Fam_InvalidOption_Exception(message.str().c_str());
+        message << "Fam Config: Key does not exist - " << key;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     return value;
 }
@@ -45,7 +50,7 @@ std::vector<std::string> yaml_config_info::get_value_list(std::string key) {
 	}
     } else {
         std::ostringstream message;
-        message << "Fam Invalid Key Fam_Config: Key doesn't exist - " << key;
+        message << "Fam Config: Key does not exist - " << key;
         throw Fam_InvalidOption_Exception(message.str().c_str());
     }
 

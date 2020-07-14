@@ -35,29 +35,46 @@
 #include <vector>
 using namespace std;
 int main(int argc, char **argv) {
-    yaml_config_info info;
     if ((argc <= 1) || (argv[1] == NULL)) {
         cout << "./fam_config_info <config-file-path>" << endl;
         exit(1);
     }
     char *filename = argv[1];
-    info.config_init(filename);
     try {
-        cout << " allocator value: " << info.get_key_value("allocator")
-             << " cis ip: " << info.get_key_value("cis_ip");
-        cout << " provider value: " << info.get_key_value("provider") << endl;
+        yaml_config_info info(filename);
+
+        std::string allocator = info.get_key_value("allocator");
+        if (allocator.compare("grpc") == 0) {
+            cout << " allocator value: " << allocator << endl;
+        }
+        std::string cis_ip = info.get_key_value("cis_ip");
+        if (cis_ip.compare("127.0.0.1") == 0) {
+            cout << " cis_ip value: " << cis_ip << endl;
+        }
+        std::string provider = info.get_key_value("provider");
+        if (provider.compare("sockets") == 0) {
+            cout << " provider value: " << provider << endl;
+        }
+        vector<string> ips;
+        ips.push_back("0:<ip_address_1>");
+        ips.push_back("1:<ip_address_2>");
+        ips.push_back("3:<ip_address_3>");
+        ips.push_back("2:<ip_address_4>");
+
         int data_type = info.get_value_type("other_ip");
         ;
         if (data_type == KEY_SEQUENCE) {
             vector<string> other_ips;
             other_ips = info.get_value_list("other_ip");
             for (unsigned int i = 0; i < other_ips.size(); ++i)
-                cout << "otherip value " << other_ips[i] << std::endl;
+                if (other_ips[i].compare(ips[i]) == 0) {
+                    cout << "otherip value " << other_ips[i] << std::endl;
+                }
         }
-        cout << " runtime value: " << info.get_key_value("runtime") << endl;
 
-    } catch (Fam_InvalidOption_Exception &e) {
+    } catch (Fam_Exception &e) {
         cout << "Exception found when accessing config file :" << filename
              << e.fam_error_msg() << endl;
+        exit(1);
     }
 }
