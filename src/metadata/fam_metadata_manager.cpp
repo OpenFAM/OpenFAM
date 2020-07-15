@@ -42,6 +42,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "bitmap-manager/bitmap.h"
+#include "common/fam_internal.h"
 #include "common/fam_memserver_profile.h"
 
 #define OPEN_METADATA_KVS(root, heap_size, heap_id, kvs)                       \
@@ -191,7 +193,30 @@ class FAM_Metadata_Manager::Impl_ {
                                     metadata_region_item_op_t op, uint64_t uid,
                                     uint64_t gid);
 
+    int metadata_create_region_check(string regionname, size_t size,
+                                     uint64_t *regionid,
+                                     std::list<int> *memory_server_list,
+                                     int user_policy);
+
+    int metadata_destroy_region_check(const uint64_t regionId, uint64_t uid,
+                                      uint64_t gid,
+                                      std::list<int> *memory_server_list);
+
+    int metadata_allocate_check(const std::string dataitemName,
+                                const uint64_t regionId, uint32_t uid,
+                                uint32_t gid);
+
+    int metadata_deallocate_check(const uint64_t regionId,
+                                  const uint64_t dataitemId, uint32_t uid,
+                                  uint32_t gid);
+
     size_t metadata_maxkeylen();
+
+    int metadata_get_RegionID(uint64_t *regionID);
+    int metadata_reset_RegionID(uint64_t regionid);
+
+    int metadata_update_memoryserver(Fam_memserver_info &memserver_info_list,
+                                     int list_size);
 
   private:
     // KVS for region Id tree
@@ -202,6 +227,8 @@ class FAM_Metadata_Manager::Impl_ {
     GlobalPtr regionIdRoot;
     // KVS root pointer for region Name tree
     GlobalPtr regionNameRoot;
+    bitmap *bmap;
+    int memoryServerCount;
 
     bool use_meta_region;
     KvsMap *metadataKvsMap;
@@ -227,6 +254,13 @@ class FAM_Metadata_Manager::Impl_ {
 
     int get_regionid_from_regionname_KVS(const std::string regionName,
                                          std::string &regionId);
+
+    void init_poolId_bmap();
+
+    std::list<int> get_memory_server(const std::string regionName, size_t size,
+                                     int user_policy);
+
+    std::list<int> get_memory_server_list(Fam_Region_Metadata region);
 };
 
 /*
@@ -274,6 +308,12 @@ int FAM_Metadata_Manager::Impl_::Init(bool use_meta_reg) {
         DEBUG_STDERR("Metadata Init", "KVS creation failed.");
         return META_ERROR;
     }
+    // Initialize bitmap
+    init_poolId_bmap();
+
+    // TODO: Read memoryServerCount from KVS
+    // As of now set memory server count as 1 in init.
+    memoryServerCount = 1;
 
     return META_NO_ERROR;
 }
@@ -286,6 +326,17 @@ int FAM_Metadata_Manager::Impl_::Final() {
     pthread_mutex_destroy(&kvsMapLock);
 
     return META_NO_ERROR;
+}
+
+/*
+ * Initalize the region Id bitmap address.
+ * Size of bitmap is Max poolId's supported / 8 bytes.
+ * Get the Bitmap address reserved from the root shelf.
+ */
+void FAM_Metadata_Manager::Impl_::init_poolId_bmap() {
+    bmap = new bitmap();
+    bmap->size = (ShelfId::kMaxPoolCount * BITSIZE) / sizeof(uint64_t);
+    bmap->map = memoryManager->GetRegionIdBitmapAddr();
 }
 
 /**
@@ -980,7 +1031,8 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
                 dataitemKey.size(), val_buf, val_len);
 
             if (ret != META_NO_ERROR) {
-                DEBUG_STDERR(dataitemName, "FindOrCreate failed");
+                DEBUG_STDERR(dataitemKey.c_str(), "FindOrCreate failed");
+                DEBUG_STDERR(ret, "FindOrCreate failed");
                 return META_ERROR;
             }
         }
@@ -1899,6 +1951,196 @@ size_t FAM_Metadata_Manager::Impl_::metadata_maxkeylen() {
     return regionNameKVS->MaxKeyLen();
 }
 
+int FAM_Metadata_Manager::Impl_::metadata_get_RegionID(uint64_t *regionID) {
+    // Find the first free bit after 10th bit in poolId bitmap.
+    // First 10 nvmm ID will be reserved.
+    *regionID = bitmap_find_and_reserve(bmap, 0, MEMSERVER_REGIONID_START);
+    if (*regionID == (uint64_t)BITMAP_NOTFOUND)
+        return META_NO_FREE_REGIONID;
+
+    return META_NO_ERROR;
+}
+
+int FAM_Metadata_Manager::Impl_::metadata_reset_RegionID(uint64_t regionID) {
+    bitmap_reset(bmap, regionID);
+    return META_NO_ERROR;
+}
+
+/**
+ * metadata_create_region_check - Check if region name exists and find
+ *     regionid and memoryservers.
+ * @params regionname - Region name to create
+ * @params size - Size of the region
+ * @params regionid - Region id of the region
+ * @params memory_server_list - List of memory server in which this region
+ * should be created.
+ * @params userpolicy - User policy recommendation
+ *
+ */
+
+int FAM_Metadata_Manager::Impl_::metadata_create_region_check(
+    const std::string regionname, size_t size, uint64_t *regionid,
+    std::list<int> *memory_server_list, int user_policy = 0) {
+
+    Fam_Region_Metadata region;
+    //
+    // Check if name length is within limit
+    if (regionname.size() > metadata_maxkeylen())
+        return META_LARGE_NAME;
+
+    // Check if region with that name exist
+    int ret = metadata_find_region(regionname, region);
+    if (ret == META_NO_ERROR) {
+        return META_KEY_ALREADY_EXIST;
+    }
+
+    // Call metadata_get_RegionID to get regionID
+    ret = metadata_get_RegionID(regionid);
+    if (ret != META_NO_ERROR) {
+        return ret;
+    }
+
+    // Call find_memory_server for the size asked for and for user policy
+    *memory_server_list = get_memory_server(regionname, size, user_policy);
+    return META_NO_ERROR;
+}
+
+/**
+ * metadata_destroy_region_check - Remove the region from metadata
+ * @params regionname - Region id to destroy
+ * @params uid - User id of the user
+ * @params gid - gid of the user
+ * @params memory_server_list - List of memory server from which the region
+ * should be removed.
+ *
+ */
+int FAM_Metadata_Manager::Impl_::metadata_destroy_region_check(
+    const uint64_t regionId, uint64_t uid, uint64_t gid,
+    std::list<int> *memory_server_list) {
+    // Check if region exists
+    // Check if the region exist, if not return error
+    Fam_Region_Metadata region;
+    int ret = metadata_find_region(regionId, region);
+    if (ret != META_NO_ERROR) {
+        return ret;
+    }
+
+    // Check if calling PE user is owner. If not, check with
+    // metadata service if the calling PE has the write
+    // permission to destroy region, if not return error
+    if (uid != region.uid) {
+        bool isPermitted = metadata_check_permissions(
+            &region, META_REGION_ITEM_WRITE, uid, gid);
+        if (!isPermitted) {
+            return META_NO_PERMISSION;
+        }
+    }
+
+    // remove region from metadata service.
+    // metadata_delete_region() is called before DestroyHeap() as
+    // cached KVS is freed in metadata_delete_region and calling
+    // metadata_delete_region after DestroyHeap will result in SIGSEGV.
+
+    ret = metadata_delete_region(regionId);
+    if (ret != META_NO_ERROR) {
+        return ret;
+    }
+
+    // Return memory server list to user
+    *memory_server_list = get_memory_server_list(region);
+    return META_NO_ERROR;
+}
+
+std::list<int>
+FAM_Metadata_Manager::Impl_::get_memory_server(const std::string regionname,
+                                               size_t size, int user_policy) {
+    std::uint64_t hashVal = std::hash<std::string>{}(regionname);
+    return {(int)hashVal % memoryServerCount};
+}
+
+std::list<int> FAM_Metadata_Manager::Impl_::get_memory_server_list(
+    Fam_Region_Metadata region) {
+    std::uint64_t hashVal = std::hash<std::string>{}(region.name);
+    return {(int)hashVal % memoryServerCount};
+}
+
+int FAM_Metadata_Manager::Impl_::metadata_allocate_check(
+    const std::string dataitemName, const uint64_t regionId, uint32_t uid,
+    uint32_t gid) {
+
+    int ret;
+    // Check if the name size is bigger than MAX_KEY_LEN supported
+    if (dataitemName.size() > metadata_maxkeylen()) {
+        return META_LARGE_NAME;
+    }
+
+    // Check with metadata service if the region exist, if not return error
+    Fam_Region_Metadata region;
+    ret = metadata_find_region(regionId, region);
+    if (ret != META_NO_ERROR) {
+        return ret;
+    }
+
+    // Check if calling PE user is owner. If not, check with
+    // metadata service if the calling PE has the write
+    // permission to create dataitem in that region, if not return error
+    if (uid != region.uid) {
+        bool isPermitted = metadata_check_permissions(
+            &region, META_REGION_ITEM_WRITE, uid, gid);
+        if (!isPermitted) {
+            return META_NO_PERMISSION;
+        }
+    }
+
+    // Check with metadata service if data item with the requested name
+    // is already exist, if exists return error
+    Fam_DataItem_Metadata dataitem;
+    if (dataitemName != "") {
+        ret = metadata_find_dataitem(dataitemName, regionId, dataitem);
+        if (ret == META_NO_ERROR) {
+            return META_KEY_ALREADY_EXIST;
+        }
+    }
+    return META_NO_ERROR;
+}
+
+int FAM_Metadata_Manager::Impl_::metadata_deallocate_check(
+    const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
+    uint32_t gid) {
+    // Check with metadata service if data item with the requested name
+    // is already exist, if not return error
+    Fam_DataItem_Metadata dataitem;
+    int ret = metadata_find_dataitem(dataitemId, regionId, dataitem);
+    if (ret != META_NO_ERROR) {
+        return ret;
+    }
+
+    // Check if calling PE user is owner. If not, check with
+    // metadata service if the calling PE has the write
+    // permission to destroy region, if not return error
+    if (uid != dataitem.uid) {
+        bool isPermitted = metadata_check_permissions(
+            &dataitem, META_REGION_ITEM_WRITE, uid, gid);
+        if (!isPermitted) {
+            return META_NO_PERMISSION;
+        }
+    }
+
+    // Remove data item from metadata service
+    ret = metadata_delete_dataitem(dataitemId, regionId);
+    if (ret != META_NO_ERROR) {
+        return ret;
+    }
+    return META_NO_ERROR;
+}
+
+int FAM_Metadata_Manager::Impl_::metadata_update_memoryserver(
+    Fam_memserver_info &memserver_info_list, int list_size) {
+    memoryServerCount = list_size;
+    // TODO: Update KVS with info.
+    return NO_ERROR;
+}
+
 /*
  * Public APIs of FAM_Metadata_Manager
  */
@@ -2183,4 +2425,71 @@ size_t FAM_Metadata_Manager::metadata_maxkeylen() {
     return ret;
 }
 
+int FAM_Metadata_Manager::metadata_create_region_check(
+    string regionname, size_t size, uint64_t *regionid,
+    std::list<int> *memory_server_list, int user_policy) {
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_create_region_check(regionname, size, regionid,
+                                               memory_server_list, user_policy);
+    METADATA_PROFILE_END_OPS(metadata_create_region_check);
+    return ret;
+}
+
+int FAM_Metadata_Manager::metadata_destroy_region_check(
+    const uint64_t regionId, uint32_t uid, uint32_t gid,
+    std::list<int> *memory_server_list) {
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_destroy_region_check(regionId, uid, gid,
+                                                memory_server_list);
+    METADATA_PROFILE_END_OPS(metadata_destroy_region_check);
+    return ret;
+}
+
+int FAM_Metadata_Manager::metadata_allocate_check(
+    const std::string dataitemName, const uint64_t regionId, uint32_t uid,
+    uint32_t gid) {
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_allocate_check(dataitemName, regionId, uid, gid);
+    METADATA_PROFILE_END_OPS(metadata_allocate_check);
+    return ret;
+}
+
+int FAM_Metadata_Manager::metadata_deallocate_check(const uint64_t regionId,
+                                                    const uint64_t dataitemId,
+                                                    uint32_t uid,
+                                                    uint32_t gid) {
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_deallocate_check(regionId, dataitemId, uid, gid);
+    METADATA_PROFILE_END_OPS(metadata_deallocate_check);
+    return ret;
+}
+
+int FAM_Metadata_Manager::metadata_reset_RegionID(uint64_t regionid) {
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_reset_RegionID(regionid);
+    METADATA_PROFILE_END_OPS(metadata_reset_RegionID);
+    return ret;
+}
+
+int FAM_Metadata_Manager::metadata_get_RegionID(uint64_t *regionid) {
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_get_RegionID(regionid);
+    METADATA_PROFILE_END_OPS(metadata_get_RegionID);
+    return ret;
+}
+
+int FAM_Metadata_Manager::metadata_update_memoryserver(
+    Fam_memserver_info &memserver_info_list, int list_size) {
+    int ret;
+    METADATA_PROFILE_START_OPS()
+    ret = pimpl_->metadata_update_memoryserver(memserver_info_list, list_size);
+    METADATA_PROFILE_END_OPS(metadata_update_memoryserver);
+    return ret;
+}
 } // end namespace metadata

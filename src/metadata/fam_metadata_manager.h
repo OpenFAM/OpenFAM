@@ -35,16 +35,18 @@
 #define FAM_METADATA_MANAGER_H
 
 #include <iostream>
+#include <list>
+#include <map>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
 #include <unistd.h>
-#include <map>
 
 #include "radixtree/kvs.h"
 #include "radixtree/radix_tree.h"
 
+#include "common/fam_internal.h"
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
@@ -52,9 +54,9 @@
 using namespace famradixtree;
 using namespace nvmm;
 using namespace std;
+using namespace openfam;
 
 namespace metadata {
-
 #ifdef META_DEBUG
 #define DEBUG_STDOUT(x, y)                                                     \
     {                                                                          \
@@ -128,6 +130,9 @@ typedef enum metadata_region_item_op {
 } metadata_region_item_op_t;
 
 enum metadata_ErrorVal {
+    META_NO_PERMISSION = -6,
+    META_LARGE_NAME = -5,
+    META_NO_FREE_REGIONID = -4,
     META_KEY_ALREADY_EXIST = -3,
     META_KEY_DOES_NOT_EXIST = -2,
     META_ERROR = -1,
@@ -215,7 +220,32 @@ class FAM_Metadata_Manager {
     bool metadata_check_permissions(Fam_Region_Metadata *region,
                                     metadata_region_item_op_t op, uint64_t uid,
                                     uint64_t gid);
+
     size_t metadata_maxkeylen();
+
+    int metadata_create_region_check(string regionname, size_t size,
+                                     uint64_t *regionid,
+                                     std::list<int> *memory_server_list,
+                                     int user_policy);
+
+    int metadata_destroy_region_check(const uint64_t regionId, uint32_t uid,
+                                      uint32_t gid,
+                                      std::list<int> *memory_server_list);
+
+    int metadata_allocate_check(const std::string dataitemName,
+                                const uint64_t regionId, uint32_t uid,
+                                uint32_t gid);
+
+    int metadata_deallocate_check(const uint64_t regionId,
+                                  const uint64_t dataitemId, uint32_t uid,
+                                  uint32_t gid);
+
+    int metadata_update_memoryserver(Fam_memserver_info &memserver_info_list,
+                                     int list_size);
+
+    int metadata_get_RegionID(uint64_t *regionID);
+
+    int metadata_reset_RegionID(uint64_t regionID);
 
     FAM_Metadata_Manager(bool use_meta_reg);
     ~FAM_Metadata_Manager();

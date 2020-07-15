@@ -132,6 +132,32 @@ typedef struct {
     // char *name;
 } Fam_Region_Item_Info;
 
+/**
+ * Memory server info structure
+ */
+typedef struct {
+    int memserver_id;
+    string memserver_ip;
+    uint64_t memserver_capacity;
+} Fam_memserver_info;
+
+/**
+ * Metadata server info strcuture
+ */
+typedef struct {
+    int metadata_server_id;
+    string metadata_server_ip;
+    string kvs_type;
+} Fam_metadata_server_info;
+
+/**
+ * CIS info structure
+ */
+typedef struct {
+    int cis_id;
+    string cis_ip;
+} Fam_cis_info;
+
 inline CISServerMap parse_memserver_list(std::string memServer,
                                          std::string delimiter1,
                                          std::string delimiter2) {
