@@ -1,7 +1,7 @@
 /*
  *   fam_metadata_manager.h
- *   Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- *   reserved. Redistribution and use in source and binary forms, with or
+ *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
  *   are met:
  *   1. Redistributions of source code must retain the above copyright notice,
@@ -45,6 +45,8 @@
 #include "radixtree/kvs.h"
 #include "radixtree/radix_tree.h"
 
+#include "common/fam_internal.h"
+#include "common/fam_internal_exception.h"
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
@@ -134,95 +136,85 @@ enum metadata_ErrorVal {
     META_NO_ERROR = 0
 };
 
-class FAM_Metadata_Manager {
+class Fam_Metadata_Manager {
   public:
-    // there is only one instance of Metadata Manager in a process
-    // return a pointer to the instance
-    static FAM_Metadata_Manager *GetInstance(bool use_meta_reg = 0);
+    virtual ~Fam_Metadata_Manager(){};
 
-    void Start(bool use_meta_reg);
-    void Stop();
+    virtual void reset_profile() = 0;
 
-    void reset_profile();
-    void dump_profile();
+    virtual void dump_profile() = 0;
 
-    int metadata_insert_region(const uint64_t regionId,
-                               const std::string regionName,
-                               Fam_Region_Metadata *region);
+    virtual void metadata_insert_region(const uint64_t regionId,
+                                        const std::string regionName,
+                                        Fam_Region_Metadata *region) = 0;
 
-    int metadata_delete_region(const uint64_t regionId);
-    int metadata_delete_region(const std::string regionName);
+    virtual void metadata_delete_region(const uint64_t regionId) = 0;
 
-    int metadata_find_region(const uint64_t regionId,
-                             Fam_Region_Metadata &region);
-    int metadata_find_region(const std::string regionName,
-                             Fam_Region_Metadata &region);
+    virtual void metadata_delete_region(const std::string regionName) = 0;
 
-    int metadata_modify_region(const uint64_t regionID,
-                               Fam_Region_Metadata *region);
-    int metadata_modify_region(const std::string regionName,
-                               Fam_Region_Metadata *region);
+    virtual bool metadata_find_region(const uint64_t regionId,
+                                      Fam_Region_Metadata &region) = 0;
+    virtual bool metadata_find_region(const std::string regionName,
+                                      Fam_Region_Metadata &region) = 0;
 
-    int metadata_insert_dataitem(const uint64_t dataitemId,
-                                 const uint64_t regionId,
-                                 Fam_DataItem_Metadata *dataitem,
-                                 std::string dataitemName = "");
+    virtual void metadata_modify_region(const uint64_t regionID,
+                                        Fam_Region_Metadata *region) = 0;
+    virtual void metadata_modify_region(const std::string regionName,
+                                        Fam_Region_Metadata *region) = 0;
 
-    int metadata_insert_dataitem(const uint64_t dataitemId,
-                                 const std::string regionName,
-                                 Fam_DataItem_Metadata *dataitem,
-                                 std::string dataitemName = "");
+    virtual void metadata_insert_dataitem(const uint64_t dataitemId,
+                                          const uint64_t regionId,
+                                          Fam_DataItem_Metadata *dataitem,
+                                          std::string dataitemName = "") = 0;
 
-    int metadata_delete_dataitem(const uint64_t dataitemId,
-                                 const std::string regionName);
-    int metadata_delete_dataitem(const uint64_t dataitemId,
-                                 const uint64_t regionId);
-    int metadata_delete_dataitem(const std::string dataitemName,
-                                 const std::string regionName);
-    int metadata_delete_dataitem(const std::string dataitemName,
-                                 const uint64_t regionId);
+    virtual void metadata_insert_dataitem(const uint64_t dataitemId,
+                                          const std::string regionName,
+                                          Fam_DataItem_Metadata *dataitem,
+                                          std::string dataitemName = "") = 0;
 
-    int metadata_find_dataitem(const uint64_t dataitemId,
-                               const uint64_t regionId,
-                               Fam_DataItem_Metadata &dataitem);
-    int metadata_find_dataitem(const uint64_t dataitemId,
-                               const std::string regionName,
-                               Fam_DataItem_Metadata &dataitem);
-    int metadata_find_dataitem(const std::string dataitemName,
-                               const uint64_t regionId,
-                               Fam_DataItem_Metadata &dataitem);
-    int metadata_find_dataitem(const std::string dataitemName,
-                               const std::string regionName,
-                               Fam_DataItem_Metadata &dataitem);
+    virtual void metadata_delete_dataitem(const uint64_t dataitemId,
+                                          const std::string regionName) = 0;
+    virtual void metadata_delete_dataitem(const uint64_t dataitemId,
+                                          const uint64_t regionId) = 0;
+    virtual void metadata_delete_dataitem(const std::string dataitemName,
+                                          const std::string regionName) = 0;
+    virtual void metadata_delete_dataitem(const std::string dataitemName,
+                                          const uint64_t regionId) = 0;
 
-    int metadata_modify_dataitem(const uint64_t dataitemId,
-                                 const uint64_t regionId,
-                                 Fam_DataItem_Metadata *dataitem);
-    int metadata_modify_dataitem(const uint64_t dataitemId,
-                                 const std::string regionName,
-                                 Fam_DataItem_Metadata *dataitem);
-    int metadata_modify_dataitem(const std::string dataitemName,
-                                 const uint64_t regionId,
-                                 Fam_DataItem_Metadata *dataitem);
-    int metadata_modify_dataitem(const std::string dataitemName,
-                                 const std::string regionName,
-                                 Fam_DataItem_Metadata *dataitem);
+    virtual bool metadata_find_dataitem(const uint64_t dataitemId,
+                                        const uint64_t regionId,
+                                        Fam_DataItem_Metadata &dataitem) = 0;
+    virtual bool metadata_find_dataitem(const uint64_t dataitemId,
+                                        const std::string regionName,
+                                        Fam_DataItem_Metadata &dataitem) = 0;
+    virtual bool metadata_find_dataitem(const std::string dataitemName,
+                                        const uint64_t regionId,
+                                        Fam_DataItem_Metadata &dataitem) = 0;
+    virtual bool metadata_find_dataitem(const std::string dataitemName,
+                                        const std::string regionName,
+                                        Fam_DataItem_Metadata &dataitem) = 0;
 
-    bool metadata_check_permissions(Fam_DataItem_Metadata *dataitem,
-                                    metadata_region_item_op_t op, uint64_t uid,
-                                    uint64_t gid);
+    virtual void metadata_modify_dataitem(const uint64_t dataitemId,
+                                          const uint64_t regionId,
+                                          Fam_DataItem_Metadata *dataitem) = 0;
+    virtual void metadata_modify_dataitem(const uint64_t dataitemId,
+                                          const std::string regionName,
+                                          Fam_DataItem_Metadata *dataitem) = 0;
+    virtual void metadata_modify_dataitem(const std::string dataitemName,
+                                          const uint64_t regionId,
+                                          Fam_DataItem_Metadata *dataitem) = 0;
+    virtual void metadata_modify_dataitem(const std::string dataitemName,
+                                          const std::string regionName,
+                                          Fam_DataItem_Metadata *dataitem) = 0;
 
-    bool metadata_check_permissions(Fam_Region_Metadata *region,
-                                    metadata_region_item_op_t op, uint64_t uid,
-                                    uint64_t gid);
-    size_t metadata_maxkeylen();
+    virtual bool metadata_check_permissions(Fam_DataItem_Metadata *dataitem,
+                                            metadata_region_item_op_t op,
+                                            uint32_t uid, uint32_t gid) = 0;
 
-    FAM_Metadata_Manager(bool use_meta_reg);
-    ~FAM_Metadata_Manager();
-
-  private:
-    class Impl_;
-    Impl_ *pimpl_;
+    virtual bool metadata_check_permissions(Fam_Region_Metadata *region,
+                                            metadata_region_item_op_t op,
+                                            uint32_t uid, uint32_t gid) = 0;
+    virtual size_t metadata_maxkeylen() = 0;
 };
 
 } // namespace metadata

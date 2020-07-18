@@ -1,6 +1,6 @@
 /*
  * fam_metadata_regress_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
  * rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,7 @@
 #include <fam/fam_exception.h>
 
 #include "../../src/metadata/fam_metadata_manager.h"
+#include "src/metadata/fam_metadata_manager_direct.h"
 
 #include "common/fam_test_config.h"
 
@@ -55,7 +56,7 @@ using namespace metadata;
 
 fam *my_fam;
 Fam_Options fam_opts;
-FAM_Metadata_Manager *manager;
+Fam_Metadata_Manager *manager;
 
 // Test case#1 Success cases for region.
 TEST(FamMetadata, RegionSuccess) {
@@ -72,60 +73,54 @@ TEST(FamMetadata, RegionSuccess) {
         desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, desc);
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_find_region(testRegion, node));
+    EXPECT_EQ(true, manager->metadata_find_region(testRegion, node));
 
     regionId = node.regionId;
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_find_region(regionId, node));
+    EXPECT_EQ(true, manager->metadata_find_region(regionId, node));
 
     memcpy(regnode, &node, sizeof(Fam_Region_Metadata));
     regnode->uid = getuid();
     regnode->gid = getgid();
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_modify_region(testRegion, regnode));
+    EXPECT_NO_THROW(manager->metadata_modify_region(testRegion, regnode));
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_modify_region(regionId, regnode));
+    EXPECT_NO_THROW(manager->metadata_modify_region(regionId, regnode));
 
-    EXPECT_EQ(META_KEY_ALREADY_EXIST,
-              manager->metadata_insert_region(regionId, testRegion, regnode));
+    EXPECT_THROW(manager->metadata_insert_region(regionId, testRegion, regnode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_delete_region(regionId));
+    EXPECT_NO_THROW(manager->metadata_delete_region(regionId));
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_delete_region(regionId));
+    EXPECT_THROW(manager->metadata_delete_region(regionId),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_delete_region(testRegion));
+    EXPECT_THROW(manager->metadata_delete_region(testRegion),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_region(testRegion, node));
+    EXPECT_EQ(false, manager->metadata_find_region(testRegion, node));
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_region(regionId, node));
+    EXPECT_EQ(false, manager->metadata_find_region(regionId, node));
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_region(regionId, regnode));
+    EXPECT_THROW(manager->metadata_modify_region(regionId, regnode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_region(testRegion, regnode));
+    EXPECT_THROW(manager->metadata_modify_region(testRegion, regnode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_insert_region(regionId, testRegion, regnode));
+    EXPECT_NO_THROW(
+        manager->metadata_insert_region(regionId, testRegion, regnode));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_find_region(testRegion, node));
+    EXPECT_NO_THROW(manager->metadata_find_region(testRegion, node));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_delete_region(testRegion));
+    EXPECT_NO_THROW(manager->metadata_delete_region(testRegion));
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_region(testRegion, node));
+    EXPECT_EQ(false, manager->metadata_find_region(testRegion, node));
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_region(regionId, node));
+    EXPECT_EQ(false, manager->metadata_find_region(regionId, node));
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_insert_region(regionId, testRegion, regnode));
+    EXPECT_NO_THROW(
+        manager->metadata_insert_region(regionId, testRegion, regnode));
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
@@ -149,7 +144,7 @@ TEST(FamMetadata, RegionFail) {
         desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, desc);
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_find_region(testRegion, node));
+    EXPECT_NO_THROW(manager->metadata_find_region(testRegion, node));
 
     EXPECT_THROW(
         my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1),
@@ -161,35 +156,36 @@ TEST(FamMetadata, RegionFail) {
     regnode->uid = getuid();
     regnode->gid = getgid();
 
-    EXPECT_EQ(META_KEY_ALREADY_EXIST,
-              manager->metadata_insert_region(regionId, testRegion, regnode));
+    EXPECT_THROW(manager->metadata_insert_region(regionId, testRegion, regnode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_ALREADY_EXIST,
-              manager->metadata_insert_region(regionId, "test1234", regnode));
+    EXPECT_THROW(manager->metadata_insert_region(regionId, "test1234", regnode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_ALREADY_EXIST,
-              manager->metadata_insert_region(5000, testRegion, regnode));
+    EXPECT_THROW(manager->metadata_insert_region(5000, testRegion, regnode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_region(5000, regnode));
+    EXPECT_THROW(manager->metadata_modify_region(5000, regnode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_region("test1234", regnode));
+    EXPECT_THROW(manager->metadata_modify_region("test1234", regnode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_delete_region("test1234"));
+    EXPECT_THROW(manager->metadata_delete_region("test1234"),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST, manager->metadata_delete_region(5000));
+    EXPECT_THROW(manager->metadata_delete_region(5000),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_delete_region(testRegion));
+    EXPECT_NO_THROW(manager->metadata_delete_region(testRegion));
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_delete_region(testRegion));
+    EXPECT_THROW(manager->metadata_delete_region(testRegion),
+                 Metadata_Service_Exception);
 
     EXPECT_THROW(my_fam->fam_destroy_region(desc), Fam_Exception);
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_insert_region(regionId, testRegion, regnode));
+    EXPECT_NO_THROW(
+        manager->metadata_insert_region(regionId, testRegion, regnode));
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
@@ -221,68 +217,65 @@ TEST(FamMetadata, DataitemSuccess) {
         desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, desc);
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_find_region(testRegion, node));
+    EXPECT_EQ(true, manager->metadata_find_region(testRegion, node));
 
     regionId = node.regionId;
 
     EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024, 0777, desc));
     EXPECT_NE((void *)NULL, item);
 
-    EXPECT_EQ(META_NO_ERROR,
+    EXPECT_EQ(true,
               manager->metadata_find_dataitem(firstItem, regionId, dinode));
 
     uint64_t dataitemId = dinode.offset / MIN_OBJ_SIZE;
 
     memcpy(datanode, &dinode, sizeof(Fam_DataItem_Metadata));
 
-    EXPECT_EQ(META_KEY_ALREADY_EXIST, manager->metadata_insert_dataitem(
-                                          dataitemId, regionId, datanode));
-    EXPECT_EQ(META_KEY_ALREADY_EXIST, manager->metadata_insert_dataitem(
-                                          dataitemId, testRegion, datanode));
+    EXPECT_THROW(
+        manager->metadata_insert_dataitem(dataitemId, regionId, datanode),
+        Metadata_Service_Exception);
+    EXPECT_THROW(
+        manager->metadata_insert_dataitem(dataitemId, testRegion, datanode),
+        Metadata_Service_Exception);
 
-    EXPECT_EQ(META_NO_ERROR,
+    EXPECT_EQ(true,
               manager->metadata_find_dataitem(firstItem, regionId, dinode));
-    EXPECT_EQ(META_NO_ERROR,
+    EXPECT_EQ(true,
               manager->metadata_find_dataitem(firstItem, testRegion, dinode));
-    EXPECT_EQ(META_NO_ERROR,
+    EXPECT_EQ(true,
               manager->metadata_find_dataitem(dataitemId, regionId, dinode));
-    EXPECT_EQ(META_NO_ERROR,
+    EXPECT_EQ(true,
               manager->metadata_find_dataitem(dataitemId, testRegion, dinode));
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_modify_dataitem(firstItem, regionId, datanode));
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_modify_dataitem(
-                                 firstItem, testRegion, datanode));
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_modify_dataitem(
-                                 dataitemId, regionId, datanode));
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_modify_dataitem(
-                                 dataitemId, testRegion, datanode));
+    EXPECT_NO_THROW(
+        manager->metadata_modify_dataitem(firstItem, regionId, datanode));
+    EXPECT_NO_THROW(
+        manager->metadata_modify_dataitem(firstItem, testRegion, datanode));
+    EXPECT_NO_THROW(
+        manager->metadata_modify_dataitem(dataitemId, regionId, datanode));
+    EXPECT_NO_THROW(
+        manager->metadata_modify_dataitem(dataitemId, testRegion, datanode));
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_delete_dataitem(dataitemId, testRegion));
+    EXPECT_NO_THROW(manager->metadata_delete_dataitem(dataitemId, testRegion));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_insert_dataitem(
-                                 dataitemId, regionId, datanode, firstItem));
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_delete_dataitem(dataitemId, regionId));
+    EXPECT_NO_THROW(manager->metadata_insert_dataitem(dataitemId, regionId,
+                                                      datanode, firstItem));
+    EXPECT_NO_THROW(manager->metadata_delete_dataitem(dataitemId, regionId));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_insert_dataitem(
-                                 dataitemId, testRegion, datanode, firstItem));
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_delete_dataitem(dataitemId, testRegion));
+    EXPECT_NO_THROW(manager->metadata_insert_dataitem(dataitemId, testRegion,
+                                                      datanode, firstItem));
+    EXPECT_NO_THROW(manager->metadata_delete_dataitem(dataitemId, testRegion));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_insert_dataitem(
-                                 dataitemId, regionId, datanode, firstItem));
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_delete_dataitem(firstItem, regionId));
+    EXPECT_NO_THROW(manager->metadata_insert_dataitem(dataitemId, regionId,
+                                                      datanode, firstItem));
+    EXPECT_NO_THROW(manager->metadata_delete_dataitem(firstItem, regionId));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_insert_dataitem(
-                                 dataitemId, testRegion, datanode, firstItem));
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_delete_dataitem(firstItem, testRegion));
+    EXPECT_NO_THROW(manager->metadata_insert_dataitem(dataitemId, testRegion,
+                                                      datanode, firstItem));
+    EXPECT_NO_THROW(manager->metadata_delete_dataitem(firstItem, testRegion));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_insert_dataitem(
-                                 dataitemId, testRegion, datanode, firstItem));
+    EXPECT_NO_THROW(manager->metadata_insert_dataitem(dataitemId, testRegion,
+                                                      datanode, firstItem));
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
@@ -317,7 +310,7 @@ TEST(FamMetadata, DataitemFail) {
         desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
     EXPECT_NE((void *)NULL, desc);
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_find_region(testRegion, node));
+    EXPECT_EQ(true, manager->metadata_find_region(testRegion, node));
 
     regionId = node.regionId;
     memcpy(regnode, &node, sizeof(Fam_Region_Metadata));
@@ -328,106 +321,110 @@ TEST(FamMetadata, DataitemFail) {
     EXPECT_THROW(my_fam->fam_allocate(firstItem, 1024, 0777, desc),
                  Fam_Exception);
 
-    EXPECT_EQ(META_NO_ERROR,
+    EXPECT_EQ(true,
               manager->metadata_find_dataitem(firstItem, regionId, dinode));
 
     uint64_t dataitemId = dinode.offset / MIN_OBJ_SIZE;
 
     memcpy(datanode, &dinode, sizeof(Fam_DataItem_Metadata));
 
-    EXPECT_EQ(META_KEY_ALREADY_EXIST, manager->metadata_insert_dataitem(
-                                          dataitemId, regionId, datanode));
-    EXPECT_EQ(META_KEY_ALREADY_EXIST, manager->metadata_insert_dataitem(
-                                          dataitemId, testRegion, datanode));
+    EXPECT_THROW(
+        manager->metadata_insert_dataitem(dataitemId, regionId, datanode),
+        Metadata_Service_Exception);
+    EXPECT_THROW(
+        manager->metadata_insert_dataitem(dataitemId, testRegion, datanode),
+        Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_insert_dataitem(dataitemId, 5000, datanode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_insert_dataitem(
-                  dataitemId, "testregionname1234", datanode));
+    EXPECT_THROW(manager->metadata_insert_dataitem(dataitemId, 5000, datanode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_insert_dataitem(
+                     dataitemId, "testregionname1234", datanode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_delete_dataitem(dataitemId, testRegion));
+    EXPECT_NO_THROW(manager->metadata_delete_dataitem(dataitemId, testRegion));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_insert_dataitem(
-                                 dataitemId, regionId, datanode, firstItem));
+    EXPECT_NO_THROW(manager->metadata_insert_dataitem(dataitemId, regionId,
+                                                      datanode, firstItem));
 
-    EXPECT_EQ(META_KEY_ALREADY_EXIST, manager->metadata_insert_dataitem(
-                                          5000, regionId, datanode, firstItem));
-    EXPECT_EQ(META_KEY_ALREADY_EXIST,
-              manager->metadata_insert_dataitem(5000, testRegion, datanode,
-                                                firstItem));
+    EXPECT_THROW(
+        manager->metadata_insert_dataitem(5000, regionId, datanode, firstItem),
+        Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_insert_dataitem(5000, testRegion, datanode,
+                                                   firstItem),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_ALREADY_EXIST,
-              manager->metadata_insert_dataitem(dataitemId, regionId, datanode,
-                                                "ABCD"));
-    EXPECT_EQ(META_KEY_ALREADY_EXIST,
-              manager->metadata_insert_dataitem(dataitemId, testRegion,
-                                                datanode, "ABCD"));
+    EXPECT_THROW(manager->metadata_insert_dataitem(dataitemId, regionId,
+                                                   datanode, "ABCD"),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_insert_dataitem(dataitemId, testRegion,
+                                                   datanode, "ABCD"),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_dataitem(firstItem, 5000, dinode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_dataitem(firstItem, "Test1234", dinode));
+    EXPECT_THROW(manager->metadata_find_dataitem(firstItem, 5000, dinode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_find_dataitem(firstItem, "Test1234", dinode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_dataitem(dataitemId, 5000, dinode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_dataitem(dataitemId, "Test1234", dinode));
+    EXPECT_THROW(manager->metadata_find_dataitem(dataitemId, 5000, dinode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(
+        manager->metadata_find_dataitem(dataitemId, "Test1234", dinode),
+        Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_dataitem(5000, 5000, dinode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_dataitem(5000, "Test1234", dinode));
+    EXPECT_THROW(manager->metadata_find_dataitem(5000, 5000, dinode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_find_dataitem(5000, "Test1234", dinode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_dataitem("abcd", regionId, dinode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_find_dataitem("abcd", testRegion, dinode));
+    EXPECT_THROW(manager->metadata_find_dataitem("abcd", regionId, dinode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_find_dataitem("abcd", testRegion, dinode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_dataitem("ABCD", regionId, datanode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_dataitem("ABCD", testRegion, datanode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_dataitem(5000, regionId, datanode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_dataitem(5000, testRegion, datanode));
+    EXPECT_THROW(manager->metadata_modify_dataitem("ABCD", regionId, datanode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(
+        manager->metadata_modify_dataitem("ABCD", testRegion, datanode),
+        Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_modify_dataitem(5000, regionId, datanode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_modify_dataitem(5000, testRegion, datanode),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_dataitem(firstItem, 1000, datanode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_dataitem(firstItem, "ABCD", datanode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_dataitem(dataitemId, 1000, datanode));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_modify_dataitem(dataitemId, "ABCD", datanode));
+    EXPECT_THROW(manager->metadata_modify_dataitem(firstItem, 1000, datanode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_modify_dataitem(firstItem, "ABCD", datanode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_modify_dataitem(dataitemId, 1000, datanode),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(
+        manager->metadata_modify_dataitem(dataitemId, "ABCD", datanode),
+        Metadata_Service_Exception);
 
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_delete_dataitem("ABCD", regionId));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_delete_dataitem("ABCD", testRegion));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_delete_dataitem(5000, regionId));
-    EXPECT_EQ(META_KEY_DOES_NOT_EXIST,
-              manager->metadata_delete_dataitem(5000, testRegion));
+    EXPECT_THROW(manager->metadata_delete_dataitem("ABCD", regionId),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_delete_dataitem("ABCD", testRegion),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_delete_dataitem(5000, regionId),
+                 Metadata_Service_Exception);
+    EXPECT_THROW(manager->metadata_delete_dataitem(5000, testRegion),
+                 Metadata_Service_Exception);
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_delete_dataitem(dataitemId, testRegion));
+    EXPECT_NO_THROW(manager->metadata_delete_dataitem(dataitemId, testRegion));
 
     EXPECT_THROW(my_fam->fam_deallocate(item), Fam_Exception);
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_insert_dataitem(
-                                 dataitemId, regionId, datanode, firstItem));
+    EXPECT_NO_THROW(manager->metadata_insert_dataitem(dataitemId, regionId,
+                                                      datanode, firstItem));
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
-    EXPECT_EQ(META_NO_ERROR, manager->metadata_delete_region(testRegion));
+    EXPECT_NO_THROW(manager->metadata_delete_region(testRegion));
 
     EXPECT_THROW(my_fam->fam_destroy_region(desc), Fam_Exception);
 
-    EXPECT_EQ(META_NO_ERROR,
-              manager->metadata_insert_region(regionId, testRegion, regnode));
+    EXPECT_NO_THROW(
+        manager->metadata_insert_region(regionId, testRegion, regnode));
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
@@ -441,7 +438,7 @@ TEST(FamMetadata, DataitemFail) {
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     my_fam = new fam();
-    manager = FAM_Metadata_Manager::GetInstance();
+    manager = new Fam_Metadata_Manager_Direct();
 
     init_fam_options(&fam_opts);
 

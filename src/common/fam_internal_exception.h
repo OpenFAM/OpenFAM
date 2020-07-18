@@ -1,8 +1,9 @@
 /*
- * fam/fam_exception.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * fam/fam_internal_exception.h
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -81,7 +82,8 @@ enum Internal_Error {
     REGION_NOT_MODIFIED,
     RESIZE_FAILED,
     ITEM_REGISTRATION_FAILED,
-    ITEM_DEREGISTRATION_FAILED
+    ITEM_DEREGISTRATION_FAILED,
+    METADATA_ERROR
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -139,6 +141,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case DATAITEM_NAME_TOO_LONG:
     case ITEM_REGISTRATION_FAILED:
     case ITEM_DEREGISTRATION_FAILED:
+    case METADATA_ERROR:
     default:
         return FAM_ERR_RESOURCE;
     }
@@ -155,6 +158,13 @@ class CIS_Exception : public Fam_Exception {
     CIS_Exception();
     CIS_Exception(enum Internal_Error serverErr, const char *msg);
     CIS_Exception(enum Fam_Error serverErr, const char *msg);
+};
+
+class Metadata_Service_Exception : public Fam_Exception {
+  public:
+    Metadata_Service_Exception();
+    Metadata_Service_Exception(enum Internal_Error serverErr, const char *msg);
+    Metadata_Service_Exception(enum Fam_Error serverErr, const char *msg);
 };
 } // namespace openfam
 #endif

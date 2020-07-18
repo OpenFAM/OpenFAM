@@ -1,6 +1,6 @@
 /*
- *   fam_metadata_test.cpp
- *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ *   fam_metadata_rpc_test.cpp
+ *   Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All
  *   rights reserved.
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@
 
 #include "../../src/metadata/fam_metadata_manager.h"
 #include "common/fam_test_config.h"
-#include "metadata/fam_metadata_manager_direct.h"
+#include "metadata/fam_metadata_manager_client.h"
 
 #include <fam/fam.h>
 #include <string.h>
@@ -47,7 +47,8 @@ using namespace openfam;
 
 int main(int argc, char *argv[]) {
 
-    Fam_Metadata_Manager *manager = new Fam_Metadata_Manager_Direct(true);
+    Fam_Metadata_Manager *manager =
+        new Fam_Metadata_Manager_Client("127.0.0.1", 8989);
 
     int ret;
     uint64_t count = 0, fail = 0;
@@ -62,6 +63,7 @@ int main(int argc, char *argv[]) {
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
     fam_opts.runtime = strdup("NONE");
+
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
@@ -223,6 +225,7 @@ int main(int argc, char *argv[]) {
             try {
                 manager->metadata_delete_dataitem(j, regionId);
             } catch (Fam_Exception &e) {
+                cout << "delete dataitem" << endl;
                 cout << "Error : " << e.fam_error() << endl;
                 cout << "Error msg : " << e.fam_error_msg() << endl;
                 fail++;
@@ -243,6 +246,7 @@ int main(int argc, char *argv[]) {
             try {
                 manager->metadata_insert_dataitem(j, regionId, datanode);
             } catch (Fam_Exception &e) {
+                cout << "insert dataitem" << endl;
                 cout << "Error : " << e.fam_error() << endl;
                 cout << "Error msg : " << e.fam_error_msg() << endl;
                 fail++;
@@ -251,6 +255,7 @@ int main(int argc, char *argv[]) {
             if (!manager->metadata_find_dataitem(j, regionId, dinode)) {
                 printf("Dataitem find failed: id=%lu:%lu , ret=%d\n", regionId,
                        j, ret);
+                cout << "find dataitem failed" << endl;
                 fail++;
             }
             count++;
@@ -342,6 +347,7 @@ int main(int argc, char *argv[]) {
                 manager->metadata_insert_dataitem(j, to_string(i), datanode,
                                                   to_string(j));
             } catch (Fam_Exception &e) {
+                cout << "insert dataitem failed---" << endl;
                 cout << "Error : " << e.fam_error() << endl;
                 cout << "Error msg : " << e.fam_error_msg() << endl;
                 fail++;
@@ -373,6 +379,7 @@ int main(int argc, char *argv[]) {
                 manager->metadata_modify_dataitem(to_string(j), regionId,
                                                   datanode);
             } catch (Fam_Exception &e) {
+                cout << "Failed to modify_dataitemi 1" << endl;
                 cout << "Error : " << e.fam_error() << endl;
                 cout << "Error msg : " << e.fam_error_msg() << endl;
                 fail++;
@@ -382,6 +389,7 @@ int main(int argc, char *argv[]) {
                 manager->metadata_modify_dataitem(to_string(j), to_string(i),
                                                   datanode);
             } catch (Fam_Exception &e) {
+                cout << "Failed to modify_dataitem 2" << endl;
                 cout << "Error : " << e.fam_error() << endl;
                 cout << "Error msg : " << e.fam_error_msg() << endl;
                 fail++;
@@ -390,6 +398,7 @@ int main(int argc, char *argv[]) {
             try {
                 manager->metadata_modify_dataitem(j, to_string(i), datanode);
             } catch (Fam_Exception &e) {
+                cout << "Failed to modify_dataitem 3" << endl;
                 cout << "Error : " << e.fam_error() << endl;
                 cout << "Error msg : " << e.fam_error_msg() << endl;
                 fail++;
@@ -398,6 +407,7 @@ int main(int argc, char *argv[]) {
             try {
                 manager->metadata_delete_dataitem(j, to_string(i));
             } catch (Fam_Exception &e) {
+                cout << "Failed to delete_dataitem" << endl;
                 cout << "Error : " << e.fam_error() << endl;
                 cout << "Error msg : " << e.fam_error_msg() << endl;
                 fail++;

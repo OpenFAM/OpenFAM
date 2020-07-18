@@ -63,7 +63,7 @@ endif()
 if(ENABLE_MEMORYSERVER_PROFILING)
 	message(STATUS "Memory Server profile enabled")
 	add_definitions(-DMEMSERVER_PROFILE)
-	set( TEST_MEMSERVER_IP "127.0.0.1" )
+	set( TEST_MEMSERVER_IP "0:127.0.0.1" )
 endif()
 
 message(STATUS "====================")
