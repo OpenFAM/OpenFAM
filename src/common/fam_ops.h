@@ -34,6 +34,7 @@
 #include "fam/fam_exception.h"
 
 #include "common/fam_internal.h"
+#include "common/fam_internal_exception.h"
 #include "common/fam_options.h"
 
 #include <iostream>

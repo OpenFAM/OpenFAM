@@ -41,6 +41,27 @@
 using namespace std;
 namespace openfam {
 
+/*
+ * These derived exception classes are currently being used
+ * internally by OpenFAM. All the OpenFAM api return only
+ * Fam_Exception objects.
+ *
+ */
+
+#define THROW_ERR_MSG(exception, message_str)                                  \
+    do {                                                                       \
+        std::ostringstream errMsgStr;                                          \
+        errMsgStr << __func__ << ":" << __LINE__ << ":" << message_str;        \
+        throw exception(errMsgStr.str().c_str());                              \
+    } while (0)
+
+#define THROW_ERRNO_MSG(exception, error_no, message_str)                      \
+    do {                                                                       \
+        std::ostringstream errMsgStr;                                          \
+        errMsgStr << __func__ << ":" << __LINE__ << ":" << message_str;        \
+        throw exception(error_no, errMsgStr.str().c_str());                    \
+    } while (0)
+
 enum Internal_Error {
     ALLOC_NO_ERROR = 0,
     REGION_EXIST = MIN_ERR_VAL,
@@ -166,5 +187,49 @@ class Metadata_Service_Exception : public Fam_Exception {
     Metadata_Service_Exception(enum Internal_Error serverErr, const char *msg);
     Metadata_Service_Exception(enum Fam_Error serverErr, const char *msg);
 };
+
+class Fam_InvalidOption_Exception : public Fam_Exception {
+  public:
+    Fam_InvalidOption_Exception();
+    Fam_InvalidOption_Exception(const char *msg);
+};
+
+class Fam_Permission_Exception : public Fam_Exception {
+  public:
+    Fam_Permission_Exception();
+    Fam_Permission_Exception(const char *msg);
+};
+
+class Fam_Timeout_Exception : public Fam_Exception {
+  public:
+    Fam_Timeout_Exception();
+    Fam_Timeout_Exception(const char *msg);
+};
+
+class Fam_Datapath_Exception : public Fam_Exception {
+  public:
+    Fam_Datapath_Exception();
+    Fam_Datapath_Exception(const char *msg);
+    Fam_Datapath_Exception(enum Fam_Error fErr, const char *msg);
+};
+
+class Fam_Allocator_Exception : public Fam_Exception {
+  public:
+    Fam_Allocator_Exception();
+    Fam_Allocator_Exception(enum Fam_Error fErr, const char *msg);
+};
+
+class Fam_Pmi_Exception : public Fam_Exception {
+  public:
+    Fam_Pmi_Exception();
+    Fam_Pmi_Exception(const char *msg);
+};
+
+class Fam_Unimplemented_Exception : public Fam_Exception {
+  public:
+    Fam_Unimplemented_Exception();
+    Fam_Unimplemented_Exception(const char *msg);
+};
+
 } // namespace openfam
 #endif

@@ -47,8 +47,8 @@ using namespace openfam;
 
 int main(int argc, char *argv[]) {
 
-    Fam_Metadata_Manager *manager =
-        new Fam_Metadata_Manager_Client("127.0.0.1", 8989);
+    Fam_Metadata_Manager *manager = new Fam_Metadata_Manager_Client(
+        TEST_METADATA_SERVER, atoi(TEST_METADATA_RPC_PORT));
 
     int ret;
     uint64_t count = 0, fail = 0;

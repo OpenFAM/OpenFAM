@@ -77,6 +77,10 @@ Fam_Metadata_Manager_Server::Fam_Metadata_Manager_Server(uint64_t rpcPort,
     MEMSERVER_PROFILE_START_TIME(METADATA_SERVER)
 }
 
+Fam_Metadata_Manager_Server::~Fam_Metadata_Manager_Server() {
+    delete metadataManager;
+}
+
 ::grpc::Status Fam_Metadata_Manager_Server::reset_profile(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Gen_Request *request,
     ::Fam_Metadata_Gen_Response *response) {

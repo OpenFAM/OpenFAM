@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -63,7 +63,6 @@ endif()
 if(ENABLE_MEMORYSERVER_PROFILING)
 	message(STATUS "Memory Server profile enabled")
 	add_definitions(-DMEMSERVER_PROFILE)
-	set( TEST_MEMSERVER_IP "0:127.0.0.1" )
 endif()
 
 message(STATUS "====================")
@@ -133,7 +132,9 @@ include_directories(/usr/local/include)
 
 set( TEST_DEFAULT_REGION "Default" )
 set( TEST_MEMORY_SERVER "0:127.0.0.1" )
+set( TEST_METADATA_SERVER "127.0.0.1" )
 set( TEST_GRPC_PORT "8787" )
+set( TEST_METADATA_RPC_PORT "8989" )
 set( TEST_LIBFABRIC_PORT "7500" )
 set( TEST_LIBFABRIC_PROVIDER "sockets" )
 set( TEST_FAM_THREAD_MODEL "FAM_THREAD_SERIALIZE" )

@@ -47,7 +47,7 @@
 #include <iostream>
 
 #include "common/fam_async_qhandler.h"
-#include "common/fam_internal.h"
+#include "common/fam_internal_exception.h"
 namespace openfam {
 
 class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {

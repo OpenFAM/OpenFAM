@@ -40,6 +40,9 @@ if(USE_BOOST_FIBER)
 else()
 	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_context pmix pmi2 fambitmap)
 endif()
+
+set_target_properties(openfam PROPERTIES SOVERSION ${VERSION_STR})
+
 add_executable (memoryserver ${MEMORYSERVER_SRC})
 
 target_link_libraries(memoryserver fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_system fambitmap)

@@ -58,7 +58,7 @@ class Fam_Metadata_Manager_Server : public Fam_Metadata_Rpc::Service {
   public:
     Fam_Metadata_Manager_Server(uint64_t rpcPort, char *name);
 
-    ~Fam_Metadata_Manager_Server() {}
+    ~Fam_Metadata_Manager_Server();
 
     void run();
 

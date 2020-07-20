@@ -46,7 +46,7 @@ pkill metadataserver
 cd src
 echo "Starting Memory Server..."
 ./memoryserver -m ${1} -r ${2:-8787} -l ${3:-7500} -p ${4:-sockets} &
-#echo "Starting Metadata Server..."
-#./metadataserver -a ${1} -r ${5:-8989} &
+echo "Starting Metadata Server..."
+./metadataserver -a ${1} -r ${5:-8989} &
 cd ..
 

@@ -37,6 +37,12 @@
 using namespace std;
 using namespace metadata;
 
+#ifdef OPENFAM_VERSION
+#define METADATASERVER_VERSION OPENFAM_VERSION
+#else
+#define METADATASERVER_VERSION "0.0.0"
+#endif
+
 #ifdef COVERAGE
 extern "C" void __gcov_flush();
 void signal_handler(int signum) {
@@ -49,25 +55,32 @@ void signal_handler(int signum) {
 Fam_Metadata_Manager_Server *metadataService;
 
 int main(int argc, char *argv[]) {
-    // Example for commandline argument: ./metadataserver 127.0.0.1 8787 7500
-    // sockets
+    // Example for commandline argument: ./metadataserver -a 127.0.0.1 -r 8989
 
     uint64_t rpcPort = 8989;
     char *name = strdup("127.0.0.1");
 
     for (int i = 1; i < argc; i++) {
-        if ((std::string(argv[i]) == "-h") ||
-            (std::string(argv[i]) == "--help")) {
-            cout << "Usage : \n"
-                 << "\t./metadataserver <options> \n"
-                 << "\n"
-                 << "Options : \n"
-                 << "\t-a/--address   : Address of the memory server "
-                    "(default value is localhost) \n"
-                 << "\n"
-                 << "\t-r/--rpcport        : RPC port (default value is 8787)\n"
-                 << "\n"
-                 << endl;
+        if ((std::string(argv[i]) == "-v") ||
+            (std::string(argv[i]) == "--version")) {
+            cout << "Metadata Server version : " << METADATASERVER_VERSION
+                 << "\n";
+            exit(0);
+        } else if ((std::string(argv[i]) == "-h") ||
+                   (std::string(argv[i]) == "--help")) {
+            cout
+                << "Usage : \n"
+                << "\t./metadataserver <options> \n"
+                << "\n"
+                << "Options : \n"
+                << "\t-a/--address   : Address of the memory server "
+                   "(default value is localhost) \n"
+                << "\n"
+                << "\t-r/--rpcport        : RPC port (default value is 8787)\n"
+                << "\n"
+                << "\t-v/--version        : Display metadata server version  \n"
+                << "\n"
+                << endl;
             exit(0);
         } else if ((std::string(argv[i]) == "-a") ||
                    (std::string(argv[i]) == "--address")) {
@@ -76,7 +89,6 @@ int main(int argc, char *argv[]) {
                    (std::string(argv[i]) == "--rpcport")) {
             rpcPort = atoi(argv[++i]);
         }
-        // cout << "arg : " << argv[i] << endl;
     }
 
 #ifdef COVERAGE
@@ -91,7 +103,6 @@ int main(int argc, char *argv[]) {
         metadataService->run();
     } catch (Metadata_Service_Exception &e) {
         if (metadataService) {
-            // metadataService->rpc_server_finalize();
             delete metadataService;
         }
         cout << "Error code: " << e.fam_error() << endl;
@@ -99,7 +110,6 @@ int main(int argc, char *argv[]) {
     }
 
     if (metadataService) {
-        // metadataService->rpc_server_finalize();
         delete metadataService;
     }
 

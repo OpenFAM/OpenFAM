@@ -78,6 +78,8 @@
 #include "fam/fam_exception.h"
 #include <nvmm/fam.h>
 
+#include <grpcpp/grpcpp.h>
+
 using namespace famradixtree;
 using namespace nvmm;
 using namespace std;
@@ -114,6 +116,18 @@ namespace openfam {
 #define DATAITEMID_BITS 33
 #define DATAITEMID_MASK ((1UL << DATAITEMID_BITS) - 1)
 #define DATAITEMID_SHIFT 1
+
+#define STATUS_CHECK(exception)                                                \
+    {                                                                          \
+        if (status.ok()) {                                                     \
+            if (res.errorcode()) {                                             \
+                throw exception((enum Fam_Error)res.errorcode(),               \
+                                (res.errormsg()).c_str());                     \
+            }                                                                  \
+        } else {                                                               \
+            throw exception(FAM_ERR_RPC, (status.error_message()).c_str());    \
+        }                                                                      \
+    }
 
 using CISServerMap = std::map<uint64_t, std::string>;
 
@@ -179,69 +193,6 @@ inline void openfam_invalidate(void *addr, uint64_t size) {
 #endif
 }
 
-/*
- * These derived exception classes are currently being used
- * internally by OpenFAM. All the OpenFAM api return only
- * Fam_Exception objects.
- *
- */
-
-#define THROW_ERR_MSG(exception, message_str)                                  \
-    do {                                                                       \
-        std::ostringstream errMsgStr;                                          \
-        errMsgStr << __func__ << ":" << __LINE__ << ":" << message_str;        \
-        throw exception(errMsgStr.str().c_str());                              \
-    } while (0)
-
-#define THROW_ERRNO_MSG(exception, error_no, message_str)                      \
-    do {                                                                       \
-        std::ostringstream errMsgStr;                                          \
-        errMsgStr << __func__ << ":" << __LINE__ << ":" << message_str;        \
-        throw exception(error_no, errMsgStr.str().c_str());                    \
-    } while (0)
-
-class Fam_InvalidOption_Exception : public Fam_Exception {
-  public:
-    Fam_InvalidOption_Exception();
-    Fam_InvalidOption_Exception(const char *msg);
-};
-
-class Fam_Permission_Exception : public Fam_Exception {
-  public:
-    Fam_Permission_Exception();
-    Fam_Permission_Exception(const char *msg);
-};
-
-class Fam_Timeout_Exception : public Fam_Exception {
-  public:
-    Fam_Timeout_Exception();
-    Fam_Timeout_Exception(const char *msg);
-};
-
-class Fam_Datapath_Exception : public Fam_Exception {
-  public:
-    Fam_Datapath_Exception();
-    Fam_Datapath_Exception(const char *msg);
-    Fam_Datapath_Exception(enum Fam_Error fErr, const char *msg);
-};
-
-class Fam_Allocator_Exception : public Fam_Exception {
-  public:
-    Fam_Allocator_Exception();
-    Fam_Allocator_Exception(enum Fam_Error fErr, const char *msg);
-};
-
-class Fam_Pmi_Exception : public Fam_Exception {
-  public:
-    Fam_Pmi_Exception();
-    Fam_Pmi_Exception(const char *msg);
-};
-
-class Fam_Unimplemented_Exception : public Fam_Exception {
-  public:
-    Fam_Unimplemented_Exception();
-    Fam_Unimplemented_Exception(const char *msg);
-};
 
 } // namespace openfam
 

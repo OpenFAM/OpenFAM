@@ -35,7 +35,8 @@
 #include "common/fam_memserver_profile.h"
 using namespace openfam;
 
-#define STATUS_CHECK()                                                         \
+#if 0
+#define STATUS_CHECK(Metadata_Service_Exception)                               \
     {                                                                          \
         if (status.ok()) {                                                     \
             if (res.errorcode()) {                                             \
@@ -48,6 +49,7 @@ using namespace openfam;
                 FAM_ERR_RPC, (status.error_message()).c_str());                \
         }                                                                      \
     }
+#endif
 
 namespace metadata {
 MEMSERVER_PROFILE_START(METADATA_CLIENT)
@@ -166,7 +168,7 @@ void Fam_Metadata_Manager_Client::metadata_insert_region(
     req.set_gid(region->gid);
 
     ::grpc::Status status = stub->metadata_insert_region(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_region);
 }
 
@@ -180,7 +182,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_region(
     req.set_key_region_id(regionId);
 
     ::grpc::Status status = stub->metadata_delete_region(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_region);
 }
 
@@ -194,7 +196,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_region(
     req.set_key_region_name(regionName);
 
     ::grpc::Status status = stub->metadata_delete_region(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_region);
 }
 
@@ -208,7 +210,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_region(
     req.set_key_region_id(regionId);
 
     ::grpc::Status status = stub->metadata_find_region(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         region.regionId = res.region_id();
         region.offset = res.offset();
@@ -232,7 +234,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_region(
     req.set_key_region_name(regionName);
 
     ::grpc::Status status = stub->metadata_find_region(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         region.regionId = res.region_id();
         region.offset = res.offset();
@@ -263,7 +265,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_region(
     req.set_gid(region->gid);
 
     ::grpc::Status status = stub->metadata_modify_region(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_region);
 }
 
@@ -284,7 +286,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_region(
     req.set_gid(region->gid);
 
     ::grpc::Status status = stub->metadata_modify_region(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_region);
 }
 
@@ -308,7 +310,7 @@ void Fam_Metadata_Manager_Client::metadata_insert_dataitem(
     req.set_gid(dataitem->gid);
 
     ::grpc::Status status = stub->metadata_insert_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_dataitem);
 }
 
@@ -332,7 +334,7 @@ void Fam_Metadata_Manager_Client::metadata_insert_dataitem(
     req.set_gid(dataitem->gid);
 
     ::grpc::Status status = stub->metadata_insert_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_dataitem);
 }
 
@@ -347,7 +349,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
     req.set_key_dataitem_id(dataitemId);
 
     ::grpc::Status status = stub->metadata_delete_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_dataitem);
 }
 
@@ -362,7 +364,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
     req.set_key_dataitem_id(dataitemId);
 
     ::grpc::Status status = stub->metadata_delete_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_dataitem);
 }
 
@@ -377,7 +379,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
     req.set_key_dataitem_name(dataitemName);
 
     ::grpc::Status status = stub->metadata_delete_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_dataitem);
 }
 
@@ -392,7 +394,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
     req.set_key_dataitem_name(dataitemName);
 
     ::grpc::Status status = stub->metadata_delete_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_dataitem);
 }
 
@@ -408,7 +410,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
     req.set_key_dataitem_id(dataitemId);
 
     ::grpc::Status status = stub->metadata_find_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         dataitem.regionId = res.region_id();
         dataitem.offset = res.offset();
@@ -434,7 +436,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
     req.set_key_dataitem_id(dataitemId);
 
     ::grpc::Status status = stub->metadata_find_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         dataitem.regionId = res.region_id();
         dataitem.offset = res.offset();
@@ -460,7 +462,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
     req.set_key_dataitem_name(dataitemName);
 
     ::grpc::Status status = stub->metadata_find_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         dataitem.regionId = res.region_id();
         dataitem.offset = res.offset();
@@ -486,7 +488,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
     req.set_key_dataitem_name(dataitemName);
 
     ::grpc::Status status = stub->metadata_find_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         dataitem.regionId = res.region_id();
         dataitem.offset = res.offset();
@@ -519,7 +521,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
     req.set_perm(dataitem->perm);
 
     ::grpc::Status status = stub->metadata_modify_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_dataitem);
 }
 
@@ -542,7 +544,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
     req.set_perm(dataitem->perm);
 
     ::grpc::Status status = stub->metadata_modify_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_dataitem);
 }
 
@@ -565,7 +567,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
     req.set_perm(dataitem->perm);
 
     ::grpc::Status status = stub->metadata_modify_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_dataitem);
 }
 
@@ -588,7 +590,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
     req.set_perm(dataitem->perm);
 
     ::grpc::Status status = stub->metadata_modify_dataitem(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_dataitem);
 }
 
@@ -608,7 +610,7 @@ bool Fam_Metadata_Manager_Client::metadata_check_permissions(
     req.set_ops(static_cast<::Fam_Permission_Request_meta_ops>(op));
     ::grpc::Status status =
         stub->metadata_check_item_permissions(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_check_permissions);
     return res.is_permitted();
 }
@@ -629,7 +631,7 @@ bool Fam_Metadata_Manager_Client::metadata_check_permissions(
     req.set_ops(static_cast<::Fam_Permission_Request_meta_ops>(op));
     ::grpc::Status status =
         stub->metadata_check_region_permissions(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_check_permissions);
     return res.is_permitted();
 }
@@ -641,7 +643,7 @@ size_t Fam_Metadata_Manager_Client::metadata_maxkeylen() {
     METADATA_CLIENT_PROFILE_START_OPS()
 
     ::grpc::Status status = stub->metadata_maxkeylen(&ctx, req, &res);
-    STATUS_CHECK()
+    STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_maxkeylen);
     return (size_t)res.maxkeylen();
 }
