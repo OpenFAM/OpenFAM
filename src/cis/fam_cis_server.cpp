@@ -213,7 +213,7 @@ Fam_CIS_Server::create_region(::grpc::ServerContext *context,
                                      (mode_t)request->perm(),
                                      static_cast<Fam_Redundancy_Level>(0), 0,
                                      request->uid(), request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -235,7 +235,7 @@ Fam_CIS_Server::destroy_region(::grpc::ServerContext *context,
     try {
         famCIS->destroy_region(request->regionid(), 0, request->uid(),
                                request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -257,7 +257,7 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
     try {
         famCIS->resize_region(request->regionid(), request->size(), 0,
                               request->uid(), request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -281,7 +281,7 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
                                 request->uid(), request->gid());
         // Generate and register key for datapath access
         register_memory(info, request->uid(), request->gid(), key);
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -309,7 +309,7 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
         famCIS->deallocate(request->regionid(), request->offset(), 0,
                            request->uid(), request->gid());
         deregister_memory(request->regionid(), request->offset());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -330,7 +330,7 @@ Fam_CIS_Server::change_region_permission(::grpc::ServerContext *context,
         famCIS->change_region_permission(request->regionid(),
                                          (mode_t)request->perm(), 0,
                                          request->uid(), request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -349,7 +349,7 @@ Fam_CIS_Server::change_region_permission(::grpc::ServerContext *context,
         famCIS->change_dataitem_permission(
             request->regionid(), request->offset(), (mode_t)request->perm(), 0,
             request->uid(), request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -370,7 +370,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     try {
         info = famCIS->lookup_region(request->name(), 0, request->uid(),
                                      request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -396,7 +396,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     try {
         info = famCIS->lookup(request->name(), request->regionname(), 0,
                               request->uid(), request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -423,7 +423,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     try {
         info = famCIS->check_permission_get_region_info(
             request->regionid(), 0, request->uid(), request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -450,7 +450,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
             request->regionid(), request->offset(), 0, request->uid(),
             request->gid());
         register_memory(info, request->uid(), request->gid(), key);
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -484,7 +484,7 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
         info = famCIS->check_permission_get_item_info(
             request->regionid(), request->offset(), 0, request->uid(),
             request->gid());
-    } catch (CIS_Exception &e) {
+    } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;

@@ -35,22 +35,6 @@
 #include "common/fam_memserver_profile.h"
 using namespace openfam;
 
-#if 0
-#define STATUS_CHECK(Metadata_Service_Exception)                               \
-    {                                                                          \
-        if (status.ok()) {                                                     \
-            if (res.errorcode()) {                                             \
-                throw Metadata_Service_Exception(                              \
-                    (enum Fam_Error)res.errorcode(),                           \
-                    (res.errormsg()).c_str());                                 \
-            }                                                                  \
-        } else {                                                               \
-            throw Metadata_Service_Exception(                                  \
-                FAM_ERR_RPC, (status.error_message()).c_str());                \
-        }                                                                      \
-    }
-#endif
-
 namespace metadata {
 MEMSERVER_PROFILE_START(METADATA_CLIENT)
 #ifdef MEMSERVER_PROFILE
