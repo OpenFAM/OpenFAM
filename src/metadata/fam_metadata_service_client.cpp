@@ -1,5 +1,5 @@
 /*
- *   fam_metadata_manager_client.cpp
+ *   fam_metadata_service_client.cpp
  *   Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  *   reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
  *
  */
 
-#include "metadata/fam_metadata_manager_client.h"
+#include "metadata/fam_metadata_service_client.h"
 #include "common/fam_memserver_profile.h"
 using namespace openfam;
 
@@ -69,7 +69,7 @@ void metadata_client_profile_dump() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_CLIENT)
 }
 
-Fam_Metadata_Manager_Client::Fam_Metadata_Manager_Client(const char *name,
+Fam_Metadata_Service_Client::Fam_Metadata_Service_Client(const char *name,
                                                          uint64_t port) {
     MEMSERVER_PROFILE_INIT(METADATA_CLIENT)
     MEMSERVER_PROFILE_START_TIME(METADATA_CLIENT)
@@ -101,7 +101,7 @@ Fam_Metadata_Manager_Client::Fam_Metadata_Manager_Client(const char *name,
     }
 }
 
-Fam_Metadata_Manager_Client::~Fam_Metadata_Manager_Client() {
+Fam_Metadata_Service_Client::~Fam_Metadata_Service_Client() {
     Fam_Metadata_Gen_Request req;
     Fam_Metadata_Gen_Response res;
 
@@ -110,7 +110,7 @@ Fam_Metadata_Manager_Client::~Fam_Metadata_Manager_Client() {
     ::grpc::Status status = stub->signal_termination(&ctx, req, &res);
 }
 
-void Fam_Metadata_Manager_Client::reset_profile() {
+void Fam_Metadata_Service_Client::reset_profile() {
     MEMSERVER_PROFILE_INIT(METADATA_CLIENT)
     MEMSERVER_PROFILE_START_TIME(METADATA_CLIENT)
 
@@ -122,7 +122,7 @@ void Fam_Metadata_Manager_Client::reset_profile() {
     ::grpc::Status status = stub->reset_profile(&ctx, req, &res);
 }
 
-void Fam_Metadata_Manager_Client::dump_profile() {
+void Fam_Metadata_Service_Client::dump_profile() {
     METADATA_CLIENT_PROFILE_DUMP();
 
     Fam_Metadata_Gen_Request req;
@@ -133,7 +133,7 @@ void Fam_Metadata_Manager_Client::dump_profile() {
     ::grpc::Status status = stub->dump_profile(&ctx, req, &res);
 }
 
-void Fam_Metadata_Manager_Client::metadata_insert_region(
+void Fam_Metadata_Service_Client::metadata_insert_region(
     const uint64_t regionId, const std::string regionName,
     Fam_Region_Metadata *region) {
     METADATA_CLIENT_PROFILE_START_OPS()
@@ -156,7 +156,7 @@ void Fam_Metadata_Manager_Client::metadata_insert_region(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_region);
 }
 
-void Fam_Metadata_Manager_Client::metadata_delete_region(
+void Fam_Metadata_Service_Client::metadata_delete_region(
     const uint64_t regionId) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -167,10 +167,10 @@ void Fam_Metadata_Manager_Client::metadata_delete_region(
 
     ::grpc::Status status = stub->metadata_delete_region(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
-    METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_region);
+    METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_region);
 }
 
-void Fam_Metadata_Manager_Client::metadata_delete_region(
+void Fam_Metadata_Service_Client::metadata_delete_region(
     const std::string regionName) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -181,10 +181,10 @@ void Fam_Metadata_Manager_Client::metadata_delete_region(
 
     ::grpc::Status status = stub->metadata_delete_region(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
-    METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_region);
+    METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_region);
 }
 
-bool Fam_Metadata_Manager_Client::metadata_find_region(
+bool Fam_Metadata_Service_Client::metadata_find_region(
     const uint64_t regionId, Fam_Region_Metadata &region) {
     Fam_Metadata_Request req;
     Fam_Metadata_Response res;
@@ -208,7 +208,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_region(
     return res.isfound();
 }
 
-bool Fam_Metadata_Manager_Client::metadata_find_region(
+bool Fam_Metadata_Service_Client::metadata_find_region(
     const std::string regionName, Fam_Region_Metadata &region) {
     Fam_Metadata_Request req;
     Fam_Metadata_Response res;
@@ -232,7 +232,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_region(
     return res.isfound();
 }
 
-void Fam_Metadata_Manager_Client::metadata_modify_region(
+void Fam_Metadata_Service_Client::metadata_modify_region(
     const uint64_t regionId, Fam_Region_Metadata *region) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -253,7 +253,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_region(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_region);
 }
 
-void Fam_Metadata_Manager_Client::metadata_modify_region(
+void Fam_Metadata_Service_Client::metadata_modify_region(
     const std::string regionName, Fam_Region_Metadata *region) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -274,7 +274,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_region(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_region);
 }
 
-void Fam_Metadata_Manager_Client::metadata_insert_dataitem(
+void Fam_Metadata_Service_Client::metadata_insert_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
     METADATA_CLIENT_PROFILE_START_OPS()
@@ -298,7 +298,7 @@ void Fam_Metadata_Manager_Client::metadata_insert_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_dataitem);
 }
 
-void Fam_Metadata_Manager_Client::metadata_insert_dataitem(
+void Fam_Metadata_Service_Client::metadata_insert_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
     METADATA_CLIENT_PROFILE_START_OPS()
@@ -322,7 +322,7 @@ void Fam_Metadata_Manager_Client::metadata_insert_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_insert_dataitem);
 }
 
-void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
+void Fam_Metadata_Service_Client::metadata_delete_dataitem(
     const uint64_t dataitemId, const std::string regionName) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -337,7 +337,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_dataitem);
 }
 
-void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
+void Fam_Metadata_Service_Client::metadata_delete_dataitem(
     const uint64_t dataitemId, const uint64_t regionId) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -352,7 +352,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_dataitem);
 }
 
-void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
+void Fam_Metadata_Service_Client::metadata_delete_dataitem(
     const std::string dataitemName, const std::string regionName) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -367,7 +367,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_dataitem);
 }
 
-void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
+void Fam_Metadata_Service_Client::metadata_delete_dataitem(
     const std::string dataitemName, const uint64_t regionId) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -382,7 +382,7 @@ void Fam_Metadata_Manager_Client::metadata_delete_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_delete_dataitem);
 }
 
-bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
+bool Fam_Metadata_Service_Client::metadata_find_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
     Fam_Metadata_Request req;
@@ -408,7 +408,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
     return res.isfound();
 }
 
-bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
+bool Fam_Metadata_Service_Client::metadata_find_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
     Fam_Metadata_Request req;
@@ -434,7 +434,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
     return res.isfound();
 }
 
-bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
+bool Fam_Metadata_Service_Client::metadata_find_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
     Fam_Metadata_Request req;
@@ -460,7 +460,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
     return res.isfound();
 }
 
-bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
+bool Fam_Metadata_Service_Client::metadata_find_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
     Fam_Metadata_Request req;
@@ -486,7 +486,7 @@ bool Fam_Metadata_Manager_Client::metadata_find_dataitem(
     return res.isfound();
 }
 
-void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
+void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
     METADATA_CLIENT_PROFILE_START_OPS()
@@ -509,7 +509,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_dataitem);
 }
 
-void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
+void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
     METADATA_CLIENT_PROFILE_START_OPS()
@@ -532,7 +532,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_dataitem);
 }
 
-void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
+void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
     METADATA_CLIENT_PROFILE_START_OPS()
@@ -555,7 +555,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_dataitem);
 }
 
-void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
+void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
     METADATA_CLIENT_PROFILE_START_OPS()
@@ -578,7 +578,7 @@ void Fam_Metadata_Manager_Client::metadata_modify_dataitem(
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_dataitem);
 }
 
-bool Fam_Metadata_Manager_Client::metadata_check_permissions(
+bool Fam_Metadata_Service_Client::metadata_check_permissions(
     Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint32_t uid,
     uint32_t gid) {
     Fam_Permission_Request req;
@@ -599,7 +599,7 @@ bool Fam_Metadata_Manager_Client::metadata_check_permissions(
     return res.is_permitted();
 }
 
-bool Fam_Metadata_Manager_Client::metadata_check_permissions(
+bool Fam_Metadata_Service_Client::metadata_check_permissions(
     Fam_Region_Metadata *region, metadata_region_item_op_t op, uint32_t uid,
     uint32_t gid) {
     Fam_Permission_Request req;
@@ -620,7 +620,7 @@ bool Fam_Metadata_Manager_Client::metadata_check_permissions(
     return res.is_permitted();
 }
 
-size_t Fam_Metadata_Manager_Client::metadata_maxkeylen() {
+size_t Fam_Metadata_Service_Client::metadata_maxkeylen() {
     Fam_Metadata_Request req;
     Fam_Metadata_Response res;
     ::grpc::ClientContext ctx;

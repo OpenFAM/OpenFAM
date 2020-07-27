@@ -1,5 +1,5 @@
 /*
- *   fam_metadata_manager_client.h
+ *   fam_metadata_service_client.h
  *   Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  *   reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
@@ -31,8 +31,8 @@
  *
  */
 
-#ifndef FAM_METADATA_MANAGER_CLIENT_H
-#define FAM_METADATA_MANAGER_CLIENT_H
+#ifndef FAM_METADATA_SERVICE_CLIENT_H
+#define FAM_METADATA_SERVICE_CLIENT_H
 
 #include <grpc/impl/codegen/log.h>
 #include <grpcpp/grpcpp.h>
@@ -45,14 +45,14 @@
 #include <string>
 #include <unistd.h>
 
-#include "fam_metadata_manager.h"
 #include "fam_metadata_rpc.grpc.pb.h"
+#include "fam_metadata_service.h"
 
 using namespace std;
 
 namespace metadata {
 
-class Fam_Metadata_Manager_Client : public Fam_Metadata_Manager {
+class Fam_Metadata_Service_Client : public Fam_Metadata_Service {
   public:
     void reset_profile();
     void dump_profile();
@@ -128,8 +128,8 @@ class Fam_Metadata_Manager_Client : public Fam_Metadata_Manager {
                                     uint32_t gid);
     size_t metadata_maxkeylen();
 
-    Fam_Metadata_Manager_Client(const char *name, uint64_t port);
-    ~Fam_Metadata_Manager_Client();
+    Fam_Metadata_Service_Client(const char *name, uint64_t port);
+    ~Fam_Metadata_Service_Client();
 
   private:
     uint32_t uid;

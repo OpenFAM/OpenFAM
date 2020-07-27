@@ -1,5 +1,5 @@
 /*
- * fam_metadata_manager_server.h
+ * fam_metadata_service_server.h
  * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -28,8 +28,8 @@
  *
  */
 
-#ifndef FAM_MATADATA_MANAGER_SERVER_H
-#define FAM_MATADATA_MANAGER_SERVER_H
+#ifndef FAM_METADATA_SERVICE_SERVER_H
+#define FAM_METADATA_SERVICE_SERVER_H
 
 #include <iostream>
 #include <map>
@@ -38,8 +38,8 @@
 
 #include "grpcpp/grpcpp.h"
 
-#include "metadata/fam_metadata_manager_direct.h"
 #include "metadata/fam_metadata_rpc.grpc.pb.h"
+#include "metadata/fam_metadata_service_direct.h"
 
 using namespace openfam;
 
@@ -54,11 +54,11 @@ using grpc::ServerCompletionQueue;
 using grpc::ServerContext;
 using grpc::Status;
 
-class Fam_Metadata_Manager_Server : public Fam_Metadata_Rpc::Service {
+class Fam_Metadata_Service_Server : public Fam_Metadata_Rpc::Service {
   public:
-    Fam_Metadata_Manager_Server(uint64_t rpcPort, char *name);
+    Fam_Metadata_Service_Server(uint64_t rpcPort, char *name);
 
-    ~Fam_Metadata_Manager_Server();
+    ~Fam_Metadata_Service_Server();
 
     void run();
 
@@ -139,7 +139,7 @@ class Fam_Metadata_Manager_Server : public Fam_Metadata_Rpc::Service {
     int numClients;
     Fam_Metadata_Rpc::Service *service;
     std::unique_ptr<Server> server;
-    Fam_Metadata_Manager_Direct *metadataManager;
+    Fam_Metadata_Service_Direct *metadataManager;
 };
 
 } // namespace metadata

@@ -28,8 +28,8 @@ set(METADATA_CLIENT_SRC
   ${METADATA_CLIENT_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.grpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.pb.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_manager_direct.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_manager_client.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_direct.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_client.cpp
   PARENT_SCOPE
   )
 
@@ -37,7 +37,7 @@ set(METADATA_SERVER_SRC
   ${METADATA_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.grpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.pb.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_manager_direct.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_manager_server.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_direct.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_server.cpp
   PARENT_SCOPE
   )

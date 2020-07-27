@@ -1,5 +1,5 @@
 /*
- *   fam_metadata_manager_direct.cpp
+ *   fam_metadata_service_direct.cpp
  *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
  *   rights reserved.
  *   Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,7 @@
  *
  */
 
-#include "fam_metadata_manager_direct.h"
+#include "fam_metadata_service_direct.h"
 
 #include <boost/atomic.hpp>
 
@@ -101,9 +101,9 @@ inline void ResetBuf(char *buf, size_t &len, size_t const max_len) {
 }
 
 /*
- * Internal implementation of Fam_Metadata_Manager_Direct
+ * Internal implementation of Fam_Metadata_Service_Direct
  */
-class Fam_Metadata_Manager_Direct::Impl_ {
+class Fam_Metadata_Service_Direct::Impl_ {
   public:
     Impl_() {}
 
@@ -236,7 +236,7 @@ class Fam_Metadata_Manager_Direct::Impl_ {
 /*
  * Initialize the FAM metadata manager
  */
-int Fam_Metadata_Manager_Direct::Impl_::Init(bool use_meta_reg) {
+int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg) {
 
     memoryManager = MemoryManager::GetInstance();
 
@@ -282,7 +282,7 @@ int Fam_Metadata_Manager_Direct::Impl_::Init(bool use_meta_reg) {
     return META_NO_ERROR;
 }
 
-int Fam_Metadata_Manager_Direct::Impl_::Final() {
+int Fam_Metadata_Service_Direct::Impl_::Final() {
     // Cleanup
     delete regionIdKVS;
     delete regionNameKVS;
@@ -298,7 +298,7 @@ int Fam_Metadata_Manager_Direct::Impl_::Final() {
  * @return - Global pointer to the KVS tree root
  */
 GlobalPtr
-Fam_Metadata_Manager_Direct::Impl_::create_metadata_kvs_tree(size_t heap_size,
+Fam_Metadata_Service_Direct::Impl_::create_metadata_kvs_tree(size_t heap_size,
                                                              PoolId heap_id) {
 
     KeyValueStore *metadataKVS;
@@ -317,14 +317,14 @@ Fam_Metadata_Manager_Direct::Impl_::create_metadata_kvs_tree(size_t heap_size,
     return metadataRoot;
 }
 
-KeyValueStore *Fam_Metadata_Manager_Direct::Impl_::open_metadata_kvs(
+KeyValueStore *Fam_Metadata_Service_Direct::Impl_::open_metadata_kvs(
     GlobalPtr root, size_t heap_size, uint64_t heap_id) {
 
     return KeyValueStore::MakeKVS(KVSTYPE, root, "", "", heap_size,
                                   (PoolId)heap_id);
 }
 
-int Fam_Metadata_Manager_Direct::Impl_::get_dataitem_KVS(
+int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
     uint64_t regionId, KeyValueStore *&dataitemIdKVS,
     KeyValueStore *&dataitemNameKVS) {
 
@@ -389,7 +389,7 @@ int Fam_Metadata_Manager_Direct::Impl_::get_dataitem_KVS(
  *	found
  *
  */
-bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_region(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_region(
     const uint64_t regionId, Fam_Region_Metadata &region) {
 
     ostringstream message;
@@ -427,7 +427,7 @@ bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_region(
  * 	key not found
  *
  */
-bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_region(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_region(
     const std::string regionName, Fam_Region_Metadata &region) {
     ostringstream message;
 
@@ -465,7 +465,7 @@ bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_region(
  * @return - META_NO_ERROR if key added successfully, META_KEY_ALREADY_EXIST if
  * 	key already exists
  */
-int Fam_Metadata_Manager_Direct::Impl_::insert_in_regionname_kvs(
+int Fam_Metadata_Service_Direct::Impl_::insert_in_regionname_kvs(
     const std::string regionName, const std::string regionId) {
     int ret = 0;
 
@@ -497,7 +497,7 @@ int Fam_Metadata_Manager_Direct::Impl_::insert_in_regionname_kvs(
  * @param insert - bool flag insert -1 for insert; 0 for update
  * @return - META_NO_ERROR if key added successfully
  */
-int Fam_Metadata_Manager_Direct::Impl_::insert_in_regionid_kvs(
+int Fam_Metadata_Service_Direct::Impl_::insert_in_regionid_kvs(
     const std::string regionName, Fam_Region_Metadata *region, bool insert) {
 
     int ret;
@@ -539,7 +539,7 @@ int Fam_Metadata_Manager_Direct::Impl_::insert_in_regionid_kvs(
  * @return - META_NO_ERROR if key found successfully, META_KEY_DOES_NOT_EXIST if
  * 	key not found
  */
-int Fam_Metadata_Manager_Direct::Impl_::get_regionid_from_regionname_KVS(
+int Fam_Metadata_Service_Direct::Impl_::get_regionid_from_regionname_KVS(
     const std::string regionName, std::string &regionId) {
     int ret;
 
@@ -571,7 +571,7 @@ int Fam_Metadata_Manager_Direct::Impl_::get_regionid_from_regionname_KVS(
  * @return - META_NO_ERROR if key added, META_KEY_ALREADY_EXIST id the regionID
  *   	or reginName already exist.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_insert_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
     const uint64_t regionId, const std::string regionName,
     Fam_Region_Metadata *region) {
 
@@ -668,7 +668,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_insert_region(
  * @return - META_NO_ERROR if key added, META_KEY_DOES_NOT_EXIST if regionId
  * 	key not found
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_region(
     const uint64_t regionId, Fam_Region_Metadata *region) {
     ostringstream message;
 
@@ -704,7 +704,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_region(
  * @return - META_NO_ERROR if key added, META_KEY_DOES_NOT_EXIST if regionId
  * 	key not found
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_region(
     const std::string regionName, Fam_Region_Metadata *region) {
     ostringstream message;
 
@@ -740,7 +740,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_region(
  * META_KEY_DOES_NOT_EXIST
  * 	if key not found.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
     const std::string regionName) {
     ostringstream message;
 
@@ -808,7 +808,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_region(
  * META_KEY_DOES_NOT_EXIST
  * 	if key not found.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
     const uint64_t regionId) {
 
     ostringstream message;
@@ -879,7 +879,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_region(
  *           not found, META_KEY_ALREADY_EXIST if dataitem Id entry already
  * 	     exist.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_insert_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
     const uint64_t dataitemId, std::string regionName,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
@@ -964,7 +964,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_insert_dataitem(
  *           not found, META_KEY_ALREADY_EXIST if dataitem Id entry already
  * 	     exist.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_insert_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
@@ -1044,7 +1044,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_insert_dataitem(
  * @return - META_NO_ERROR if descriptor updated , META_KEY_DOES_NOT_EXIST if
  *  	region not found or dataitem Id entry not found.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
 
@@ -1112,7 +1112,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_dataitem(
  * @return - META_NO_ERROR if descriptor updated , META_KEY_DOES_NOT_EXIST if
  *	region not found or dataitem Id entry not found.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
     ostringstream message;
@@ -1198,7 +1198,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_dataitem(
  * @return - META_NO_ERROR if descriptor updated , META_KEY_DOES_NOT_EXIST if
  * 	region not found or dataitem Id entry not found.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
     ostringstream message;
@@ -1261,7 +1261,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_dataitem(
  * @return - META_NO_ERROR if descriptor updated , META_KEY_DOES_NOT_EXIST if
  *           region not found or dataitem Id entry not found.
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
     ostringstream message;
@@ -1333,7 +1333,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_modify_dataitem(
  * @return - META_NO_ERROR if the key is deleted successfully,
  * META_KEY_DOES_NOT_EXIST if region or daatitem key does not exists
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     const uint64_t dataitemId, const std::string regionName) {
     ostringstream message;
 
@@ -1395,7 +1395,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_dataitem(
  * @return - META_NO_ERROR if the key is deleted successfully,
  * META_KEY_DOES_NOT_EXIST if region or daatitem key does not exists
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     const uint64_t dataitemId, const uint64_t regionId) {
 
     ostringstream message;
@@ -1445,7 +1445,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_dataitem(
  * @return - META_NO_ERROR if the key is deleted successfully,
  * META_KEY_DOES_NOT_EXIST if region or daatitem key does not exists
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     const std::string dataitemName, const uint64_t regionId) {
 
     ostringstream message;
@@ -1504,7 +1504,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_dataitem(
  * META_KEY_DOES_NOT_EXIST
  * 	if region or daatitem key does not exists
  */
-void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     const std::string dataitemName, const std::string regionName) {
 
     ostringstream message;
@@ -1575,7 +1575,7 @@ void Fam_Metadata_Manager_Direct::Impl_::metadata_delete_dataitem(
  *found
  *
  */
-bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
     ostringstream message;
@@ -1626,7 +1626,7 @@ bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_dataitem(
  *found
  *
  */
-bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
@@ -1678,7 +1678,7 @@ bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_dataitem(
  *found
  *
  */
-bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
     ostringstream message;
@@ -1736,7 +1736,7 @@ bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_dataitem(
  *found
  *
  */
-bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
@@ -1799,7 +1799,7 @@ bool Fam_Metadata_Manager_Direct::Impl_::metadata_find_dataitem(
  * Returns true if uid/gid has required permission, else false
  *
  */
-bool Fam_Metadata_Manager_Direct::Impl_::metadata_check_permissions(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_check_permissions(
     Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint32_t uid,
     uint32_t gid) {
 
@@ -1880,7 +1880,7 @@ bool Fam_Metadata_Manager_Direct::Impl_::metadata_check_permissions(
  * Returns true if uid/gid has required permission, else false
  *
  */
-bool Fam_Metadata_Manager_Direct::Impl_::metadata_check_permissions(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_check_permissions(
     Fam_Region_Metadata *region, metadata_region_item_op_t op, uint32_t uid,
     uint32_t gid) {
 
@@ -1951,24 +1951,24 @@ bool Fam_Metadata_Manager_Direct::Impl_::metadata_check_permissions(
     return true;
 }
 
-size_t Fam_Metadata_Manager_Direct::Impl_::metadata_maxkeylen() {
+size_t Fam_Metadata_Service_Direct::Impl_::metadata_maxkeylen() {
     return regionNameKVS->MaxKeyLen();
 }
 
-Fam_Metadata_Manager_Direct::Fam_Metadata_Manager_Direct(bool use_meta_reg) {
+Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     Start(use_meta_reg);
 }
 
-Fam_Metadata_Manager_Direct::~Fam_Metadata_Manager_Direct() { Stop(); }
+Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() { Stop(); }
 
-void Fam_Metadata_Manager_Direct::Stop() {
+void Fam_Metadata_Service_Direct::Stop() {
     int ret = pimpl_->Final();
     assert(ret == META_NO_ERROR);
     if (pimpl_)
         delete pimpl_;
 }
 
-void Fam_Metadata_Manager_Direct::Start(bool use_meta_reg) {
+void Fam_Metadata_Service_Direct::Start(bool use_meta_reg) {
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
@@ -1978,16 +1978,16 @@ void Fam_Metadata_Manager_Direct::Start(bool use_meta_reg) {
     assert(ret == META_NO_ERROR);
 }
 
-void Fam_Metadata_Manager_Direct::reset_profile() {
+void Fam_Metadata_Service_Direct::reset_profile() {
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
 }
 
-void Fam_Metadata_Manager_Direct::dump_profile() {
+void Fam_Metadata_Service_Direct::dump_profile() {
     METADATA_DIRECT_PROFILE_DUMP();
 }
 
-void Fam_Metadata_Manager_Direct::metadata_insert_region(
+void Fam_Metadata_Service_Direct::metadata_insert_region(
     const uint64_t regionID, const std::string regionName,
     Fam_Region_Metadata *region) {
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -1995,21 +1995,21 @@ void Fam_Metadata_Manager_Direct::metadata_insert_region(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_insert_region);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_delete_region(
+void Fam_Metadata_Service_Direct::metadata_delete_region(
     const uint64_t regionID) {
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_delete_region(regionID);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_region);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_delete_region(
+void Fam_Metadata_Service_Direct::metadata_delete_region(
     const std::string regionName) {
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_delete_region(regionName);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_region);
 }
 
-bool Fam_Metadata_Manager_Direct::metadata_find_region(
+bool Fam_Metadata_Service_Direct::metadata_find_region(
     const std::string regionName, Fam_Region_Metadata &region) {
     bool ret;
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2018,7 +2018,7 @@ bool Fam_Metadata_Manager_Direct::metadata_find_region(
     return ret;
 }
 
-bool Fam_Metadata_Manager_Direct::metadata_find_region(
+bool Fam_Metadata_Service_Direct::metadata_find_region(
     const uint64_t regionId, Fam_Region_Metadata &region) {
     bool ret;
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2027,20 +2027,20 @@ bool Fam_Metadata_Manager_Direct::metadata_find_region(
     return ret;
 }
 
-void Fam_Metadata_Manager_Direct::metadata_modify_region(
+void Fam_Metadata_Service_Direct::metadata_modify_region(
     const uint64_t regionID, Fam_Region_Metadata *region) {
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_modify_region(regionID, region);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_region);
 }
-void Fam_Metadata_Manager_Direct::metadata_modify_region(
+void Fam_Metadata_Service_Direct::metadata_modify_region(
     const std::string regionName, Fam_Region_Metadata *region) {
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_modify_region(regionName, region);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_region);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_insert_dataitem(
+void Fam_Metadata_Service_Direct::metadata_insert_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
@@ -2050,7 +2050,7 @@ void Fam_Metadata_Manager_Direct::metadata_insert_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_insert_dataitem);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_insert_dataitem(
+void Fam_Metadata_Service_Direct::metadata_insert_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
@@ -2060,7 +2060,7 @@ void Fam_Metadata_Manager_Direct::metadata_insert_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_insert_dataitem);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
     const uint64_t dataitemId, const std::string regionName) {
 
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2068,7 +2068,7 @@ void Fam_Metadata_Manager_Direct::metadata_delete_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
     const uint64_t dataitemId, const uint64_t regionId) {
 
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2076,7 +2076,7 @@ void Fam_Metadata_Manager_Direct::metadata_delete_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
     const std::string dataitemName, const std::string regionName) {
 
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2084,14 +2084,14 @@ void Fam_Metadata_Manager_Direct::metadata_delete_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
     const std::string dataitemName, const uint64_t regionId) {
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_delete_dataitem(dataitemName, regionId);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-bool Fam_Metadata_Manager_Direct::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::metadata_find_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
     bool ret;
@@ -2101,7 +2101,7 @@ bool Fam_Metadata_Manager_Direct::metadata_find_dataitem(
     return ret;
 }
 
-bool Fam_Metadata_Manager_Direct::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::metadata_find_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
@@ -2112,7 +2112,7 @@ bool Fam_Metadata_Manager_Direct::metadata_find_dataitem(
     return ret;
 }
 
-bool Fam_Metadata_Manager_Direct::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::metadata_find_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
 
@@ -2123,7 +2123,7 @@ bool Fam_Metadata_Manager_Direct::metadata_find_dataitem(
     return ret;
 }
 
-bool Fam_Metadata_Manager_Direct::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::metadata_find_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
@@ -2134,7 +2134,7 @@ bool Fam_Metadata_Manager_Direct::metadata_find_dataitem(
     return ret;
 }
 
-void Fam_Metadata_Manager_Direct::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::metadata_modify_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2142,7 +2142,7 @@ void Fam_Metadata_Manager_Direct::metadata_modify_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_dataitem);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::metadata_modify_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2150,7 +2150,7 @@ void Fam_Metadata_Manager_Direct::metadata_modify_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_dataitem);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::metadata_modify_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2158,7 +2158,7 @@ void Fam_Metadata_Manager_Direct::metadata_modify_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_dataitem);
 }
 
-void Fam_Metadata_Manager_Direct::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::metadata_modify_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
     METADATA_DIRECT_PROFILE_START_OPS()
@@ -2166,7 +2166,7 @@ void Fam_Metadata_Manager_Direct::metadata_modify_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_dataitem);
 }
 
-bool Fam_Metadata_Manager_Direct::metadata_check_permissions(
+bool Fam_Metadata_Service_Direct::metadata_check_permissions(
     Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint32_t uid,
     uint32_t gid) {
     bool ret;
@@ -2176,7 +2176,7 @@ bool Fam_Metadata_Manager_Direct::metadata_check_permissions(
     return ret;
 }
 
-bool Fam_Metadata_Manager_Direct::metadata_check_permissions(
+bool Fam_Metadata_Service_Direct::metadata_check_permissions(
     Fam_Region_Metadata *region, metadata_region_item_op_t op, uint32_t uid,
     uint32_t gid) {
     bool ret;
@@ -2186,7 +2186,7 @@ bool Fam_Metadata_Manager_Direct::metadata_check_permissions(
     return ret;
 }
 
-size_t Fam_Metadata_Manager_Direct::metadata_maxkeylen() {
+size_t Fam_Metadata_Service_Direct::metadata_maxkeylen() {
 
     size_t ret;
     METADATA_DIRECT_PROFILE_START_OPS()

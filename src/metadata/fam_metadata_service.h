@@ -1,5 +1,5 @@
 /*
- *   fam_metadata_manager.h
+ *   fam_metadata_service.h
  *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
@@ -31,16 +31,16 @@
  *
  */
 
-#ifndef FAM_METADATA_MANAGER_H
-#define FAM_METADATA_MANAGER_H
+#ifndef FAM_METADATA_SERVICE_H
+#define FAM_METADATA_SERVICE_H
 
 #include <iostream>
+#include <map>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <string>
 #include <unistd.h>
-#include <map>
 
 #include "radixtree/kvs.h"
 #include "radixtree/radix_tree.h"
@@ -136,9 +136,9 @@ enum metadata_ErrorVal {
     META_NO_ERROR = 0
 };
 
-class Fam_Metadata_Manager {
+class Fam_Metadata_Service {
   public:
-    virtual ~Fam_Metadata_Manager(){};
+    virtual ~Fam_Metadata_Service(){};
 
     virtual void reset_profile() = 0;
 

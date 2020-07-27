@@ -32,9 +32,9 @@
  *
  */
 
-#include "../../src/metadata/fam_metadata_manager.h"
+#include "../../src/metadata/fam_metadata_service.h"
 #include "common/fam_test_config.h"
-#include "metadata/fam_metadata_manager_client.h"
+#include "metadata/fam_metadata_service_client.h"
 
 #include <fam/fam.h>
 #include <string.h>
@@ -47,8 +47,8 @@ using namespace openfam;
 
 int main(int argc, char *argv[]) {
 
-    Fam_Metadata_Manager *manager = new Fam_Metadata_Manager_Client(
-        TEST_METADATA_SERVER, atoi(TEST_METADATA_RPC_PORT));
+    Fam_Metadata_Service *manager =
+        new Fam_Metadata_Service_Client(METADATA_SERVER, METADATA_RPC_PORT);
 
     int ret;
     uint64_t count = 0, fail = 0;

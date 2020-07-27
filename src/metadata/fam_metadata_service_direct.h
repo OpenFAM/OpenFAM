@@ -1,5 +1,5 @@
 /*
- *   fam_metadata_manager_direct.h
+ *   fam_metadata_service_direct.h
  *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
  *   rights reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
@@ -31,8 +31,8 @@
  *
  */
 
-#ifndef FAM_METADATA_MANAGER_DIRECT_H
-#define FAM_METADATA_MANAGER_DIRECT_H
+#ifndef FAM_METADATA_SERVICE_DIRECT_H
+#define FAM_METADATA_SERVICE_DIRECT_H
 
 #include <iostream>
 #include <map>
@@ -45,7 +45,7 @@
 #include "radixtree/kvs.h"
 #include "radixtree/radix_tree.h"
 
-#include "fam_metadata_manager.h"
+#include "fam_metadata_service.h"
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
@@ -56,7 +56,7 @@ using namespace std;
 
 namespace metadata {
 
-class Fam_Metadata_Manager_Direct : public Fam_Metadata_Manager {
+class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
   public:
     void Start(bool use_meta_reg);
     void Stop();
@@ -135,8 +135,8 @@ class Fam_Metadata_Manager_Direct : public Fam_Metadata_Manager {
                                     uint32_t gid);
     size_t metadata_maxkeylen();
 
-    Fam_Metadata_Manager_Direct(bool use_meta_reg = 0);
-    ~Fam_Metadata_Manager_Direct();
+    Fam_Metadata_Service_Direct(bool use_meta_reg = 0);
+    ~Fam_Metadata_Service_Direct();
 
   private:
     class Impl_;

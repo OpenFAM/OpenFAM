@@ -1,5 +1,5 @@
 /*
- *   fam_metadata_manager_server.cpp
+ *   fam_metadata_service_server.cpp
  *   Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  *   reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
@@ -31,7 +31,7 @@
  *
  */
 
-#include "fam_metadata_manager_server.h"
+#include "fam_metadata_service_server.h"
 #include "common/fam_memserver_profile.h"
 
 namespace metadata {
@@ -68,20 +68,20 @@ void metadata_server_profile_dump() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_SERVER)
 }
 
-Fam_Metadata_Manager_Server::Fam_Metadata_Manager_Server(uint64_t rpcPort,
+Fam_Metadata_Service_Server::Fam_Metadata_Service_Server(uint64_t rpcPort,
                                                          char *name)
     : serverAddress(name), port(rpcPort) {
-    metadataManager = new Fam_Metadata_Manager_Direct();
+    metadataManager = new Fam_Metadata_Service_Direct();
     numClients = 0;
     MEMSERVER_PROFILE_INIT(METADATA_SERVER)
     MEMSERVER_PROFILE_START_TIME(METADATA_SERVER)
 }
 
-Fam_Metadata_Manager_Server::~Fam_Metadata_Manager_Server() {
+Fam_Metadata_Service_Server::~Fam_Metadata_Service_Server() {
     delete metadataManager;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::reset_profile(
+::grpc::Status Fam_Metadata_Service_Server::reset_profile(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Gen_Request *request,
     ::Fam_Metadata_Gen_Response *response) {
     MEMSERVER_PROFILE_INIT(METADATA_SERVER)
@@ -90,7 +90,7 @@ Fam_Metadata_Manager_Server::~Fam_Metadata_Manager_Server() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::dump_profile(
+::grpc::Status Fam_Metadata_Service_Server::dump_profile(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Gen_Request *request,
     ::Fam_Metadata_Gen_Response *response) {
     METADATA_SERVER_PROFILE_DUMP();
@@ -98,7 +98,7 @@ Fam_Metadata_Manager_Server::~Fam_Metadata_Manager_Server() {
     return ::grpc::Status::OK;
 }
 
-void Fam_Metadata_Manager_Server::run() {
+void Fam_Metadata_Service_Server::run() {
     char address[ADDR_SIZE + sizeof(uint64_t)];
     sprintf(address, "%s:%lu", serverAddress, port);
     std::string serverAddress(address);
@@ -117,21 +117,21 @@ void Fam_Metadata_Manager_Server::run() {
     server->Wait();
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::signal_start(
+::grpc::Status Fam_Metadata_Service_Server::signal_start(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Gen_Request *request,
     ::Fam_Metadata_Gen_Response *response) {
     __sync_add_and_fetch(&numClients, 1);
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::signal_termination(
+::grpc::Status Fam_Metadata_Service_Server::signal_termination(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Gen_Request *request,
     ::Fam_Metadata_Gen_Response *response) {
     __sync_add_and_fetch(&numClients, -1);
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_insert_region(
+::grpc::Status Fam_Metadata_Service_Server::metadata_insert_region(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -156,7 +156,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_delete_region(
+::grpc::Status Fam_Metadata_Service_Server::metadata_delete_region(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -174,7 +174,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_find_region(
+::grpc::Status Fam_Metadata_Service_Server::metadata_find_region(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -207,7 +207,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_modify_region(
+::grpc::Status Fam_Metadata_Service_Server::metadata_modify_region(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -236,7 +236,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_insert_dataitem(
+::grpc::Status Fam_Metadata_Service_Server::metadata_insert_dataitem(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -267,7 +267,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_delete_dataitem(
+::grpc::Status Fam_Metadata_Service_Server::metadata_delete_dataitem(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -295,7 +295,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_find_dataitem(
+::grpc::Status Fam_Metadata_Service_Server::metadata_find_dataitem(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -339,7 +339,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_modify_dataitem(
+::grpc::Status Fam_Metadata_Service_Server::metadata_modify_dataitem(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -380,7 +380,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_check_region_permissions(
+::grpc::Status Fam_Metadata_Service_Server::metadata_check_region_permissions(
     ::grpc::ServerContext *context, const ::Fam_Permission_Request *request,
     ::Fam_Permission_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -403,7 +403,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_check_item_permissions(
+::grpc::Status Fam_Metadata_Service_Server::metadata_check_item_permissions(
     ::grpc::ServerContext *context, const ::Fam_Permission_Request *request,
     ::Fam_Permission_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()
@@ -426,7 +426,7 @@ void Fam_Metadata_Manager_Server::run() {
     return ::grpc::Status::OK;
 }
 
-::grpc::Status Fam_Metadata_Manager_Server::metadata_maxkeylen(
+::grpc::Status Fam_Metadata_Service_Server::metadata_maxkeylen(
     ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
     ::Fam_Metadata_Response *response) {
     METADATA_SERVER_PROFILE_START_OPS()

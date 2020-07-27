@@ -29,6 +29,6 @@ endfunction()
 add_fam_test(fam_allocator_reg_test)
 add_fam_test(fam_resize_reg_test)
 
-if (${TEST_ALLOCATOR} STREQUAL "NVMM")
+if (${TEST_ALLOCATOR} STREQUAL "SHM")
 	add_fam_test(fam_map_reg_test)
 endif()

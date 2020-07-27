@@ -32,7 +32,7 @@
 #include <signal.h>
 #endif
 
-#include "metadata/fam_metadata_manager_server.h"
+#include "metadata/fam_metadata_service_server.h"
 #include <iostream>
 using namespace std;
 using namespace metadata;
@@ -52,7 +52,7 @@ void signal_handler(int signum) {
 }
 #endif
 
-Fam_Metadata_Manager_Server *metadataService;
+Fam_Metadata_Service_Server *metadataService;
 
 int main(int argc, char *argv[]) {
     // Example for commandline argument: ./metadataserver -a 127.0.0.1 -r 8989
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 
     metadataService = NULL;
     try {
-        metadataService = new Fam_Metadata_Manager_Server(rpcPort, name);
+        metadataService = new Fam_Metadata_Service_Server(rpcPort, name);
         metadataService->run();
     } catch (Metadata_Service_Exception &e) {
         if (metadataService) {
@@ -111,6 +111,7 @@ int main(int argc, char *argv[]) {
 
     if (metadataService) {
         delete metadataService;
+        metadataService = NULL;
     }
 
     return 0;

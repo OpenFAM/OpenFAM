@@ -34,9 +34,9 @@
 
 #include "allocator/memserver_allocator.h"
 #include "cis/fam_cis.h"
-#include "metadata/fam_metadata_manager.h"
-#include "metadata/fam_metadata_manager_client.h"
-#include "metadata/fam_metadata_manager_direct.h"
+#include "metadata/fam_metadata_service.h"
+#include "metadata/fam_metadata_service_client.h"
+#include "metadata/fam_metadata_service_direct.h"
 
 using namespace metadata;
 
@@ -122,7 +122,7 @@ class Fam_CIS_Direct : public Fam_CIS {
 
   private:
     Memserver_Allocator *allocator;
-    Fam_Metadata_Manager *metadataManager;
+    Fam_Metadata_Service *metadataService;
 };
 
 } // namespace openfam

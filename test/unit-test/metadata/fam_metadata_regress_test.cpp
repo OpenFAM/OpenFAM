@@ -42,8 +42,8 @@
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
 
-#include "../../src/metadata/fam_metadata_manager.h"
-#include "src/metadata/fam_metadata_manager_direct.h"
+#include "../../src/metadata/fam_metadata_service.h"
+#include "src/metadata/fam_metadata_service_direct.h"
 
 #include "common/fam_test_config.h"
 
@@ -56,7 +56,7 @@ using namespace metadata;
 
 fam *my_fam;
 Fam_Options fam_opts;
-Fam_Metadata_Manager *manager;
+Fam_Metadata_Service *manager;
 
 // Test case#1 Success cases for region.
 TEST(FamMetadata, RegionSuccess) {
@@ -438,7 +438,7 @@ TEST(FamMetadata, DataitemFail) {
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     my_fam = new fam();
-    manager = new Fam_Metadata_Manager_Direct();
+    manager = new Fam_Metadata_Service_Direct();
 
     init_fam_options(&fam_opts);
 
