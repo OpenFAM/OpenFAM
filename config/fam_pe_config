@@ -1,0 +1,19 @@
+# PE config file
+
+# IP address of CIS server 
+fam_client_interface_server_ip: 127.0.0.1
+
+# Port to be used by OpenFAM  to connect to CIS Server
+fam_client_interface_server_port: 8787
+
+# Libfabric Port to be used by OpenFAM memory allocator operation
+libfabric_port : 7500
+
+# Fam thread model: default is single-threaded(single). Other option is multi-threaded(multiple)
+FamThreadModel : "single"
+
+# Libfabric provider to be used by OpenFAM libfabric datapath operations; default is sockets. It could be verbs/omnipath
+provider : "sockets"
+
+# Allocator to be used, default is grpc, Other option is SHM.
+allocator : "grpc"

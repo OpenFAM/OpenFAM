@@ -1,0 +1,7 @@
+# MemoryServer Config file
+# metadata manager ip address < this can also be an array right?>
+metadata_ips:
+    - 0:<md_ip_address_1>
+    - 1:<md_ip_address_2>
+# Path where data is stored. By default, it will be placed in /dev/shm. 
+data_path: /dev/shm/`whoami`
