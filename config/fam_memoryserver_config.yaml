@@ -1,0 +1,4 @@
+# MemoryServer Config file
+# Path where data is stored. By default, it will be placed in /dev/shm/
+# By default NVMM default location will be selected.
+# data_path: /dev/shm/

@@ -17,3 +17,7 @@ provider : "sockets"
 
 # Allocator to be used, default is grpc, Other option is SHM.
 allocator : "grpc"
+
+# Runtime option
+runtime : "PMIX"
+

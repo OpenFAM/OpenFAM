@@ -1,0 +1,7 @@
+#Metadata Config file
+
+# Metadata manager: default is radixtree. Currently radixtree is the only supported KVS.
+metadata_manager : "radixtree"
+ 
+# Path where metadata info is stored. By default, it will be placed in /dev/shm. 
+metadata_path: /dev/shm/
