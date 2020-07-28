@@ -1972,6 +1972,7 @@ void Fam_Metadata_Service_Direct::Start(bool use_meta_reg) {
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
+    StartNVMM();
     pimpl_ = new Impl_;
     assert(pimpl_);
     int ret = pimpl_->Init(use_meta_reg);

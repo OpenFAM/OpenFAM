@@ -33,21 +33,108 @@ CURRENTDIR=`pwd`
 export PATH="$CURRENTDIR/../../third-party/build/bin/:$PATH"
 export LD_LIBRARY_PATH="$CURRENTDIR/../../third-party/build/lib:$LD_LIBRARY_PATH"
 
-if [ $# -lt 1 ]
-then
-echo "Error: memory server not specified."
-echo "usage: source setup.sh <memory_server>"
-exit 1
-fi
+memserver=
+metaserver=
+memrpcport=8787
+metarpcport=8989
+libfabricport=7500
+provider=sockets
+
+while :; do
+	case $1 in
+		-h|-\?|--help)
+			tput bold
+			echo "Synopys :"
+			tput reset
+			echo ""
+			echo "	source setup.sh <options>"
+			echo ""
+			tput bold
+			echo "Options :"
+			tput reset
+			echo ""
+			echo "	--memserver     : IP address of memory server"
+			echo ""
+			echo "	--metaserver    : IP address of metadata server"
+			echo ""
+			echo "	--memrpcport    : RPC port for memory service"
+			echo ""
+			echo "	--metarpcport   : RPC port for metadata server"
+			echo ""
+			echo "	--libfabricport : Libfabric port"
+			echo ""
+			echo "	--provider      : Libfabric provider"
+			echo ""
+			;;
+		--memserver=?*)
+			memserver=${1#*=}
+			;;
+		--memserver=)
+			echo 'ERROR: "--memserver" requires a non-empty option argument.'
+			;;
+		--metaserver=?*)
+			metaserver=${1#*=}
+			;;
+		--metaserver=)
+			echo 'ERROR: "--metaserver" requires a non-empty option argument.'
+            ;;
+		--memrpcport=?*)
+			memrpcport=${1#*=}
+			;;
+		--memrpcport=)
+			echo 'ERROR: "--memrpcport" requires a non-empty option argument.'
+			;;
+		--metarpcport=?*)
+			metarpcport=${1#*=}
+			;;
+		--metarpcport=)
+			echo 'ERROR: "--metarpcport" requires a non-empty option argument.'
+            ;;
+		--libfabricport=?*)
+			libfabricport=${1#*=}
+            ;;
+		--libfabricport=)
+			echo 'ERROR: "--libfabricport" requires a non-empty option argument.'
+            ;;
+		--provider=?*)
+			provider==${1#*=}
+            ;;
+		--provider=)
+			echo 'ERROR: "--provider" requires a non-empty option argument.'
+            ;;
+		-?*)
+			echo "WARN: Unknown option (ignored): ${1}"
+			;;
+		*)
+			break
+	esac
+
+	shift
+done
+
+
+
 
 #Start Memory server
 pkill memoryserver
 pkill metadataserver
+
 cd src
-echo "Starting Metadata Server..."
-./metadataserver -a ${1} -r ${5:-8989} &
-sleep 1
-echo "Starting Memory Server..."
-./memoryserver -m ${1} -r ${2:-8787} -l ${3:-7500} -p ${4:-sockets} &
+if [ "$metaserver" ]; then
+	echo "Starting Metadata Server..."
+	./metadataserver -a $metaserver -r ${metarpcport} &
+	sleep 1
+else 
+	echo "ERROR: --metaserver option needs to be provided"
+fi
+
+
+if [ "$memserver" ]; then
+	echo "Starting Memory Server..."
+	./memoryserver -m ${memserver} -r ${memrpcport} -l ${libfabricport} -p ${provider} &
+else 
+	echo "ERROR: --memserver option needs to be provided"
+fi
+	
 cd ..
 

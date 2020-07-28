@@ -73,8 +73,8 @@ void nvmm_profile_dump(){MEMSERVER_PROFILE_END(NVMM)
 Memserver_Allocator::Memserver_Allocator() {
     MEMSERVER_PROFILE_INIT(NVMM)
     MEMSERVER_PROFILE_START_TIME(NVMM)
-    StartNVMM();
     heapMap = new HeapMap();
+    StartNVMM();
     memoryManager = MemoryManager::GetInstance();
     (void)pthread_mutex_init(&heapMapLock, NULL);
     init_poolId_bmap();
