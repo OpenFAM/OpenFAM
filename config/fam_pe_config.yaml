@@ -6,18 +6,17 @@ fam_client_interface_server_ip: 127.0.0.1
 # Port to be used by OpenFAM  to connect to CIS Server
 fam_client_interface_server_port: 8787
 
-# Libfabric Port to be used by OpenFAM memory allocator operation
-libfabric_port : 7500
-
 # Fam thread model: default is single-threaded(single). Other option is multi-threaded(multiple)
 FamThreadModel : "single"
 
 # Libfabric provider to be used by OpenFAM libfabric datapath operations; default is sockets. It could be verbs/omnipath
 provider : "sockets"
 
-# Allocator to be used, default is grpc, Other option is SHM.
-allocator : "grpc"
+# OpenFAM model to be used; default is "memory_server", Other option is  "shared_memory".
+openfam_model : "memory_server"
 
-# Runtime option
+# Runtime option used for OpenFAM; default is  "PMIX". Other options is "PMI2"
 runtime : "PMIX"
 
+# Client Interace Type for OpenFAM; default is "direct". Other option is "rpc"
+client_interface_type : "direct" 

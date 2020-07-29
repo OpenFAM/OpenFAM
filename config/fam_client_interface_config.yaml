@@ -1,18 +1,26 @@
-#FAM Client Interface Server Config file
+#FAM Client Interface Service Config file
 
 # List of memory servers that is associated with metadata manager.
 #memsrv_ip :
-#- 0:<ip_address_1>
-#- 1:<ip_address_2>
-#- 3:<ip_address_3>
-#- 2:<ip_address_4>
+#- 0:<ip_address_1>:<port_no>
+#- 1:<ip_address_2>:<port_no>
+#- 3:<ip_address_3>:<port_no>
+#- 2:<ip_address_4>:<port_no>
 memsrv_ip :
-- 0:127.0.0.1
+- 0:127.0.0.1:8787
 
-# metadata manager ip address < this can also be an array right?>
+# metadata manager ip address
 #metadata_ips:
-#- 0:<md_ ip_address_1>
-#- 1:<md_ ip_address_2>
+#- 0:<md_ ip_address_1>:<port_no>
+#- 1:<md_ ip_address_2>:<port_no>
 metadata_ips:
-- 0:127.0.0.1
+- 0:127.0.0.1:8787
 
+# grpc port used to communication with Memory Servers.
+grpc_port: 8787
+
+# Memory Server Interface used by OpenFAM. default is direct. Other option is rpc.
+memsrv_interface: direct
+
+# Metadata Server Interface used by OpenFAM. default is direct. Other option is rpc.
+metadata_interface: direct
