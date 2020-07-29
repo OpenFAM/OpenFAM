@@ -1,8 +1,9 @@
 /*
  * fam_internal_exception.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -47,5 +48,79 @@ CIS_Exception::CIS_Exception(enum Fam_Error serverErr, const char *msg) {
     famErrMsg = msg;
     famErr = serverErr;
 }
+
+Metadata_Service_Exception::Metadata_Service_Exception(
+    enum Internal_Error serverErr, const char *msg) {
+    famErrMsg = msg;
+    famErr = convert_to_famerror(serverErr);
+}
+
+Metadata_Service_Exception::Metadata_Service_Exception(enum Fam_Error serverErr,
+                                                       const char *msg) {
+    famErrMsg = msg;
+    famErr = serverErr;
+}
+
+Fam_Permission_Exception::Fam_Permission_Exception(const char *msg) {
+    famErrMsg = msg;
+    famErr = FAM_ERR_NOPERM;
+}
+
+Fam_Permission_Exception::Fam_Permission_Exception()
+    : Fam_Permission_Exception("No Permission") {}
+
+Fam_InvalidOption_Exception::Fam_InvalidOption_Exception(const char *msg) {
+    famErrMsg = msg;
+    famErr = FAM_ERR_INVALID;
+}
+
+Fam_InvalidOption_Exception::Fam_InvalidOption_Exception()
+    : Fam_InvalidOption_Exception("Invalid Option") {}
+
+Fam_Timeout_Exception::Fam_Timeout_Exception(const char *msg) {
+    famErrMsg = msg;
+    famErr = FAM_ERR_TIMEOUT;
+}
+
+Fam_Timeout_Exception::Fam_Timeout_Exception()
+    : Fam_Timeout_Exception("Timeout failure") {}
+
+Fam_Datapath_Exception::Fam_Datapath_Exception(enum Fam_Error fErr,
+                                               const char *msg) {
+    famErrMsg = msg;
+    famErr = fErr;
+}
+
+Fam_Datapath_Exception::Fam_Datapath_Exception(const char *msg) {
+    famErrMsg = msg;
+    famErr = FAM_ERR_LIBFABRIC;
+}
+
+Fam_Datapath_Exception::Fam_Datapath_Exception()
+    : Fam_Datapath_Exception("Datapath failure") {}
+
+Fam_Allocator_Exception::Fam_Allocator_Exception(enum Fam_Error fErr,
+                                                 const char *msg) {
+    famErrMsg = msg;
+    famErr = fErr;
+}
+
+Fam_Allocator_Exception::Fam_Allocator_Exception()
+    : Fam_Allocator_Exception(FAM_ERR_ALLOCATOR, "Allocator failure") {}
+
+Fam_Pmi_Exception::Fam_Pmi_Exception(const char *msg) {
+    famErrMsg = msg;
+    famErr = FAM_ERR_PMI;
+}
+
+Fam_Pmi_Exception::Fam_Pmi_Exception() : Fam_Pmi_Exception("PMI failure") {}
+
+Fam_Unimplemented_Exception::Fam_Unimplemented_Exception(const char *msg) {
+    famErrMsg = msg;
+    famErr = FAM_ERR_UNIMPL;
+}
+
+Fam_Unimplemented_Exception::Fam_Unimplemented_Exception()
+    : Fam_Unimplemented_Exception("Function Not implemented") {}
 
 } // namespace openfam

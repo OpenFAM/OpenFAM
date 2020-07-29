@@ -148,20 +148,12 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     req.set_gid(gid);
     Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
     ::grpc::Status status = server->stub->create_region(&ctx, req, &res);
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            Fam_Region_Item_Info info;
-            info.regionId =
-                res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
-            info.offset = res.offset();
-            return info;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
+
+    Fam_Region_Item_Info info;
+    info.regionId = res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
+    info.offset = res.offset();
+    return info;
 }
 
 void Fam_CIS_Client::destroy_region(uint64_t regionId, uint64_t memoryServerId,
@@ -177,17 +169,7 @@ void Fam_CIS_Client::destroy_region(uint64_t regionId, uint64_t memoryServerId,
     Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
 
     ::grpc::Status status = server->stub->destroy_region(&ctx, req, &res);
-
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            return;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
 }
 
 void Fam_CIS_Client::resize_region(uint64_t regionId, size_t nbytes,
@@ -206,16 +188,7 @@ void Fam_CIS_Client::resize_region(uint64_t regionId, size_t nbytes,
 
     ::grpc::Status status = server->stub->resize_region(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            return;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
 }
 
 Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
@@ -240,21 +213,13 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
 
     ::grpc::Status status = server->stub->allocate(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            Fam_Region_Item_Info info;
-            info.regionId = res.regionid() | (nodeId << MEMSERVERID_SHIFT);
-            info.offset = res.offset();
-            info.key = res.key();
-            info.base = (void *)res.base();
-            return info;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
+    Fam_Region_Item_Info info;
+    info.regionId = res.regionid() | (nodeId << MEMSERVERID_SHIFT);
+    info.offset = res.offset();
+    info.key = res.key();
+    info.base = (void *)res.base();
+    return info;
 }
 
 void Fam_CIS_Client::deallocate(uint64_t regionId, uint64_t offset,
@@ -273,16 +238,7 @@ void Fam_CIS_Client::deallocate(uint64_t regionId, uint64_t offset,
 
     ::grpc::Status status = server->stub->deallocate(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            return;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
 }
 
 void Fam_CIS_Client::change_region_permission(uint64_t regionId,
@@ -303,16 +259,7 @@ void Fam_CIS_Client::change_region_permission(uint64_t regionId,
     ::grpc::Status status =
         server->stub->change_region_permission(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            return;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
 }
 
 void Fam_CIS_Client::change_dataitem_permission(uint64_t regionId,
@@ -335,16 +282,7 @@ void Fam_CIS_Client::change_dataitem_permission(uint64_t regionId,
     ::grpc::Status status =
         server->stub->change_dataitem_permission(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            return;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
 }
 
 Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
@@ -362,23 +300,15 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
 
     ::grpc::Status status = server->stub->lookup_region(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            Fam_Region_Item_Info info;
-            info.regionId =
-                res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
-            info.offset = res.offset();
-            info.size = res.size();
-            info.perm = (mode_t)res.perm();
-            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
-            return info;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
+
+    Fam_Region_Item_Info info;
+    info.regionId = res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
+    info.offset = res.offset();
+    info.size = res.size();
+    info.perm = (mode_t)res.perm();
+    strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    return info;
 }
 
 Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
@@ -397,24 +327,16 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
 
     ::grpc::Status status = server->stub->lookup(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            Fam_Region_Item_Info info;
-            info.regionId =
-                res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
-            info.offset = res.offset();
-            info.key = FAM_KEY_UNINITIALIZED;
-            info.size = res.size();
-            info.perm = (mode_t)res.perm();
-            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
-            return info;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
+
+    Fam_Region_Item_Info info;
+    info.regionId = res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
+    info.offset = res.offset();
+    info.key = FAM_KEY_UNINITIALIZED;
+    info.size = res.size();
+    info.perm = (mode_t)res.perm();
+    strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    return info;
 }
 
 Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
@@ -432,20 +354,13 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
     ::grpc::Status status =
         server->stub->check_permission_get_region_info(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            Fam_Region_Item_Info info;
-            info.size = res.size();
-            info.perm = (mode_t)res.perm();
-            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
-            return info;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
+
+    Fam_Region_Item_Info info;
+    info.size = res.size();
+    info.perm = (mode_t)res.perm();
+    strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    return info;
 }
 
 Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_item_info(
@@ -465,22 +380,15 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_item_info(
     ::grpc::Status status =
         server->stub->check_permission_get_item_info(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            Fam_Region_Item_Info info;
-            info.key = res.key();
-            info.base = (void *)res.base();
-            info.size = res.size();
-            info.perm = (mode_t)res.perm();
-            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
-            return info;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
+
+    Fam_Region_Item_Info info;
+    info.key = res.key();
+    info.base = (void *)res.base();
+    info.size = res.size();
+    info.perm = (mode_t)res.perm();
+    strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    return info;
 }
 
 Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
@@ -500,20 +408,13 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
 
     ::grpc::Status status = server->stub->get_stat_info(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            Fam_Region_Item_Info info;
-            info.size = res.size();
-            info.perm = (mode_t)res.perm();
-            strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
-            return info;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
+
+    Fam_Region_Item_Info info;
+    info.size = res.size();
+    info.perm = (mode_t)res.perm();
+    strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    return info;
 }
 void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
                            uint64_t srcCopyStart, uint64_t destRegionId,
@@ -645,16 +546,7 @@ void Fam_CIS_Client::acquire_CAS_lock(uint64_t offset,
 
     ::grpc::Status status = server->stub->acquire_CAS_lock(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            return;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
 }
 
 void Fam_CIS_Client::release_CAS_lock(uint64_t offset,
@@ -669,16 +561,7 @@ void Fam_CIS_Client::release_CAS_lock(uint64_t offset,
 
     ::grpc::Status status = server->stub->release_CAS_lock(&ctx, req, &res);
 
-    if (status.ok()) {
-        if (res.errorcode()) {
-            throw CIS_Exception((enum Fam_Error)res.errorcode(),
-                                (res.errormsg()).c_str());
-        } else {
-            return;
-        }
-    } else {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-    }
+    STATUS_CHECK(CIS_Exception)
 }
 
 int Fam_CIS_Client::get_addr_size(size_t *addrSize, uint64_t memoryServerId) {

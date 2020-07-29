@@ -31,6 +31,7 @@
 #include "common/fam_libfabric.h"
 #include "common/fam_context.h"
 #include "common/fam_internal.h"
+#include "common/fam_internal_exception.h"
 #include "common/fam_options.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"

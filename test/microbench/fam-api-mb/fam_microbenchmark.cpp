@@ -2493,7 +2493,7 @@ int main(int argc, char **argv) {
 // Note:this test can not be run with multiple memory server model, when memory
 // server profiling is enabled.
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-    const char *memoryServers = strdup(TEST_MEMSERVER_IP);
+    const char *memoryServers = strdup(TEST_MEMORY_SERVER);
     std::string delimiter1 = ",";
     std::string delimiter2 = ":";
     CISServerMap memoryServerList =

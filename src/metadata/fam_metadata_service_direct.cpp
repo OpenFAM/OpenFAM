@@ -1,6 +1,6 @@
 /*
- *   fam_metadata_manager.cpp
- *   Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All
+ *   fam_metadata_service_direct.cpp
+ *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
  *   rights reserved.
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -32,13 +32,14 @@
  *
  */
 
-#include "fam_metadata_manager.h"
+#include "fam_metadata_service_direct.h"
 
 #include <boost/atomic.hpp>
 
 #include <atomic>
 #include <chrono>
 #include <iomanip>
+#include <sstream>
 #include <string.h>
 #include <unistd.h>
 
@@ -52,40 +53,43 @@
     }
 
 using namespace famradixtree;
+using namespace openfam;
 using namespace nvmm;
 using namespace std;
 using namespace chrono;
 
 namespace metadata {
-MEMSERVER_PROFILE_START(METADATA)
+MEMSERVER_PROFILE_START(METADATA_DIRECT)
 #ifdef MEMSERVER_PROFILE
-#define METADATA_PROFILE_START_OPS()                                           \
+#define METADATA_DIRECT_PROFILE_START_OPS()                                    \
     {                                                                          \
-        Profile_Time start = METADATA_get_time();
+        Profile_Time start = METADATA_DIRECT_get_time();
 
-#define METADATA_PROFILE_END_OPS(apiIdx)                                       \
-    Profile_Time end = METADATA_get_time();                                    \
-    Profile_Time total = METADATA_time_diff_nanoseconds(start, end);           \
-    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(METADATA, prof_##apiIdx, total)         \
+#define METADATA_DIRECT_PROFILE_END_OPS(apiIdx)                                \
+    Profile_Time end = METADATA_DIRECT_get_time();                             \
+    Profile_Time total = METADATA_DIRECT_time_diff_nanoseconds(start, end);    \
+    MEMSERVER_PROFILE_ADD_TO_TOTAL_OPS(METADATA_DIRECT, prof_##apiIdx, total)  \
     }
-#define METADATA_PROFILE_DUMP() metadata_profile_dump()
+#define METADATA_DIRECT_PROFILE_DUMP() metadata_direct_profile_dump()
 #else
-#define METADATA_PROFILE_START_OPS()
-#define METADATA_PROFILE_END_OPS(apiIdx)
-#define METADATA_PROFILE_DUMP()
+#define METADATA_DIRECT_PROFILE_START_OPS()
+#define METADATA_DIRECT_PROFILE_END_OPS(apiIdx)
+#define METADATA_DIRECT_PROFILE_DUMP()
 #endif
 
-void metadata_profile_dump(){MEMSERVER_PROFILE_END(METADATA)
-                                 MEMSERVER_DUMP_PROFILE_BANNER(METADATA)
+void metadata_direct_profile_dump(){
+    MEMSERVER_PROFILE_END(METADATA_DIRECT)
+        MEMSERVER_DUMP_PROFILE_BANNER(METADATA_DIRECT)
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
-    MEMSERVER_DUMP_PROFILE_DATA(METADATA, name, prof_##name)
-#include "metadata/metadata_counters.tbl"
+    MEMSERVER_DUMP_PROFILE_DATA(METADATA_DIRECT, name, prof_##name)
+#include "metadata/metadata_direct_counters.tbl"
 
 #undef MEMSERVER_COUNTER
-#define MEMSERVER_COUNTER(name) MEMSERVER_PROFILE_TOTAL(METADATA, prof_##name)
-#include "metadata/metadata_counters.tbl"
-                                     MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA)}
+#define MEMSERVER_COUNTER(name)                                                \
+    MEMSERVER_PROFILE_TOTAL(METADATA_DIRECT, prof_##name)
+#include "metadata/metadata_direct_counters.tbl"
+            MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_DIRECT)}
 
 KeyValueStore::IndexType const KVSTYPE = KeyValueStore::RADIX_TREE;
 
@@ -97,9 +101,9 @@ inline void ResetBuf(char *buf, size_t &len, size_t const max_len) {
 }
 
 /*
- * Internal implementation of FAM_Metadata_Manager
+ * Internal implementation of Fam_Metadata_Service_Direct
  */
-class FAM_Metadata_Manager::Impl_ {
+class Fam_Metadata_Service_Direct::Impl_ {
   public:
     Impl_() {}
 
@@ -109,87 +113,87 @@ class FAM_Metadata_Manager::Impl_ {
 
     int Final();
 
-    int metadata_insert_region(const uint64_t regionId,
-                               const std::string regionName,
-                               Fam_Region_Metadata *region);
+    void metadata_insert_region(const uint64_t regionId,
+                                const std::string regionName,
+                                Fam_Region_Metadata *region);
 
-    int metadata_delete_region(const uint64_t regionId);
+    void metadata_delete_region(const uint64_t regionId);
 
-    int metadata_delete_region(const std::string regionName);
+    void metadata_delete_region(const std::string regionName);
 
-    int metadata_find_region(const uint64_t regionId,
-                             Fam_Region_Metadata &region);
+    bool metadata_find_region(const uint64_t regionId,
+                              Fam_Region_Metadata &region);
 
-    int metadata_find_region(const std::string regionName,
-                             Fam_Region_Metadata &region);
+    bool metadata_find_region(const std::string regionName,
+                              Fam_Region_Metadata &region);
 
-    int metadata_modify_region(const uint64_t regionID,
-                               Fam_Region_Metadata *region);
+    void metadata_modify_region(const uint64_t regionID,
+                                Fam_Region_Metadata *region);
 
-    int metadata_modify_region(const std::string regionName,
-                               Fam_Region_Metadata *region);
+    void metadata_modify_region(const std::string regionName,
+                                Fam_Region_Metadata *region);
 
-    int metadata_insert_dataitem(const uint64_t dataitemId,
-                                 const uint64_t regionId,
-                                 Fam_DataItem_Metadata *dataitem,
-                                 std::string dataitemName = "");
+    void metadata_insert_dataitem(const uint64_t dataitemId,
+                                  const uint64_t regionId,
+                                  Fam_DataItem_Metadata *dataitem,
+                                  std::string dataitemName = "");
 
-    int metadata_insert_dataitem(const uint64_t dataitemId,
-                                 const std::string regionName,
-                                 Fam_DataItem_Metadata *dataitem,
-                                 std::string dataitemName = "");
+    void metadata_insert_dataitem(const uint64_t dataitemId,
+                                  const std::string regionName,
+                                  Fam_DataItem_Metadata *dataitem,
+                                  std::string dataitemName = "");
 
-    int metadata_delete_dataitem(const uint64_t dataitemId,
-                                 const uint64_t regionId);
+    void metadata_delete_dataitem(const uint64_t dataitemId,
+                                  const uint64_t regionId);
 
-    int metadata_delete_dataitem(const uint64_t dataitemId,
-                                 const std::string regionName);
+    void metadata_delete_dataitem(const uint64_t dataitemId,
+                                  const std::string regionName);
 
-    int metadata_delete_dataitem(const std::string dataitemName,
-                                 const uint64_t regionId);
+    void metadata_delete_dataitem(const std::string dataitemName,
+                                  const uint64_t regionId);
 
-    int metadata_delete_dataitem(const std::string dataitemName,
-                                 const std::string regionName);
+    void metadata_delete_dataitem(const std::string dataitemName,
+                                  const std::string regionName);
 
-    int metadata_find_dataitem(const uint64_t dataitemId,
-                               const uint64_t regionId,
-                               Fam_DataItem_Metadata &dataitem);
+    bool metadata_find_dataitem(const uint64_t dataitemId,
+                                const uint64_t regionId,
+                                Fam_DataItem_Metadata &dataitem);
 
-    int metadata_find_dataitem(const uint64_t dataitemId,
-                               const std::string regionName,
-                               Fam_DataItem_Metadata &dataitem);
+    bool metadata_find_dataitem(const uint64_t dataitemId,
+                                const std::string regionName,
+                                Fam_DataItem_Metadata &dataitem);
 
-    int metadata_find_dataitem(const std::string dataitemName,
-                               const uint64_t regionId,
-                               Fam_DataItem_Metadata &dataitem);
+    bool metadata_find_dataitem(const std::string dataitemName,
+                                const uint64_t regionId,
+                                Fam_DataItem_Metadata &dataitem);
 
-    int metadata_find_dataitem(const std::string dataitemName,
-                               const std::string regionName,
-                               Fam_DataItem_Metadata &dataitem);
+    bool metadata_find_dataitem(const std::string dataitemName,
+                                const std::string regionName,
+                                Fam_DataItem_Metadata &dataitem);
 
-    int metadata_modify_dataitem(const uint64_t dataitemId,
-                                 const uint64_t regionId,
-                                 Fam_DataItem_Metadata *dataitem);
+    void metadata_modify_dataitem(const uint64_t dataitemId,
+                                  const uint64_t regionId,
+                                  Fam_DataItem_Metadata *dataitem);
 
-    int metadata_modify_dataitem(const uint64_t dataitemId,
-                                 const std::string regionName,
-                                 Fam_DataItem_Metadata *dataitem);
+    void metadata_modify_dataitem(const uint64_t dataitemId,
+                                  const std::string regionName,
+                                  Fam_DataItem_Metadata *dataitem);
 
-    int metadata_modify_dataitem(const std::string dataitemName,
-                                 const uint64_t regionId,
-                                 Fam_DataItem_Metadata *dataitem);
+    void metadata_modify_dataitem(const std::string dataitemName,
+                                  const uint64_t regionId,
+                                  Fam_DataItem_Metadata *dataitem);
 
-    int metadata_modify_dataitem(const std::string dataitemName,
-                                 const std::string regionName,
-                                 Fam_DataItem_Metadata *dataitem);
+    void metadata_modify_dataitem(const std::string dataitemName,
+                                  const std::string regionName,
+                                  Fam_DataItem_Metadata *dataitem);
 
     bool metadata_check_permissions(Fam_DataItem_Metadata *dataitem,
-                                    metadata_region_item_op_t op, uint64_t uid,
-                                    uint64_t gid);
+                                    metadata_region_item_op_t op, uint32_t uid,
+                                    uint32_t gid);
 
     bool metadata_check_permissions(Fam_Region_Metadata *region,
-                                    metadata_region_item_op_t op, uint64_t uid,
-                                    uint64_t gid);
+                                    metadata_region_item_op_t op, uint32_t uid,
+                                    uint32_t gid);
 
     size_t metadata_maxkeylen();
 
@@ -232,7 +236,7 @@ class FAM_Metadata_Manager::Impl_ {
 /*
  * Initialize the FAM metadata manager
  */
-int FAM_Metadata_Manager::Impl_::Init(bool use_meta_reg) {
+int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg) {
 
     memoryManager = MemoryManager::GetInstance();
 
@@ -278,7 +282,7 @@ int FAM_Metadata_Manager::Impl_::Init(bool use_meta_reg) {
     return META_NO_ERROR;
 }
 
-int FAM_Metadata_Manager::Impl_::Final() {
+int Fam_Metadata_Service_Direct::Impl_::Final() {
     // Cleanup
     delete regionIdKVS;
     delete regionNameKVS;
@@ -294,8 +298,8 @@ int FAM_Metadata_Manager::Impl_::Final() {
  * @return - Global pointer to the KVS tree root
  */
 GlobalPtr
-FAM_Metadata_Manager::Impl_::create_metadata_kvs_tree(size_t heap_size,
-                                                      PoolId heap_id) {
+Fam_Metadata_Service_Direct::Impl_::create_metadata_kvs_tree(size_t heap_size,
+                                                             PoolId heap_id) {
 
     KeyValueStore *metadataKVS;
 
@@ -313,15 +317,14 @@ FAM_Metadata_Manager::Impl_::create_metadata_kvs_tree(size_t heap_size,
     return metadataRoot;
 }
 
-KeyValueStore *
-FAM_Metadata_Manager::Impl_::open_metadata_kvs(GlobalPtr root, size_t heap_size,
-                                               uint64_t heap_id) {
+KeyValueStore *Fam_Metadata_Service_Direct::Impl_::open_metadata_kvs(
+    GlobalPtr root, size_t heap_size, uint64_t heap_id) {
 
     return KeyValueStore::MakeKVS(KVSTYPE, root, "", "", heap_size,
                                   (PoolId)heap_id);
 }
 
-int FAM_Metadata_Manager::Impl_::get_dataitem_KVS(
+int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
     uint64_t regionId, KeyValueStore *&dataitemIdKVS,
     KeyValueStore *&dataitemNameKVS) {
 
@@ -333,9 +336,8 @@ int FAM_Metadata_Manager::Impl_::get_dataitem_KVS(
         // If regionId is not present in KVS map, open the KVS using
         // root pointer and insert the KVS in the map
         Fam_Region_Metadata regNode;
-        ret = metadata_find_region(regionId, regNode);
-        if (ret != META_NO_ERROR) {
-            return ret;
+        if (!metadata_find_region(regionId, regNode)) {
+            return META_ERROR;
         }
 
         OPEN_METADATA_KVS(regNode.dataItemIdRoot, regNode.size, regionId,
@@ -387,9 +389,10 @@ int FAM_Metadata_Manager::Impl_::get_dataitem_KVS(
  *	found
  *
  */
-int FAM_Metadata_Manager::Impl_::metadata_find_region(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_region(
     const uint64_t regionId, Fam_Region_Metadata &region) {
 
+    ostringstream message;
     int ret;
     std::string regionKey = std::to_string(regionId);
     char val_buf[max_val_len];
@@ -403,12 +406,14 @@ int FAM_Metadata_Manager::Impl_::metadata_find_region(
 
         memcpy((char *)&region, val_buf, sizeof(Fam_Region_Metadata));
 
-        return META_NO_ERROR;
+        return true;
     } else if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
+        return false;
     } else {
         DEBUG_STDERR(regionId, ret);
-        return META_ERROR;
+        message << "metadata find for region failed";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
 }
 
@@ -422,8 +427,9 @@ int FAM_Metadata_Manager::Impl_::metadata_find_region(
  * 	key not found
  *
  */
-int FAM_Metadata_Manager::Impl_::metadata_find_region(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_region(
     const std::string regionName, Fam_Region_Metadata &region) {
+    ostringstream message;
 
     int ret;
 
@@ -436,26 +442,19 @@ int FAM_Metadata_Manager::Impl_::metadata_find_region(
                              val_len);
 
     if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
+        return false;
     } else if (ret == META_NO_ERROR) {
 
         uint64_t regionID = strtoul(val_buf, NULL, 0);
 
-        ret = metadata_find_region(regionID, region);
+        return metadata_find_region(regionID, region);
 
-        if (ret == META_NO_ERROR) {
-            return ret;
-        } else if (ret == META_KEY_DOES_NOT_EXIST) {
-            return ret;
-        } else {
-            DEBUG_STDERR(regionName, "Region id lookup failed");
-            return META_ERROR;
-        }
     } else {
         DEBUG_STDERR(regionName, "Get failed.");
-        return META_ERROR;
+        message << "metadata find for region failed";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -466,7 +465,7 @@ int FAM_Metadata_Manager::Impl_::metadata_find_region(
  * @return - META_NO_ERROR if key added successfully, META_KEY_ALREADY_EXIST if
  * 	key already exists
  */
-int FAM_Metadata_Manager::Impl_::insert_in_regionname_kvs(
+int Fam_Metadata_Service_Direct::Impl_::insert_in_regionname_kvs(
     const std::string regionName, const std::string regionId) {
     int ret = 0;
 
@@ -498,7 +497,7 @@ int FAM_Metadata_Manager::Impl_::insert_in_regionname_kvs(
  * @param insert - bool flag insert -1 for insert; 0 for update
  * @return - META_NO_ERROR if key added successfully
  */
-int FAM_Metadata_Manager::Impl_::insert_in_regionid_kvs(
+int Fam_Metadata_Service_Direct::Impl_::insert_in_regionid_kvs(
     const std::string regionName, Fam_Region_Metadata *region, bool insert) {
 
     int ret;
@@ -540,7 +539,7 @@ int FAM_Metadata_Manager::Impl_::insert_in_regionid_kvs(
  * @return - META_NO_ERROR if key found successfully, META_KEY_DOES_NOT_EXIST if
  * 	key not found
  */
-int FAM_Metadata_Manager::Impl_::get_regionid_from_regionname_KVS(
+int Fam_Metadata_Service_Direct::Impl_::get_regionid_from_regionname_KVS(
     const std::string regionName, std::string &regionId) {
     int ret;
 
@@ -572,10 +571,11 @@ int FAM_Metadata_Manager::Impl_::get_regionid_from_regionname_KVS(
  * @return - META_NO_ERROR if key added, META_KEY_ALREADY_EXIST id the regionID
  *   	or reginName already exist.
  */
-int FAM_Metadata_Manager::Impl_::metadata_insert_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
     const uint64_t regionId, const std::string regionName,
     Fam_Region_Metadata *region) {
 
+    ostringstream message;
     int ret;
 
     std::string regionKey = std::to_string(regionId);
@@ -608,7 +608,9 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_region(
             // Could not insert the region id in KVS.
             // Remove the region name from region name KVS
             regionNameKVS->Del(regionName.c_str(), regionName.size());
-            return ret;
+            message << "Region Id insertion failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
@@ -616,14 +618,18 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_region(
                           dataitemIdKVS);
         if (dataitemIdKVS == nullptr) {
             DEBUG_STDERR(regionId, "KVS creation failed");
-            return META_ERROR;
+            message << "Dataitem Id KVS creation failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         OPEN_METADATA_KVS(dataitemNameRoot, region->size, regionId,
                           dataitemNameKVS);
         if (dataitemNameKVS == nullptr) {
             DEBUG_STDERR(regionId, "KVS creation failed");
-            return META_ERROR;
+            message << "Dataitem name KVS creation failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         // Insert the KVS pointer into map
@@ -636,19 +642,22 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_region(
             metadataKvsMap->insert({regionId, kvs});
         } else {
             pthread_mutex_unlock(&kvsMapLock);
-            return META_ERROR;
+            delete kvs;
+            message << "KVS pointers already exist in map";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
         pthread_mutex_unlock(&kvsMapLock);
-
-        return ret;
     } else if (ret == META_KEY_ALREADY_EXIST) {
-        return ret;
+        message << "Region already exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     } else {
         DEBUG_STDERR(regionId, "Insert failed.");
-        return META_ERROR;
+        message << "Region metadata insertion failed";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-
-    return ret;
 }
 
 /**
@@ -659,33 +668,32 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_region(
  * @return - META_NO_ERROR if key added, META_KEY_DOES_NOT_EXIST if regionId
  * 	key not found
  */
-int FAM_Metadata_Manager::Impl_::metadata_modify_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_region(
     const uint64_t regionId, Fam_Region_Metadata *region) {
+    ostringstream message;
 
     int ret;
 
     Fam_Region_Metadata regNode;
 
-    ret = metadata_find_region(regionId, regNode);
-    if (ret == META_KEY_DOES_NOT_EXIST) {
+    if (!metadata_find_region(regionId, regNode)) {
         // Region key does not exist
         DEBUG_STDOUT(regionId, "Region not found.");
-        return ret;
-
-    } else if (ret == META_NO_ERROR) {
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
+    } else {
         // KVS found... update the value of dataitem root from the region node
         std::string regionKey = std::to_string(regionId);
 
         // Insert the Region metadata descriptor in the region ID KVS
         ret = insert_in_regionid_kvs(regionKey, region, 0);
-
-        return ret;
-
-    } else {
-        DEBUG_STDERR(regionId, "Region id lookup failed");
-        return META_ERROR;
+        if (ret != META_NO_ERROR) {
+            message << "Region metadata modification failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
+        }
     }
-    return ret;
 }
 
 /**
@@ -696,33 +704,33 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_region(
  * @return - META_NO_ERROR if key added, META_KEY_DOES_NOT_EXIST if regionId
  * 	key not found
  */
-int FAM_Metadata_Manager::Impl_::metadata_modify_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_region(
     const std::string regionName, Fam_Region_Metadata *region) {
+    ostringstream message;
 
     int ret;
 
     Fam_Region_Metadata regNode;
 
-    ret = metadata_find_region(regionName, regNode);
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-        // Region key does not exist
-        DEBUG_STDOUT(regionName, "Region not found.");
-        return ret;
-
-    } else if (ret == META_NO_ERROR) {
+    if (metadata_find_region(regionName, regNode)) {
         // KVS found... update the value of dataitem root from the region node
 
         std::string regionKey = std::to_string(regNode.regionId);
 
         // Insert the Region metadata descriptor in the region ID KVS
         ret = insert_in_regionid_kvs(regionKey, region, 0);
-        return ret;
-
+        if (ret != META_NO_ERROR) {
+            message << "Region metadata modification failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
+        }
     } else {
-        DEBUG_STDERR(regionName, "Region name lookup failed");
-        return META_ERROR;
+        // Region key does not exist
+        DEBUG_STDOUT(regionName, "Region not found.");
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -732,8 +740,9 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_region(
  * META_KEY_DOES_NOT_EXIST
  * 	if key not found.
  */
-int FAM_Metadata_Manager::Impl_::metadata_delete_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
     const std::string regionName) {
+    ostringstream message;
 
     int ret;
 
@@ -744,7 +753,9 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_region(
 
     if (ret == META_KEY_DOES_NOT_EXIST) {
         DEBUG_STDOUT(regionName, "Region not found.");
-        return ret;
+        message << "Regioin does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     } else if (ret == META_NO_ERROR) {
         pthread_mutex_lock(&kvsMapLock);
         auto kvsObj = metadataKvsMap->find(stoull(regionId));
@@ -761,10 +772,14 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_region(
 
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionName, "Region id not found.");
-            return ret;
+            message << "Regioin does not exist";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         } else if (ret == META_ERROR) {
             DEBUG_STDERR(regionName, "Region id lookup failed.");
-            return META_ERROR;
+            message << "Region Id entry removal failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         // delete the region Name -> region Id mapping from regin name KVS
@@ -772,17 +787,18 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_region(
 
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionName, "Region not found.");
-            return ret;
+            message << "Regioin does not exist";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         } else if (ret == META_NO_ERROR) {
-            return ret;
+            return;
         } else {
             DEBUG_STDERR(regionName, "Del failed.");
-            return META_ERROR;
+            message << "Region name entry removal failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
-        return ret;
     }
-
-    return ret;
 }
 
 /**
@@ -792,17 +808,16 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_region(
  * META_KEY_DOES_NOT_EXIST
  * 	if key not found.
  */
-int FAM_Metadata_Manager::Impl_::metadata_delete_region(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
     const uint64_t regionId) {
 
-    int ret;
+    ostringstream message;
 
     Fam_Region_Metadata regNode;
 
-    ret = metadata_find_region(regionId, regNode);
+    int ret;
 
-    if (ret == META_NO_ERROR) {
-
+    if (metadata_find_region(regionId, regNode)) {
         pthread_mutex_lock(&kvsMapLock);
         auto kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj != metadataKvsMap->end()) {
@@ -821,10 +836,14 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_region(
 
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionId, "Region not found");
-            return ret;
+            message << "Regioin does not exist";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         } else if (ret == META_ERROR) {
             DEBUG_STDERR(regionId, "Del failed.");
-            return META_ERROR;
+            message << "Region name entry removal failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         // delete the region id for region ID KVS
@@ -833,17 +852,21 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_region(
 
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionId, "Region not found");
-            return ret;
+            message << "Regioin does not exist";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         } else if (ret == META_ERROR) {
             DEBUG_STDERR(regionId, "Del failed.");
-            return META_ERROR;
+            message << "Region Id entry removal failed";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
-        return ret;
-    } else if (ret == META_KEY_DOES_NOT_EXIST) {
+    } else {
         DEBUG_STDOUT(regionId, "Region lookup failed.");
-        return ret;
+        message << "Regioin does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -856,22 +879,16 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_region(
  *           not found, META_KEY_ALREADY_EXIST if dataitem Id entry already
  * 	     exist.
  */
-int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
     const uint64_t dataitemId, std::string regionName,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
+    ostringstream message;
     int ret;
 
     Fam_Region_Metadata regNode;
 
-    ret = metadata_find_region(regionName.c_str(), regNode);
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-
-        DEBUG_STDOUT(regionName, "region not found");
-        return ret;
-
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_region(regionName.c_str(), regNode)) {
         char val_node[sizeof(Fam_DataItem_Metadata) + 1];
         memcpy((char *)val_node, (char const *)dataitem,
                sizeof(Fam_DataItem_Metadata));
@@ -880,7 +897,9 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
         ret =
             get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey = std::to_string(dataitemId);
@@ -898,7 +917,9 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
 
             if (ret != META_NO_ERROR) {
                 DEBUG_STDERR(dataitemId, "FindOrCreate failed");
-                return ret;
+                message << "Failed to insert metadata into dataitem name KVS";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
 
@@ -915,20 +936,22 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
                 int ret1 = dataitemNameKVS->Del(dataitemName.c_str(),
                                                 dataitemName.size());
                 if (ret1 != META_NO_ERROR) {
-                    return ret1;
+                    message << "Failed to remove dataitem name entry from KVS, "
+                               "while cleanup";
+                    THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                    message.str().c_str());
                 }
             }
-            return ret;
+            message << "Failed to insert metadata into dataitem Id KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
-
-        return ret;
-
     } else {
-
-        DEBUG_STDERR(dataitemId, "Region lookup failed");
-        return META_ERROR;
+        DEBUG_STDOUT(regionName, "region not found");
+        message << "Regioin does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -941,25 +964,21 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
  *           not found, META_KEY_ALREADY_EXIST if dataitem Id entry already
  * 	     exist.
  */
-int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
+    ostringstream message;
     int ret;
 
     Fam_Region_Metadata regNode;
-    ret = metadata_find_region(regionId, regNode);
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-
-        DEBUG_STDOUT(regionId, "region not found");
-        return ret;
-
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_region(regionId, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         char val_node[sizeof(Fam_DataItem_Metadata) + 1];
@@ -981,7 +1000,9 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
 
             if (ret != META_NO_ERROR) {
                 DEBUG_STDERR(dataitemName, "FindOrCreate failed");
-                return META_ERROR;
+                message << "Failed to insert metadata into dataitem name KVS";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
         ResetBuf(val_buf, val_len, max_val_len);
@@ -997,19 +1018,22 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
                 int ret1 = dataitemNameKVS->Del(dataitemName.c_str(),
                                                 dataitemName.size());
                 if (ret1 != META_NO_ERROR) {
-                    return ret1;
+                    message << "Failed to remove dataitem name entry from KVS, "
+                               "while cleanup";
+                    THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                    message.str().c_str());
                 }
             }
-            return ret;
+            message << "Failed to insert metadata into dataitem Id KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
-        return ret;
-
     } else {
-
-        DEBUG_STDERR(dataitemId, "Region lookup failed");
-        return META_ERROR;
+        DEBUG_STDOUT(regionId, "region not found");
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1020,10 +1044,11 @@ int FAM_Metadata_Manager::Impl_::metadata_insert_dataitem(
  * @return - META_NO_ERROR if descriptor updated , META_KEY_DOES_NOT_EXIST if
  *  	region not found or dataitem Id entry not found.
  */
-int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
 
+    ostringstream message;
     int ret;
 
     // Check if dataitem exists
@@ -1031,9 +1056,7 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
     // if not found, return META_KEY_DOES_NOT_EXIST
 
     Fam_DataItem_Metadata dataitemNode;
-    ret = metadata_find_dataitem(dataitemId, regionId, dataitemNode);
-    if (ret == META_NO_ERROR) {
-
+    if (metadata_find_dataitem(dataitemId, regionId, dataitemNode)) {
         char val_node[sizeof(Fam_DataItem_Metadata) + 1];
         memcpy((char *)val_node, (char const *)dataitem,
                sizeof(Fam_DataItem_Metadata));
@@ -1041,7 +1064,9 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey = std::to_string(dataitemId);
@@ -1051,7 +1076,9 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
 
         if (ret == META_ERROR) {
             DEBUG_STDERR(dataitemId, "Put failed");
-            return META_ERROR;
+            message << "Failed to update dataitem metadata";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         // Check if name was not assigned earlier and now name is being
@@ -1065,15 +1092,16 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
 
             if (ret == META_ERROR) {
                 DEBUG_STDERR(dataitemId, "Put failed");
-                return META_ERROR;
+                message << "Failed to insert dataitem name entry";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
-        return ret;
-    } else if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
+    } else {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-
-    return ret;
 }
 
 /**
@@ -1084,9 +1112,10 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
  * @return - META_NO_ERROR if descriptor updated , META_KEY_DOES_NOT_EXIST if
  *	region not found or dataitem Id entry not found.
  */
-int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
+    ostringstream message;
 
     int ret;
 
@@ -1094,26 +1123,29 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
     // if no_error, update the entry
 
     Fam_DataItem_Metadata dataitemNode;
-    ret = metadata_find_dataitem(dataitemId, regionName, dataitemNode);
-    if (ret == META_NO_ERROR) {
-
+    if (metadata_find_dataitem(dataitemId, regionName, dataitemNode)) {
         char val_node[sizeof(Fam_DataItem_Metadata) + 1];
         memcpy((char *)val_node, (char const *)dataitem,
                sizeof(Fam_DataItem_Metadata));
 
         // Get the regionID from the region Name KVS
         std::string regionId;
+
         ret = get_regionid_from_regionname_KVS(regionName, regionId);
         if (ret != META_NO_ERROR) {
             DEBUG_STDERR(regionName, "Region not found");
-            return ret;
+            message << "Failed to get region Id from region name";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret =
             get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey = std::to_string(dataitemId);
@@ -1123,7 +1155,9 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
 
         if (ret == META_ERROR) {
             DEBUG_STDERR(dataitemId, "Put failed");
-            return META_ERROR;
+            message << "Failed to update dataitem metadata";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         // Check if name was not assigned earlier and now name is being
@@ -1132,7 +1166,9 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
 
             if (dataitemNameKVS == nullptr) {
                 DEBUG_STDERR(dataitemId, "KVS creation failed");
-                return META_ERROR;
+                message << "Dataitem name KVS does not exist";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
 
             std::string dataitemName = dataitem->name;
@@ -1142,15 +1178,16 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
                                      dataitemKey.c_str(), dataitemKey.size());
             if (ret == META_ERROR) {
                 DEBUG_STDERR(dataitemId, "Put failed");
-                return META_ERROR;
+                message << "Failed to insert dataitem name entry";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
-        return ret;
-    } else if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
+    } else {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-
-    return ret;
 }
 
 /**
@@ -1161,9 +1198,10 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
  * @return - META_NO_ERROR if descriptor updated , META_KEY_DOES_NOT_EXIST if
  * 	region not found or dataitem Id entry not found.
  */
-int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
+    ostringstream message;
 
     int ret;
 
@@ -1172,9 +1210,7 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
     // if not found, return META_KEY_DOES_NOT_EXIST
 
     Fam_DataItem_Metadata dataitemNode;
-    ret = metadata_find_dataitem(dataitemName, regionId, dataitemNode);
-    if (ret == META_NO_ERROR) {
-
+    if (metadata_find_dataitem(dataitemName, regionId, dataitemNode)) {
         char val_node[sizeof(Fam_DataItem_Metadata) + 1];
         memcpy((char *)val_node, (char const *)dataitem,
                sizeof(Fam_DataItem_Metadata));
@@ -1182,7 +1218,9 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey;
@@ -1203,16 +1241,16 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
                                      val_node, sizeof(Fam_DataItem_Metadata));
             if (ret == META_ERROR) {
                 DEBUG_STDERR(dataitemName, "Put failed");
-                return META_ERROR;
+                message << "Failed to update dtaitem metadata";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
-
-        return ret;
-    } else if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
+    } else {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-
-    return ret;
 }
 
 /**
@@ -1223,9 +1261,10 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
  * @return - META_NO_ERROR if descriptor updated , META_KEY_DOES_NOT_EXIST if
  *           region not found or dataitem Id entry not found.
  */
-int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
+    ostringstream message;
 
     int ret;
 
@@ -1234,9 +1273,7 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
     // return META_KEY_DOES_NOT_EXIST
 
     Fam_DataItem_Metadata dataitemNode;
-    ret = metadata_find_dataitem(dataitemName, regionName, dataitemNode);
-    if (ret == META_NO_ERROR) {
-
+    if (metadata_find_dataitem(dataitemName, regionName, dataitemNode)) {
         char val_node[sizeof(Fam_DataItem_Metadata) + 1];
         memcpy((char *)val_node, (char const *)dataitem,
                sizeof(Fam_DataItem_Metadata));
@@ -1246,14 +1283,18 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
         ret = get_regionid_from_regionname_KVS(regionName, regionId);
         if (ret != META_NO_ERROR) {
             DEBUG_STDERR(regionName, "Region not found");
-            return ret;
+            message << "Failed to get region Id from region name";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret =
             get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey;
@@ -1273,17 +1314,16 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
                                      val_node, sizeof(Fam_DataItem_Metadata));
             if (ret == META_ERROR) {
                 DEBUG_STDERR(dataitemName, "Put failed.");
-                return META_ERROR;
+                message << "Failed to update dtaitem metadata";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
-
-        return ret;
-
-    } else if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
+    } else {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-
-    return ret;
 }
 
 /**
@@ -1293,38 +1333,41 @@ int FAM_Metadata_Manager::Impl_::metadata_modify_dataitem(
  * @return - META_NO_ERROR if the key is deleted successfully,
  * META_KEY_DOES_NOT_EXIST if region or daatitem key does not exists
  */
-int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     const uint64_t dataitemId, const std::string regionName) {
+    ostringstream message;
 
     int ret;
 
     Fam_DataItem_Metadata dataitemNode;
-    ret = metadata_find_dataitem(dataitemId, regionName, dataitemNode);
-
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
-    } else if (ret == META_NO_ERROR) {
+    if (metadata_find_dataitem(dataitemId, regionName, dataitemNode)) {
 
         // Get the regionID from the region Name KVS
         std::string regionId;
         ret = get_regionid_from_regionname_KVS(regionName, regionId);
         if (ret != META_NO_ERROR) {
             DEBUG_STDERR(regionName, "Region not found");
-            return ret;
+            message << "Failed to get region Id from region name";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret =
             get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey = std::to_string(dataitemId);
         ret = dataitemIdKVS->Del(dataitemKey.c_str(), dataitemKey.size());
         if (ret == META_ERROR) {
             DEBUG_STDERR(dataitemId, "Del failed.");
-            return META_ERROR;
+            message << "Failed to remove metadata from dataitem Id KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemName = dataitemNode.name;
@@ -1333,13 +1376,16 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
                 dataitemNameKVS->Del(dataitemName.c_str(), dataitemName.size());
             if (ret == META_ERROR) {
                 DEBUG_STDERR(dataitemId, "Del failed.");
-                return META_ERROR;
+                message << "Failed to remove dataitem name entry from KVS";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
-
-        return ret;
+    } else {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1349,29 +1395,29 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
  * @return - META_NO_ERROR if the key is deleted successfully,
  * META_KEY_DOES_NOT_EXIST if region or daatitem key does not exists
  */
-int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     const uint64_t dataitemId, const uint64_t regionId) {
 
+    ostringstream message;
     int ret;
 
     Fam_DataItem_Metadata dataitemNode;
-    ret = metadata_find_dataitem(dataitemId, regionId, dataitemNode);
-
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_dataitem(dataitemId, regionId, dataitemNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey = std::to_string(dataitemId);
         ret = dataitemIdKVS->Del(dataitemKey.c_str(), dataitemKey.size());
         if (ret == META_ERROR) {
             DEBUG_STDERR(dataitemId, "Del failed.");
-            return META_ERROR;
+            message << "Failed to remove metadata from dataitem Id KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemName = dataitemNode.name;
@@ -1380,11 +1426,16 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
                 dataitemNameKVS->Del(dataitemName.c_str(), dataitemName.size());
             if (ret == META_ERROR) {
                 DEBUG_STDERR(dataitemId, "Del failed.");
-                return META_ERROR;
+                message << "Failed to remove dataitem name entry from KVS";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
+    } else {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1394,22 +1445,20 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
  * @return - META_NO_ERROR if the key is deleted successfully,
  * META_KEY_DOES_NOT_EXIST if region or daatitem key does not exists
  */
-int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     const std::string dataitemName, const uint64_t regionId) {
 
+    ostringstream message;
     int ret;
 
     Fam_DataItem_Metadata dataitemNode;
-    ret = metadata_find_dataitem(dataitemName, regionId, dataitemNode);
-
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_dataitem(dataitemName, regionId, dataitemNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey;
@@ -1427,19 +1476,24 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
             ret = dataitemIdKVS->Del(dataitemKey.c_str(), dataitemKey.size());
             if (ret == META_ERROR) {
                 DEBUG_STDERR(dataitemName, "Del failed.");
-                return META_ERROR;
+                message << "Failed to remove metadata from dataitem Id KVS";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
 
         ret = dataitemNameKVS->Del(dataitemName.c_str(), dataitemName.size());
         if (ret == META_ERROR) {
             DEBUG_STDERR(dataitemName, "Del failed.");
-            return META_ERROR;
+            message << "Failed to remove dataitem name entry from KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
-
-        return ret;
+    } else {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1450,31 +1504,31 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
  * META_KEY_DOES_NOT_EXIST
  * 	if region or daatitem key does not exists
  */
-int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     const std::string dataitemName, const std::string regionName) {
 
+    ostringstream message;
     int ret;
 
     Fam_DataItem_Metadata dataitemNode;
-    ret = metadata_find_dataitem(dataitemName, regionName, dataitemNode);
-
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-        return ret;
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_dataitem(dataitemName, regionName, dataitemNode)) {
         // Get the regionID from the region Name KVS
         std::string regionId;
         ret = get_regionid_from_regionname_KVS(regionName, regionId);
         if (ret != META_NO_ERROR) {
             DEBUG_STDERR(regionName, "Region not found");
-            return ret;
+            message << "Failed to get region Id from region name";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret =
             get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey;
@@ -1492,17 +1546,24 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
             ret = dataitemIdKVS->Del(dataitemKey.c_str(), dataitemKey.size());
             if (ret == META_ERROR) {
                 DEBUG_STDERR(dataitemName, "Del failed.");
-                return META_ERROR;
+                message << "Failed to remove metadata from dataitem Id KVS";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
         }
 
         ret = dataitemNameKVS->Del(dataitemName.c_str(), dataitemName.size());
         if (ret == META_ERROR) {
             DEBUG_STDERR(dataitemName, "Del failed.");
-            return META_ERROR;
+            message << "Failed to remove dataitem name entry from KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
+    } else {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1514,9 +1575,10 @@ int FAM_Metadata_Manager::Impl_::metadata_delete_dataitem(
  *found
  *
  */
-int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
+    ostringstream message;
 
     int ret;
     char val_buf[max_val_len];
@@ -1524,17 +1586,13 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
 
     Fam_Region_Metadata regNode;
 
-    ret = metadata_find_region(regionId, regNode);
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-        DEBUG_STDOUT(regionId, "Region not found");
-        return ret;
-
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_region(regionId, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey = std::to_string(dataitemId);
@@ -1546,13 +1604,17 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
         if (ret == META_NO_ERROR) {
             memcpy((char *)&dataitem, (char const *)val_buf,
                    sizeof(Fam_DataItem_Metadata));
+            return true;
         } else {
             DEBUG_STDERR(dataitemId, "Get failed.");
-            return ret;
+            return false;
         }
-        return ret;
+    } else {
+        DEBUG_STDOUT(regionId, "Region not found");
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1564,28 +1626,25 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
  *found
  *
  */
-int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
+    ostringstream message;
     int ret;
     char val_buf[max_val_len];
     size_t val_len;
 
     Fam_Region_Metadata regNode;
 
-    ret = metadata_find_region(regionName, regNode);
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-        DEBUG_STDOUT(regionName, "Region not found");
-        return ret;
-
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_region(regionName, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret =
             get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey = std::to_string(dataitemId);
@@ -1597,14 +1656,17 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
         if (ret == META_NO_ERROR) {
             memcpy((char *)&dataitem, (char const *)val_buf,
                    sizeof(Fam_DataItem_Metadata));
-
+            return true;
         } else {
             DEBUG_STDERR(dataitemId, "Get failed.");
-            return ret;
+            return false;
         }
-        return ret;
+    } else {
+        DEBUG_STDOUT(regionName, "Region not found");
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1616,24 +1678,21 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
  *found
  *
  */
-int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
+    ostringstream message;
 
     int ret;
     Fam_Region_Metadata regNode;
 
-    ret = metadata_find_region(regionId, regNode);
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-        DEBUG_STDOUT(regionId, "Region not found");
-        return ret;
-
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_region(regionId, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
 
         std::string dataitemKey;
@@ -1644,11 +1703,7 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
         ret = dataitemNameKVS->Get(dataitemName.c_str(), dataitemName.size(),
                                    val_buf, val_len);
 
-        if (ret == META_KEY_DOES_NOT_EXIST) {
-
-            return ret;
-        } else if (ret == META_NO_ERROR) {
-
+        if (ret == META_NO_ERROR) {
             dataitemKey.assign(val_buf, val_len);
             ResetBuf(val_buf, val_len, max_val_len);
 
@@ -1657,15 +1712,19 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
             if (ret == META_NO_ERROR) {
                 memcpy((char *)&dataitem, (char const *)val_buf,
                        sizeof(Fam_DataItem_Metadata));
-
+                return true;
             } else {
                 DEBUG_STDERR(dataitemName, "Get failed.");
-                return ret;
+                return false;
             }
         }
-        return ret;
+        return false;
+    } else {
+        DEBUG_STDOUT(regionName, "Region not found");
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1677,31 +1736,26 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
  *found
  *
  */
-int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
+    ostringstream message;
     int ret;
     char val_buf[max_val_len];
     size_t val_len;
 
     Fam_Region_Metadata regNode;
 
-    ret = metadata_find_region(regionName, regNode);
-    if (ret == META_KEY_DOES_NOT_EXIST) {
-
-        DEBUG_STDOUT(regionName, "Region not found");
-        return ret;
-
-    } else if (ret == META_NO_ERROR) {
-
+    if (metadata_find_region(regionName, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
         ret =
             get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS);
         if (ret != META_NO_ERROR) {
-            return ret;
+            message << "Failed to get dataitem KVS";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
-
         std::string dataitemKey;
 
         ResetBuf(val_buf, val_len, max_val_len);
@@ -1709,9 +1763,7 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
         ret = dataitemNameKVS->Get(dataitemName.c_str(), dataitemName.size(),
                                    val_buf, val_len);
 
-        if (ret == META_KEY_DOES_NOT_EXIST) {
-            return ret;
-        } else if (ret == META_NO_ERROR) {
+        if (ret == META_NO_ERROR) {
 
             dataitemKey.assign(val_buf, val_len);
 
@@ -1722,15 +1774,19 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
             if (ret == META_NO_ERROR) {
                 memcpy((char *)&dataitem, (char const *)val_buf,
                        sizeof(Fam_DataItem_Metadata));
-
+                return true;
             } else {
                 DEBUG_STDERR(dataitemName, "Get failed.");
-                return ret;
+                return false;
             }
         }
-        return ret;
+        return false;
+    } else {
+        DEBUG_STDOUT(regionName, "Region not found");
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                        message.str().c_str());
     }
-    return ret;
 }
 
 /**
@@ -1743,9 +1799,9 @@ int FAM_Metadata_Manager::Impl_::metadata_find_dataitem(
  * Returns true if uid/gid has required permission, else false
  *
  */
-bool FAM_Metadata_Manager::Impl_::metadata_check_permissions(
-    Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint64_t uid,
-    uint64_t gid) {
+bool Fam_Metadata_Service_Direct::Impl_::metadata_check_permissions(
+    Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint32_t uid,
+    uint32_t gid) {
 
     bool write = false, read = false, exec = false;
     if (dataitem->uid == uid) {
@@ -1824,9 +1880,9 @@ bool FAM_Metadata_Manager::Impl_::metadata_check_permissions(
  * Returns true if uid/gid has required permission, else false
  *
  */
-bool FAM_Metadata_Manager::Impl_::metadata_check_permissions(
-    Fam_Region_Metadata *region, metadata_region_item_op_t op, uint64_t uid,
-    uint64_t gid) {
+bool Fam_Metadata_Service_Direct::Impl_::metadata_check_permissions(
+    Fam_Region_Metadata *region, metadata_region_item_op_t op, uint32_t uid,
+    uint32_t gid) {
 
     bool write = false, read = false, exec = false;
     if (region->uid == uid) {
@@ -1895,291 +1951,248 @@ bool FAM_Metadata_Manager::Impl_::metadata_check_permissions(
     return true;
 }
 
-size_t FAM_Metadata_Manager::Impl_::metadata_maxkeylen() {
+size_t Fam_Metadata_Service_Direct::Impl_::metadata_maxkeylen() {
     return regionNameKVS->MaxKeyLen();
 }
 
-/*
- * Public APIs of FAM_Metadata_Manager
- */
-
-FAM_Metadata_Manager *FAM_Metadata_Manager::GetInstance(bool use_meta_reg) {
-    static FAM_Metadata_Manager instance(use_meta_reg);
-    return &instance;
-}
-
-FAM_Metadata_Manager::FAM_Metadata_Manager(bool use_meta_reg) {
+Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     Start(use_meta_reg);
 }
 
-FAM_Metadata_Manager::~FAM_Metadata_Manager() { Stop(); }
+Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() { Stop(); }
 
-void FAM_Metadata_Manager::Stop() {
+void Fam_Metadata_Service_Direct::Stop() {
     int ret = pimpl_->Final();
     assert(ret == META_NO_ERROR);
     if (pimpl_)
         delete pimpl_;
 }
 
-void FAM_Metadata_Manager::Start(bool use_meta_reg) {
+void Fam_Metadata_Service_Direct::Start(bool use_meta_reg) {
 
-    MEMSERVER_PROFILE_INIT(METADATA)
-    MEMSERVER_PROFILE_START_TIME(METADATA)
+    MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
+    MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
+    StartNVMM();
     pimpl_ = new Impl_;
     assert(pimpl_);
     int ret = pimpl_->Init(use_meta_reg);
     assert(ret == META_NO_ERROR);
 }
 
-void FAM_Metadata_Manager::reset_profile() {
-    MEMSERVER_PROFILE_INIT(METADATA)
-    MEMSERVER_PROFILE_START_TIME(METADATA)
+void Fam_Metadata_Service_Direct::reset_profile() {
+    MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
+    MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
 }
 
-void FAM_Metadata_Manager::dump_profile() { METADATA_PROFILE_DUMP(); }
-
-int FAM_Metadata_Manager::metadata_insert_region(const uint64_t regionID,
-                                                 const std::string regionName,
-                                                 Fam_Region_Metadata *region) {
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_insert_region(regionID, regionName, region);
-    METADATA_PROFILE_END_OPS(metadata_insert_region);
-    return ret;
+void Fam_Metadata_Service_Direct::dump_profile() {
+    METADATA_DIRECT_PROFILE_DUMP();
 }
 
-int FAM_Metadata_Manager::metadata_delete_region(const uint64_t regionID) {
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_delete_region(regionID);
-    METADATA_PROFILE_END_OPS(metadata_delete_region);
-    return ret;
+void Fam_Metadata_Service_Direct::metadata_insert_region(
+    const uint64_t regionID, const std::string regionName,
+    Fam_Region_Metadata *region) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_insert_region(regionID, regionName, region);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_insert_region);
 }
 
-int FAM_Metadata_Manager::metadata_delete_region(const std::string regionName) {
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_delete_region(regionName);
-    METADATA_PROFILE_END_OPS(metadata_delete_region);
-    return ret;
+void Fam_Metadata_Service_Direct::metadata_delete_region(
+    const uint64_t regionID) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_delete_region(regionID);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_region);
 }
 
-int FAM_Metadata_Manager::metadata_find_region(const std::string regionName,
-                                               Fam_Region_Metadata &region) {
-    int ret;
-    METADATA_PROFILE_START_OPS()
+void Fam_Metadata_Service_Direct::metadata_delete_region(
+    const std::string regionName) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_delete_region(regionName);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_region);
+}
+
+bool Fam_Metadata_Service_Direct::metadata_find_region(
+    const std::string regionName, Fam_Region_Metadata &region) {
+    bool ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_region(regionName, region);
-    METADATA_PROFILE_END_OPS(metadata_find_region);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_find_region);
     return ret;
 }
 
-int FAM_Metadata_Manager::metadata_find_region(const uint64_t regionId,
-                                               Fam_Region_Metadata &region) {
-    int ret;
-    METADATA_PROFILE_START_OPS()
+bool Fam_Metadata_Service_Direct::metadata_find_region(
+    const uint64_t regionId, Fam_Region_Metadata &region) {
+    bool ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_region(regionId, region);
-    METADATA_PROFILE_END_OPS(metadata_find_region);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_find_region);
     return ret;
 }
 
-int FAM_Metadata_Manager::metadata_modify_region(const uint64_t regionID,
-                                                 Fam_Region_Metadata *region) {
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_modify_region(regionID, region);
-    METADATA_PROFILE_END_OPS(metadata_modify_region);
-    return ret;
+void Fam_Metadata_Service_Direct::metadata_modify_region(
+    const uint64_t regionID, Fam_Region_Metadata *region) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_modify_region(regionID, region);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_region);
 }
-int FAM_Metadata_Manager::metadata_modify_region(const std::string regionName,
-                                                 Fam_Region_Metadata *region) {
-
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_modify_region(regionName, region);
-    METADATA_PROFILE_END_OPS(metadata_modify_region);
-    return ret;
+void Fam_Metadata_Service_Direct::metadata_modify_region(
+    const std::string regionName, Fam_Region_Metadata *region) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_modify_region(regionName, region);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_region);
 }
 
-int FAM_Metadata_Manager::metadata_insert_dataitem(
+void Fam_Metadata_Service_Direct::metadata_insert_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_insert_dataitem(dataitemId, regionName, dataitem,
-                                           dataitemName);
-    METADATA_PROFILE_END_OPS(metadata_insert_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_insert_dataitem(dataitemId, regionName, dataitem,
+                                     dataitemName);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_insert_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_insert_dataitem(
+void Fam_Metadata_Service_Direct::metadata_insert_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem, std::string dataitemName) {
 
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_insert_dataitem(dataitemId, regionId, dataitem,
-                                           dataitemName);
-    METADATA_PROFILE_END_OPS(metadata_insert_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_insert_dataitem(dataitemId, regionId, dataitem,
+                                     dataitemName);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_insert_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
     const uint64_t dataitemId, const std::string regionName) {
 
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_delete_dataitem(dataitemId, regionName);
-    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_delete_dataitem(dataitemId, regionName);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_delete_dataitem(const uint64_t dataitemId,
-                                                   const uint64_t regionId) {
+void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
+    const uint64_t dataitemId, const uint64_t regionId) {
 
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_delete_dataitem(dataitemId, regionId);
-    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_delete_dataitem(dataitemId, regionId);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
     const std::string dataitemName, const std::string regionName) {
 
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_delete_dataitem(dataitemName, regionName);
-    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_delete_dataitem(dataitemName, regionName);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_delete_dataitem(
+void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
     const std::string dataitemName, const uint64_t regionId) {
-
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_delete_dataitem(dataitemName, regionId);
-    METADATA_PROFILE_END_OPS(metadata_delete_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_delete_dataitem(dataitemName, regionId);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::metadata_find_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
-
-    int ret;
-    METADATA_PROFILE_START_OPS()
+    bool ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_dataitem(dataitemId, regionId, dataitem);
-    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_find_dataitem);
     return ret;
 }
 
-int FAM_Metadata_Manager::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::metadata_find_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
-    int ret;
-    METADATA_PROFILE_START_OPS()
+    bool ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_dataitem(dataitemId, regionName, dataitem);
-    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_find_dataitem);
     return ret;
 }
 
-int FAM_Metadata_Manager::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::metadata_find_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata &dataitem) {
 
-    int ret;
-    METADATA_PROFILE_START_OPS()
+    bool ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_dataitem(dataitemName, regionId, dataitem);
-    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_find_dataitem);
     return ret;
 }
 
-int FAM_Metadata_Manager::metadata_find_dataitem(
+bool Fam_Metadata_Service_Direct::metadata_find_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata &dataitem) {
 
-    int ret;
-    METADATA_PROFILE_START_OPS()
+    bool ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_dataitem(dataitemName, regionName, dataitem);
-    METADATA_PROFILE_END_OPS(metadata_find_dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_find_dataitem);
     return ret;
 }
 
-int FAM_Metadata_Manager::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::metadata_modify_dataitem(
     const uint64_t dataitemId, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
-
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_modify_dataitem(dataitemId, regionId, dataitem);
-    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_modify_dataitem(dataitemId, regionId, dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::metadata_modify_dataitem(
     const uint64_t dataitemId, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
-
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_modify_dataitem(dataitemId, regionName, dataitem);
-    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_modify_dataitem(dataitemId, regionName, dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::metadata_modify_dataitem(
     const std::string dataitemName, const uint64_t regionId,
     Fam_DataItem_Metadata *dataitem) {
-
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_modify_dataitem(dataitemName, regionId, dataitem);
-    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_modify_dataitem(dataitemName, regionId, dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_dataitem);
 }
 
-int FAM_Metadata_Manager::metadata_modify_dataitem(
+void Fam_Metadata_Service_Direct::metadata_modify_dataitem(
     const std::string dataitemName, const std::string regionName,
     Fam_DataItem_Metadata *dataitem) {
-
-    int ret;
-    METADATA_PROFILE_START_OPS()
-    ret = pimpl_->metadata_modify_dataitem(dataitemName, regionName, dataitem);
-    METADATA_PROFILE_END_OPS(metadata_modify_dataitem);
-    return ret;
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_modify_dataitem(dataitemName, regionName, dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_modify_dataitem);
 }
 
-bool FAM_Metadata_Manager::metadata_check_permissions(
-    Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint64_t uid,
-    uint64_t gid) {
-
+bool Fam_Metadata_Service_Direct::metadata_check_permissions(
+    Fam_DataItem_Metadata *dataitem, metadata_region_item_op_t op, uint32_t uid,
+    uint32_t gid) {
     bool ret;
-    METADATA_PROFILE_START_OPS()
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_check_permissions(dataitem, op, uid, gid);
-    METADATA_PROFILE_END_OPS(metadata_check_permissions);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_check_permissions);
     return ret;
 }
 
-bool FAM_Metadata_Manager::metadata_check_permissions(
-    Fam_Region_Metadata *region, metadata_region_item_op_t op, uint64_t uid,
-    uint64_t gid) {
-
+bool Fam_Metadata_Service_Direct::metadata_check_permissions(
+    Fam_Region_Metadata *region, metadata_region_item_op_t op, uint32_t uid,
+    uint32_t gid) {
     bool ret;
-    METADATA_PROFILE_START_OPS()
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_check_permissions(region, op, uid, gid);
-    METADATA_PROFILE_END_OPS(metadata_check_permissions);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_check_permissions);
     return ret;
 }
 
-size_t FAM_Metadata_Manager::metadata_maxkeylen() {
+size_t Fam_Metadata_Service_Direct::metadata_maxkeylen() {
 
     size_t ret;
-    METADATA_PROFILE_START_OPS()
+    METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_maxkeylen();
-    METADATA_PROFILE_END_OPS(metadata_maxkeylen);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_maxkeylen);
     return ret;
 }
 

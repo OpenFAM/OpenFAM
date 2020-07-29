@@ -1,6 +1,6 @@
 /*
  * fam_metadata_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
  * rights reserved.
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
 
-#include "../../src/metadata/fam_metadata_manager.h"
+#include "../../src/metadata/fam_metadata_service.h"
 
 #include "common/fam_test_config.h"
 
@@ -55,7 +55,7 @@ using namespace metadata;
 
 fam *my_fam;
 Fam_Options fam_opts;
-FAM_Metadata_Manager *manager;
+Fam_Metadata_Service *manager;
 
 // Test case#1 Success cases for region.
 TEST(FamMetadata, RegionSuccess) {
@@ -441,7 +441,7 @@ TEST(FamMetadata, DataitemFail) {
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     my_fam = new fam();
-    manager = FAM_Metadata_Manager::GetInstance();
+    manager = new Fam_Metadata_Service_Direct();
 
     init_fam_options(&fam_opts);
 

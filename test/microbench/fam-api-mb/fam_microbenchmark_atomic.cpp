@@ -289,7 +289,7 @@ int main(int argc, char **argv) {
     const char *testRegion = get_uniq_str("testGlobal", my_fam);
 
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-    const char *memoryServers = strdup(TEST_MEMSERVER_IP);
+    const char *memoryServers = strdup(TEST_MEMORY_SERVER);
     std::string delimiter1 = ",";
     std::string delimiter2 = ":";
     CISServerMap memoryServerList =

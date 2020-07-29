@@ -1,0 +1,126 @@
+/*
+ * fam_metadata_rpc.proto
+ * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
+ * reserved. Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holder nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * See https://spdx.org/licenses/BSD-3-Clause
+ *
+ */
+
+syntax = "proto2";
+
+/*
+ *define services for RPC methods
+ */
+service Fam_Metadata_Rpc {
+    rpc signal_start(Fam_Metadata_Gen_Request)
+        returns (Fam_Metadata_Gen_Response) {}
+    rpc signal_termination(Fam_Metadata_Gen_Request)
+        returns (Fam_Metadata_Gen_Response) {}
+    rpc metadata_insert_region(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc metadata_delete_region(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc metadata_find_region(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc metadata_modify_region(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc metadata_insert_dataitem(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc metadata_delete_dataitem(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc metadata_find_dataitem(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc metadata_modify_dataitem(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc metadata_check_region_permissions(Fam_Permission_Request)
+        returns (Fam_Permission_Response) {}
+    rpc metadata_check_item_permissions(Fam_Permission_Request)
+        returns (Fam_Permission_Response) {}
+    rpc metadata_maxkeylen(Fam_Metadata_Request)
+        returns (Fam_Metadata_Response) {}
+    rpc reset_profile(Fam_Metadata_Gen_Request)
+        returns (Fam_Metadata_Gen_Response) {}
+    rpc dump_profile(Fam_Metadata_Gen_Request)
+        returns (Fam_Metadata_Gen_Response) {}
+}
+
+/*
+ * Request message used by methods signal_start and signal_termination
+ */
+message Fam_Metadata_Gen_Request {}
+
+/*
+ * Response message used by methods signal_start and signal_termination
+ */
+message Fam_Metadata_Gen_Response {}
+
+message Fam_Metadata_Request {
+    optional uint64 key_region_id = 1;
+    optional uint64 key_dataitem_id = 2;
+    optional string key_region_name = 3;
+    optional string key_dataitem_name = 4;
+    optional uint64 region_id = 5;
+    optional string name = 6;
+    optional uint64 offset = 7;
+    optional uint32 uid = 8;
+    optional uint32 gid = 9;
+    optional uint64 perm = 10;
+    optional uint64 size = 11;
+}
+
+message Fam_Metadata_Response {
+    optional uint64 region_id = 1;
+    optional string name = 2;
+    optional uint64 offset = 3;
+    optional uint32 uid = 4;
+    optional uint32 gid = 5;
+    optional uint64 perm = 6;
+    optional uint64 size = 7;
+    optional uint64 maxkeylen = 8;
+    optional bool isfound = 9;
+    optional int32 errorcode = 10;
+    optional string errormsg = 11;
+}
+
+message Fam_Permission_Request {
+    enum meta_ops {
+        META_REGION_ITEM_WRITE = 0;
+        META_REGION_ITEM_READ = 1;
+        META_REGION_ITEM_EXEC = 2;
+        META_REGION_ITEM_RW = 3;
+    }
+    optional uint32 uid_meta = 1;
+    optional uint32 gid_meta = 2;
+    optional uint64 perm = 3;
+    optional uint32 uid_in = 4;
+    optional uint32 gid_in = 5;
+    optional meta_ops ops = 6;
+}
+
+message Fam_Permission_Response {
+    optional bool is_permitted = 1;
+    optional int32 errorcode = 2;
+    optional string errormsg = 3;
+}
