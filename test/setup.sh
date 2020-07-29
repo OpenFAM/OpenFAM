@@ -40,31 +40,41 @@ metarpcport=8989
 libfabricport=7500
 provider=sockets
 
+print_help() {
+	tput bold
+	echo "SYNOPSIS :"
+	tput reset
+	echo ""
+	echo "  source setup.sh <options>"
+	echo ""
+	tput bold
+	echo "OPTIONS :"
+	tput reset
+	echo ""
+	echo "  --memserver     : IP address of memory server"
+	echo "                    Note : This option is necessary to start the memory server"
+	echo ""
+	echo "  --metaserver    : IP address of metadata server"
+	echo "                    Note : This option is necessary to start the metadata server"
+	echo ""
+	echo "  --memrpcport    : RPC port for memory service"
+	echo ""
+	echo "  --metarpcport   : RPC port for metadata server"
+	echo ""
+	echo "  --libfabricport : Libfabric port"
+	echo ""
+	echo "  --provider      : Libfabric provider"
+	exit
+}
+
+if [ $# -lt 1 ]; then
+	print_help
+fi
+
 while :; do
 	case $1 in
 		-h|-\?|--help)
-			tput bold
-			echo "Synopys :"
-			tput reset
-			echo ""
-			echo "	source setup.sh <options>"
-			echo ""
-			tput bold
-			echo "Options :"
-			tput reset
-			echo ""
-			echo "	--memserver     : IP address of memory server"
-			echo ""
-			echo "	--metaserver    : IP address of metadata server"
-			echo ""
-			echo "	--memrpcport    : RPC port for memory service"
-			echo ""
-			echo "	--metarpcport   : RPC port for metadata server"
-			echo ""
-			echo "	--libfabricport : Libfabric port"
-			echo ""
-			echo "	--provider      : Libfabric provider"
-			echo ""
+			print_help
 			;;
 		--memserver=?*)
 			memserver=${1#*=}
@@ -124,8 +134,6 @@ if [ "$metaserver" ]; then
 	echo "Starting Metadata Server..."
 	./metadataserver -a $metaserver -r ${metarpcport} &
 	sleep 1
-else 
-	echo "ERROR: --metaserver option needs to be provided"
 fi
 
 
