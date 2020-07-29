@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -63,7 +63,6 @@ endif()
 if(ENABLE_MEMORYSERVER_PROFILING)
 	message(STATUS "Memory Server profile enabled")
 	add_definitions(-DMEMSERVER_PROFILE)
-	set( TEST_MEMSERVER_IP "127.0.0.1" )
 endif()
 
 message(STATUS "====================")
@@ -146,7 +145,15 @@ if (ARG_ALLOCATOR)
 	set( TEST_ALLOCATOR ${ARG_ALLOCATOR})
 endif()
 
+if (ENABLE_METADATA_RPC)
+	message(STATUS "Using Metadata RPC interface")
+	add_definitions(-DMETADATA_RPC)
+	add_definitions(-DMETADATA_SERVER="127.0.0.1")
+	add_definitions(-DMETADATA_RPC_PORT=8989)
+endif()
+
 if (${TEST_ALLOCATOR} STREQUAL "SHM") 
+	message(STATUS "Building shared memory model")
 	add_definitions(-DSHM)
 endif()
 

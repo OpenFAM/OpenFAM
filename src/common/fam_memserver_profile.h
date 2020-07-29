@@ -55,20 +55,30 @@ typedef enum CIS_Server_Counter_Enum {
     CIS_SERVER_COUNTER_MAX
 } CIS_Server_Counter_Enum_T;
 
-typedef enum CIS_Async_Counter_Enum {
-#include "cis/cis_async_counters.tbl"
-    CIS_ASYNC_COUNTER_MAX
-} CIS_Async_Counter_Enum_T;
-
-typedef enum Metadata_Counter_Enum {
-#include "metadata/metadata_counters.tbl"
-    METADATA_COUNTER_MAX
-} Metadata_Counter_Enum_T;
-
 typedef enum CIS_Direct_Counter_Enum {
 #include "cis/cis_direct_counters.tbl"
     CIS_DIRECT_COUNTER_MAX
 } CIS_Direct_Counter_Enum_T;
+typedef enum CIS_Async_Counter_Enum {
+
+#include "cis/cis_async_counters.tbl"
+    CIS_ASYNC_COUNTER_MAX
+} CIS_Async_Counter_Enum_T;
+
+typedef enum Metadata_Server_Counter_Enum {
+#include "metadata/metadata_server_counters.tbl"
+    METADATA_SERVER_COUNTER_MAX
+} Metadata_Server_Counter_Enum_T;
+
+typedef enum Metadata_Direct_Counter_Enum {
+#include "metadata/metadata_direct_counters.tbl"
+    METADATA_DIRECT_COUNTER_MAX
+} Metadata_Direct_Counter_Enum_T;
+
+typedef enum Metadata_Client_Counter_Enum {
+#include "metadata/metadata_client_counters.tbl"
+    METADATA_CLIENT_COUNTER_MAX
+} Metadata_Client_Counter_Enum_T;
 
 #define MEMSERVER_PROFILE_START(PROFILE_NAME)                                  \
     struct PROFILE_NAME##_Counter_St {                                         \

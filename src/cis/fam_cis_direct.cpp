@@ -75,7 +75,12 @@ void cis_direct_profile_dump() {
 
 Fam_CIS_Direct::Fam_CIS_Direct() {
     allocator = new Memserver_Allocator();
-    metadataManager = FAM_Metadata_Manager::GetInstance();
+#ifdef METADATA_RPC
+    metadataService =
+        new Fam_Metadata_Service_Client(METADATA_SERVER, METADATA_RPC_PORT);
+#else
+    metadataService = new Fam_Metadata_Service_Direct();
+#endif
 }
 
 Fam_CIS_Direct::~Fam_CIS_Direct() { delete allocator; }
@@ -89,13 +94,14 @@ void Fam_CIS_Direct::reset_profile() {
     MEMSERVER_PROFILE_INIT(CIS_DIRECT)
     MEMSERVER_PROFILE_START_TIME(CIS_DIRECT)
     allocator->reset_profile();
+    metadataService->reset_profile();
     return;
 }
 
 void Fam_CIS_Direct::dump_profile() {
     CIS_DIRECT_PROFILE_DUMP();
     allocator->dump_profile();
-    metadataManager->dump_profile();
+    metadataService->dump_profile();
 }
 
 Fam_Region_Item_Info
@@ -110,32 +116,27 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     ostringstream message;
 
     // Check if the name size is bigger than MAX_KEY_LEN supported
-    if (name.size() > metadataManager->metadata_maxkeylen()) {
+    if (name.size() > metadataService->metadata_maxkeylen()) {
         message << "Name too long";
-        throw CIS_Exception(REGION_NAME_TOO_LONG, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_NAME_TOO_LONG,
+                        message.str().c_str());
     }
 
-    int ret = metadataManager->metadata_find_region(name, region);
-    if (ret == META_NO_ERROR) {
+    if (metadataService->metadata_find_region(name, region)) {
         message << "Region already exist";
-        throw CIS_Exception(REGION_EXIST, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_EXIST, message.str().c_str());
     }
     allocator->create_region(name, regionId, nbytes, permission, uid, gid);
 
     // Register the region into metadata service
     region.regionId = regionId;
-    strncpy(region.name, name.c_str(), metadataManager->metadata_maxkeylen());
+    strncpy(region.name, name.c_str(), metadataService->metadata_maxkeylen());
     region.offset = INVALID_OFFSET;
     region.perm = permission;
     region.uid = uid;
     region.gid = gid;
     region.size = nbytes;
-    ret = metadataManager->metadata_insert_region(regionId, name, &region);
-    if (ret != META_NO_ERROR) {
-        allocator->destroy_region(regionId, uid, gid);
-        message << "Can not insert region into metadata service, ";
-        throw CIS_Exception(REGION_NOT_INSERTED, message.str().c_str());
-    }
+    metadataService->metadata_insert_region(regionId, name, &region);
     info.regionId = regionId;
     info.offset = INVALID_OFFSET;
     CIS_DIRECT_PROFILE_END_OPS(cis_create_region);
@@ -149,22 +150,21 @@ void Fam_CIS_Direct::destroy_region(uint64_t regionId, uint64_t memoryServerId,
 
     // Check with metadata service if the region exist, if not return error
     Fam_Region_Metadata region;
-    int ret = metadataManager->metadata_find_region(regionId, region);
-    if (ret != META_NO_ERROR) {
+    if (!(metadataService->metadata_find_region(regionId, region))) {
         message << "Region does not exist";
-        throw CIS_Exception(REGION_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
     }
 
     // Check if calling PE user is owner. If not, check with
     // metadata service if the calling PE has the write
     // permission to destroy region, if not return error
     if (uid != region.uid) {
-        bool isPermitted = metadataManager->metadata_check_permissions(
+        bool isPermitted = metadataService->metadata_check_permissions(
             &region, META_REGION_ITEM_WRITE, uid, gid);
         if (!isPermitted) {
             message << "Destroying region is not permitted";
-            throw CIS_Exception(DESTROY_REGION_NOT_PERMITTED,
-                                message.str().c_str());
+            THROW_ERRNO_MSG(CIS_Exception, DESTROY_REGION_NOT_PERMITTED,
+                            message.str().c_str());
         }
     }
 
@@ -173,11 +173,7 @@ void Fam_CIS_Direct::destroy_region(uint64_t regionId, uint64_t memoryServerId,
     // cached KVS is freed in metadata_delete_region and calling
     // metadata_delete_region after DestroyHeap will result in SIGSEGV.
 
-    ret = metadataManager->metadata_delete_region(regionId);
-    if (ret != META_NO_ERROR) {
-        message << "Can not remove region from metadata service";
-        throw CIS_Exception(REGION_NOT_REMOVED, message.str().c_str());
-    }
+    metadataService->metadata_delete_region(regionId);
 
     allocator->destroy_region(regionId, uid, gid);
 
@@ -194,28 +190,24 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
 
     // Check with metadata service if the region exist, if not return error
     Fam_Region_Metadata region;
-    int ret = metadataManager->metadata_find_region(regionId, region);
-    if (ret != META_NO_ERROR) {
+    if (!(metadataService->metadata_find_region(regionId, region))) {
         message << "Region does not exist";
-        throw CIS_Exception(REGION_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
     }
 
-    bool isPermitted = metadataManager->metadata_check_permissions(
+    bool isPermitted = metadataService->metadata_check_permissions(
         &region, META_REGION_ITEM_WRITE, uid, gid);
     if (!isPermitted) {
         message << "Region resize not permitted";
-        throw CIS_Exception(REGION_RESIZE_NOT_PERMITTED, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_RESIZE_NOT_PERMITTED,
+                        message.str().c_str());
     }
 
     allocator->resize_region(regionId, uid, gid, nbytes);
 
     region.size = nbytes;
     // Update the size in the metadata service
-    ret = metadataManager->metadata_modify_region(regionId, &region);
-    if (ret != META_NO_ERROR) {
-        message << "Can not modify metadata service, ";
-        throw CIS_Exception(REGION_NOT_MODIFIED, message.str().c_str());
-    }
+    metadataService->metadata_modify_region(regionId, &region);
 
     CIS_DIRECT_PROFILE_END_OPS(cis_resize_region);
 
@@ -231,32 +223,31 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     void *localPointer;
-    int ret = 0;
 
     // Check if the name size is bigger than MAX_KEY_LEN supported
-    if (name.size() > metadataManager->metadata_maxkeylen()) {
+    if (name.size() > metadataService->metadata_maxkeylen()) {
         message << "Name too long";
-        throw CIS_Exception(DATAITEM_NAME_TOO_LONG, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NAME_TOO_LONG,
+                        message.str().c_str());
     }
 
     // Check with metadata service if the region exist, if not return error
     Fam_Region_Metadata region;
-    ret = metadataManager->metadata_find_region(regionId, region);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_region(regionId, region)) {
         message << "Region does not exist";
-        throw CIS_Exception(REGION_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
     }
 
     // Check if calling PE user is owner. If not, check with
     // metadata service if the calling PE has the write
     // permission to create dataitem in that region, if not return error
     if (uid != region.uid) {
-        bool isPermitted = metadataManager->metadata_check_permissions(
+        bool isPermitted = metadataService->metadata_check_permissions(
             &region, META_REGION_ITEM_WRITE, uid, gid);
         if (!isPermitted) {
             message << "Allocation of dataitem is not permitted";
-            throw CIS_Exception(DATAITEM_ALLOC_NOT_PERMITTED,
-                                message.str().c_str());
+            THROW_ERRNO_MSG(CIS_Exception, DATAITEM_ALLOC_NOT_PERMITTED,
+                            message.str().c_str());
         }
     }
 
@@ -265,10 +256,10 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     Fam_DataItem_Metadata dataitem;
     uint64_t offset;
     if (name != "") {
-        ret = metadataManager->metadata_find_dataitem(name, regionId, dataitem);
-        if (ret == META_NO_ERROR) {
+        if (metadataService->metadata_find_dataitem(name, regionId, dataitem)) {
             message << "Dataitem with the name provided already exist";
-            throw CIS_Exception(DATAITEM_EXIST, message.str().c_str());
+            THROW_ERRNO_MSG(CIS_Exception, DATAITEM_EXIST,
+                            message.str().c_str());
         }
     }
 
@@ -278,23 +269,18 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
 
     dataitem.regionId = regionId;
-    strncpy(dataitem.name, name.c_str(), metadataManager->metadata_maxkeylen());
+    strncpy(dataitem.name, name.c_str(), metadataService->metadata_maxkeylen());
     dataitem.offset = offset;
     dataitem.perm = permission;
     dataitem.gid = gid;
     dataitem.uid = uid;
     dataitem.size = nbytes;
     if (name == "")
-        ret = metadataManager->metadata_insert_dataitem(dataitemId, regionId,
-                                                        &dataitem);
+        metadataService->metadata_insert_dataitem(dataitemId, regionId,
+                                                  &dataitem);
     else
-        ret = metadataManager->metadata_insert_dataitem(dataitemId, regionId,
-                                                        &dataitem, name);
-    if (ret != META_NO_ERROR) {
-        allocator->deallocate(regionId, offset, uid, gid);
-        message << "Can not insert dataitem into metadata service " << ret;
-        throw CIS_Exception(DATAITEM_NOT_INSERTED, message.str().c_str());
-    }
+        metadataService->metadata_insert_dataitem(dataitemId, regionId,
+                                                  &dataitem, name);
 
     uint64_t key;
 
@@ -304,8 +290,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     } else if (check_dataitem_permission(dataitem, 0, uid, gid)) {
         key = FAM_READ_KEY_SHM;
     } else {
-        throw Fam_Allocator_Exception(FAM_ERR_NOPERM,
-                                      "Not permitted to use this dataitem");
+        message << "Not permitted to use this dataitem";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
     }
 
     info.regionId = regionId;
@@ -327,32 +313,28 @@ void Fam_CIS_Direct::deallocate(uint64_t regionId, uint64_t offset,
     // is already exist, if not return error
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
     Fam_DataItem_Metadata dataitem;
-    int ret =
-        metadataManager->metadata_find_dataitem(dataitemId, regionId, dataitem);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
+                                                 dataitem)) {
         message << "Dataitem does not exist";
-        throw CIS_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
     }
 
     // Check if calling PE user is owner. If not, check with
     // metadata service if the calling PE has the write
     // permission to destroy region, if not return error
     if (uid != dataitem.uid) {
-        bool isPermitted = metadataManager->metadata_check_permissions(
+        bool isPermitted = metadataService->metadata_check_permissions(
             &dataitem, META_REGION_ITEM_WRITE, uid, gid);
         if (!isPermitted) {
             message << "Deallocation of dataitem is not permitted";
-            throw CIS_Exception(DATAITEM_DEALLOC_NOT_PERMITTED,
-                                message.str().c_str());
+            THROW_ERRNO_MSG(CIS_Exception, DATAITEM_DEALLOC_NOT_PERMITTED,
+                            message.str().c_str());
         }
     }
 
     // Remove data item from metadata service
-    ret = metadataManager->metadata_delete_dataitem(dataitemId, regionId);
-    if (ret != META_NO_ERROR) {
-        message << "Can not remove dataitem from metadata service";
-        throw CIS_Exception(DATAITEM_NOT_REMOVED, message.str().c_str());
-    }
+    metadataService->metadata_delete_dataitem(dataitemId, regionId);
 
     allocator->deallocate(regionId, offset, uid, gid);
 
@@ -372,23 +354,22 @@ void Fam_CIS_Direct::change_region_permission(uint64_t regionId,
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
     Fam_Region_Metadata region;
-    int ret = metadataManager->metadata_find_region(regionId, region);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_region(regionId, region)) {
         message << "Region does not exist";
-        throw CIS_Exception(REGION_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
     }
 
     // Check with metadata service if the calling PE has the permission
     // to modify permissions of the region, if not return error
     if (uid != region.uid) {
         message << "Region permission modification not permitted";
-        throw CIS_Exception(REGION_PERM_MODIFY_NOT_PERMITTED,
-                            message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_PERM_MODIFY_NOT_PERMITTED,
+                        message.str().c_str());
     }
 
     // Update the permission of region with metadata service
     region.perm = permission;
-    ret = metadataManager->metadata_modify_region(regionId, &region);
+    metadataService->metadata_modify_region(regionId, &region);
 
     CIS_DIRECT_PROFILE_END_OPS(cis_change_region_permission);
 
@@ -407,25 +388,24 @@ void Fam_CIS_Direct::change_dataitem_permission(uint64_t regionId,
     // is already exist, if not return error
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
     Fam_DataItem_Metadata dataitem;
-    int ret =
-        metadataManager->metadata_find_dataitem(dataitemId, regionId, dataitem);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
+                                                 dataitem)) {
         message << "Dataitem does not exist";
-        throw CIS_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
     }
 
     // Check with metadata service if the calling PE has the permission
     // to modify permissions of the region, if not return error
     if (uid != dataitem.uid) {
         message << "Dataitem permission modification not permitted";
-        throw CIS_Exception(ITEM_PERM_MODIFY_NOT_PERMITTED,
-                            message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, ITEM_PERM_MODIFY_NOT_PERMITTED,
+                        message.str().c_str());
     }
 
     // Update the permission of region with metadata service
     dataitem.perm = permission;
-    ret = metadataManager->metadata_modify_dataitem(dataitemId, regionId,
-                                                    &dataitem);
+    metadataService->metadata_modify_dataitem(dataitemId, regionId, &dataitem);
 
     CIS_DIRECT_PROFILE_END_OPS(cis_change_dataitem_permission);
     return;
@@ -444,7 +424,7 @@ bool Fam_CIS_Direct::check_region_permission(Fam_Region_Metadata region,
         opFlag = META_REGION_ITEM_READ;
 
     return (
-        metadataManager->metadata_check_permissions(&region, opFlag, uid, gid));
+        metadataService->metadata_check_permissions(&region, opFlag, uid, gid));
 }
 
 /*
@@ -461,7 +441,7 @@ bool Fam_CIS_Direct::check_dataitem_permission(Fam_DataItem_Metadata dataitem,
     else
         opFlag = META_REGION_ITEM_READ;
 
-    return (metadataManager->metadata_check_permissions(&dataitem, opFlag, uid,
+    return (metadataService->metadata_check_permissions(&dataitem, opFlag, uid,
                                                         gid));
 }
 
@@ -474,24 +454,24 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     Fam_Region_Metadata region;
 
     message << "Error While locating region : ";
-    int ret = metadataManager->metadata_find_region(name, region);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_region(name, region)) {
         message << "could not find the region";
-        throw CIS_Exception(REGION_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
     }
 
     if (uid != region.uid) {
         if (!check_region_permission(region, 0, uid, gid)) {
             message << "Not permitted to access the region";
-            throw CIS_Exception(NO_PERMISSION, message.str().c_str());
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
         }
     }
     info.regionId = region.regionId;
     info.offset = region.offset;
     info.size = region.size;
     info.perm = region.perm;
-    strncpy(info.name, region.name, metadataManager->metadata_maxkeylen());
-    info.maxNameLen = metadataManager->metadata_maxkeylen();
+    strncpy(info.name, region.name, metadataService->metadata_maxkeylen());
+    info.maxNameLen = metadataService->metadata_maxkeylen();
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup_region);
     return info;
 }
@@ -504,17 +484,18 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     ostringstream message;
     Fam_DataItem_Metadata dataitem;
     message << "Error While locating dataitem : ";
-    int ret =
-        metadataManager->metadata_find_dataitem(itemName, regionName, dataitem);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_dataitem(itemName, regionName,
+                                                 dataitem)) {
         message << "could not find the dataitem ";
-        throw CIS_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
     }
 
     if (uid != dataitem.uid) {
         if (!check_dataitem_permission(dataitem, 0, uid, gid)) {
             message << "Not permitted to access the dataitem";
-            throw CIS_Exception(NO_PERMISSION, message.str().c_str());
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
         }
     }
 
@@ -522,8 +503,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     info.offset = dataitem.offset;
     info.size = dataitem.size;
     info.perm = dataitem.perm;
-    strncpy(info.name, dataitem.name, metadataManager->metadata_maxkeylen());
-    info.maxNameLen = metadataManager->metadata_maxkeylen();
+    strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
+    info.maxNameLen = metadataService->metadata_maxkeylen();
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup);
     return info;
 }
@@ -536,22 +517,22 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     Fam_Region_Metadata region;
     ostringstream message;
     message << "Error While locating region : ";
-    int ret = metadataManager->metadata_find_region(regionId, region);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_region(regionId, region)) {
         message << "could not find the region";
-        throw CIS_Exception(REGION_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
     }
 
     if (uid != region.uid) {
         if (!check_region_permission(region, 0, uid, gid)) {
             message << "Not permitted to access the region";
-            throw CIS_Exception(NO_PERMISSION, message.str().c_str());
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
         }
     }
     info.size = region.size;
     info.perm = region.perm;
-    strncpy(info.name, region.name, metadataManager->metadata_maxkeylen());
-    info.maxNameLen = metadataManager->metadata_maxkeylen();
+    strncpy(info.name, region.name, metadataService->metadata_maxkeylen());
+    info.maxNameLen = metadataService->metadata_maxkeylen();
     CIS_DIRECT_PROFILE_END_OPS(cis_check_permission_get_region_info);
     return info;
 }
@@ -568,11 +549,11 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
     uint64_t key;
     message << "Error While locating dataitem : ";
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
-    int ret =
-        metadataManager->metadata_find_dataitem(dataitemId, regionId, dataitem);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
+                                                 dataitem)) {
         message << "could not find the dataitem";
-        throw CIS_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
     }
 
     // This key is only applicable for shared memory model
@@ -584,15 +565,15 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
         key = FAM_KEY_INVALID;
     } else {
         message << "Dataitem access is not permitted ";
-        throw CIS_Exception(NO_PERMISSION, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
     }
 
     info.regionId = dataitem.regionId;
     info.offset = dataitem.offset;
     info.size = dataitem.size;
     info.perm = dataitem.perm;
-    strncpy(info.name, dataitem.name, metadataManager->metadata_maxkeylen());
-    info.maxNameLen = metadataManager->metadata_maxkeylen();
+    strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
+    info.maxNameLen = metadataService->metadata_maxkeylen();
     info.key = key;
     info.base = get_local_pointer(regionId, offset);
 
@@ -611,24 +592,25 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
 
     Fam_DataItem_Metadata dataitem;
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
-    int ret =
-        metadataManager->metadata_find_dataitem(dataitemId, regionId, dataitem);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
+                                                 dataitem)) {
         message << "could not find the dataitem";
-        throw CIS_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
     }
 
     if (uid != dataitem.uid) {
         if (!check_dataitem_permission(dataitem, 0, uid, gid)) {
             message << "Not permitted to access the dataitem";
-            throw CIS_Exception(NO_PERMISSION, message.str().c_str());
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
         }
     }
 
     info.size = dataitem.size;
     info.perm = dataitem.perm;
-    strncpy(info.name, dataitem.name, metadataManager->metadata_maxkeylen());
-    info.maxNameLen = metadataManager->metadata_maxkeylen();
+    strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
+    info.maxNameLen = metadataService->metadata_maxkeylen();
     CIS_DIRECT_PROFILE_END_OPS(get_stat_info);
     return info;
 }
@@ -645,18 +627,18 @@ void *Fam_CIS_Direct::fam_map(uint64_t regionId, uint64_t offset,
     ostringstream message;
     Fam_DataItem_Metadata dataitem;
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
-    int ret =
-        metadataManager->metadata_find_dataitem(dataitemId, regionId, dataitem);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
+                                                 dataitem)) {
         message << "could not find the dataitem";
-        throw CIS_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
     }
     if (check_dataitem_permission(dataitem, 1, uid, gid) |
         check_dataitem_permission(dataitem, 0, uid, gid)) {
         localPointer = get_local_pointer(regionId, offset);
     } else {
-        throw CIS_Exception(NO_PERMISSION,
-                            "Not permitted to use this dataitem");
+        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                        "Not permitted to use this dataitem");
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_fam_map);
 
@@ -683,50 +665,51 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
 
     uint64_t srcDataitemId = srcOffset / MIN_OBJ_SIZE;
     uint64_t destDataitemId = destOffset / MIN_OBJ_SIZE;
-    int ret = metadataManager->metadata_find_dataitem(srcDataitemId,
-                                                      srcRegionId, srcDataitem);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_dataitem(srcDataitemId, srcRegionId,
+                                                 srcDataitem)) {
         message << "could not find the source dataitem";
-        throw CIS_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
     }
 
-    if (!(metadataManager->metadata_check_permissions(
+    if (!(metadataService->metadata_check_permissions(
             &srcDataitem, META_REGION_ITEM_READ, uid, gid))) {
         message << "Read operation is not permitted on source dataitem";
-        throw CIS_Exception(NO_PERMISSION, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
     }
 
-    ret = metadataManager->metadata_find_dataitem(destDataitemId, destRegionId,
-                                                  destDataitem);
-    if (ret != META_NO_ERROR) {
+    if (!metadataService->metadata_find_dataitem(destDataitemId, destRegionId,
+                                                 destDataitem)) {
         message << "could not find the destination dataitem";
-        throw CIS_Exception(DATAITEM_NOT_FOUND, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
     }
 
-    if (!(metadataManager->metadata_check_permissions(
+    if (!(metadataService->metadata_check_permissions(
             &destDataitem, META_REGION_ITEM_WRITE, uid, gid))) {
         message << "Write operation is not permitted on destination dataitem";
-        throw CIS_Exception(NO_PERMISSION, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
     }
 
     if ((srcCopyStart + nbytes) < srcDataitem.size)
         srcStart = get_local_pointer(srcRegionId, srcOffset + srcCopyStart);
     else {
         message << "Source offset or size is beyond dataitem boundary";
-        throw CIS_Exception(OUT_OF_RANGE, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
 
     if ((destCopyStart + nbytes) < destDataitem.size)
         destStart = get_local_pointer(destRegionId, destOffset + destCopyStart);
     else {
         message << "Destination offset or size is beyond dataitem boundary";
-        throw CIS_Exception(OUT_OF_RANGE, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
 
     if ((srcStart == NULL) || (destStart == NULL)) {
         message
             << "Failed to get local pointer to source or destination dataitem";
-        throw CIS_Exception(NULL_POINTER_ACCESS, message.str().c_str());
+        THROW_ERRNO_MSG(CIS_Exception, NULL_POINTER_ACCESS,
+                        message.str().c_str());
     } else {
         allocator->copy(destStart, srcStart, nbytes);
     }

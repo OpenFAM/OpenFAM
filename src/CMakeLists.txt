@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -22,20 +22,31 @@
 
 add_subdirectory(allocator)
 add_subdirectory(common)
-add_subdirectory(cis)
 add_subdirectory(fam-api)
 add_subdirectory(memory-node)
 add_subdirectory(metadata)
 add_subdirectory(bitmap-manager)
+add_subdirectory(cis)
+
+add_library(fammetadata SHARED ${METADATA_CLIENT_SRC})
+add_definitions(-DFAM_ATOMIC_NATIVE)
+
+target_link_libraries(fammetadata nvmm famradixtree boost_system)
 
 add_library(openfam SHARED ${LIBOPENFAM_SRC})
 
 if(USE_BOOST_FIBER)
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_system boost_fiber boost_context pmix pmi2 fambitmap)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_fiber boost_context pmix pmi2 fambitmap)
 else()
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_system boost_context pmix pmi2 fambitmap)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_context pmix pmi2 fambitmap)
 endif()
-add_executable (memoryserver ${MEMORYSERVER_SRC})
 
 set_target_properties(openfam PROPERTIES SOVERSION ${VERSION_STR})
+
+add_executable (memoryserver ${MEMORYSERVER_SRC})
+
 target_link_libraries(memoryserver fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_system fambitmap)
+
+add_executable (metadataserver ${METADATA_SERVER_SRC})
+
+target_link_libraries(metadataserver nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)

@@ -1,5 +1,4 @@
-#include "common/fam_internal.h"
-#include "fam/fam_exception.h"
+#include "common/fam_internal_exception.h"
 #include <iostream>
 #include <map>
 #include <string>
