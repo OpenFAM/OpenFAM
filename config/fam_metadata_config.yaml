@@ -7,10 +7,13 @@ metadata_manager: radixtree
 # Example: If metadata manager is radixtree, then metadata info would be placed under /dev/shm/radixtree folder.
 metadata_path: /dev/shm/
 
-#Metadata Server Address
-# Applicable only if metadata_interface_type (defined in fam_client_interface_config.yaml) is rpc.
+# Rpc interface
+# Rpc interface used by client interface service rpc server.
+# The Client Interface Service connect to this address if the metadata_interface_type
+# (defined in fam_client_interface_config.yaml) is rpc.
 #Format:
 #rpc_interface: <interface_address>:<portno>
 # where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
-# portno is port to be used by OpenFAM for communication with Client Interface Service
+# portno is port to be used by OpenFAM for communication between Metadata Manager and
+# Client Interface Service.
 rpc_interface: 127.0.0.1:8788
