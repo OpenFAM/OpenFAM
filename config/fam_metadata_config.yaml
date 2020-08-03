@@ -6,3 +6,11 @@ metadata_manager: radixtree
 # Path where metadata info is stored. By default, it will be placed in /dev/shm/<metadata_manager>. 
 # Example: If metadata manager is radixtree, then metadata info would be placed under /dev/shm/radixtree folder.
 metadata_path: /dev/shm/
+
+#Metadata Server Address
+# Applicable only if metadata_interface_type (defined in fam_client_interface_config.yaml) is rpc.
+#Format:
+#rpc_interface: <interface_address>:<portno>
+# where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
+# portno is port to be used by OpenFAM for communication with Client Interface Service
+rpc_interface: 127.0.0.1:8788

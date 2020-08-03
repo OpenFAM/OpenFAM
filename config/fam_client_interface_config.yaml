@@ -1,5 +1,4 @@
 #FAM Client Interface Service Config file
-
 # Memory Server Interface used by OpenFAM. default is direct. Other option is rpc.
 # memsrv_interface_type value of rpc implies communication between memory server and client interface via rpc.
 # memsrv_interface_type value of direct implies communication happens via function calls.
@@ -9,6 +8,14 @@ memsrv_interface_type: direct
 # metadata_interface_type value of rpc implies communication between metadata server and client interface via rpc.
 # metadata_interface_type value of direct implies communication happens via function calls.
 metadata_interface_type: direct
+
+#Client Interface Service Address
+# Applicable only if client_interface_type (defined in fam_pe_config.yaml) is rpc.
+#Format:
+#rpc_interface: <interface_address>:<portno>
+# where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
+# portno is port to be used by OpenFAM for communication with Client Interface Service
+rpc_interface: 127.0.0.1:8789
 
 # List of memory servers.
 # Applicable only if memsrv_interface_type is rpc.

@@ -21,8 +21,4 @@ client_interface_type: rpc
 
 # Address of Client Interface Service - It can be hostname (fully qualified domain name)/ipv4 address.
 # Applicable only if client_interface_type is rpc.
-fam_client_interface_service_address: 127.0.0.1
-
-# Port to be used by OpenFAM  to connect to Client Interface Service
-# Applicable only if client_interface_type is rpc.
-fam_client_interface_service_port: 8787
+fam_client_interface_service_address: 127.0.0.1:8789
