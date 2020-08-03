@@ -19,9 +19,9 @@ runtime: PMIX
 # client_interface_type value of direct implies communication happens via function calls.
 client_interface_type: rpc
 
-# IP address of Client Interface Service
+# Address of Client Interface Service - It can be hostname (fully qualified domain name)/ipv4 address.
 # Applicable only if client_interface_type is rpc.
-fam_client_interface_service_ip: 127.0.0.1
+fam_client_interface_service_address: 127.0.0.1
 
 # Port to be used by OpenFAM  to connect to Client Interface Service
 # Applicable only if client_interface_type is rpc.
