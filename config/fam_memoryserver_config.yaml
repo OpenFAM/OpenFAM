@@ -4,7 +4,8 @@
 # fam_path: /dev/shm/username
 #
 # Rpc interface
-# Rpc interface used by client interface service rpc server.
+# Rpc address used by memory server to accept connections from Client Interface Service.
+#
 # The Client Interface Service connect to this address if the memsrv_interface_type
 # (defined in fam_client_interface_config.yaml) is rpc.
 #Format:

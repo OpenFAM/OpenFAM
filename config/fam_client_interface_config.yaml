@@ -10,7 +10,8 @@ memsrv_interface_type: direct
 metadata_interface_type: direct
 
 # Rpc interface
-# Rpc interface used by client interface service rpc server.
+# Rpc address used by Client Interface Service to accept connections from PE.
+#
 # The PE's connect to this address if the client_interface_type is (defined in fam_pe_config.yaml) is rpc.
 #Format:
 #rpc_interface: <interface_address>:<portno>
