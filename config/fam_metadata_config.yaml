@@ -3,5 +3,6 @@
 # Metadata manager: default is radixtree. Currently radixtree is the only supported KVS.
 metadata_manager: radixtree
  
-# Path where metadata info is stored. By default, it will be placed in /dev/shm. 
-metadata_path: /dev/shm/radixtree
+# Path where metadata info is stored. By default, it will be placed in /dev/shm/<metadata_manager>. 
+# Example: If metadata manager is radixtree, then metadata info would be placed under /dev/shm/radixtree folder.
+metadata_path: /dev/shm/

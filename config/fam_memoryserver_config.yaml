@@ -1,4 +1,4 @@
 # MemoryServer Config file
 # Path where data is stored.
 # By default NVMM default location will be selected (which by default is /dev/shm/<username>).
-# fam_path: /dev/shm/
+# fam_path: /dev/shm/username

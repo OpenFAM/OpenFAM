@@ -12,13 +12,15 @@ metadata_interface_type: direct
 
 # List of memory servers.
 # Applicable only if memsrv_interface_type is rpc.
+#
 #Format:
 #memsrv_list :
-#- <memsrv_id1>:<ip_address_1>:<port_no>
-#- <memsrv_id2>:<ip_address_2>:<port_no>
-#- <memsrv_id3>:<ip_address_3>:<port_no>
-#- <memsrv_id4>:<ip_address_4>:<port_no>
+#- <memsrv_id1>:<host_address_1>:<port_no>
+#- <memsrv_id2>:<host_address_2>:<port_no>
+#- <memsrv_id3>:<host_address_3>:<port_no>
+#- <memsrv_id4>:<host_address_4>:<port_no>
 # Here memsrv_id is a unique number associated a with memory server.
+# And host_address can be hostname/ipv4/ipv6 addresses.
 #
 # Example:
 # 5:127.0.0.1:8787
@@ -29,8 +31,10 @@ memsrv_list:
 # Applicable only if metadata_interface_type is rpc.
 #Format:
 #metadata_list:
-#- <metadata_id1>:<md_ ip_address_1>:<port_no>
-#- <metadata_id2>:<md_ ip_address_2>:<port_no>
+#- <metadata_id1>:<md_ host_address_1>:<port_no>
+#- <metadata_id2>:<md_ host_address_2>:<port_no>
+# Here metadata_id is a unique number associated a with metadata server.
+# And host_address can be hostname/ipv4/ipv6 addresses.
 #
 # Example:
 # 5:127.0.0.1:8788
