@@ -1,0 +1,51 @@
+#FAM Client Interface Service Config file
+# Memory Server Interface used by OpenFAM. default is direct. Other option is rpc.
+# memsrv_interface_type value of rpc implies communication between memory server and client interface via rpc.
+# memsrv_interface_type value of direct implies communication happens via function calls.
+memsrv_interface_type: direct
+
+# Metadata Server Interface used by OpenFAM. default is direct. Other option is rpc.
+# metadata_interface_type value of rpc implies communication between metadata server and client interface via rpc.
+# metadata_interface_type value of direct implies communication happens via function calls.
+metadata_interface_type: direct
+
+# Rpc interface
+# Rpc address used by Client Interface Service to accept connections from PE.
+#
+# The PE's connect to this address if the client_interface_type is (defined in fam_pe_config.yaml) is rpc.
+#Format:
+#rpc_interface: <interface_address>:<portno>
+# where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
+# portno is port to be used by OpenFAM for communication with Client Interface Service.
+rpc_interface: 127.0.0.1:8789
+
+# List of memory servers.
+# Applicable only if memsrv_interface_type is rpc.
+#
+#Format:
+#memsrv_list :
+#- <memsrv_id1>:<host_address_1>:<port_no>
+#- <memsrv_id2>:<host_address_2>:<port_no>
+#- <memsrv_id3>:<host_address_3>:<port_no>
+#- <memsrv_id4>:<host_address_4>:<port_no>
+# Here memsrv_id is a unique number associated a with memory server.
+# And host_address can be hostname (fully qualified domain name)/ipv4 address.
+#
+# Example:
+# 5:127.0.0.1:8787
+memsrv_list:
+- 0:127.0.0.1:8787
+
+# List of metadata servers
+# Applicable only if metadata_interface_type is rpc.
+#Format:
+#metadata_list:
+#- <metadata_id1>:<md_ host_address_1>:<port_no>
+#- <metadata_id2>:<md_ host_address_2>:<port_no>
+# Here metadata_id is a unique number associated a with metadata server.
+# And host_address can be hostname (fully qualified domain name)/ipv4 address.
+#
+# Example:
+# 5:127.0.0.1:8788
+metadata_list:
+- 0:127.0.0.1:8788
