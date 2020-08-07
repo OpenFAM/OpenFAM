@@ -48,8 +48,7 @@ int main() {
     Fam_Descriptor *srcItem;
     Fam_Descriptor *destItem[MESSAGE_SIZE];
 
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-
+    init_fam_options(&fam_opts);
     fam_opts.memoryServer = strdup(TEST_MEMORY_SERVER);
     fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
     fam_opts.libfabricPort = strdup(TEST_LIBFABRIC_PORT);

@@ -1,0 +1,23 @@
+# MemoryServer Config file
+# Path where data is stored.
+# By default NVMM default location will be selected (which by default is /dev/shm/<username>).
+# fam_path: /dev/shm/username
+#
+# Rpc interface
+# Rpc address used by memory server to accept connections from Client Interface Service.
+#
+# The Client Interface Service connect to this address if the memsrv_interface_type
+# (defined in fam_client_interface_config.yaml) is rpc.
+#Format:
+#rpc_interface: <interface_address>:<portno>
+# where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
+# portno is port to be used by OpenFAM for communication between Memory Server and
+# Client Interface Service.
+rpc_interface: 127.0.0.1:8787
+
+# Libfabric provider to be used by OpenFAM libfabric datapath operations; default is sockets.
+# Other options are psm2/verbs.
+provider: sockets
+
+#Libfabric port to be used for datapath operations.
+libfabric_port: 7500

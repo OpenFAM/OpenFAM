@@ -267,6 +267,9 @@ typedef struct {
     char *numConsumer;
     /** FAM runtime - Default, pmix*/
     char *runtime;
+    /** CIS Server to be used by OpenFAM */
+    char *cisServer;
+
 } Fam_Options;
 
 class fam {

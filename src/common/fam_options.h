@@ -69,6 +69,9 @@ typedef enum {
     /**Number of consumer threads in case of shared memory model**/
     NUM_CONSUMER,
     /** END of Option keys */
+    /* CIS Server to be used by OpenFAM*/
+    CIS_SERVER,
+
     END_OPT = -1
 } Fam_Option_Key;
 

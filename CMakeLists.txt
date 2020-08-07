@@ -211,3 +211,4 @@ install (FILES "${PROJECT_SOURCE_DIR}/test/unit-test/config/sample_config" PERMI
         GROUP_READ WORLD_READ
         DESTINATION ${PROJECT_BINARY_DIR}/test/unit-test/config/)
 
+install (DIRECTORY "${PROJECT_SOURCE_DIR}/test/config_files" DESTINATION "${PROJECT_BINARY_DIR}/test")
