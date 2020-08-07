@@ -75,17 +75,16 @@ const char *supportedOptionList[] = {
     "DEFAULT_REGION_NAME", // index #1
     "MEMORY_SERVER",       // index #2
     "GRPC_PORT",           // index #3
-    "LIBFABRIC_PORT",      // index #4
-    "LIBFABRIC_PROVIDER",  // index #5
-    "FAM_THREAD_MODEL",    // index #6
-    "ALLOCATOR",           // index #7
-    "FAM_CONTEXT_MODEL",   // index #8
-    "PE_COUNT",            // index #9
-    "PE_ID",               // index #10
-    "RUNTIME",             // index #11
-    "NUM_CONSUMER",        // index #12
-    "CIS_SERVER",          // index #13
-    NULL                   // index #14
+    "LIBFABRIC_PROVIDER",  // index #4
+    "FAM_THREAD_MODEL",    // index #5
+    "ALLOCATOR",           // index #6
+    "FAM_CONTEXT_MODEL",   // index #7
+    "PE_COUNT",            // index #8
+    "PE_ID",               // index #9
+    "RUNTIME",             // index #10
+    "NUM_CONSUMER",        // index #11
+    "CIS_SERVER",          // index #12
+    NULL                   // index #13
 };
 
 namespace openfam {
@@ -623,7 +622,7 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     // Look for options information from config file.
     std::string config_file_path;
     configFileParams file_options;
-    // Check for config file in user's home directory or in path mentioned
+    // Check for config file in or in path mentioned
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
     try {
         config_file_path = find_config_file(strdup("fam_pe_config.yaml"));
@@ -720,9 +719,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         famAllocator = new Fam_Allocator_Client(memoryServerList,
                                                 atoi(famOptions.grpcPort));
         famOps = new Fam_Ops_Libfabric(
-            memoryServerList, famOptions.libfabricPort, false,
-            famOptions.libfabricProvider, famThreadModel, famAllocator,
-            famContextModel);
+            memoryServerList, NULL, false, famOptions.libfabricProvider,
+            famThreadModel, famAllocator, famContextModel);
         ret = famOps->initialize();
         if (ret < 0) {
             message << "Fam libfabric initialization failed: "
@@ -782,11 +780,6 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
         famOptions.grpcPort = strdup("8787");
     optValueMap->insert({supportedOptionList[GRPC_PORT], famOptions.grpcPort});
 
-    famOptions.libfabricPort = NULL;
-
-    optValueMap->insert(
-        {supportedOptionList[LIBFABRIC_PORT], famOptions.libfabricPort});
-
     if (options && options->libfabricProvider)
         famOptions.libfabricProvider = strdup(options->libfabricProvider);
     else if (!config_file_fam_options.empty() &&
@@ -823,9 +816,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     if (options && options->allocator)
         famOptions.allocator = strdup(options->allocator);
     else if (!config_file_fam_options.empty() &&
-             config_file_fam_options.count("allocator") > 0)
+             config_file_fam_options.count("openfam_model") > 0)
         famOptions.allocator =
-            strdup(config_file_fam_options["allocator"].c_str());
+            strdup(config_file_fam_options["openfam_model"].c_str());
     else
         famOptions.allocator = strdup("grpc");
     if ((strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) != 0) &&
@@ -919,8 +912,8 @@ int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
 }
 
 /*
- * find_config_file - Look for configuration file in user's home directory
- * or in path specified by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
+ * find_config_file - Look for configuration file in path specified by
+ * OPENFAM_ROOT environment variable or in /opt/OpenFAM.
  * On Success, return config file with absolute path. Else returns empty string.
  */
 std::string fam::Impl_::find_config_file(char *config_file) {
@@ -998,9 +991,10 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
 
             std::string allocator = info->get_key_value("openfam_model");
-            options["allocator"] = ((allocator.compare("shared_memory") == 0)
-                                        ? strdup(FAM_OPTIONS_SHM_STR)
-                                        : strdup(FAM_OPTIONS_GRPC_STR));
+            options["openfam_model"] =
+                ((allocator.compare("shared_memory") == 0)
+                     ? strdup(FAM_OPTIONS_SHM_STR)
+                     : strdup(FAM_OPTIONS_GRPC_STR));
 
         } catch (Fam_InvalidOption_Exception e) {
             // If the parameter allocator is not present, then ignore the

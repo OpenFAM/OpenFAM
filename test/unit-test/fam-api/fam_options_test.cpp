@@ -76,10 +76,6 @@ int main() {
     i = 0;
     while (optList[i]) {
         char *opt = strdup(optList[i]);
-        if (strcmp(opt, "LIBFABRIC_PORT") == 0) {
-            i++;
-            continue;
-        }
         if (strncmp(opt, "PE", 2) == 0) {
             int *optIntValue = (int *)my_fam->fam_get_option(opt);
             cout << optList[i] << ":" << *optIntValue << endl;

@@ -49,8 +49,6 @@ typedef enum {
     MEMORY_SERVER,
     /** Port to be used by OpenFam grpc memory allocator */
     GRPC_PORT,
-    /** GRPC Port to be used by OpenFam memory allocator operations */
-    LIBFABRIC_PORT,
     /** Libfabric provider to be used by OpenFam libfabric datapath operations;
         "sockets" by default */
     LIBFABRIC_PROVIDER,
