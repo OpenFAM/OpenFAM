@@ -106,14 +106,8 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     my_fam = new fam();
     int ret;
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-    fam_opts.allocator = strdup(TEST_ALLOCATOR);
-    //   EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
-    try {
-        my_fam->fam_initialize("default", &fam_opts);
-    } catch (Fam_Exception &e) {
-        cout << "msg :" << e.fam_error_msg() << endl;
-    }
+    init_fam_options(&fam_opts);
+    EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
     ret = RUN_ALL_TESTS();
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
     return ret;

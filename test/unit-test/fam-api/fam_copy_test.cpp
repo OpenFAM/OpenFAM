@@ -49,10 +49,6 @@ int main() {
     Fam_Descriptor *destItem[MESSAGE_SIZE];
 
     init_fam_options(&fam_opts);
-    fam_opts.memoryServer = strdup(TEST_MEMORY_SERVER);
-    fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
-    fam_opts.libfabricPort = strdup(TEST_LIBFABRIC_PORT);
-    fam_opts.allocator = strdup(TEST_ALLOCATOR);
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
