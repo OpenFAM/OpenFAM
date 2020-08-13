@@ -1,0 +1,129 @@
+/*
+ * fam_memory_service_rpc.proto
+ * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
+ * reserved. Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ * 1. Redistributions of source code must retain the above copyright notice,
+ * this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright notice,
+ * this list of conditions and the following disclaimer in the documentation
+ * and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holder nor the names of its contributors
+ * may be used to endorse or promote products derived from this software without
+ * specific prior written permission.
+ *
+ *    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+ * IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ *    INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ * See https://spdx.org/licenses/BSD-3-Clause
+ *
+ */
+
+syntax = "proto3";
+
+/*
+ *define services for RPC methods
+ */
+service Fam_Memory_Service_Rpc {
+    rpc create_region(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+    rpc destroy_region(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+    rpc resize_region(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+    rpc allocate(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+    rpc deallocate(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+
+    rpc copy(Fam_Memory_Copy_Request) returns (Fam_Memory_Copy_Response) {}
+
+    rpc acquire_CAS_lock(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+    rpc release_CAS_lock(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+
+    rpc reset_profile(Fam_Memory_Service_General_Request)
+        returns (Fam_Memory_Service_General_Response) {}
+    rpc dump_profile(Fam_Memory_Service_General_Request)
+        returns (Fam_Memory_Service_General_Response) {}
+
+    rpc signal_start(Fam_Memory_Service_General_Request)
+        returns (Fam_Memory_Service_Start_Response) {}
+    rpc signal_termination(Fam_Memory_Service_General_Request)
+        returns (Fam_Memory_Service_General_Response) {}
+
+    rpc get_local_pointer(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+
+    rpc get_key(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+}
+
+/*
+ * Request message used by methods signal_start and signal_termination
+ */
+message Fam_Memory_Service_General_Request {}
+
+/*
+ * Response message used by methods signal_start and signal_termination
+ */
+message Fam_Memory_Service_General_Response {}
+
+/*
+ * Response message used by methods signal_start
+ * addrname : memory server addrname string from libfabric
+ * addrnamelen : size of addrname
+ */
+message Fam_Memory_Service_Start_Response {
+    repeated fixed32 addrname = 1;
+    uint64 addrnamelen = 2;
+}
+
+/*
+ * Message structure for FAM region request
+ * regionid : Region Id of the region
+ * offset : INVALID in this case
+ */
+message Fam_Memory_Service_Request {
+    uint64 region_id = 1;
+    uint64 offset = 2;
+    bool rw_flag = 5;
+    uint64 size = 7;
+}
+
+/*
+ * Message structure for FAM region response
+ * regionid : Region Id of the region
+ * offset : INVALID in this case
+ */
+message Fam_Memory_Service_Response {
+    uint64 region_id = 1;
+    uint64 offset = 2;
+    uint64 key = 3;
+    uint64 base = 4;
+    int32 errorcode = 5;
+    string errormsg = 6;
+}
+
+message Fam_Memory_Copy_Request {
+    uint64 src_region_id = 1;
+    uint64 dest_region_id = 2;
+    uint64 src_offset = 3;
+    uint64 dest_offset = 4;
+    uint64 size = 5;
+}
+
+message Fam_Memory_Copy_Response {
+    int32 errorcode = 1;
+    string errormsg = 2;
+}

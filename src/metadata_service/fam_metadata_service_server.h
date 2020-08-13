@@ -38,14 +38,12 @@
 
 #include "grpcpp/grpcpp.h"
 
-#include "metadata/fam_metadata_rpc.grpc.pb.h"
-#include "metadata/fam_metadata_service_direct.h"
+#include "fam_metadata_rpc.grpc.pb.h"
+#include "fam_metadata_service_direct.h"
 
 using namespace openfam;
 
 namespace metadata {
-
-#define ADDR_SIZE 20
 
 using grpc::Server;
 using grpc::ServerAsyncResponseWriter;
@@ -139,7 +137,7 @@ class Fam_Metadata_Service_Server : public Fam_Metadata_Rpc::Service {
     int numClients;
     Fam_Metadata_Rpc::Service *service;
     std::unique_ptr<Server> server;
-    Fam_Metadata_Service_Direct *metadataManager;
+    Fam_Metadata_Service_Direct *metadataService;
 };
 
 } // namespace metadata

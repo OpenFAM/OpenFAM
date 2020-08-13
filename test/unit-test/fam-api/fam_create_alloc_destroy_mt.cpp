@@ -53,7 +53,7 @@ void *thr_func1(void *arg) {
     my_fam = new fam();
     init_fam_options(&fam_opts);
 
-    fam_opts.allocator = strdup("SHM");
+    fam_opts.openFamModel = strdup("shared_memory");
     fam_opts.runtime = strdup("NONE");
 
     try {
@@ -118,7 +118,7 @@ int main() {
     my_fam = new fam();
     memset((void *)&fam_opts, 0, sizeof(Fam_Options));
 
-    fam_opts.allocator = strdup("SHM");
+    fam_opts.openFamModel = strdup("shared_memory");
     fam_opts.runtime = strdup("NONE");
 
     try {

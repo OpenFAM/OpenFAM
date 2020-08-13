@@ -54,8 +54,8 @@ enum Fam_Error {
     FAM_ERR_UNIMPL,
     FAM_ERR_RESOURCE,
     FAM_ERR_INVALIDOP,
-    FAM_ERR_RPC_STUB_NOTFOUND,
-    FAM_ERR_CIS_SERVER_LIST_EMPTY
+    FAM_ERR_RPC_CLIENT_NOTFOUND,
+    FAM_ERR_MEMSERV_LIST_EMPTY
 };
 
 class Fam_Exception : public std::exception {

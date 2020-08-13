@@ -27,8 +27,15 @@ set(LIBOPENFAM_SRC
   PARENT_SCOPE
   )
 
-set(MEMORYSERVER_SRC
-  ${MEMORYSERVER_SRC}
+set(CIS_SERVER_SRC
+  ${CIS_SERVER_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_client.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/memserver_allocator.cpp
+  PARENT_SCOPE
+  )
+
+set(MEMORY_SERVER_SRC
+  ${MEMORY_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_client.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/memserver_allocator.cpp
   PARENT_SCOPE

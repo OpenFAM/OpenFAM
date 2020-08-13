@@ -32,15 +32,20 @@
 
 #include <sys/types.h>
 
-#include "allocator/memserver_allocator.h"
 #include "cis/fam_cis.h"
-#include "metadata/fam_metadata_service.h"
-#include "metadata/fam_metadata_service_client.h"
-#include "metadata/fam_metadata_service_direct.h"
+#include "memory_service/fam_memory_service.h"
+#include "memory_service/fam_memory_service_client.h"
+#include "memory_service/fam_memory_service_direct.h"
+#include "metadata_service/fam_metadata_service.h"
+#include "metadata_service/fam_metadata_service_client.h"
+#include "metadata_service/fam_metadata_service_direct.h"
 
 using namespace metadata;
 
 namespace openfam {
+
+using memoryServerMap = std::map<uint64_t, Fam_Memory_Service *>;
+using metadataServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
 
 class Fam_CIS_Direct : public Fam_CIS {
   public:
@@ -48,17 +53,20 @@ class Fam_CIS_Direct : public Fam_CIS {
 
     ~Fam_CIS_Direct();
 
-    void cis_direct_finalize();
+    Fam_Memory_Service *get_memory_service(uint64_t memoryServerId);
 
-    void reset_profile();
+    Fam_Metadata_Service *get_metadata_service(uint64_t metadataServerId);
 
-    void dump_profile();
+    uint64_t get_num_memory_servers();
+
+    void reset_profile(uint64_t metadataServerId);
+
+    void dump_profile(uint64_t metadataServerId);
 
     Fam_Region_Item_Info create_region(string name, size_t nbytes,
                                        mode_t permission,
                                        Fam_Redundancy_Level redundancyLevel,
-                                       uint64_t memoryServerId, uint32_t uid,
-                                       uint32_t gid);
+                                       uint32_t uid, uint32_t gid);
     void destroy_region(uint64_t regionId, uint64_t memoryServerId,
                         uint32_t uid, uint32_t gid);
     void resize_region(uint64_t regionId, size_t nbytes,
@@ -73,18 +81,19 @@ class Fam_CIS_Direct : public Fam_CIS {
     void change_region_permission(uint64_t regionId, mode_t permission,
                                   uint64_t memoryServerId, uint32_t uid,
                                   uint32_t gid);
+
     void change_dataitem_permission(uint64_t regionId, uint64_t offset,
                                     mode_t permission, uint64_t memoryServerId,
                                     uint32_t uid, uint32_t gid);
     bool check_region_permission(Fam_Region_Metadata region, bool op,
-                                 uint32_t uid, uint32_t gid);
+                                 uint64_t memoryServerId, uint32_t uid,
+                                 uint32_t gid);
     bool check_dataitem_permission(Fam_DataItem_Metadata dataitem, bool op,
-                                   uint32_t uid, uint32_t gid);
-    Fam_Region_Item_Info lookup_region(string name, uint64_t memoryServerId,
-                                       uint32_t uid, uint32_t gid);
+                                   uint64_t memoryServerId, uint32_t uid,
+                                   uint32_t gid);
+    Fam_Region_Item_Info lookup_region(string name, uint32_t uid, uint32_t gid);
     Fam_Region_Item_Info lookup(string itemName, string regionName,
-                                uint64_t memoryServerId, uint32_t uid,
-                                uint32_t gid);
+                                uint32_t uid, uint32_t gid);
     Fam_Region_Item_Info
     check_permission_get_region_info(uint64_t regionId, uint64_t memoryServerId,
                                      uint32_t uid, uint32_t gid);
@@ -110,19 +119,23 @@ class Fam_CIS_Direct : public Fam_CIS {
     void fam_unmap(void *local, uint64_t regionId, uint64_t offset,
                    uint64_t memoryServerId, uint32_t uid, uint32_t gid);
 
-    void *get_local_pointer(uint64_t regionId, uint64_t offset);
+    void acquire_CAS_lock(uint64_t offset, uint64_t memoryServerId);
+    void release_CAS_lock(uint64_t offset, uint64_t memoryServerId);
 
-    void acquire_CAS_lock(uint64_t offset, uint64_t memoryServerId) {}
-    void release_CAS_lock(uint64_t offset, uint64_t memoryServerId) {}
-
-    int get_addr_size(size_t *addrSize, uint64_t memoryServerId) { return 0; }
-    int get_addr(void *addr, size_t addrSize, uint64_t memoryServerId) {
-        return 0;
-    }
+    size_t get_addr_size(uint64_t memoryServerId);
+    void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
 
   private:
-    Memserver_Allocator *allocator;
-    Fam_Metadata_Service *metadataService;
+    memoryServerMap *memoryServers;
+    metadataServerMap *metadataServers;
+    uint64_t memoryServerCount;
+    void *get_local_pointer(uint64_t regionId, uint64_t offset,
+                            uint64_t memoryServerId);
+
+    uint64_t generate_memory_server_id(const char *name) {
+        std::uint64_t hashVal = std::hash<std::string>{}(name);
+        return hashVal % memoryServerCount;
+    }
 };
 
 } // namespace openfam

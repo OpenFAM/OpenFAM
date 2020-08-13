@@ -33,6 +33,10 @@
 #include <string>
 #include <sys/types.h>
 
+#include <grpc/impl/codegen/log.h>
+#include <grpcpp/grpcpp.h>
+
+#include "cis/fam_cis_rpc.grpc.pb.h"
 #include "common/fam_internal.h"
 #include "common/fam_internal_exception.h"
 #include "fam/fam.h"
@@ -41,10 +45,37 @@ using namespace std;
 
 namespace openfam {
 
+/**
+ * structure for keeping state and data information of fam copy
+ */
+typedef struct {
+    // Container for the data we expect from the server.
+    Fam_Copy_Response res;
+
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    ::grpc::ClientContext ctx;
+
+    // Storage for the status of the RPC upon completion.
+    ::grpc::Status status;
+
+    // falg for completion
+    bool isCompleted;
+
+    uint64_t memServerId;
+
+    // flag to indicate copy across memoryserver
+    bool isAcrossServer;
+
+    std::unique_ptr<::grpc::ClientAsyncResponseReader<Fam_Copy_Response>>
+        responseReader;
+} Fam_Copy_Tag;
+
 class Fam_CIS {
   public:
     virtual ~Fam_CIS(){};
 
+    virtual uint64_t get_num_memory_servers() = 0;
     /**
      * Creates a Region in FAM
      * @param name-Name of the reion to be created
@@ -58,8 +89,8 @@ class Fam_CIS {
      **/
     virtual Fam_Region_Item_Info
     create_region(string name, size_t nbytes, mode_t permission,
-                  Fam_Redundancy_Level redundancyLevel, uint64_t memoryServerId,
-                  uint32_t uid, uint32_t gid) = 0;
+                  Fam_Redundancy_Level redundancyLevel, uint32_t uid,
+                  uint32_t gid) = 0;
 
     /**
      * Destroys a Region in FAM
@@ -151,7 +182,6 @@ class Fam_CIS {
      * @return - Fam_Region_Item_Info
      **/
     virtual Fam_Region_Item_Info lookup_region(string name,
-                                               uint64_t memoryServerId,
                                                uint32_t uid, uint32_t gid) = 0;
 
     /**
@@ -164,8 +194,7 @@ class Fam_CIS {
      * @return - Fam_Region_Item_Info
      **/
     virtual Fam_Region_Item_Info lookup(string itemName, string regionName,
-                                        uint64_t memoryServerId, uint32_t uid,
-                                        uint32_t gid) = 0;
+                                        uint32_t uid, uint32_t gid) = 0;
 
     /**
      * check permission for region access and returns region information
@@ -261,14 +290,12 @@ class Fam_CIS {
                            uint64_t memoryServerId, uint32_t uid,
                            uint32_t gid) = 0;
 
-    virtual void *get_local_pointer(uint64_t regionId, uint64_t offset) = 0;
-
     virtual void acquire_CAS_lock(uint64_t offset, uint64_t memoryServerId) = 0;
     virtual void release_CAS_lock(uint64_t offset, uint64_t memoryServerId) = 0;
 
-    virtual int get_addr_size(size_t *addrSize, uint64_t memoryServerId) = 0;
-    virtual int get_addr(void *addr, size_t addrSize,
-                         uint64_t memoryServerId) = 0;
+    virtual size_t get_addr_size(uint64_t memoryServerId) = 0;
+    virtual void get_addr(void *memServerFabricAddr,
+                          uint64_t memoryServerId) = 0;
 };
 
 } // namespace openfam

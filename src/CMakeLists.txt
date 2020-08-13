@@ -20,18 +20,19 @@
  #
  #
 
+add_subdirectory(memory_service)
+add_subdirectory(fam-api)
 add_subdirectory(allocator)
 add_subdirectory(common)
-add_subdirectory(fam-api)
 add_subdirectory(memory-node)
-add_subdirectory(metadata)
+add_subdirectory(metadata_service)
 add_subdirectory(bitmap-manager)
 add_subdirectory(cis)
 
 add_library(fammetadata SHARED ${METADATA_CLIENT_SRC})
 add_definitions(-DFAM_ATOMIC_NATIVE)
 
-target_link_libraries(fammetadata nvmm famradixtree boost_system)
+target_link_libraries(fammetadata nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)
 
 add_library(openfam SHARED ${LIBOPENFAM_SRC})
 
@@ -43,10 +44,14 @@ endif()
 
 set_target_properties(openfam PROPERTIES SOVERSION ${VERSION_STR})
 
-add_executable (memoryserver ${MEMORYSERVER_SRC})
+add_executable(cis_server ${CIS_SERVER_SRC})
 
-target_link_libraries(memoryserver fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_system fambitmap)
+target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection nvmm boost_system fambitmap famradixtree)
 
-add_executable (metadataserver ${METADATA_SERVER_SRC})
+add_executable (memory_server ${MEMORY_SERVER_SRC})
 
-target_link_libraries(metadataserver nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)
+target_link_libraries(memory_server fabric famradixtree grpc grpc++ grpc++_reflection nvmm boost_system fambitmap)
+
+add_executable (metadata_server ${METADATA_SERVER_SRC})
+
+target_link_libraries(metadata_server nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)

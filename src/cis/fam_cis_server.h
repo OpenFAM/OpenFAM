@@ -73,14 +73,11 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
 
     ~Fam_CIS_Server();
 
-    void cis_server_initialize(char *name, char *service, char *provider,
-                               Fam_CIS_Direct *famCIS);
-
-    void cis_server_finalize();
+    void cis_server_initialize(Fam_CIS_Direct *famCIS);
 
     ::grpc::Status signal_start(::grpc::ServerContext *context,
                                 const ::Fam_Request *request,
-                                ::Fam_Start_Response *response) override;
+                                ::Fam_Response *response) override;
 
     ::grpc::Status signal_termination(::grpc::ServerContext *context,
                                       const ::Fam_Request *request,
@@ -93,6 +90,11 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
     ::grpc::Status generate_profile(::grpc::ServerContext *context,
                                     const ::Fam_Request *request,
                                     ::Fam_Response *response) override;
+
+    ::grpc::Status get_num_memory_servers(::grpc::ServerContext *context,
+                                         const ::Fam_Request *request,
+                                         ::Fam_Response *response) override;
+
     ::grpc::Status create_region(::grpc::ServerContext *context,
                                  const ::Fam_Region_Request *request,
                                  ::Fam_Region_Response *response) override;
@@ -155,36 +157,19 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
     ::grpc::Status release_CAS_lock(::grpc::ServerContext *context,
                                     const ::Fam_Dataitem_Request *request,
                                     ::Fam_Dataitem_Response *response) override;
-    void dump_profile();
+
+    ::grpc::Status get_addr_size(grpc::ServerContext *context,
+                                 const Fam_Address_Request *request,
+                                 Fam_Address_Response *response) override;
+
+    ::grpc::Status get_addr(grpc::ServerContext *context,
+                            const Fam_Address_Request *request,
+                            Fam_Address_Response *response) override;
 
   protected:
     uint64_t port;
     Fam_CIS_Direct *famCIS;
-    Fam_Ops_Libfabric *famOps;
-    int libfabricProgressMode;
-    std::thread progressThread;
-    boost::atomic<bool> haltProgress;
-    void progress_thread();
-
     int numClients;
-    bool shouldShutdown;
-    pthread_mutex_t casLock[CAS_LOCK_CNT];
-
-    std::map<uint64_t, Fam_Region_Map_t *> *fiMrs;
-    fid_mr *fenceMr;
-
-    uint64_t generate_access_key(uint64_t regionId, uint64_t dataitemId,
-                                 bool permission);
-
-    void deregister_memory(uint64_t regionId, uint64_t offset);
-    void deregister_region_memory(uint64_t regionId);
-
-    void register_memory(Fam_Region_Item_Info info, uint32_t uid, uint32_t gid,
-                         uint64_t &key);
-
-    void register_fence_memory();
-
-    void deregister_fence_memory();
 };
 
 } // namespace openfam

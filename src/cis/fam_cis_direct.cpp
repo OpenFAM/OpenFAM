@@ -74,47 +74,127 @@ void cis_direct_profile_dump() {
 }
 
 Fam_CIS_Direct::Fam_CIS_Direct() {
-    allocator = new Memserver_Allocator();
-#ifdef METADATA_RPC
-    metadataService =
-        new Fam_Metadata_Service_Client(METADATA_SERVER, METADATA_RPC_PORT);
+    memoryServers = new memoryServerMap();
+    metadataServers = new metadataServerMap();
+    std::string delimiter1 = ",";
+    std::string delimiter2 = ":";
+#ifdef MEMORY_SERVICE_RPC
+    Server_Map memoryServerList =
+        parse_server_list(SERVER_LIST, delimiter1, delimiter2);
+    for (auto obj = memoryServerList.begin(); obj != memoryServerList.end();
+         ++obj) {
+        Fam_Memory_Service *memoryService = new Fam_Memory_Service_Client(
+            (obj->second).c_str(), MEMSERVER_RPC_PORT);
+        memoryServers->insert({obj->first, memoryService});
+    }
 #else
-    metadataService = new Fam_Metadata_Service_Direct();
+    Fam_Memory_Service *memoryService = new Fam_Memory_Service_Direct(
+        MEMSERVER_ADDR, MEMSERVER_LIBFABRIC_PORT, MEMSERVER_LIBFABRIC_PROVIDER);
+    memoryServers->insert({0, memoryService});
 #endif
+
+//TODO: In current implementation metadata server id is same as memory server id
+//later it will be seleted based on some strategy
+#ifdef METADATA_SERVICE_RPC
+    Server_Map metadataServerList =
+        parse_server_list(SERVER_LIST, delimiter1, delimiter2);
+    for (auto obj = metadataServerList.begin(); obj != metadataServerList.end();
+         ++obj) {
+        Fam_Metadata_Service *metadataService = new Fam_Metadata_Service_Client(
+            (obj->second).c_str(), METASERVER_RPC_PORT);
+        metadataServers->insert({obj->first, metadataService});
+    }
+#else
+    Fam_Metadata_Service *metadataService = new Fam_Metadata_Service_Direct();
+    metadataServers->insert({0, metadataService});
+#endif
+    memoryServerCount = memoryServers->size();
 }
 
-Fam_CIS_Direct::~Fam_CIS_Direct() { delete allocator; }
+Fam_CIS_Direct::~Fam_CIS_Direct() {
+    for (auto obj = memoryServers->begin(); obj != memoryServers->end();
+         ++obj) {
+        delete obj->second;
+    }
 
-void Fam_CIS_Direct::cis_direct_finalize() {
-    allocator->memserver_allocator_finalize();
+    for (auto obj = metadataServers->begin(); obj != metadataServers->end();
+         ++obj) {
+        delete obj->second;
+    }
+    delete memoryServers;
+    delete metadataServers;
 }
 
-void Fam_CIS_Direct::reset_profile() {
+Fam_Memory_Service *
+Fam_CIS_Direct::get_memory_service(uint64_t memoryServerId) {
+    ostringstream message;
+    auto obj = memoryServers->find(memoryServerId);
+    if (obj == memoryServers->end()) {
+        message << "Memory service RPC client not found";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RPC_CLIENT_NOTFOUND,
+                        message.str().c_str());
+    }
+    return obj->second;
+}
+
+Fam_Metadata_Service *
+Fam_CIS_Direct::get_metadata_service(uint64_t metadataServerId) {
+    ostringstream message;
+    auto obj = metadataServers->find(metadataServerId);
+    if (obj == metadataServers->end()) {
+        message << "Metadata service RPC client not found";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RPC_CLIENT_NOTFOUND,
+                        message.str().c_str());
+    }
+    return obj->second;
+}
+
+uint64_t Fam_CIS_Direct::get_num_memory_servers() {
+    ostringstream message;
+    if (!memoryServerCount) {
+        message
+            << "Memory service is not initialized, memory server list is empty";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_MEMSERV_LIST_EMPTY,
+                        message.str().c_str());
+    }
+    return memoryServerCount;
+}
+
+void Fam_CIS_Direct::reset_profile(uint64_t memoryServerId) {
 
     MEMSERVER_PROFILE_INIT(CIS_DIRECT)
     MEMSERVER_PROFILE_START_TIME(CIS_DIRECT)
-    allocator->reset_profile();
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
+    memoryService->reset_profile();
     metadataService->reset_profile();
     return;
 }
 
-void Fam_CIS_Direct::dump_profile() {
+void Fam_CIS_Direct::dump_profile(uint64_t memoryServerId) {
     CIS_DIRECT_PROFILE_DUMP();
-    allocator->dump_profile();
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
+    memoryService->dump_profile();
     metadataService->dump_profile();
 }
 
 Fam_Region_Item_Info
 Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
                               Fam_Redundancy_Level redundancyLevel,
-                              uint64_t memoryServerId, uint32_t uid,
-                              uint32_t gid) {
+                              uint32_t uid, uint32_t gid) {
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
     Fam_Region_Metadata region;
-    uint64_t regionId;
     ostringstream message;
 
+    uint64_t memoryServerId = generate_memory_server_id(name.c_str());
+
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     // Check if the name size is bigger than MAX_KEY_LEN supported
     if (name.size() > metadataService->metadata_maxkeylen()) {
         message << "Name too long";
@@ -126,7 +206,8 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
         message << "Region already exist";
         THROW_ERRNO_MSG(CIS_Exception, REGION_EXIST, message.str().c_str());
     }
-    allocator->create_region(name, regionId, nbytes, permission, uid, gid);
+
+    uint64_t regionId = memoryService->create_region(nbytes);
 
     // Register the region into metadata service
     region.regionId = regionId;
@@ -139,6 +220,7 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     metadataService->metadata_insert_region(regionId, name, &region);
     info.regionId = regionId;
     info.offset = INVALID_OFFSET;
+    info.memoryServerId = memoryServerId;
     CIS_DIRECT_PROFILE_END_OPS(cis_create_region);
     return info;
 }
@@ -148,6 +230,10 @@ void Fam_CIS_Direct::destroy_region(uint64_t regionId, uint64_t memoryServerId,
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
 
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     // Check with metadata service if the region exist, if not return error
     Fam_Region_Metadata region;
     if (!(metadataService->metadata_find_region(regionId, region))) {
@@ -175,7 +261,7 @@ void Fam_CIS_Direct::destroy_region(uint64_t regionId, uint64_t memoryServerId,
 
     metadataService->metadata_delete_region(regionId);
 
-    allocator->destroy_region(regionId, uid, gid);
+    memoryService->destroy_region(regionId);
 
     CIS_DIRECT_PROFILE_END_OPS(cis_destroy_region);
     return;
@@ -188,6 +274,10 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
 
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     // Check with metadata service if the region exist, if not return error
     Fam_Region_Metadata region;
     if (!(metadataService->metadata_find_region(regionId, region))) {
@@ -203,7 +293,7 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
                         message.str().c_str());
     }
 
-    allocator->resize_region(regionId, uid, gid, nbytes);
+    memoryService->resize_region(regionId, nbytes);
 
     region.size = nbytes;
     // Update the size in the metadata service
@@ -217,13 +307,16 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
 Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
                                               mode_t permission,
                                               uint64_t regionId,
-                                              uint64_t mememoryServerId,
+                                              uint64_t memoryServerId,
                                               uint32_t uid, uint32_t gid) {
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
-    void *localPointer;
 
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     // Check if the name size is bigger than MAX_KEY_LEN supported
     if (name.size() > metadataService->metadata_maxkeylen()) {
         message << "Name too long";
@@ -254,7 +347,6 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     // Check with metadata service if data item with the requested name
     // is already exist, if exists return error
     Fam_DataItem_Metadata dataitem;
-    uint64_t offset;
     if (name != "") {
         if (metadataService->metadata_find_dataitem(name, regionId, dataitem)) {
             message << "Dataitem with the name provided already exist";
@@ -263,42 +355,39 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         }
     }
 
-    allocator->allocate(name, regionId, nbytes, offset, permission, uid, gid,
-                        localPointer);
+    bool rwFlag;
+    info = memoryService->allocate(regionId, nbytes);
 
-    uint64_t dataitemId = offset / MIN_OBJ_SIZE;
+    uint64_t dataitemId = info.offset / MIN_OBJ_SIZE;
 
     dataitem.regionId = regionId;
     strncpy(dataitem.name, name.c_str(), metadataService->metadata_maxkeylen());
-    dataitem.offset = offset;
+    dataitem.offset = info.offset;
     dataitem.perm = permission;
     dataitem.gid = gid;
     dataitem.uid = uid;
     dataitem.size = nbytes;
-    if (name == "")
+    if (name == "") {
         metadataService->metadata_insert_dataitem(dataitemId, regionId,
                                                   &dataitem);
-    else
+    } else {
         metadataService->metadata_insert_dataitem(dataitemId, regionId,
                                                   &dataitem, name);
-
-    uint64_t key;
-
-    // This key is only applicable for shared memory model
-    if (check_dataitem_permission(dataitem, 1, uid, gid)) {
-        key = FAM_WRITE_KEY_SHM | FAM_READ_KEY_SHM;
-    } else if (check_dataitem_permission(dataitem, 0, uid, gid)) {
-        key = FAM_READ_KEY_SHM;
+    }
+    if (check_dataitem_permission(dataitem, 1, memoryServerId, uid, gid)) {
+        rwFlag = 1;
+    } else if (check_dataitem_permission(dataitem, 0, memoryServerId, uid,
+                                         gid)) {
+        rwFlag = 0;
     } else {
         message << "Not permitted to use this dataitem";
         THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
     }
-
-    info.regionId = regionId;
-    info.offset = offset;
+    uint64_t key =
+        memoryService->get_key(regionId, info.offset, nbytes, rwFlag);
     info.key = key;
+    info.regionId = regionId;
     info.size = nbytes;
-    info.base = get_local_pointer(regionId, offset);
     CIS_DIRECT_PROFILE_END_OPS(cis_allocate);
     return info;
 }
@@ -309,6 +398,10 @@ void Fam_CIS_Direct::deallocate(uint64_t regionId, uint64_t offset,
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
 
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     // Check with metadata service if data item with the requested name
     // is already exist, if not return error
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
@@ -336,7 +429,7 @@ void Fam_CIS_Direct::deallocate(uint64_t regionId, uint64_t offset,
     // Remove data item from metadata service
     metadataService->metadata_delete_dataitem(dataitemId, regionId);
 
-    allocator->deallocate(regionId, offset, uid, gid);
+    memoryService->deallocate(regionId, offset);
 
     CIS_DIRECT_PROFILE_END_OPS(cis_deallocate);
 
@@ -345,10 +438,12 @@ void Fam_CIS_Direct::deallocate(uint64_t regionId, uint64_t offset,
 
 void Fam_CIS_Direct::change_region_permission(uint64_t regionId,
                                               mode_t permission,
-                                              uint64_t mememoryServerId,
+                                              uint64_t memoryServerId,
                                               uint32_t uid, uint32_t gid) {
     CIS_DIRECT_PROFILE_START_OPS()
 
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     ostringstream message;
     message << "Error While changing region permission : ";
     // Check with metadata service if region with the requested Id
@@ -379,10 +474,13 @@ void Fam_CIS_Direct::change_region_permission(uint64_t regionId,
 void Fam_CIS_Direct::change_dataitem_permission(uint64_t regionId,
                                                 uint64_t offset,
                                                 mode_t permission,
-                                                uint64_t mememoryServerId,
+                                                uint64_t memoryServerId,
                                                 uint32_t uid, uint32_t gid) {
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     message << "Error While changing dataitem permission : ";
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
@@ -415,9 +513,12 @@ void Fam_CIS_Direct::change_dataitem_permission(uint64_t regionId,
  * Check if the given uid/gid has read or rw permissions.
  */
 bool Fam_CIS_Direct::check_region_permission(Fam_Region_Metadata region,
-                                             bool op, uint32_t uid,
-                                             uint32_t gid) {
+                                             bool op, uint64_t memoryServerId,
+                                             uint32_t uid, uint32_t gid) {
     metadata_region_item_op_t opFlag;
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     if (op)
         opFlag = META_REGION_ITEM_RW;
     else
@@ -432,10 +533,13 @@ bool Fam_CIS_Direct::check_region_permission(Fam_Region_Metadata region,
  * a given dataitem.
  */
 bool Fam_CIS_Direct::check_dataitem_permission(Fam_DataItem_Metadata dataitem,
-                                               bool op, uint32_t uid,
-                                               uint32_t gid) {
+                                               bool op, uint64_t memoryServerId,
+                                               uint32_t uid, uint32_t gid) {
 
     metadata_region_item_op_t opFlag;
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     if (op)
         opFlag = META_REGION_ITEM_RW;
     else
@@ -446,13 +550,16 @@ bool Fam_CIS_Direct::check_dataitem_permission(Fam_DataItem_Metadata dataitem,
 }
 
 Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
-                                                   uint64_t memoryServerId,
                                                    uint32_t uid, uint32_t gid) {
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     Fam_Region_Metadata region;
 
+    uint64_t memoryServerId = generate_memory_server_id(name.c_str());
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     message << "Error While locating region : ";
     if (!metadataService->metadata_find_region(name, region)) {
         message << "could not find the region";
@@ -460,7 +567,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     }
 
     if (uid != region.uid) {
-        if (!check_region_permission(region, 0, uid, gid)) {
+        if (!check_region_permission(region, 0, memoryServerId, uid, gid)) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
@@ -472,16 +579,21 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     info.perm = region.perm;
     strncpy(info.name, region.name, metadataService->metadata_maxkeylen());
     info.maxNameLen = metadataService->metadata_maxkeylen();
+    info.memoryServerId = memoryServerId;
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup_region);
     return info;
 }
 
 Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
-                                            uint64_t memoryServerId,
                                             uint32_t uid, uint32_t gid) {
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
+
+    uint64_t memoryServerId = generate_memory_server_id(regionName.c_str());
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     Fam_DataItem_Metadata dataitem;
     message << "Error While locating dataitem : ";
     if (!metadataService->metadata_find_dataitem(itemName, regionName,
@@ -492,7 +604,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     }
 
     if (uid != dataitem.uid) {
-        if (!check_dataitem_permission(dataitem, 0, uid, gid)) {
+        if (!check_dataitem_permission(dataitem, 0, memoryServerId, uid, gid)) {
             message << "Not permitted to access the dataitem";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
@@ -504,6 +616,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     info.size = dataitem.size;
     info.perm = dataitem.perm;
     strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
+    info.memoryServerId = memoryServerId;
     info.maxNameLen = metadataService->metadata_maxkeylen();
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup);
     return info;
@@ -516,6 +629,9 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     CIS_DIRECT_PROFILE_START_OPS()
     Fam_Region_Metadata region;
     ostringstream message;
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     message << "Error While locating region : ";
     if (!metadataService->metadata_find_region(regionId, region)) {
         message << "could not find the region";
@@ -523,7 +639,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     }
 
     if (uid != region.uid) {
-        if (!check_region_permission(region, 0, uid, gid)) {
+        if (!check_region_permission(region, 0, memoryServerId, uid, gid)) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
@@ -541,12 +657,14 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
     uint64_t regionId, uint64_t offset, uint64_t memoryServerId, uint32_t uid,
     uint32_t gid) {
 
+    ostringstream message;
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
 
-    ostringstream message;
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_DataItem_Metadata dataitem;
-    uint64_t key;
     message << "Error While locating dataitem : ";
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
     if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
@@ -556,17 +674,19 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
                         message.str().c_str());
     }
 
-    // This key is only applicable for shared memory model
-    if (check_dataitem_permission(dataitem, 1, uid, gid)) {
-        key = FAM_WRITE_KEY_SHM | FAM_READ_KEY_SHM;
-    } else if (check_dataitem_permission(dataitem, 0, uid, gid)) {
-        key = FAM_READ_KEY_SHM;
-    } else if (uid == dataitem.uid) {
-        key = FAM_KEY_INVALID;
+    bool rwFlag;
+    if (check_dataitem_permission(dataitem, 1, memoryServerId, uid, gid)) {
+        rwFlag = 1;
+    } else if (check_dataitem_permission(dataitem, 0, memoryServerId, uid,
+                                         gid)) {
+        rwFlag = 0;
     } else {
-        message << "Dataitem access is not permitted ";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+        message << "Not permitted to use this dataitem";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
     }
+
+    uint64_t key =
+        memoryService->get_key(regionId, offset, dataitem.size, rwFlag);
 
     info.regionId = dataitem.regionId;
     info.offset = dataitem.offset;
@@ -575,7 +695,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
     strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
     info.maxNameLen = metadataService->metadata_maxkeylen();
     info.key = key;
-    info.base = get_local_pointer(regionId, offset);
+    info.base = get_local_pointer(regionId, offset, memoryServerId);
 
     CIS_DIRECT_PROFILE_END_OPS(cis_check_permission_get_item_info);
     return info;
@@ -590,6 +710,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     ostringstream message;
     message << "Error While locating dataitem : ";
 
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     Fam_DataItem_Metadata dataitem;
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
     if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
@@ -600,7 +722,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     }
 
     if (uid != dataitem.uid) {
-        if (!check_dataitem_permission(dataitem, 0, uid, gid)) {
+        if (!check_dataitem_permission(dataitem, 0, memoryServerId, uid, gid)) {
             message << "Not permitted to access the dataitem";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
@@ -611,20 +733,25 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     info.perm = dataitem.perm;
     strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
     info.maxNameLen = metadataService->metadata_maxkeylen();
-    CIS_DIRECT_PROFILE_END_OPS(get_stat_info);
+    CIS_DIRECT_PROFILE_END_OPS(cis_get_stat_info);
     return info;
 }
 
-void *Fam_CIS_Direct::get_local_pointer(uint64_t regionId, uint64_t offset) {
-    return allocator->get_local_pointer(regionId, offset);
+void *Fam_CIS_Direct::get_local_pointer(uint64_t regionId, uint64_t offset,
+                                        uint64_t memoryServerId) {
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    return memoryService->get_local_pointer(regionId, offset);
 }
 
 void *Fam_CIS_Direct::fam_map(uint64_t regionId, uint64_t offset,
-                              uint64_t mememoryServerId, uint32_t uid,
+                              uint64_t memoryServerId, uint32_t uid,
                               uint32_t gid) {
     void *localPointer;
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
     Fam_DataItem_Metadata dataitem;
     uint64_t dataitemId = offset / MIN_OBJ_SIZE;
     if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
@@ -633,9 +760,9 @@ void *Fam_CIS_Direct::fam_map(uint64_t regionId, uint64_t offset,
         THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
-    if (check_dataitem_permission(dataitem, 1, uid, gid) |
-        check_dataitem_permission(dataitem, 0, uid, gid)) {
-        localPointer = get_local_pointer(regionId, offset);
+    if (check_dataitem_permission(dataitem, 1, memoryServerId, uid, gid) |
+        check_dataitem_permission(dataitem, 0, memoryServerId, uid, gid)) {
+        localPointer = get_local_pointer(regionId, offset, memoryServerId);
     } else {
         THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                         "Not permitted to use this dataitem");
@@ -645,7 +772,7 @@ void *Fam_CIS_Direct::fam_map(uint64_t regionId, uint64_t offset,
     return localPointer;
 }
 void Fam_CIS_Direct::fam_unmap(void *local, uint64_t regionId, uint64_t offset,
-                               uint64_t mememoryServerId, uint32_t uid,
+                               uint64_t memoryServerId, uint32_t uid,
                                uint32_t gid) {
     return;
 }
@@ -653,15 +780,18 @@ void Fam_CIS_Direct::fam_unmap(void *local, uint64_t regionId, uint64_t offset,
 void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
                            uint64_t srcCopyStart, uint64_t destRegionId,
                            uint64_t destOffset, uint64_t destCopyStart,
-                           uint64_t nbytes, uint64_t mememoryServerId,
+                           uint64_t nbytes, uint64_t memoryServerId,
                            uint32_t uid, uint32_t gid) {
     ostringstream message;
     message << "Error While copying from dataitem : ";
     Fam_DataItem_Metadata srcDataitem;
     Fam_DataItem_Metadata destDataitem;
-    void *srcStart;
-    void *destStart;
     CIS_DIRECT_PROFILE_START_OPS()
+
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
 
     uint64_t srcDataitemId = srcOffset / MIN_OBJ_SIZE;
     uint64_t destDataitemId = destOffset / MIN_OBJ_SIZE;
@@ -691,29 +821,56 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
     }
 
-    if ((srcCopyStart + nbytes) < srcDataitem.size)
-        srcStart = get_local_pointer(srcRegionId, srcOffset + srcCopyStart);
-    else {
+    if (!((srcCopyStart + nbytes) < srcDataitem.size)) {
         message << "Source offset or size is beyond dataitem boundary";
         THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
 
-    if ((destCopyStart + nbytes) < destDataitem.size)
-        destStart = get_local_pointer(destRegionId, destOffset + destCopyStart);
-    else {
+    if (!((destCopyStart + nbytes) < destDataitem.size)) {
         message << "Destination offset or size is beyond dataitem boundary";
         THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
 
-    if ((srcStart == NULL) || (destStart == NULL)) {
-        message
-            << "Failed to get local pointer to source or destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NULL_POINTER_ACCESS,
-                        message.str().c_str());
-    } else {
-        allocator->copy(destStart, srcStart, nbytes);
-    }
+    memoryService->copy(srcRegionId, (srcOffset + srcCopyStart), destRegionId,
+                        (destOffset + destCopyStart), nbytes);
+
     CIS_DIRECT_PROFILE_END_OPS(cis_copy);
-    return destStart;
+
+    Fam_Copy_Tag *tag = new Fam_Copy_Tag();
+
+    return (void *)tag;
 }
+
+void Fam_CIS_Direct::acquire_CAS_lock(uint64_t offset,
+                                      uint64_t memoryServerId) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    memoryService->acquire_CAS_lock(offset);
+    CIS_DIRECT_PROFILE_END_OPS(cis_acquire_CAS_lock);
+}
+
+void Fam_CIS_Direct::release_CAS_lock(uint64_t offset,
+                                      uint64_t memoryServerId) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    memoryService->release_CAS_lock(offset);
+    CIS_DIRECT_PROFILE_END_OPS(cis_release_CAS_lock);
+}
+
+size_t Fam_CIS_Direct::get_addr_size(uint64_t memoryServerId) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    return memoryService->get_addr_size();
+    CIS_DIRECT_PROFILE_END_OPS(cis_get_addr_size);
+}
+
+void Fam_CIS_Direct::get_addr(void *memServerFabricAddr,
+                              uint64_t memoryServerId) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    memcpy(memServerFabricAddr, (void *)memoryService->get_addr(),
+           memoryService->get_addr_size());
+    CIS_DIRECT_PROFILE_END_OPS(cis_get_addr);
+}
+
 } // namespace openfam

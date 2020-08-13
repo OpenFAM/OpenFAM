@@ -37,7 +37,7 @@ namespace openfam {
 
 class Fam_Allocator_Client {
   public:
-    Fam_Allocator_Client(CISServerMap name, uint64_t port);
+    Fam_Allocator_Client(const char *name, uint64_t port);
 
     Fam_Allocator_Client();
 
@@ -47,10 +47,10 @@ class Fam_Allocator_Client {
 
     void allocator_finalize();
 
+    uint64_t get_num_memory_servers();
     Fam_Region_Descriptor *create_region(const char *name, uint64_t nbytes,
                                          mode_t permissions,
-                                         Fam_Redundancy_Level redundancyLevel,
-                                         uint64_t memoryServerId);
+                                         Fam_Redundancy_Level redundancyLevel);
     void destroy_region(Fam_Region_Descriptor *descriptor);
     void resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
 
@@ -63,10 +63,8 @@ class Fam_Allocator_Client {
                            mode_t accessPermissions);
     void change_permission(Fam_Descriptor *descriptor,
                            mode_t accessPermissions);
-    Fam_Region_Descriptor *lookup_region(const char *name,
-                                         uint64_t memoryServerId);
-    Fam_Descriptor *lookup(const char *itemName, const char *regionName,
-                           uint64_t memoryServerId);
+    Fam_Region_Descriptor *lookup_region(const char *name);
+    Fam_Descriptor *lookup(const char *itemName, const char *regionName);
     Fam_Region_Item_Info
     check_permission_get_info(Fam_Region_Descriptor *descriptor);
 

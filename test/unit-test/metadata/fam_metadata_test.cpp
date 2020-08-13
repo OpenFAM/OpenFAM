@@ -32,9 +32,9 @@
  *
  */
 
-#include "../../src/metadata/fam_metadata_service.h"
 #include "common/fam_test_config.h"
-#include "metadata/fam_metadata_service_direct.h"
+#include "metadata_service/fam_metadata_service.h"
+#include "metadata_service/fam_metadata_service_direct.h"
 
 #include <fam/fam.h>
 #include <string.h>
@@ -55,8 +55,10 @@ int main(int argc, char *argv[]) {
     fam *my_fam = new fam();
     Fam_Options fam_opts;
 
+    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
+
     init_fam_options(&fam_opts);
-    fam_opts.runtime = strdup("NONE");
+
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
@@ -431,6 +433,11 @@ int main(int argc, char *argv[]) {
     std::cout << "Total tests run    : " << count << std::endl;
     std::cout << "Total tests passed : " << count - fail << std::endl;
     std::cout << "Total tests failed : " << fail << std::endl;
+
+    my_fam->fam_finalize("default");
+
+    delete manager;
+    delete my_fam;
 
     if (fail) {
         return 1;

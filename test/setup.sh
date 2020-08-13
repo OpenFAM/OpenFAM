@@ -35,8 +35,10 @@ export LD_LIBRARY_PATH="$CURRENTDIR/../../third-party/build/lib:$LD_LIBRARY_PATH
 
 memserver=
 metaserver=
-memrpcport=8787
-metarpcport=8989
+cisserver=
+cisrpcport=8787
+metarpcport=8788
+memrpcport=8789
 libfabricport=7500
 provider=sockets
 
@@ -57,10 +59,15 @@ print_help() {
 	echo "  --metaserver    : IP address of metadata server"
 	echo "                    Note : This option is necessary to start the metadata server"
 	echo ""
+	echo "  --cisserver    : IP address of CIS server"
+    echo "                    Note : This option is necessary to start the CIS server"
+    echo ""
 	echo "  --memrpcport    : RPC port for memory service"
 	echo ""
 	echo "  --metarpcport   : RPC port for metadata server"
 	echo ""
+	echo "  --cisrpcport   : RPC port for CIS server"
+    echo ""
 	echo "  --libfabricport : Libfabric port"
 	echo ""
 	echo "  --provider      : Libfabric provider"
@@ -88,6 +95,12 @@ while :; do
 		--metaserver=)
 			echo 'ERROR: "--metaserver" requires a non-empty option argument.'
             ;;
+		--cisserver=?*)
+			cisserver=${1#*=}
+            ;;
+		--cisserver=)
+			echo 'ERROR: "--cisserver" requires a non-empty option argument.'
+            ;;
 		--memrpcport=?*)
 			memrpcport=${1#*=}
 			;;
@@ -99,6 +112,12 @@ while :; do
 			;;
 		--metarpcport=)
 			echo 'ERROR: "--metarpcport" requires a non-empty option argument.'
+            ;;
+		--cisrpcport=?*)
+            cisrpcport=${1#*=}
+            ;;
+        --cisrpcport=)
+            echo 'ERROR: "--cisrpcport" requires a non-empty option argument.'
             ;;
 		--libfabricport=?*)
 			libfabricport=${1#*=}
@@ -122,27 +141,31 @@ while :; do
 	shift
 done
 
-
-
-
-#Start Memory server
-pkill memoryserver
-pkill metadataserver
+#kill services if already running
+pkill memory_server
+pkill metadata_server
+pkill cis_server
 
 cd src
+
+#Run Metadata Service
 if [ "$metaserver" ]; then
 	echo "Starting Metadata Server..."
-	./metadataserver -a $metaserver -r ${metarpcport} &
+	./metadata_server -a $metaserver -r ${metarpcport} &
 	sleep 1
 fi
 
-
+#Run Memory Service
 if [ "$memserver" ]; then
 	echo "Starting Memory Server..."
-	./memoryserver -m ${memserver} -r ${memrpcport} -l ${libfabricport} -p ${provider} &
-else 
-	echo "ERROR: --memserver option needs to be provided"
+	./memory_server -a ${memserver} -r ${memrpcport} -l ${libfabricport} -p ${provider} &
+	sleep 1
 fi
-	
+
+#Run CIS 
+if [ "$cisserver" ]; then
+	echo "Starting CISServer..."
+	./cis_server -a ${cisserver} -r ${cisrpcport} &
+fi
 cd ..
 

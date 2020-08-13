@@ -31,14 +31,13 @@
 #define FAM_CIS_ASYNC_HANDLER_H
 
 #include "cis/fam_cis_server.h"
+#include "common/fam_memserver_profile.h"
 
 #include <boost/atomic.hpp>
 #include <chrono>
 #include <iomanip>
 #include <string.h>
 #include <unistd.h>
-
-#include "common/fam_memserver_profile.h"
 
 #define ADDR_SIZE 20
 
@@ -83,24 +82,20 @@ typedef Fam_CIS_Rpc::WithAsyncMethod_copy<Fam_CIS_Server> sType;
 
 class Fam_CIS_Async_Handler {
   public:
-    Fam_CIS_Async_Handler(uint64_t rpcPort, char *name, char *libfabricPort,
-                          char *provider)
+    Fam_CIS_Async_Handler(uint64_t rpcPort, char *name)
         : serverAddress(name), port(rpcPort) {
         famCIS = new Fam_CIS_Direct();
         service = new sType();
         MEMSERVER_PROFILE_INIT(CIS_ASYNC);
         MEMSERVER_PROFILE_START_TIME(CIS_ASYNC);
-        service->cis_server_initialize(name, libfabricPort, provider, famCIS);
+        service->cis_server_initialize(famCIS);
     }
 
     ~Fam_CIS_Async_Handler() { delete service; }
 
     void dump_profile() {
         CIS_ASYNC_PROFILE_DUMP();
-        service->dump_profile();
     }
-
-    void cis_async_handler_finalize() { service->cis_server_finalize(); }
 
     void run() {
         char address[ADDR_SIZE + sizeof(uint64_t)];
@@ -173,12 +168,14 @@ class Fam_CIS_Async_Handler {
                 // copy the data from source dataitem to target dataitem
                 grpcStatus = Status::OK;
                 try {
-                    famCIS->copy(request.srcregionid(), request.srcoffset(),
-                                 request.srccopystart(), request.destregionid(),
-                                 request.destoffset(), request.destcopystart(),
-                                 request.copysize(), 0, request.uid(),
-                                 request.gid());
-                } catch (Memserver_Exception &e) {
+                    void *waitObj = famCIS->copy(
+                        request.srcregionid(), request.srcoffset(),
+                        request.srccopystart(), request.destregionid(),
+                        request.destoffset(), request.destcopystart(),
+                        request.copysize(), request.memserver_id(),
+                        request.uid(), request.gid());
+                    delete (Fam_Copy_Tag *)waitObj;
+                } catch (Memory_Service_Exception &e) {
                     response.set_errorcode(e.fam_error());
                     response.set_errormsg(e.fam_error_msg());
                     grpcStatus = Status::OK;

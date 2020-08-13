@@ -168,10 +168,11 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     }
 }
 
-class Memserver_Exception : public Fam_Exception {
+class Memory_Service_Exception : public Fam_Exception {
   public:
-    Memserver_Exception();
-    Memserver_Exception(enum Internal_Error serverErr, const char *msg);
+    Memory_Service_Exception();
+    Memory_Service_Exception(enum Internal_Error serverErr, const char *msg);
+    Memory_Service_Exception(enum Fam_Error serverErr, const char *msg);
 };
 
 class CIS_Exception : public Fam_Exception {

@@ -73,17 +73,17 @@ using namespace std;
 const char *supportedOptionList[] = {
     "VERSION",             // index #0
     "DEFAULT_REGION_NAME", // index #1
-    "MEMORY_SERVER",       // index #2
+    "CIS_SERVER",          // index #2
     "GRPC_PORT",           // index #3
     "LIBFABRIC_PROVIDER",  // index #4
     "FAM_THREAD_MODEL",    // index #5
-    "ALLOCATOR",           // index #6
-    "FAM_CONTEXT_MODEL",   // index #7
-    "PE_COUNT",            // index #8
-    "PE_ID",               // index #9
-    "RUNTIME",             // index #10
-    "NUM_CONSUMER",        // index #11
-    "CIS_SERVER",          // index #12
+    "CIS_INTERFACE_TYPE",  // index #6
+    "OPENFAM_MODEL",       // index #7
+    "FAM_CONTEXT_MODEL",   // index #8
+    "PE_COUNT",            // index #9
+    "PE_ID",               // index #10
+    "RUNTIME",             // index #11
+    "NUM_CONSUMER",        // index #12
     NULL                   // index #13
 };
 
@@ -379,11 +379,6 @@ class fam::Impl_ {
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Runtime *famRuntime;
-    uint64_t memoryServerCount;
-    uint64_t generate_memory_server_id(const char *name) {
-        std::uint64_t hashVal = std::hash<std::string>{}(name);
-        return hashVal % memoryServerCount;
-    }
 
 #ifdef FAM_PROFILE
     Fam_Counter_St profileData[fam_counter_max][FAM_CNTR_TYPE_MAX];
@@ -617,8 +612,6 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
 
     optValueMap->insert({supportedOptionList[VERSION], strdup("0.0.1")});
 
-    memoryServerCount = 1;
-
     // Look for options information from config file.
     std::string config_file_path;
     configFileParams file_options;
@@ -683,44 +676,22 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         optValueMap->insert({supportedOptionList[PE_ID], peId});
     }
 
-    if (strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) == 0) {
-        // initialize NVMM client
+    if (strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) == 0) {
+        // initialize shared memory client
         famAllocator = new Fam_Allocator_Client();
         famOps = new Fam_Ops_SHM(famThreadModel, famContextModel, famAllocator,
                                  atoi(famOptions.numConsumer));
         ret = famOps->initialize();
     } else {
-        std::string memoryServer = famOptions.memoryServer;
-
-        CISServerMap memoryServerList;
-        std::string delimiter1 = ",";
-        std::string delimiter2 = ":";
-
-        memoryServerList =
-            parse_memserver_list(memoryServer, delimiter1, delimiter2);
-
-        if (memoryServerList.size() == 0) {
-            THROW_ERR_MSG(Fam_InvalidOption_Exception,
-                          "Memory server list not found");
+        if (strcmp(famOptions.cisInterfaceType, FAM_OPTIONS_RPC_STR) == 0) {
+            famAllocator = new Fam_Allocator_Client(famOptions.cisServer,
+                                                    atoi(famOptions.grpcPort));
+        } else {
+            famAllocator = new Fam_Allocator_Client();
         }
-
-        memoryServerCount = memoryServerList.size();
-
-        for (auto it = memoryServerList.begin(); it != memoryServerList.end();
-             ++it) {
-            if (it->first >= memoryServerCount) {
-                message << "Fam Invalid memory server ID specified: "
-                        << it->first
-                        << " should be less than memory server count";
-                THROW_ERR_MSG(Fam_InvalidOption_Exception,
-                              message.str().c_str());
-            }
-        }
-        famAllocator = new Fam_Allocator_Client(memoryServerList,
-                                                atoi(famOptions.grpcPort));
-        famOps = new Fam_Ops_Libfabric(
-            memoryServerList, NULL, false, famOptions.libfabricProvider,
-            famThreadModel, famAllocator, famContextModel);
+        famOps = new Fam_Ops_Libfabric(false, famOptions.libfabricProvider,
+                                       famThreadModel, famAllocator,
+                                       famContextModel);
         ret = famOps->initialize();
         if (ret < 0) {
             message << "Fam libfabric initialization failed: "
@@ -750,13 +721,6 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
 
     optValueMap->insert({supportedOptionList[DEFAULT_REGION_NAME],
                          famOptions.defaultRegionName});
-    if (options && options->memoryServer)
-        famOptions.memoryServer = strdup(options->memoryServer);
-    else
-        famOptions.memoryServer = strdup("0:127.0.0.1");
-
-    optValueMap->insert(
-        {supportedOptionList[MEMORY_SERVER], famOptions.memoryServer});
 
     if (options && options->cisServer)
         famOptions.cisServer = strdup(options->cisServer);
@@ -813,22 +777,42 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     optValueMap->insert(
         {supportedOptionList[FAM_THREAD_MODEL], famOptions.famThreadModel});
 
-    if (options && options->allocator)
-        famOptions.allocator = strdup(options->allocator);
+    if (options && options->cisInterfaceType)
+        famOptions.cisInterfaceType = strdup(options->cisInterfaceType);
     else if (!config_file_fam_options.empty() &&
-             config_file_fam_options.count("openfam_model") > 0)
-        famOptions.allocator =
-            strdup(config_file_fam_options["openfam_model"].c_str());
-    else
-        famOptions.allocator = strdup("grpc");
-    if ((strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) != 0) &&
-        (strcmp(famOptions.allocator, FAM_OPTIONS_GRPC_STR) != 0)) {
-        message << "Invalid value specified for Allocator: "
-                << famOptions.allocator;
+			config_file_fam_options.count("client_interface_type") > 0)
+		famOptions.cisInterfaceType = strdup(config_file_fam_options["client_interface_type"].c_str());
+	else
+        famOptions.cisInterfaceType = strdup("rpc");
+
+    if ((strcmp(famOptions.cisInterfaceType, FAM_OPTIONS_DIRECT_STR) != 0) &&
+        (strcmp(famOptions.cisInterfaceType, FAM_OPTIONS_RPC_STR) != 0)) {
+        message << "Invalid value specified for cisInterfaceType: "
+                << famOptions.cisInterfaceType;
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
-    optValueMap->insert({supportedOptionList[ALLOCATOR], famOptions.allocator});
+    optValueMap->insert(
+        {supportedOptionList[CIS_INTERFACE_TYPE], famOptions.cisInterfaceType});
+
+    if (options && options->openFamModel)
+        famOptions.openFamModel = strdup(options->openFamModel);
+	else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("openfam_model") > 0)
+		famOptions.openFamModel =
+			strdup(config_file_fam_options["openfam_model"].c_str());
+	else
+        famOptions.openFamModel = strdup("memory_server");
+
+    if ((strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) != 0) &&
+        (strcmp(famOptions.openFamModel, FAM_OPTIONS_MEMSERV_STR) != 0)) {
+        message << "Invalid value specified for openFamModel: "
+                << famOptions.openFamModel;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    }
+
+    optValueMap->insert(
+        {supportedOptionList[OPENFAM_MODEL], famOptions.openFamModel});
 
     if (options && options->famContextModel)
         famOptions.famContextModel = strdup(options->famContextModel);
@@ -994,7 +978,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
             options["openfam_model"] =
                 ((allocator.compare("shared_memory") == 0)
                      ? strdup(FAM_OPTIONS_SHM_STR)
-                     : strdup(FAM_OPTIONS_GRPC_STR));
+                     : strdup(FAM_OPTIONS_RPC_STR));
 
         } catch (Fam_InvalidOption_Exception e) {
             // If the parameter allocator is not present, then ignore the
@@ -1120,8 +1104,7 @@ const void *fam::Impl_::fam_get_option(char *optionName) {
 Fam_Region_Descriptor *fam::Impl_::fam_lookup_region(const char *name) {
     FAM_CNTR_INC_API(fam_lookup_region);
     FAM_PROFILE_START_ALLOCATOR(fam_lookup_region);
-    uint64_t memoryServerId = generate_memory_server_id(name);
-    auto ret = famAllocator->lookup_region(name, memoryServerId);
+    auto ret = famAllocator->lookup_region(name);
     FAM_PROFILE_END_ALLOCATOR(fam_lookup_region);
     return ret;
 }
@@ -1140,8 +1123,7 @@ Fam_Descriptor *fam::Impl_::fam_lookup(const char *itemName,
                                        const char *regionName) {
     FAM_CNTR_INC_API(fam_lookup);
     FAM_PROFILE_START_ALLOCATOR(fam_lookup);
-    uint64_t memoryServerId = generate_memory_server_id(regionName);
-    auto ret = famAllocator->lookup(itemName, regionName, memoryServerId);
+    auto ret = famAllocator->lookup(itemName, regionName);
     FAM_PROFILE_END_ALLOCATOR(fam_lookup);
     return ret;
 }
@@ -1173,9 +1155,8 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
                               Fam_Redundancy_Level redundancyLevel, ...) {
     FAM_CNTR_INC_API(fam_create_region);
     FAM_PROFILE_START_ALLOCATOR(fam_create_region);
-    uint64_t memoryServerId = generate_memory_server_id(name);
-    auto ret = famAllocator->create_region(name, size, permissions,
-                                           redundancyLevel, memoryServerId);
+    auto ret =
+        famAllocator->create_region(name, size, permissions, redundancyLevel);
     FAM_PROFILE_END_ALLOCATOR(fam_create_region);
     return ret;
 }

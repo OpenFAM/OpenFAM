@@ -247,29 +247,26 @@ class Fam_Region_Descriptor {
 typedef struct {
     /** Default region to be used within the program */
     char *defaultRegionName;
-    /** Memory Server to be used by OpenFam libfaric datapath and grpc memory
-     * allocator */
-    char *memoryServer;
-    /** Port to be used by OpenFam grpc memory allocator */
+    /** CIS servers to be used by OpenFam PEs */
+    char *cisServer;
+    /** Port to be used by OpenFam for CIS server RPC connection */
     char *grpcPort;
-    /** GRPC Port to be used by OpenFam memory allocator operations */
-    char *libfabricPort;
     /** Libfabric provider to be used by OpenFam libfabric datapath operations;
      * "sockets" by default */
     char *libfabricProvider;
     /** FAM thread model */
     char *famThreadModel;
-    /** Allocator to be used, Default is Grpc, Supports NVMM Allocator too */
-    char *allocator;
+    /** CIS interface to be used, Default is RPC, Supports Direct calls too */
+    char *cisInterfaceType;
+    /** OpenFAM model to be used; default is memory_server, Other option is
+     * shared_memory */
+    char *openFamModel;
     /** FAM context model - Default, Region*/
     char *famContextModel;
     /** Number of consumer threads for shared memory model **/
     char *numConsumer;
     /** FAM runtime - Default, pmix*/
     char *runtime;
-    /** CIS Server to be used by OpenFAM */
-    char *cisServer;
-
 } Fam_Options;
 
 class fam {

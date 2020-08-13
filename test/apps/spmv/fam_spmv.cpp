@@ -47,7 +47,7 @@ Fam_Region_Descriptor *spmv_fam_initialize(void) {
     // FAM initialize
     my_fam = new fam();
     memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-    fam_opts.allocator = strdup("NVMM");
+    fam_opts.openFamModel = strdup("SHM");
     fam_opts.runtime = strdup("NONE");
 
     try {

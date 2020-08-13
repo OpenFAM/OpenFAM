@@ -28,8 +28,17 @@ set(LIBOPENFAM_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   PARENT_SCOPE
   )
-set(MEMORYSERVER_SRC
-  ${MEMORYSERVER_SRC}
+
+set(CIS_SERVER_SRC
+  ${CIS_SERVER_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
+  PARENT_SCOPE
+)
+
+set(MEMORY_SERVER_SRC
+  ${MEMORY_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
