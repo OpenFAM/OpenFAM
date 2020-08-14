@@ -88,12 +88,6 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                       Fam_Thread_Model famTM, Fam_Allocator_Client *famAlloc,
                       Fam_Context_Model famCM, const char *memServerName,
                       const char *libfabricPort);
-#if 0
-    Fam_Ops_Libfabric(Server_Map name, const char *service, bool is_source,
-                      char *provider, Fam_Thread_Model famTM,
-                      Fam_Allocator_Client *famAlloc,
-                      Fam_Context_Model famCM = FAM_CONTEXT_DEFAULT);
-#endif
     /**
      * Initialize the libfabric library. This method is required to be the first
      * method called when a process uses the OpenFAM library.
