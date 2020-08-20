@@ -68,7 +68,6 @@ int main(int argc, char *argv[]) {
 
     Fam_Metadata_Service *manager = obj->second;
 
-    int ret;
     uint64_t count = 0, fail = 0;
 
     fam *my_fam = new fam();
@@ -109,8 +108,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (!manager->metadata_find_region(to_string(i), node)) {
-            printf("Region lookup failed: reg name=%s, ret=%d\n", name.c_str(),
-                   ret);
+            printf("Region lookup failed: reg name=%s", name.c_str());
             fail++;
         }
         count++;
@@ -127,13 +125,12 @@ int main(int argc, char *argv[]) {
         }
         count++;
         if (!manager->metadata_find_region(regionId, node)) {
-            printf("Region lookup failed: regid=%lu, ret=%d\n", regionId, ret);
+            printf("Region lookup failed: regid=%lu", regionId);
             fail++;
         }
         count++;
         if (!manager->metadata_find_region(to_string(i), node)) {
-            printf("Region lookup failed: reg name=%s, ret=%d\n", name.c_str(),
-                   ret);
+            printf("Region lookup failed: reg name=%s", name.c_str());
             fail++;
         }
         count++;
@@ -246,8 +243,8 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, regionId, dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
             }
             count++;
             try {
@@ -267,8 +264,8 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, regionId, dinode)) {
-                printf("Dataitem find failed: id=%lu:%lu , ret=%d\n", regionId,
-                       j, ret);
+                printf("Dataitem find failed: id=%lu:%lu ", regionId,
+                       j);
                 cout << "find dataitem failed" << endl;
                 fail++;
             }
@@ -368,24 +365,24 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, to_string(i), dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;
 
             if (!manager->metadata_find_dataitem(to_string(j), regionId,
                                                  dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;
 
             if (!manager->metadata_find_dataitem(to_string(j), to_string(i),
                                                  dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;

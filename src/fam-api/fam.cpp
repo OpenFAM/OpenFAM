@@ -780,9 +780,10 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     if (options && options->cisInterfaceType)
         famOptions.cisInterfaceType = strdup(options->cisInterfaceType);
     else if (!config_file_fam_options.empty() &&
-			config_file_fam_options.count("client_interface_type") > 0)
-		famOptions.cisInterfaceType = strdup(config_file_fam_options["client_interface_type"].c_str());
-	else
+             config_file_fam_options.count("client_interface_type") > 0)
+        famOptions.cisInterfaceType =
+            strdup(config_file_fam_options["client_interface_type"].c_str());
+    else
         famOptions.cisInterfaceType = strdup("rpc");
 
     if ((strcmp(famOptions.cisInterfaceType, FAM_OPTIONS_DIRECT_STR) != 0) &&
@@ -797,11 +798,11 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
 
     if (options && options->openFamModel)
         famOptions.openFamModel = strdup(options->openFamModel);
-	else if (!config_file_fam_options.empty() &&
+    else if (!config_file_fam_options.empty() &&
              config_file_fam_options.count("openfam_model") > 0)
-		famOptions.openFamModel =
-			strdup(config_file_fam_options["openfam_model"].c_str());
-	else
+        famOptions.openFamModel =
+            strdup(config_file_fam_options["openfam_model"].c_str());
+    else
         famOptions.openFamModel = strdup("memory_server");
 
     if ((strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) != 0) &&
@@ -4413,7 +4414,6 @@ void fam::fam_copy_wait(void *waitObj) {
     pimpl_->fam_copy_wait(waitObj);
     RETURN_WITH_FAM_EXCEPTION
 }
-
 
 // ATOMICS Group
 

@@ -63,9 +63,9 @@ using namespace openfam;
 void init_fam_options(Fam_Options *famOpts) {
     memset((void *)famOpts, 0, sizeof(Fam_Options));
 
-	famOpts->openFamModel = strdup(TEST_OPENFAM_MODEL);
-	famOpts->cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);
-	famOpts->cisServer = strdup(TEST_CIS_SERVER);
+    famOpts->openFamModel = strdup(TEST_OPENFAM_MODEL);
+    famOpts->cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);
+    famOpts->cisServer = strdup(TEST_CIS_SERVER);
     famOpts->grpcPort = strdup(TEST_GRPC_PORT);
     famOpts->libfabricProvider = strdup(TEST_LIBFABRIC_PROVIDER);
     famOpts->famThreadModel = strdup(TEST_FAM_THREAD_MODEL);
