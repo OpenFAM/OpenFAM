@@ -146,7 +146,6 @@ typedef struct {
     char name[RadixTree::MAX_KEY_LEN];
     uint64_t memoryServerId;
     size_t maxNameLen;
-    // char *name;
 } Fam_Region_Item_Info;
 
 inline Server_Map parse_server_list(std::string memServer,

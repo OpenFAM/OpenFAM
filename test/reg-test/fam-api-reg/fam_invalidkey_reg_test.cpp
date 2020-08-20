@@ -55,12 +55,8 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
 
     uint64_t invalidKey = -1;
 
-    char *name = strdup("127.0.0.1");
-    // char *service = strdup(TEST_LIBFABRIC_PORT);
+    char *name = strdup(TEST_CIS_SERVER);
     char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
-    // initialize gRPC client
-    // std::map<uint64_t, string> nameMap;
-    // nameMap.insert({0, name});
     char *cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);
     Fam_Allocator_Client *famAllocator;
     if (strcmp(cisInterfaceType, "rpc") == 0) {

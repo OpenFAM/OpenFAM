@@ -55,12 +55,9 @@
 
 using namespace std;
 
-// using MemServerMap = std::map<uint64_t, std::string>;
-
 namespace openfam {
 
 class Fam_Allocator_Client;
-// typedef struct {
 struct Fam_Region_Map_t {
     uint64_t regionId;
     std::map<uint64_t, fid_mr *> *fiRegionMrs;
