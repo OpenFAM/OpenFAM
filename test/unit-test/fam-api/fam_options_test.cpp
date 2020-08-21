@@ -45,10 +45,7 @@ int main() {
     Fam_Options fam_opts;
     const char **optList;
     int i = 0;
-
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-
-    fam_opts.memoryServer = strdup(TEST_MEMORY_SERVER);
+    init_fam_options(&fam_opts);
     fam_opts.grpcPort = strdup("9500");
     fam_opts.libfabricPort = strdup("9501");
     fam_opts.runtime = strdup("NONE");

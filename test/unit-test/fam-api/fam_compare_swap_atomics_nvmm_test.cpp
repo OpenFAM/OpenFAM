@@ -58,7 +58,7 @@ int main() {
     Fam_Region_Descriptor *desc;
     Fam_Descriptor *item;
 
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
+    init_fam_options(&fam_opts);
 
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
 

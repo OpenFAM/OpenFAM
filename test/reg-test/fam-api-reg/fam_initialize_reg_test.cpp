@@ -48,7 +48,6 @@ Fam_Options fam_opts;
 TEST(FamInitialize, InitializeSuccess) {
     init_fam_options(&fam_opts);
     fam_opts.runtime = strdup("NONE");
-
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
 }

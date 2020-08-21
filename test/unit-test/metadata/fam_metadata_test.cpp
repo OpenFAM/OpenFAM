@@ -55,12 +55,7 @@ int main(int argc, char *argv[]) {
     fam *my_fam = new fam();
     Fam_Options fam_opts;
 
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-
-    fam_opts.memoryServer = strdup("0:127.0.0.1");
-    fam_opts.libfabricPort = strdup(TEST_LIBFABRIC_PORT);
-    fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
-    fam_opts.allocator = strdup(TEST_ALLOCATOR);
+    init_fam_options(&fam_opts);
     fam_opts.runtime = strdup("NONE");
     try {
         my_fam->fam_initialize("default", &fam_opts);

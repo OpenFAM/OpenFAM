@@ -33,28 +33,25 @@
 #include <sstream>
 #include <stdlib.h>
 #include <sys/time.h>
-
+#include <string.h>
 #include <fam/fam.h>
 
 using namespace std;
 using namespace openfam;
 
 // Fam_Options
-#cmakedefine TEST_DEFAULT_REGION "${TEST_DEFAULT_REGION}"
-#cmakedefine TEST_MEMORY_SERVER "${TEST_MEMORY_SERVER}"
-#cmakedefine TEST_METADATA_SERVER "${TEST_METADATA_SERVER}"
-#cmakedefine TEST_GRPC_PORT "${TEST_GRPC_PORT}"
-#cmakedefine TEST_METADATA_RPC_PORT "${TEST_METADATA_RPC_PORT}"
-#cmakedefine TEST_LIBFABRIC_PORT "${TEST_LIBFABRIC_PORT}"
-#cmakedefine TEST_LIBFABRIC_PROVIDER "${TEST_LIBFABRIC_PROVIDER}"
-#cmakedefine TEST_FAM_THREAD_MODEL "${TEST_FAM_THREAD_MODEL}"
+ 
+#cmakedefine TEST_DEFAULT_REGION "Default"
+#cmakedefine TEST_MEMORY_SERVER "0:127.0.0.1"
+#cmakedefine TEST_GRPC_PORT "8787"
+#cmakedefine TEST_METADATA_RPC_PORT "8787"
+#cmakedefine TEST_LIBFABRIC_PORT "7500"
+#cmakedefine TEST_LIBFABRIC_PROVIDER "sockets"
 #cmakedefine TEST_ALLOCATOR "${TEST_ALLOCATOR}"
-#cmakedefine TEST_FAM_CONTEXT_MODEL "${TEST_FAM_CONTEXT_MODEL}"
-#cmakedefine TEST_RUNTIME "${TEST_RUNTIME}"
-#cmakedefine TEST_NUM_CONSUMER "${TEST_NUM_CONSUMER}"
+
 
 #ifdef MEMSERVER_PROFILE
-#cmakedefine TEST_MEMSERVER_IP "${TEST_MEMSERVER_IP}"
+#cmakedefine TEST_MEMSERVER_IP "0:127.0.0.1"
 #endif
 
 // Runtime configuration
@@ -62,15 +59,6 @@ using namespace openfam;
 
 void init_fam_options(Fam_Options *famOpts) {
     memset((void *)famOpts, 0, sizeof(Fam_Options));
-
-    famOpts->memoryServer = strdup(TEST_MEMORY_SERVER);
-    famOpts->grpcPort = strdup(TEST_GRPC_PORT);
-    famOpts->libfabricPort = strdup(TEST_LIBFABRIC_PORT);
-    famOpts->libfabricProvider = strdup(TEST_LIBFABRIC_PROVIDER);
-    famOpts->famThreadModel = strdup(TEST_FAM_THREAD_MODEL);
-    famOpts->allocator = strdup(TEST_ALLOCATOR);
-    famOpts->famContextModel = strdup(TEST_FAM_CONTEXT_MODEL);
-    famOpts->runtime = strdup(TEST_RUNTIME);
 }
 
 // This function return uniq string per pe, by appending pe_id to base string

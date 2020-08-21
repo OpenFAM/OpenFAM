@@ -49,8 +49,6 @@ typedef enum {
     MEMORY_SERVER,
     /** Port to be used by OpenFam grpc memory allocator */
     GRPC_PORT,
-    /** GRPC Port to be used by OpenFam memory allocator operations */
-    LIBFABRIC_PORT,
     /** Libfabric provider to be used by OpenFam libfabric datapath operations;
         "sockets" by default */
     LIBFABRIC_PROVIDER,
@@ -69,6 +67,9 @@ typedef enum {
     /**Number of consumer threads in case of shared memory model**/
     NUM_CONSUMER,
     /** END of Option keys */
+    /* CIS Server to be used by OpenFAM*/
+    CIS_SERVER,
+
     END_OPT = -1
 } Fam_Option_Key;
 

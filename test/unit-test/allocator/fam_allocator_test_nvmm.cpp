@@ -34,6 +34,7 @@
 #include <fam/fam.h>
 
 #include "common/fam_options.h"
+#include "common/fam_test_config.h"
 #include <fam/fam_exception.h>
 
 using namespace std;
@@ -65,10 +66,7 @@ int main() {
     Fam_Global_Descriptor global_dataitem;
     Fam_Global_Descriptor globalCopy_dataitem;
 
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-
-    // int ret = 0;
-
+    init_fam_options(&fam_opts);
     char *buff = (char *)malloc(1024);
     memset(buff, 0, 1024);
 

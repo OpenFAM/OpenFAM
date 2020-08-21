@@ -53,7 +53,6 @@ Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
     delete defContexts;
     delete fiAddrs;
     delete fiMrs;
-    free(service);
     free(provider);
     free(serverAddrName);
 }
@@ -66,7 +65,6 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(const char *memServerName,
                                      Fam_Context_Model famCM) {
     std::ostringstream message;
     name.insert({0, memServerName});
-    service = strdup(libfabricPort);
     provider = strdup(libfabricProvider);
     isSource = source;
     famThreadModel = famTM;
@@ -100,7 +98,6 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(MemServerMap memServerList,
                                      Fam_Context_Model famCM) {
     std::ostringstream message;
     name = memServerList;
-    service = strdup(libfabricPort);
     provider = strdup(libfabricProvider);
     isSource = source;
     famThreadModel = famTM;
@@ -146,9 +143,8 @@ int Fam_Ops_Libfabric::initialize() {
     uint64_t nodeId = 0;
 
     const char *memServerName = name[nodeId].c_str();
-    if ((ret = fabric_initialize(memServerName, service, isSource, provider,
-                                 &fi, &fabric, &eq, &domain, famThreadModel)) <
-        0) {
+    if ((ret = fabric_initialize(memServerName, NULL, isSource, provider, &fi,
+                                 &fabric, &eq, &domain, famThreadModel)) < 0) {
         return ret;
     }
 

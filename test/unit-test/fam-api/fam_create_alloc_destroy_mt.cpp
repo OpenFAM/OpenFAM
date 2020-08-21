@@ -32,7 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-
+#include "common/fam_test_config.h"
 #include <pthread.h>
 
 #include <fam/fam.h>
@@ -51,7 +51,7 @@ void *thr_func1(void *arg) {
 
     fam *my_fam;
     my_fam = new fam();
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
+    init_fam_options(&fam_opts);
 
     fam_opts.allocator = strdup("SHM");
     fam_opts.runtime = strdup("NONE");

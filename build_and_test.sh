@@ -20,6 +20,8 @@ then
 fi
 
 source setup.sh --memserver=127.0.0.1
+export OPENFAM_ROOT="$CIS_RPC_BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-rpc/"
+echo $OPENFAM_ROOT
 make unit-test
 if [[ $? > 0 ]]
 then
@@ -50,6 +52,8 @@ then
         exit 1
 fi
 
+export OPENFAM_ROOT="$SHM_BUILD_DIR/test/config_files/config-cis-direct-meta-direct-mem-direct/"
+echo $OPENFAM_ROOT
 make unit-test
 if [[ $? > 0 ]]
 then
@@ -79,6 +83,7 @@ then
 fi
 
 source setup.sh --memserver=127.0.0.1 --metaserver=127.0.0.1
+export OPENFAM_ROOT="$CIS_META_RPC_BUILD_DIR/test/config_files/config-cis-rpc-meta-rpc-mem-rpc/"
 make unit-test
 if [[ $? > 0 ]]
 then
