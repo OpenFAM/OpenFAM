@@ -40,6 +40,7 @@
 #include "common/fam_ops_libfabric.h"
 #include "common/fam_ops_shm.h"
 #include "common/fam_options.h"
+#include "common/yaml_config_info.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 #include "pmi/fam_runtime.h"
@@ -59,6 +60,10 @@
         throw e;                                                               \
     }
 
+#define FILE_MAX_LEN 255
+
+typedef std::map<std::string, std::string> configFileParams;
+
 using namespace std;
 
 /**
@@ -70,15 +75,15 @@ const char *supportedOptionList[] = {
     "DEFAULT_REGION_NAME", // index #1
     "MEMORY_SERVER",       // index #2
     "GRPC_PORT",           // index #3
-    "LIBFABRIC_PORT",      // index #4
-    "LIBFABRIC_PROVIDER",  // index #5
-    "FAM_THREAD_MODEL",    // index #6
-    "ALLOCATOR",           // index #7
-    "FAM_CONTEXT_MODEL",   // index #8
-    "PE_COUNT",            // index #9
-    "PE_ID",               // index #10
-    "RUNTIME",             // index #11
-    "NUM_CONSUMER",        // index #12
+    "LIBFABRIC_PROVIDER",  // index #4
+    "FAM_THREAD_MODEL",    // index #5
+    "ALLOCATOR",           // index #6
+    "FAM_CONTEXT_MODEL",   // index #7
+    "PE_COUNT",            // index #8
+    "PE_ID",               // index #9
+    "RUNTIME",             // index #10
+    "NUM_CONSUMER",        // index #11
+    "CIS_SERVER",          // index #12
     NULL                   // index #13
 };
 
@@ -355,9 +360,12 @@ class fam::Impl_ {
     void fam_fence(Fam_Region_Descriptor *descriptor = NULL);
     void fam_quiet(Fam_Region_Descriptor *descriptor = NULL);
 
-    int validate_fam_options(Fam_Options *options);
+    int validate_fam_options(Fam_Options *options,
+                             configFileParams config_file_fam_options);
     void clean_fam_options();
     int validate_item(Fam_Descriptor *descriptor);
+    std::string find_config_file(char *config_file);
+    configFileParams get_info_from_config_file(std::string filename);
 
   private:
     uid_t uid;
@@ -611,7 +619,24 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
 
     memoryServerCount = 1;
 
-    ret = validate_fam_options(options);
+    // Look for options information from config file.
+    std::string config_file_path;
+    configFileParams file_options;
+    // Check for config file in or in path mentioned
+    // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
+    try {
+        config_file_path = find_config_file(strdup("fam_pe_config.yaml"));
+    } catch (Fam_InvalidOption_Exception &e) {
+        // If the config_file is not present, then ignore the exception.
+        // All the parameters will be obtained from validate_fam_options
+        // function.
+    }
+    // Get the configuration info from the configruation file.
+    if (!config_file_path.empty()) {
+        file_options = get_info_from_config_file(config_file_path);
+    }
+
+    ret = validate_fam_options(options, file_options);
 
     if (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) == 0) {
         *peId = 0;
@@ -694,10 +719,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         famAllocator = new Fam_Allocator_Client(memoryServerList,
                                                 atoi(famOptions.grpcPort));
         famOps = new Fam_Ops_Libfabric(
-            memoryServerList, famOptions.libfabricPort, false,
-            famOptions.libfabricProvider, famThreadModel, famAllocator,
-            famContextModel);
-
+            memoryServerList, NULL, false, famOptions.libfabricProvider,
+            famThreadModel, famAllocator, famContextModel);
         ret = famOps->initialize();
         if (ret < 0) {
             message << "Fam libfabric initialization failed: "
@@ -714,7 +737,9 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
  * Validate the input Fam_Options and update the option values
  * @return - {true(0), false(1), errNo(<0)}
  */
-int fam::Impl_::validate_fam_options(Fam_Options *options) {
+int fam::Impl_::validate_fam_options(Fam_Options *options,
+                                     configFileParams config_file_fam_options) {
+
     int ret = 0;
 
     std::ostringstream message;
@@ -725,7 +750,6 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
 
     optValueMap->insert({supportedOptionList[DEFAULT_REGION_NAME],
                          famOptions.defaultRegionName});
-
     if (options && options->memoryServer)
         famOptions.memoryServer = strdup(options->memoryServer);
     else
@@ -734,23 +758,34 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
     optValueMap->insert(
         {supportedOptionList[MEMORY_SERVER], famOptions.memoryServer});
 
-    if (options && options->grpcPort)
-        famOptions.grpcPort = strdup(options->grpcPort);
+    if (options && options->cisServer)
+        famOptions.cisServer = strdup(options->cisServer);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("cisServer") > 0)
+        famOptions.cisServer =
+            strdup(config_file_fam_options["cisServer"].c_str());
     else
-        famOptions.grpcPort = strdup("8787");
-
-    optValueMap->insert({supportedOptionList[GRPC_PORT], famOptions.grpcPort});
-
-    if (options && options->libfabricPort)
-        famOptions.libfabricPort = strdup(options->libfabricPort);
-    else
-        famOptions.libfabricPort = strdup("7500");
+        famOptions.cisServer = strdup("127.0.0.1");
 
     optValueMap->insert(
-        {supportedOptionList[LIBFABRIC_PORT], famOptions.libfabricPort});
+        {supportedOptionList[CIS_SERVER], famOptions.cisServer});
+
+    if (options && options->grpcPort)
+        famOptions.grpcPort = strdup(options->grpcPort);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("grpcPort") > 0)
+        famOptions.grpcPort =
+            strdup(config_file_fam_options["grpcPort"].c_str());
+    else
+        famOptions.grpcPort = strdup("8787");
+    optValueMap->insert({supportedOptionList[GRPC_PORT], famOptions.grpcPort});
 
     if (options && options->libfabricProvider)
         famOptions.libfabricProvider = strdup(options->libfabricProvider);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("libfabricProvider") > 0)
+        famOptions.libfabricProvider =
+            strdup(config_file_fam_options["libfabricProvider"].c_str());
     else
         famOptions.libfabricProvider = strdup("sockets");
 
@@ -759,6 +794,10 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
 
     if (options && options->famThreadModel)
         famOptions.famThreadModel = strdup(options->famThreadModel);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("famThreadModel") > 0)
+        famOptions.famThreadModel =
+            strdup(config_file_fam_options["famThreadModel"].c_str());
     else
         famOptions.famThreadModel = strdup("FAM_THREAD_SERIALIZE");
 
@@ -776,13 +815,16 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
 
     if (options && options->allocator)
         famOptions.allocator = strdup(options->allocator);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("openfam_model") > 0)
+        famOptions.allocator =
+            strdup(config_file_fam_options["openfam_model"].c_str());
     else
         famOptions.allocator = strdup("grpc");
-
     if ((strcmp(famOptions.allocator, FAM_OPTIONS_SHM_STR) != 0) &&
         (strcmp(famOptions.allocator, FAM_OPTIONS_GRPC_STR) != 0)) {
         message << "Invalid value specified for Allocator: "
-                << famOptions.famThreadModel;
+                << famOptions.allocator;
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
@@ -790,6 +832,10 @@ int fam::Impl_::validate_fam_options(Fam_Options *options) {
 
     if (options && options->famContextModel)
         famOptions.famContextModel = strdup(options->famContextModel);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("famContextModel") > 0)
+        famOptions.famContextModel =
+            strdup(config_file_fam_options["famContextModel"].c_str());
     else
         famOptions.famContextModel = strdup("FAM_CONTEXT_DEFAULT");
 
@@ -863,6 +909,108 @@ int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     return 0;
+}
+
+/*
+ * find_config_file - Look for configuration file in path specified by
+ * OPENFAM_ROOT environment variable or in /opt/OpenFAM.
+ * On Success, return config file with absolute path. Else returns empty string.
+ */
+std::string fam::Impl_::find_config_file(char *config_file) {
+    struct stat buffer;
+    std::string config_filename;
+    char *config_file_path = (char *)malloc(FILE_MAX_LEN);
+
+    // Look for config file in OPENFAM_ROOT
+    char *openfam_root = getenv("OPENFAM_ROOT");
+
+    if (openfam_root != NULL) {
+        sprintf(config_file_path, "%s/%s/%s", openfam_root, "config",
+                config_file);
+    }
+    if (stat(config_file_path, &buffer) == 0) {
+        config_filename = config_file_path;
+        free(config_file_path);
+        return config_filename;
+    }
+
+    // Look for config file in /opt
+    sprintf(config_file_path, "%s/%s/%s", "/opt/OpenFAM", "config",
+            config_file);
+    if (stat(config_file_path, &buffer) == 0) {
+        config_filename = config_file_path;
+        free(config_file_path);
+        return config_filename;
+    }
+    free(config_file_path);
+    config_filename.clear();
+    return config_filename;
+}
+
+/*
+ * get_info_from_config_file - Obtaine the required information from
+ * fam_pe_config file. On Success, returns a map that has options updated from
+ * from configuration file. These inputs are passed on to validate_fam_options.
+ * If any field is empty, that would be filled as part of validate_fam_options
+ * function.
+ */
+configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
+    configFileParams options;
+    config_info *info = NULL;
+    if (filename.find("fam_pe_config") != std::string::npos) {
+        info = new yaml_config_info(filename);
+        try {
+            string temp =
+                info->get_key_value("fam_client_interface_service_address");
+            options["cisServer"] = temp.substr(0, temp.find(':'));
+            options["grpcPort"] = temp.substr(temp.find(':') + 1);
+
+        } catch (Fam_InvalidOption_Exception e) {
+            // If the parameter cis_ip is not present, then ignore the
+            // exception. This parameter will be obtained from
+            // validate_fam_options function.
+        }
+        try {
+            options["libfabricProvider"] =
+                (char *)strdup((info->get_key_value("provider")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If the parameter libfabricProvider is not present, then ignore
+            // the exception. This parameter will be obtained from
+            // validate_fam_options function.
+        }
+        try {
+            std::string famThreadModel = info->get_key_value("FamThreadModel");
+            options["famThreadModel"] = ((famThreadModel.compare("single") == 0)
+                                             ? strdup(FAM_THREAD_SERIALIZE_STR)
+                                             : strdup(FAM_THREAD_MULTIPLE_STR));
+        } catch (Fam_InvalidOption_Exception e) {
+            // If the parameter famThreadModel is not present, then ignore the
+            // exception. This parameter will be obtained from
+            // validate_fam_options function.
+        }
+        try {
+
+            std::string allocator = info->get_key_value("openfam_model");
+            options["openfam_model"] =
+                ((allocator.compare("shared_memory") == 0)
+                     ? strdup(FAM_OPTIONS_SHM_STR)
+                     : strdup(FAM_OPTIONS_GRPC_STR));
+
+        } catch (Fam_InvalidOption_Exception e) {
+            // If the parameter allocator is not present, then ignore the
+            // exception. This parameter will be obtained from
+            // validate_fam_options function.
+        }
+        try {
+            options["runtime"] =
+                (char *)strdup((info->get_key_value("runtime")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If the parameter runtime is not present, then ignore the
+            // exception. This parameter will be obtained from
+            // validate_fam_options function.
+        }
+    }
+    return options;
 }
 
 /**

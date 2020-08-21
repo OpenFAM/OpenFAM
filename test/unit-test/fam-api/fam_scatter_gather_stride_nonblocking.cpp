@@ -48,12 +48,7 @@ int main() {
     Fam_Descriptor *item2;
     Fam_Global_Descriptor global_item;
 
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-
-    fam_opts.memoryServer = strdup(TEST_MEMORY_SERVER);
-    fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
-    fam_opts.libfabricPort = strdup(TEST_LIBFABRIC_PORT);
-    fam_opts.allocator = strdup(TEST_ALLOCATOR);
+    init_fam_options(&fam_opts);
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {

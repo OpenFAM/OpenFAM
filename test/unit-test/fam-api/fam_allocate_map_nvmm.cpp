@@ -45,8 +45,7 @@ int main() {
     Fam_Region_Descriptor *desc = NULL;
     Fam_Descriptor *item = NULL;
 
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-
+    init_fam_options(&fam_opts);
     fam_opts.allocator = strdup(TEST_ALLOCATOR);
     cout << " Calling fam_initialize" << endl;
     try {

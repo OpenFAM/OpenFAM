@@ -56,14 +56,13 @@ TEST(FamOption, GetDefaultOptionList) {
         EXPECT_STREQ(optList[1], "DEFAULT_REGION_NAME");
         EXPECT_STREQ(optList[2], "MEMORY_SERVER");
         EXPECT_STREQ(optList[3], "GRPC_PORT");
-        EXPECT_STREQ(optList[4], "LIBFABRIC_PORT");
-        EXPECT_STREQ(optList[5], "LIBFABRIC_PROVIDER");
-        EXPECT_STREQ(optList[6], "FAM_THREAD_MODEL");
-        EXPECT_STREQ(optList[7], "ALLOCATOR");
-        EXPECT_STREQ(optList[8], "FAM_CONTEXT_MODEL");
-        EXPECT_STREQ(optList[9], "PE_COUNT");
-        EXPECT_STREQ(optList[10], "PE_ID");
-        EXPECT_STREQ(optList[11], "RUNTIME");
+        EXPECT_STREQ(optList[4], "LIBFABRIC_PROVIDER");
+        EXPECT_STREQ(optList[5], "FAM_THREAD_MODEL");
+        EXPECT_STREQ(optList[6], "ALLOCATOR");
+        EXPECT_STREQ(optList[7], "FAM_CONTEXT_MODEL");
+        EXPECT_STREQ(optList[8], "PE_COUNT");
+        EXPECT_STREQ(optList[9], "PE_ID");
+        EXPECT_STREQ(optList[10], "RUNTIME");
     }
 }
 
@@ -107,14 +106,8 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     my_fam = new fam();
     int ret;
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-    fam_opts.allocator = strdup(TEST_ALLOCATOR);
-    //   EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
-    try {
-        my_fam->fam_initialize("default", &fam_opts);
-    } catch (Fam_Exception &e) {
-        cout << "msg :" << e.fam_error_msg() << endl;
-    }
+    init_fam_options(&fam_opts);
+    EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
     ret = RUN_ALL_TESTS();
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
     return ret;

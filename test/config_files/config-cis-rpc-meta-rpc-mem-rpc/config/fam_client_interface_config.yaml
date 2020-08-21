@@ -2,12 +2,12 @@
 # Memory Server Interface used by OpenFAM. default is direct. Other option is rpc.
 # memsrv_interface_type value of rpc implies communication between memory server and client interface via rpc.
 # memsrv_interface_type value of direct implies communication happens via function calls.
-memsrv_interface_type: direct
+memsrv_interface_type: rpc
 
 # Metadata Server Interface used by OpenFAM. default is direct. Other option is rpc.
 # metadata_interface_type value of rpc implies communication between metadata server and client interface via rpc.
 # metadata_interface_type value of direct implies communication happens via function calls.
-metadata_interface_type: direct
+metadata_interface_type: rpc
 
 # Rpc interface
 # Rpc address used by Client Interface Service to accept connections from PE.

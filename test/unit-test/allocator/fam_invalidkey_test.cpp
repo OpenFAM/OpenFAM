@@ -59,10 +59,8 @@ int main() {
 
     // Initialize the libfabric ops
     char *message = strdup("This is the datapath test");
-    char *name = strdup(TEST_MEMORY_SERVER);
-    char *service = strdup(TEST_LIBFABRIC_PORT);
-    char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
 
+    init_fam_options(&fam_opts);
     ret = famOps->initialize(name, service, false, provider);
     if (ret < 0) {
         cout << "famOps initialization failed" << endl;

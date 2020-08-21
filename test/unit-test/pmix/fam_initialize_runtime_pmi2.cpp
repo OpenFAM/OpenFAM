@@ -46,12 +46,8 @@ int main() {
     fam *my_fam2 = new fam();
     Fam_Options fam_opts;
     int *myPE, *numPEs;
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-
-    fam_opts.memoryServer = strdup(TEST_MEMORY_SERVER);
-    fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
+    init_fam_options(&fam_opts);
     fam_opts.runtime = strdup("PMI2");
-    fam_opts.allocator = strdup(TEST_ALLOCATOR);
     try {
 
         my_fam2->fam_initialize("default", &fam_opts);

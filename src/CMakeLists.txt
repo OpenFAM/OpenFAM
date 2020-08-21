@@ -36,9 +36,9 @@ target_link_libraries(fammetadata nvmm famradixtree boost_system)
 add_library(openfam SHARED ${LIBOPENFAM_SRC})
 
 if(USE_BOOST_FIBER)
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_fiber boost_context pmix pmi2 fambitmap)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_fiber boost_context pmix pmi2 fambitmap yaml-cpp)
 else()
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_context pmix pmi2 fambitmap)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_context pmix pmi2 fambitmap yaml-cpp)
 endif()
 
 set_target_properties(openfam PROPERTIES SOVERSION ${VERSION_STR})
