@@ -59,26 +59,46 @@ typedef enum CIS_Direct_Counter_Enum {
 #include "cis/cis_direct_counters.tbl"
     CIS_DIRECT_COUNTER_MAX
 } CIS_Direct_Counter_Enum_T;
-typedef enum CIS_Async_Counter_Enum {
 
+typedef enum CIS_Async_Counter_Enum {
 #include "cis/cis_async_counters.tbl"
     CIS_ASYNC_COUNTER_MAX
 } CIS_Async_Counter_Enum_T;
 
 typedef enum Metadata_Server_Counter_Enum {
-#include "metadata/metadata_server_counters.tbl"
+#include "metadata_service/metadata_server_counters.tbl"
     METADATA_SERVER_COUNTER_MAX
 } Metadata_Server_Counter_Enum_T;
 
 typedef enum Metadata_Direct_Counter_Enum {
-#include "metadata/metadata_direct_counters.tbl"
+#include "metadata_service/metadata_direct_counters.tbl"
     METADATA_DIRECT_COUNTER_MAX
 } Metadata_Direct_Counter_Enum_T;
 
 typedef enum Metadata_Client_Counter_Enum {
-#include "metadata/metadata_client_counters.tbl"
+#include "metadata_service/metadata_client_counters.tbl"
     METADATA_CLIENT_COUNTER_MAX
 } Metadata_Client_Counter_Enum_T;
+
+typedef enum Memory_Server_Counter_Enum {
+#include "memory_service/memory_service_server_counters.tbl"
+    MEMORY_SERVICE_SERVER_COUNTER_MAX
+} Memory_Server_Counter_Enum_T;
+
+typedef enum Memory_Direct_Counter_Enum {
+#include "memory_service/memory_service_direct_counters.tbl"
+    MEMORY_SERVICE_DIRECT_COUNTER_MAX
+} Memory_Direct_Counter_Enum_T;
+
+typedef enum Memory_Client_Counter_Enum {
+#include "memory_service/memory_service_client_counters.tbl"
+    MEMORY_SERVICE_CLIENT_COUNTER_MAX
+} Memory_Client_Counter_Enum_T;
+
+typedef enum Memory_Reg_Fabric_Counter_Enum {
+#include "memory_service/memory_reg_fabric_counters.tbl"
+    MEMORY_REG_FABRIC_COUNTER_MAX
+} Memory_Reg_Fabric_Counter_Enum_T;
 
 #define MEMSERVER_PROFILE_START(PROFILE_NAME)                                  \
     struct PROFILE_NAME##_Counter_St {                                         \

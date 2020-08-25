@@ -60,7 +60,7 @@ int main() {
 
     init_fam_options(&fam_opts);
 
-    fam_opts.allocator = strdup(TEST_ALLOCATOR);
+    fam_opts.openFamModel = strdup(TEST_OPENFAM_MODEL);
 
     try {
         my_fam->fam_initialize("default", &fam_opts);

@@ -32,9 +32,9 @@
  *
  */
 
-#include "../../src/metadata/fam_metadata_service.h"
 #include "common/fam_test_config.h"
-#include "metadata/fam_metadata_service_client.h"
+#include "metadata_service/fam_metadata_service.h"
+#include "metadata_service/fam_metadata_service_client.h"
 
 #include <fam/fam.h>
 #include <string.h>
@@ -44,20 +44,38 @@ using namespace famradixtree;
 using namespace nvmm;
 using namespace metadata;
 using namespace openfam;
-
+using metaServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
 int main(int argc, char *argv[]) {
 
-    Fam_Metadata_Service *manager =
-        new Fam_Metadata_Service_Client(METADATA_SERVER, METADATA_RPC_PORT);
+    std::string delimiter1 = ",";
+    std::string delimiter2 = ":";
 
-    int ret;
+    metaServerMap *metadataServers = new metaServerMap();
+    Server_Map metadataServerList =
+        parse_server_list(SERVER_LIST, delimiter1, delimiter2);
+    for (auto obj = metadataServerList.begin(); obj != metadataServerList.end();
+         ++obj) {
+        Fam_Metadata_Service *metadataService = new Fam_Metadata_Service_Client(
+            (obj->second).c_str(), METASERVER_RPC_PORT);
+        metadataServers->insert({obj->first, metadataService});
+    }
+
+    auto obj = metadataServers->find(0);
+    if (obj == metadataServers->end()) {
+        cout << "Metadata service   RPC client not found" << endl;
+        exit(1);
+    }
+
+    Fam_Metadata_Service *manager = obj->second;
+
     uint64_t count = 0, fail = 0;
 
     fam *my_fam = new fam();
     Fam_Options fam_opts;
 
+    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
+
     init_fam_options(&fam_opts);
-    fam_opts.runtime = strdup("NONE");
 
     try {
         my_fam->fam_initialize("default", &fam_opts);
@@ -90,8 +108,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (!manager->metadata_find_region(to_string(i), node)) {
-            printf("Region lookup failed: reg name=%s, ret=%d\n", name.c_str(),
-                   ret);
+            printf("Region lookup failed: reg name=%s", name.c_str());
             fail++;
         }
         count++;
@@ -108,13 +125,12 @@ int main(int argc, char *argv[]) {
         }
         count++;
         if (!manager->metadata_find_region(regionId, node)) {
-            printf("Region lookup failed: regid=%lu, ret=%d\n", regionId, ret);
+            printf("Region lookup failed: regid=%lu", regionId);
             fail++;
         }
         count++;
         if (!manager->metadata_find_region(to_string(i), node)) {
-            printf("Region lookup failed: reg name=%s, ret=%d\n", name.c_str(),
-                   ret);
+            printf("Region lookup failed: reg name=%s", name.c_str());
             fail++;
         }
         count++;
@@ -227,8 +243,8 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, regionId, dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
             }
             count++;
             try {
@@ -248,8 +264,8 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, regionId, dinode)) {
-                printf("Dataitem find failed: id=%lu:%lu , ret=%d\n", regionId,
-                       j, ret);
+                printf("Dataitem find failed: id=%lu:%lu ", regionId,
+                       j);
                 cout << "find dataitem failed" << endl;
                 fail++;
             }
@@ -349,24 +365,24 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, to_string(i), dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;
 
             if (!manager->metadata_find_dataitem(to_string(j), regionId,
                                                  dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;
 
             if (!manager->metadata_find_dataitem(to_string(j), to_string(i),
                                                  dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;
@@ -442,7 +458,18 @@ int main(int argc, char *argv[]) {
     std::cout << "Total tests passed : " << count - fail << std::endl;
     std::cout << "Total tests failed : " << fail << std::endl;
 
+    my_fam->fam_finalize("default");
+
+    for (auto obj = metadataServers->begin(); obj != metadataServers->end();
+         ++obj) {
+        delete obj->second;
+    }
+
+    delete metadataServers;
+    delete my_fam;
+
     if (fail) {
+        cout << "returning 1" << endl;
         return 1;
     } else
         return 0;

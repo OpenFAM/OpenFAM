@@ -32,7 +32,7 @@
 #include <signal.h>
 #endif
 
-#include "metadata/fam_metadata_service_server.h"
+#include "metadata_service/fam_metadata_service_server.h"
 #include <iostream>
 using namespace std;
 using namespace metadata;
@@ -46,7 +46,7 @@ using namespace metadata;
 #ifdef COVERAGE
 extern "C" void __gcov_flush();
 void signal_handler(int signum) {
-    cout << "Shutting down memory server!! signal #" << signum << endl;
+    cout << "Shutting down metadata server!! signal #" << signum << endl;
     __gcov_flush();
     exit(1);
 }
@@ -55,9 +55,7 @@ void signal_handler(int signum) {
 Fam_Metadata_Service_Server *metadataService;
 
 int main(int argc, char *argv[]) {
-    // Example for commandline argument: ./metadataserver -a 127.0.0.1 -r 8989
-
-    uint64_t rpcPort = 8989;
+    uint64_t rpcPort = 8788;
     char *name = strdup("127.0.0.1");
 
     for (int i = 1; i < argc; i++) {
@@ -73,7 +71,7 @@ int main(int argc, char *argv[]) {
                 << "\t./metadataserver <options> \n"
                 << "\n"
                 << "Options : \n"
-                << "\t-a/--address   : Address of the memory server "
+                << "\t-a/--address   : Address of the metadata server "
                    "(default value is localhost) \n"
                 << "\n"
                 << "\t-r/--rpcport        : RPC port (default value is 8787)\n"
@@ -101,7 +99,7 @@ int main(int argc, char *argv[]) {
     try {
         metadataService = new Fam_Metadata_Service_Server(rpcPort, name);
         metadataService->run();
-    } catch (Metadata_Service_Exception &e) {
+    } catch (Fam_Exception &e) {
         if (metadataService) {
             delete metadataService;
         }

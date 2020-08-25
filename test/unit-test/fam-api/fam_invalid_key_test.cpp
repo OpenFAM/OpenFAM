@@ -59,32 +59,36 @@ int main() {
     // Initialize the libfabric ops
     char *message = strdup("This is the datapath test");
     char *name = strdup("127.0.0.1");
-    char *service = strdup(TEST_LIBFABRIC_PORT);
+    // char *service = strdup(TEST_LIBFABRIC_PORT);
     char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
-    std::map<uint64_t, string> nameMap;
-    nameMap.insert({0, name});
+    // std::map<uint64_t, string> nameMap;
+    // nameMap.insert({0, name});
     // initialize gRPC client
-    Fam_Allocator_Client *famAllocator =
-        new Fam_Allocator_Client(nameMap, atoi(TEST_GRPC_PORT));
 
-    Fam_Ops_Libfabric *famOps = new Fam_Ops_Libfabric(
-        name, service, false, provider, FAM_THREAD_MULTIPLE, famAllocator,
-        FAM_CONTEXT_DEFAULT);
+    // Initialize openFAM API
+    init_fam_options(&fam_opts);
+    try {
+        my_fam->fam_initialize("default", &fam_opts);
+    } catch (Fam_Exception &e) {
+        cout << "fam initialization failed" << endl;
+        exit(1);
+    }
+
+    char *cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);
+    Fam_Allocator_Client *famAllocator;
+    if (strcmp(cisInterfaceType, "rpc") == 0) {
+        famAllocator = new Fam_Allocator_Client(name, atoi(TEST_GRPC_PORT));
+    } else {
+        famAllocator = new Fam_Allocator_Client();
+    }
+    Fam_Ops_Libfabric *famOps =
+        new Fam_Ops_Libfabric(false, provider, FAM_THREAD_MULTIPLE,
+                              famAllocator, FAM_CONTEXT_DEFAULT);
 
     // ret = famOps->initialize(name, service, false, provider);
     ret = famOps->initialize();
     if (ret < 0) {
         cout << "famOps initialization failed" << endl;
-        exit(1);
-    }
-
-    // Initialize openFAM API
-    fam_opts.memoryServer = strdup("0:127.0.0.1");
-    fam_opts.grpcPort = strdup(TEST_GRPC_PORT);
-    try {
-        my_fam->fam_initialize("default", &fam_opts);
-    } catch (Fam_Exception &e) {
-        cout << "fam initialization failed" << endl;
         exit(1);
     }
 

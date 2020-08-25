@@ -29,7 +29,7 @@ $ cd $OpenFAM
  $ ./build_and_run.sh
  ```
    By default this script will run only CIS with RPC interface. To run the following combination
-   a. Both CIS and Metadata Service with RPC interface
+   a. All services with RPC interface
    b. Shared memory model
 
    use the following command

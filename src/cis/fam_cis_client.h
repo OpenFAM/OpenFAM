@@ -54,31 +54,6 @@ using namespace std;
 
 namespace openfam {
 
-/**
- * structure for keeping state and data information of fam copy
- */
-typedef struct {
-    // Container for the data we expect from the server.
-    Fam_Copy_Response res;
-
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
-    ::grpc::ClientContext ctx;
-
-    // Storage for the status of the RPC upon completion.
-    ::grpc::Status status;
-
-    // falg for completion
-    bool isCompleted;
-
-    uint64_t memServerId;
-
-    // flag to indicate copy across memoryserver
-    bool isAcrossServer;
-
-    std::unique_ptr<::grpc::ClientAsyncResponseReader<Fam_Copy_Response>>
-        responseReader;
-} Fam_Copy_Tag;
 
 using service = std::unique_ptr<Fam_CIS_Rpc::Stub>;
 typedef struct {
@@ -92,21 +67,20 @@ using Server_List = std::map<uint64_t, Fam_CIS_Server_Info *>;
 
 class Fam_CIS_Client : public Fam_CIS {
   public:
-    Fam_CIS_Client(CISServerMap servers, uint64_t port);
+    Fam_CIS_Client(const char *, uint64_t port);
 
     ~Fam_CIS_Client();
-
-    Fam_CIS_Server_Info *get_server_info(uint64_t memoryServerId);
 
     void reset_profile(uint64_t memoryServerId);
 
     void generate_profile(uint64_t memoryServerId);
 
+    uint64_t get_num_memory_servers();
+
     Fam_Region_Item_Info create_region(string name, size_t nbytes,
                                        mode_t permission,
                                        Fam_Redundancy_Level redundancyLevel,
-                                       uint64_t memoryServerId, uint32_t uid,
-                                       uint32_t gid);
+                                       uint32_t uid, uint32_t gid);
     void destroy_region(uint64_t regionId, uint64_t memoryServerId,
                         uint32_t uid, uint32_t gid);
     void resize_region(uint64_t regionId, size_t nbytes,
@@ -125,11 +99,9 @@ class Fam_CIS_Client : public Fam_CIS {
                                     mode_t permission, uint64_t memoryServerId,
                                     uint32_t uid, uint32_t gid);
 
-    Fam_Region_Item_Info lookup_region(string name, uint64_t memoryServerId,
-                                       uint32_t uid, uint32_t gid);
+    Fam_Region_Item_Info lookup_region(string name, uint32_t uid, uint32_t gid);
     Fam_Region_Item_Info lookup(string itemName, string regionName,
-                                uint64_t memoryServerId, uint32_t uid,
-                                uint32_t gid);
+                                uint32_t uid, uint32_t gid);
     Fam_Region_Item_Info
     check_permission_get_region_info(uint64_t regionId, uint64_t memoryServerId,
                                      uint32_t uid, uint32_t gid);
@@ -155,16 +127,15 @@ class Fam_CIS_Client : public Fam_CIS {
     void fam_unmap(void *local, uint64_t regionId, uint64_t offset,
                    uint64_t memoryServerId, uint32_t uid, uint32_t gid);
 
-    void *get_local_pointer(uint64_t regionId, uint64_t offset) { return NULL; }
-
     void acquire_CAS_lock(uint64_t offset, uint64_t memoryServerId);
     void release_CAS_lock(uint64_t offset, uint64_t memoryServerId);
 
-    int get_addr_size(size_t *addrSize, uint64_t memoryServerId);
-    int get_addr(void *addr, size_t addrSize, uint64_t memoryServerId);
+    size_t get_addr_size(uint64_t memoryServerId);
+    void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
 
   private:
-    Server_List serversInfo;
+    std::unique_ptr<Fam_CIS_Rpc::Stub> stub;
+    ::grpc::CompletionQueue *cq;
 };
 
 } // namespace openfam

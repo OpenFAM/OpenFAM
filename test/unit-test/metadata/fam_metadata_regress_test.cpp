@@ -42,8 +42,8 @@
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
 
-#include "../../src/metadata/fam_metadata_service.h"
-#include "src/metadata/fam_metadata_service_direct.h"
+#include "metadata_service/fam_metadata_service.h"
+#include "metadata_service/fam_metadata_service_direct.h"
 
 #include "common/fam_test_config.h"
 

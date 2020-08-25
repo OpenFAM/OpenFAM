@@ -29,7 +29,7 @@ endfunction()
 
 #add tests
 add_fam_test(fam_metadata_test)
-if (ENABLE_METADATA_RPC)
+if (ENABLE_METADATA_SERVICE_RPC)
 	message(STATUS "Building test case for metadata RPC interface")
 	add_fam_test(fam_metadata_rpc_test)
 endif()

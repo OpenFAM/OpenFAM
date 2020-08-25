@@ -73,8 +73,8 @@ void nvmm_profile_dump(){MEMSERVER_PROFILE_END(NVMM)
 Memserver_Allocator::Memserver_Allocator() {
     MEMSERVER_PROFILE_INIT(NVMM)
     MEMSERVER_PROFILE_START_TIME(NVMM)
-    heapMap = new HeapMap();
     StartNVMM();
+    heapMap = new HeapMap();
     memoryManager = MemoryManager::GetInstance();
     (void)pthread_mutex_init(&heapMapLock, NULL);
     init_poolId_bmap();
@@ -121,9 +121,7 @@ void Memserver_Allocator::init_poolId_bmap() {
  * permission - Permission for the region
  * uid/gid - user id and group id
  */
-int Memserver_Allocator::create_region(string name, uint64_t &regionId,
-                                       size_t nbytes, mode_t permission,
-                                       uint32_t uid, uint32_t gid) {
+uint64_t Memserver_Allocator::create_region(size_t nbytes) {
     ostringstream message;
     message << "Error While creating region : ";
 
@@ -134,7 +132,7 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
     PoolId poolId = get_free_poolId();
     if (poolId == (PoolId)NO_FREE_POOLID) {
         message << "No free pool ID";
-        THROW_ERRNO_MSG(Memserver_Exception, NO_FREE_POOLID,
+        THROW_ERRNO_MSG(Memory_Service_Exception, NO_FREE_POOLID,
                         message.str().c_str());
     }
 
@@ -154,7 +152,7 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         // Reset the poolId bit in the bitmap
         bitmap_reset(bmap, poolId);
         message << "Heap not created";
-        THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_CREATED,
+        THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_CREATED,
                         message.str().c_str());
     }
     Heap *heap = 0;
@@ -166,7 +164,7 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         // Reset the poolId bit in the bitmap
         bitmap_reset(bmap, poolId);
         delete heap;
-        THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_FOUND,
+        THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_FOUND,
                         message.str().c_str());
     }
     NVMM_PROFILE_START_OPS()
@@ -177,10 +175,10 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         // Reset the poolId bit in the bitmap
         bitmap_reset(bmap, poolId);
         delete heap;
-        THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_OPENED,
+        THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_OPENED,
                         message.str().c_str());
     }
-    regionId = (uint64_t)poolId;
+    uint64_t regionId = (uint64_t)poolId;
 
     NVMM_PROFILE_START_OPS()
     pthread_mutex_lock(&heapMapLock);
@@ -200,13 +198,14 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
         if (ret != NO_ERROR) {
             message << "Can not destroy heap";
         }
-        THROW_ERRNO_MSG(Memserver_Exception, RBT_HEAP_NOT_INSERTED,
+        THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_INSERTED,
                         message.str().c_str());
     }
 
     pthread_mutex_unlock(&heapMapLock);
     NVMM_PROFILE_END_OPS(HeapMapInsertOp);
-    return ALLOC_NO_ERROR;
+
+    return regionId;
 }
 
 /*
@@ -215,8 +214,7 @@ int Memserver_Allocator::create_region(string name, uint64_t &regionId,
  * uid - user id of the process
  * gid - group id of the process
  */
-int Memserver_Allocator::destroy_region(uint64_t regionId, uint32_t uid,
-                                        uint32_t gid) {
+void Memserver_Allocator::destroy_region(uint64_t regionId) {
     ostringstream message;
     message << "Error While destroy region : ";
     int ret;
@@ -237,7 +235,7 @@ int Memserver_Allocator::destroy_region(uint64_t regionId, uint32_t uid,
         NVMM_PROFILE_END_OPS(Heap_Close)
         if (ret != NO_ERROR) {
             message << "Can not close heap";
-            THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_CLOSED,
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_CLOSED,
                             message.str().c_str());
         }
         delete heap;
@@ -248,14 +246,12 @@ int Memserver_Allocator::destroy_region(uint64_t regionId, uint32_t uid,
     NVMM_PROFILE_END_OPS(DestroyHeap)
     if (ret != NO_ERROR) {
         message << "Can not destroy heap";
-        THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_DESTROYED,
+        THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_DESTROYED,
                         message.str().c_str());
     }
 
     // Reset the regionId bit in the bitmap
     bitmap_reset(bmap, regionId);
-
-    return ALLOC_NO_ERROR;
 }
 
 /*
@@ -263,8 +259,7 @@ int Memserver_Allocator::destroy_region(uint64_t regionId, uint32_t uid,
  * regionId - region Id of the region to be resized.
  * nbytes - new size of the region
  */
-int Memserver_Allocator::resize_region(uint64_t regionId, uint32_t uid,
-                                       uint32_t gid, size_t nbytes) {
+void Memserver_Allocator::resize_region(uint64_t regionId, size_t nbytes) {
     ostringstream message;
     message << "Error while resizing the region";
     int ret;
@@ -273,16 +268,11 @@ int Memserver_Allocator::resize_region(uint64_t regionId, uint32_t uid,
     HeapMap::iterator it = get_heap(regionId, heap);
 
     if (it == heapMap->end()) {
-        ret = open_heap(regionId);
-        if (ret != ALLOC_NO_ERROR) {
-            message << "Opening of heap failed";
-            THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_OPENED,
-                            message.str().c_str());
-        }
+        open_heap(regionId);
         it = get_heap(regionId, heap);
         if (it == heapMap->end()) {
             message << "Can not find heap in map";
-            THROW_ERRNO_MSG(Memserver_Exception, RBT_HEAP_NOT_FOUND,
+            THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_FOUND,
                             message.str().c_str());
         }
     }
@@ -293,10 +283,9 @@ int Memserver_Allocator::resize_region(uint64_t regionId, uint32_t uid,
     NVMM_PROFILE_END_OPS(Heap_Resize)
     if (ret != NO_ERROR) {
         message << "heap resize failed";
-        THROW_ERRNO_MSG(Memserver_Exception, RESIZE_FAILED,
+        THROW_ERRNO_MSG(Memory_Service_Exception, RESIZE_FAILED,
                         message.str().c_str());
     }
-    return ALLOC_NO_ERROR;
 }
 
 /*
@@ -308,30 +297,21 @@ int Memserver_Allocator::resize_region(uint64_t regionId, uint32_t uid,
  * dataitem - dataitem descriptor
  * localpointer - local pointer for dataitem offset
  */
-int Memserver_Allocator::allocate(string name, uint64_t regionId, size_t nbytes,
-                                  uint64_t &offset, mode_t permission,
-                                  uint32_t uid, uint32_t gid,
-                                  void *&localPointer) {
+uint64_t Memserver_Allocator::allocate(uint64_t regionId, size_t nbytes) {
     ostringstream message;
     message << "Error While allocating dataitem : ";
-    int ret;
     size_t tmpSize;
-
+    uint64_t offset;
     // Call NVMM to create a new data item
     Heap *heap = 0;
 
     HeapMap::iterator it = get_heap(regionId, heap);
     if (it == heapMap->end()) {
-        ret = open_heap(regionId);
-        if (ret != ALLOC_NO_ERROR) {
-            message << "Opening of heap failed";
-            THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_OPENED,
-                            message.str().c_str());
-        }
+        open_heap(regionId);
         it = get_heap(regionId, heap);
         if (it == heapMap->end()) {
             message << "Can not find heap in map";
-            THROW_ERRNO_MSG(Memserver_Exception, RBT_HEAP_NOT_FOUND,
+            THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_FOUND,
                             message.str().c_str());
         }
     }
@@ -354,7 +334,7 @@ int Memserver_Allocator::allocate(string name, uint64_t regionId, size_t nbytes,
             }
         } catch (...) {
             message << "Heap Merge() failed";
-            THROW_ERRNO_MSG(Memserver_Exception, HEAP_MERGE_FAILED,
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_MERGE_FAILED,
                             message.str().c_str());
         }
         {
@@ -364,29 +344,21 @@ int Memserver_Allocator::allocate(string name, uint64_t regionId, size_t nbytes,
         }
         if (!offset) {
             message << "alloc() failed";
-            THROW_ERRNO_MSG(Memserver_Exception, HEAP_ALLOCATE_FAILED,
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_ALLOCATE_FAILED,
                             message.str().c_str());
         }
     }
 
-    // Register the data item with metadata service
-    {
-        NVMM_PROFILE_START_OPS()
-        localPointer = heap->OffsetToLocal(offset);
-        NVMM_PROFILE_END_OPS(Heap_OffsetToLocal)
-    }
-    return ALLOC_NO_ERROR;
+    return offset;
 }
 
 /*
  *
  * Deallocates a dataitem in a region at the given offset.
  */
-int Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset,
-                                    uint32_t uid, uint32_t gid) {
+void Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset) {
     ostringstream message;
     message << "Error While deallocating dataitem : ";
-    int ret;
     // call NVMM to destroy the data item
     Heap *heap = 0;
 
@@ -397,27 +369,26 @@ int Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset,
         NVMM_PROFILE_END_OPS(Heap_Free)
     } else {
         // Heap not found in map. Get the heap from NVMM
-        ret = open_heap(regionId);
-        if (ret != ALLOC_NO_ERROR) {
-            message << "Opening of heap failed";
-            THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_OPENED,
-                            message.str().c_str());
-        }
+        open_heap(regionId);
         it = get_heap(regionId, heap);
         if (it == heapMap->end()) {
             message << "Can not find heap in map";
-            THROW_ERRNO_MSG(Memserver_Exception, RBT_HEAP_NOT_FOUND,
+            THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_FOUND,
                             message.str().c_str());
         }
         NVMM_PROFILE_START_OPS()
         heap->Free(offset);
         NVMM_PROFILE_END_OPS(Heap_Free)
     }
-    return ALLOC_NO_ERROR;
 }
 
-void Memserver_Allocator::copy(void *dest, void *src, uint64_t nbytes) {
-    fam_memcpy(dest, src, nbytes);
+void Memserver_Allocator::copy(uint64_t srcRegionId, uint64_t srcOffset,
+                               uint64_t destRegionId, uint64_t destOffset,
+                               uint64_t size) {
+    void *src = get_local_pointer(srcRegionId, srcOffset);
+    void *dest = get_local_pointer(destRegionId, destOffset);
+
+    fam_memcpy(dest, src, size);
 }
 
 void *Memserver_Allocator::get_local_pointer(uint64_t regionId,
@@ -425,20 +396,14 @@ void *Memserver_Allocator::get_local_pointer(uint64_t regionId,
     ostringstream message;
     message << "Error While getting localpointer to dataitem : ";
     Heap *heap = 0;
-    int ret;
 
     HeapMap::iterator it = get_heap(regionId, heap);
     if (it == heapMap->end()) {
-        ret = open_heap(regionId);
-        if (ret != ALLOC_NO_ERROR) {
-            message << "Opening of heap failed";
-            THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_OPENED,
-                            message.str().c_str());
-        }
+        open_heap(regionId);
         it = get_heap(regionId, heap);
         if (it == heapMap->end()) {
             message << "Can not find heap in map";
-            THROW_ERRNO_MSG(Memserver_Exception, NO_LOCAL_POINTER,
+            THROW_ERRNO_MSG(Memory_Service_Exception, NO_LOCAL_POINTER,
                             message.str().c_str());
         }
     }
@@ -449,7 +414,7 @@ void *Memserver_Allocator::get_local_pointer(uint64_t regionId,
     return localPtr;
 }
 
-int Memserver_Allocator::open_heap(uint64_t regionId) {
+void Memserver_Allocator::open_heap(uint64_t regionId) {
     ostringstream message;
     message << "Error While opening heap : ";
     Heap *heap = 0;
@@ -467,7 +432,7 @@ int Memserver_Allocator::open_heap(uint64_t regionId) {
         if (ret != NO_ERROR) {
             message << "heap not found";
             delete heap;
-            THROW_ERRNO_MSG(Memserver_Exception, HEAP_NOT_OPENED,
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_OPENED,
                             message.str().c_str());
         }
         NVMM_PROFILE_START_OPS()
@@ -490,10 +455,7 @@ int Memserver_Allocator::open_heap(uint64_t regionId) {
             delete heap;
         }
         NVMM_PROFILE_END_OPS(HeapMapFindOp)
-
-        return ALLOC_NO_ERROR;
     }
-    return ALLOC_NO_ERROR;
 }
 
 HeapMap::iterator Memserver_Allocator::get_heap(uint64_t regionId,

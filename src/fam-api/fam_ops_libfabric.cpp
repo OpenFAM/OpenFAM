@@ -1,8 +1,9 @@
 /*
  * fam_ops_libfabric.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -53,18 +54,18 @@ Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
     delete defContexts;
     delete fiAddrs;
     delete fiMrs;
+    free(service);
     free(provider);
     free(serverAddrName);
 }
 
-Fam_Ops_Libfabric::Fam_Ops_Libfabric(const char *memServerName,
-                                     const char *libfabricPort, bool source,
-                                     char *libfabricProvider,
+Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
                                      Fam_Thread_Model famTM,
                                      Fam_Allocator_Client *famAlloc,
                                      Fam_Context_Model famCM) {
     std::ostringstream message;
-    name.insert({0, memServerName});
+    memoryServerName = NULL;
+    service = NULL;
     provider = strdup(libfabricProvider);
     isSource = source;
     famThreadModel = famTM;
@@ -84,20 +85,23 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(const char *memServerName,
     serverAddrNameLen = 0;
     serverAddrName = NULL;
 
+    numMemoryNodes = 0;
     if (!isSource && famAllocator == NULL) {
         message << "Fam Invalid Option Fam_Alloctor: NULL value specified"
                 << famContextModel;
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 }
-Fam_Ops_Libfabric::Fam_Ops_Libfabric(MemServerMap memServerList,
-                                     const char *libfabricPort, bool source,
-                                     char *libfabricProvider,
+
+Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
                                      Fam_Thread_Model famTM,
                                      Fam_Allocator_Client *famAlloc,
-                                     Fam_Context_Model famCM) {
+                                     Fam_Context_Model famCM,
+                                     const char *memServerName,
+                                     const char *libfabricPort) {
     std::ostringstream message;
-    name = memServerList;
+    memoryServerName = strdup(memServerName);
+    service = strdup(libfabricPort);
     provider = strdup(libfabricProvider);
     isSource = source;
     famThreadModel = famTM;
@@ -117,6 +121,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(MemServerMap memServerList,
     serverAddrNameLen = 0;
     serverAddrName = NULL;
 
+    numMemoryNodes = 0;
     if (!isSource && famAllocator == NULL) {
         message << "Fam Invalid Option Fam_Alloctor: NULL value specified"
                 << famContextModel;
@@ -128,11 +133,6 @@ int Fam_Ops_Libfabric::initialize() {
     std::ostringstream message;
     int ret = 0;
 
-    if (name.size() == 0) {
-        message << "Libfabric initialize: memory server name not specified";
-        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
-    }
-
     // Initialize the mutex lock
     (void)pthread_rwlock_init(&fiMrLock, NULL);
 
@@ -140,25 +140,27 @@ int Fam_Ops_Libfabric::initialize() {
     if (famContextModel == FAM_CONTEXT_REGION)
         (void)pthread_mutex_init(&ctxLock, NULL);
 
-    uint64_t nodeId = 0;
-
-    const char *memServerName = name[nodeId].c_str();
-    if ((ret = fabric_initialize(memServerName, NULL, isSource, provider, &fi,
-                                 &fabric, &eq, &domain, famThreadModel)) < 0) {
+    if ((ret = fabric_initialize(memoryServerName, service, isSource, provider,
+                                 &fi, &fabric, &eq, &domain, famThreadModel)) <
+        0) {
         return ret;
     }
-
     // Initialize address vector
     if (fi->ep_attr->type == FI_EP_RDM) {
         if ((ret = fabric_initialize_av(fi, domain, eq, &av)) < 0) {
             return ret;
         }
     }
-    for (nodeId = 0; nodeId < name.size(); nodeId++) {
 
-        // Insert the memory server address into address vector
-        // Only if it is not source
-        if (!isSource) {
+    // Insert the memory server address into address vector
+    // Only if it is not source
+    if (!isSource) {
+        numMemoryNodes = famAllocator->get_num_memory_servers();
+        if (numMemoryNodes == 0) {
+            message << "Libfabric initialize: memory server name not specified";
+            THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+        }
+        for (uint64_t nodeId = 0; nodeId < numMemoryNodes; nodeId++) {
             // Request memory server address from famAllocator
             ret = famAllocator->get_addr_size(&serverAddrNameLen, nodeId);
             if (serverAddrNameLen <= 0) {
@@ -191,36 +193,36 @@ int Fam_Ops_Libfabric::initialize() {
                 // TODO: Log error
                 return ret;
             }
-        } else {
-            // This is memory server. Populate the serverAddrName and
-            // serverAddrNameLen from libfabric
-            Fam_Context *tmpCtx = new Fam_Context(fi, domain, famThreadModel);
-            ret = fabric_enable_bind_ep(fi, av, eq, tmpCtx->get_ep());
-            if (ret < 0) {
-                message << "Fam libfabric fabric_enable_bind_ep failed: "
-                        << fabric_strerror(ret);
-                THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
-            }
-
-            serverAddrNameLen = 0;
-            ret = fabric_getname_len(tmpCtx->get_ep(), &serverAddrNameLen);
-            if (serverAddrNameLen <= 0) {
-                message << "Fam libfabric fabric_getname_len failed: "
-                        << fabric_strerror(ret);
-                THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
-            }
-            serverAddrName = calloc(1, serverAddrNameLen);
-            ret = fabric_getname(tmpCtx->get_ep(), serverAddrName,
-                                 &serverAddrNameLen);
-            if (ret < 0) {
-                message << "Fam libfabric fabric_getname failed: "
-                        << fabric_strerror(ret);
-                THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
-            }
-
-            // Save this context to defContexts on memoryserver
-            defContexts->insert({nodeId, tmpCtx});
         }
+    } else {
+        // This is memory server. Populate the serverAddrName and
+        // serverAddrNameLen from libfabric
+        Fam_Context *tmpCtx = new Fam_Context(fi, domain, famThreadModel);
+        ret = fabric_enable_bind_ep(fi, av, eq, tmpCtx->get_ep());
+        if (ret < 0) {
+            message << "Fam libfabric fabric_enable_bind_ep failed: "
+                    << fabric_strerror(ret);
+            THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+        }
+
+        serverAddrNameLen = 0;
+        ret = fabric_getname_len(tmpCtx->get_ep(), &serverAddrNameLen);
+        if (serverAddrNameLen <= 0) {
+            message << "Fam libfabric fabric_getname_len failed: "
+                    << fabric_strerror(ret);
+            THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+        }
+        serverAddrName = calloc(1, serverAddrNameLen);
+        ret = fabric_getname(tmpCtx->get_ep(), serverAddrName,
+                             &serverAddrNameLen);
+        if (ret < 0) {
+            message << "Fam libfabric fabric_getname failed: "
+                    << fabric_strerror(ret);
+            THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+        }
+
+        // Save this context to defContexts on memoryserver
+        defContexts->insert({0, tmpCtx});
     }
     fabric_iov_limit = fi->tx_attr->rma_iov_limit;
 
@@ -324,8 +326,6 @@ void Fam_Ops_Libfabric::finalize() {
         fi_close(&av->fid);
         av = NULL;
     }
-
-    name.clear();
 }
 
 int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,

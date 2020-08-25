@@ -29,6 +29,6 @@ endfunction()
 add_fam_test(fam_allocator_reg_test)
 add_fam_test(fam_resize_reg_test)
 
-if (${TEST_ALLOCATOR} STREQUAL "SHM")
+if (${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
 	add_fam_test(fam_map_reg_test)
 endif()

@@ -55,18 +55,18 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
 
     uint64_t invalidKey = -1;
 
-    char *name = strdup("127.0.0.1");
-    char *service = strdup(TEST_LIBFABRIC_PORT);
+    char *name = strdup(TEST_CIS_SERVER);
     char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
-    // initialize gRPC client
-    std::map<uint64_t, string> nameMap;
-    nameMap.insert({0, name});
-    Fam_Allocator_Client *famAllocator =
-        new Fam_Allocator_Client(nameMap, atoi(TEST_GRPC_PORT));
-
-    Fam_Ops_Libfabric *famOps = new Fam_Ops_Libfabric(
-        name, service, false, provider, FAM_THREAD_MULTIPLE, famAllocator,
-        FAM_CONTEXT_DEFAULT);
+    char *cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);
+    Fam_Allocator_Client *famAllocator;
+    if (strcmp(cisInterfaceType, "rpc") == 0) {
+        famAllocator = new Fam_Allocator_Client(name, atoi(TEST_GRPC_PORT));
+    } else {
+        famAllocator = new Fam_Allocator_Client();
+    }
+    Fam_Ops_Libfabric *famOps =
+        new Fam_Ops_Libfabric(false, provider, FAM_THREAD_MULTIPLE,
+                              famAllocator, FAM_CONTEXT_DEFAULT);
 
     EXPECT_NO_THROW(famOps->initialize());
 
@@ -99,7 +99,8 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
 
     delete item;
     delete desc;
-
+    delete famAllocator;
+    delete famOps;
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -111,7 +112,6 @@ int main(int argc, char **argv) {
     my_fam = new fam();
 
     init_fam_options(&fam_opts);
-    fam_opts.memoryServer = strdup("0:127.0.0.1");
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 

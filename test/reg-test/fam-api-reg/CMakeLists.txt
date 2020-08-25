@@ -68,7 +68,7 @@ add_fam_test(fam_scatter_gather_blocking_mt_reg_test)
 add_fam_test(fam_stat_reg_test)
 
 
-if (${TEST_ALLOCATOR} STREQUAL "grpc")
+if (${TEST_OPENFAM_MODEL} STREQUAL "memory_server")
 	add_fam_test(fam_put_get_negative_test)
 	add_fam_test(fam_fence_reg_test)
 	add_fam_test(fam_invalidkey_reg_test)

@@ -59,26 +59,26 @@ void metadata_server_profile_dump() {
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_DUMP_PROFILE_DATA(METADATA_SERVER, name, prof_##name)
-#include "metadata/metadata_server_counters.tbl"
+#include "metadata_service/metadata_server_counters.tbl"
 
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_PROFILE_TOTAL(METADATA_SERVER, prof_##name)
-#include "metadata/metadata_server_counters.tbl"
+#include "metadata_service/metadata_server_counters.tbl"
     MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_SERVER)
 }
 
 Fam_Metadata_Service_Server::Fam_Metadata_Service_Server(uint64_t rpcPort,
                                                          char *name)
     : serverAddress(name), port(rpcPort) {
-    metadataManager = new Fam_Metadata_Service_Direct();
+    metadataService = new Fam_Metadata_Service_Direct();
     numClients = 0;
     MEMSERVER_PROFILE_INIT(METADATA_SERVER)
     MEMSERVER_PROFILE_START_TIME(METADATA_SERVER)
 }
 
 Fam_Metadata_Service_Server::~Fam_Metadata_Service_Server() {
-    delete metadataManager;
+    delete metadataService;
 }
 
 ::grpc::Status Fam_Metadata_Service_Server::reset_profile(
@@ -86,7 +86,7 @@ Fam_Metadata_Service_Server::~Fam_Metadata_Service_Server() {
     ::Fam_Metadata_Gen_Response *response) {
     MEMSERVER_PROFILE_INIT(METADATA_SERVER)
     MEMSERVER_PROFILE_START_TIME(METADATA_SERVER)
-    metadataManager->reset_profile();
+    metadataService->reset_profile();
     return ::grpc::Status::OK;
 }
 
@@ -94,7 +94,7 @@ Fam_Metadata_Service_Server::~Fam_Metadata_Service_Server() {
     ::grpc::ServerContext *context, const ::Fam_Metadata_Gen_Request *request,
     ::Fam_Metadata_Gen_Response *response) {
     METADATA_SERVER_PROFILE_DUMP();
-    metadataManager->dump_profile();
+    metadataService->dump_profile();
     return ::grpc::Status::OK;
 }
 
@@ -138,14 +138,14 @@ void Fam_Metadata_Service_Server::run() {
     Fam_Region_Metadata *region = new Fam_Region_Metadata();
     region->regionId = request->region_id();
     strncpy(region->name, request->name().c_str(),
-            metadataManager->metadata_maxkeylen());
+            metadataService->metadata_maxkeylen());
     region->offset = INVALID_OFFSET;
     region->perm = (mode_t)request->perm();
     region->size = request->size();
     region->uid = request->uid();
     region->gid = request->gid();
     try {
-        metadataManager->metadata_insert_region(
+        metadataService->metadata_insert_region(
             request->key_region_id(), request->key_region_name(), region);
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
@@ -162,9 +162,9 @@ void Fam_Metadata_Service_Server::run() {
     METADATA_SERVER_PROFILE_START_OPS()
     try {
         if (request->has_key_region_id())
-            metadataManager->metadata_delete_region(request->key_region_id());
+            metadataService->metadata_delete_region(request->key_region_id());
         else
-            metadataManager->metadata_delete_region(request->key_region_name());
+            metadataService->metadata_delete_region(request->key_region_name());
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -182,10 +182,10 @@ void Fam_Metadata_Service_Server::run() {
     bool ret;
     try {
         if (request->has_key_region_id())
-            ret = metadataManager->metadata_find_region(
+            ret = metadataService->metadata_find_region(
                 request->key_region_id(), region);
         else
-            ret = metadataManager->metadata_find_region(
+            ret = metadataService->metadata_find_region(
                 request->key_region_name(), region);
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
@@ -201,7 +201,7 @@ void Fam_Metadata_Service_Server::run() {
         response->set_perm(region.perm);
         response->set_uid(region.uid);
         response->set_gid(region.gid);
-        response->set_maxkeylen(metadataManager->metadata_maxkeylen());
+        response->set_maxkeylen(metadataService->metadata_maxkeylen());
     }
     METADATA_SERVER_PROFILE_END_OPS(server_metadata_find_region);
     return ::grpc::Status::OK;
@@ -214,7 +214,7 @@ void Fam_Metadata_Service_Server::run() {
     Fam_Region_Metadata *region = new Fam_Region_Metadata();
     region->regionId = request->region_id();
     strncpy(region->name, request->name().c_str(),
-            metadataManager->metadata_maxkeylen());
+            metadataService->metadata_maxkeylen());
     region->offset = INVALID_OFFSET;
     region->perm = (mode_t)request->perm();
     region->size = request->size();
@@ -222,10 +222,10 @@ void Fam_Metadata_Service_Server::run() {
     region->gid = request->gid();
     try {
         if (request->has_key_region_id())
-            metadataManager->metadata_modify_region(request->key_region_id(),
+            metadataService->metadata_modify_region(request->key_region_id(),
                                                     region);
         else
-            metadataManager->metadata_modify_region(request->key_region_name(),
+            metadataService->metadata_modify_region(request->key_region_name(),
                                                     region);
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
@@ -243,7 +243,7 @@ void Fam_Metadata_Service_Server::run() {
     Fam_DataItem_Metadata *dataitem = new Fam_DataItem_Metadata();
     dataitem->regionId = request->region_id();
     strncpy(dataitem->name, request->name().c_str(),
-            metadataManager->metadata_maxkeylen());
+            metadataService->metadata_maxkeylen());
     dataitem->offset = request->offset();
     dataitem->size = request->size();
     dataitem->perm = (mode_t)request->perm();
@@ -251,11 +251,11 @@ void Fam_Metadata_Service_Server::run() {
     dataitem->gid = request->gid();
     try {
         if (request->has_key_region_id())
-            metadataManager->metadata_insert_dataitem(
+            metadataService->metadata_insert_dataitem(
                 request->key_dataitem_id(), request->key_region_id(), dataitem,
                 request->key_dataitem_name());
         else
-            metadataManager->metadata_insert_dataitem(
+            metadataService->metadata_insert_dataitem(
                 request->key_dataitem_id(), request->key_region_name(),
                 dataitem, request->key_dataitem_name());
     } catch (Fam_Exception &e) {
@@ -273,18 +273,18 @@ void Fam_Metadata_Service_Server::run() {
     METADATA_SERVER_PROFILE_START_OPS()
     try {
         if (request->has_key_dataitem_id() && request->has_key_region_id())
-            metadataManager->metadata_delete_dataitem(
+            metadataService->metadata_delete_dataitem(
                 request->key_dataitem_id(), request->key_region_id());
         else if (request->has_key_dataitem_id() &&
                  request->has_key_region_name())
-            metadataManager->metadata_delete_dataitem(
+            metadataService->metadata_delete_dataitem(
                 request->key_dataitem_id(), request->key_region_name());
         else if (request->has_key_dataitem_name() &&
                  request->has_key_region_id())
-            metadataManager->metadata_delete_dataitem(
+            metadataService->metadata_delete_dataitem(
                 request->key_dataitem_name(), request->key_region_id());
         else
-            metadataManager->metadata_delete_dataitem(
+            metadataService->metadata_delete_dataitem(
                 request->key_dataitem_name(), request->key_region_name());
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
@@ -303,20 +303,20 @@ void Fam_Metadata_Service_Server::run() {
     bool ret;
     try {
         if (request->has_key_dataitem_id() && request->has_key_region_id())
-            ret = metadataManager->metadata_find_dataitem(
+            ret = metadataService->metadata_find_dataitem(
                 request->key_dataitem_id(), request->key_region_id(), dataitem);
         else if (request->has_key_dataitem_id() &&
                  request->has_key_region_name())
-            ret = metadataManager->metadata_find_dataitem(
+            ret = metadataService->metadata_find_dataitem(
                 request->key_dataitem_id(), request->key_region_name(),
                 dataitem);
         else if (request->has_key_dataitem_name() &&
                  request->has_key_region_id())
-            ret = metadataManager->metadata_find_dataitem(
+            ret = metadataService->metadata_find_dataitem(
                 request->key_dataitem_name(), request->key_region_id(),
                 dataitem);
         else
-            ret = metadataManager->metadata_find_dataitem(
+            ret = metadataService->metadata_find_dataitem(
                 request->key_dataitem_name(), request->key_region_name(),
                 dataitem);
     } catch (Fam_Exception &e) {
@@ -333,7 +333,7 @@ void Fam_Metadata_Service_Server::run() {
         response->set_perm(dataitem.perm);
         response->set_uid(dataitem.uid);
         response->set_gid(dataitem.gid);
-        response->set_maxkeylen(metadataManager->metadata_maxkeylen());
+        response->set_maxkeylen(metadataService->metadata_maxkeylen());
     }
     METADATA_SERVER_PROFILE_END_OPS(server_metadata_find_dataitem);
     return ::grpc::Status::OK;
@@ -346,7 +346,7 @@ void Fam_Metadata_Service_Server::run() {
     Fam_DataItem_Metadata *dataitem = new Fam_DataItem_Metadata();
     dataitem->regionId = request->region_id();
     strncpy(dataitem->name, request->name().c_str(),
-            metadataManager->metadata_maxkeylen());
+            metadataService->metadata_maxkeylen());
     dataitem->offset = request->offset();
     dataitem->size = request->size();
     dataitem->perm = (mode_t)request->perm();
@@ -354,20 +354,20 @@ void Fam_Metadata_Service_Server::run() {
     dataitem->gid = request->gid();
     try {
         if (request->has_key_dataitem_id() && request->has_key_region_id()) {
-            metadataManager->metadata_modify_dataitem(
+            metadataService->metadata_modify_dataitem(
                 request->key_dataitem_id(), request->key_region_id(), dataitem);
         } else if (request->has_key_dataitem_id() &&
                    request->has_key_region_name()) {
-            metadataManager->metadata_modify_dataitem(
+            metadataService->metadata_modify_dataitem(
                 request->key_dataitem_id(), request->key_region_name(),
                 dataitem);
         } else if (request->has_key_dataitem_name() &&
                    request->has_key_region_id()) {
-            metadataManager->metadata_modify_dataitem(
+            metadataService->metadata_modify_dataitem(
                 request->key_dataitem_name(), request->key_region_id(),
                 dataitem);
         } else {
-            metadataManager->metadata_modify_dataitem(
+            metadataService->metadata_modify_dataitem(
                 request->key_dataitem_name(), request->key_region_name(),
                 dataitem);
         }
@@ -394,7 +394,7 @@ void Fam_Metadata_Service_Server::run() {
     region->gid = request->gid_meta();
     region->perm = (mode_t)request->perm();
 
-    ret = metadataManager->metadata_check_permissions(
+    ret = metadataService->metadata_check_permissions(
         region, static_cast<metadata_region_item_op_t>(ops_value),
         request->uid_in(), request->gid_in());
 
@@ -417,7 +417,7 @@ void Fam_Metadata_Service_Server::run() {
     dataitem->gid = request->gid_meta();
     dataitem->perm = (mode_t)request->perm();
 
-    ret = metadataManager->metadata_check_permissions(
+    ret = metadataService->metadata_check_permissions(
         dataitem, static_cast<metadata_region_item_op_t>(ops_value),
         request->uid_in(), request->gid_in());
 
@@ -432,7 +432,7 @@ void Fam_Metadata_Service_Server::run() {
     METADATA_SERVER_PROFILE_START_OPS()
     size_t ret;
     try {
-        ret = metadataManager->metadata_maxkeylen();
+        ret = metadataService->metadata_maxkeylen();
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());

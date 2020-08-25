@@ -45,8 +45,8 @@ typedef enum {
     VERSION = 0,
     /** Default Region Name to be used by OpenFAM */
     DEFAULT_REGION_NAME,
-    /** Memory Server to be used by OpenFAM */
-    MEMORY_SERVER,
+    /** CIS server to be used by OpenFAM */
+    CIS_SERVER,
     /** Port to be used by OpenFam grpc memory allocator */
     GRPC_PORT,
     /** Libfabric provider to be used by OpenFam libfabric datapath operations;
@@ -54,8 +54,11 @@ typedef enum {
     LIBFABRIC_PROVIDER,
     /** Fam thread model */
     FAM_THREAD_MODEL,
-    /** Allocator to be used, default is Grpc, Support NVMM also */
-    ALLOCATOR,
+    /** CIS interface to be used, default is RPC, Support Direct also */
+    CIS_INTERFACE_TYPE,
+    /** OpenFAM model to be used; default is memory_server, Other option is
+       shared_memory */
+    OPENFAM_MODEL,
     /** Fam Context model */
     FAM_CONTEXT_MODEL,
     /** Total count of PEs */
@@ -67,9 +70,6 @@ typedef enum {
     /**Number of consumer threads in case of shared memory model**/
     NUM_CONSUMER,
     /** END of Option keys */
-    /* CIS Server to be used by OpenFAM*/
-    CIS_SERVER,
-
     END_OPT = -1
 } Fam_Option_Key;
 
@@ -82,8 +82,11 @@ typedef enum {
 #define FAM_CONTEXT_DEFAULT_STR "FAM_CONTEXT_DEFAULT"
 #define FAM_CONTEXT_REGION_STR "FAM_CONTEXT_REGION"
 
-#define FAM_OPTIONS_SHM_STR "SHM"
-#define FAM_OPTIONS_GRPC_STR "grpc"
+#define FAM_OPTIONS_SHM_STR "shared_memory"
+#define FAM_OPTIONS_MEMSERV_STR "memory_server"
+
+#define FAM_OPTIONS_DIRECT_STR "direct"
+#define FAM_OPTIONS_RPC_STR "rpc"
 
 #define FAM_OPTIONS_RUNTIME_PMIX_STR "PMIX"
 #define FAM_OPTIONS_RUNTIME_PMI2_STR "PMI2"
