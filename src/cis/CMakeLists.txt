@@ -25,9 +25,8 @@
 execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --grpc_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} --plugin=protoc-gen-grpc=${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.proto
                 COMMAND  ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --cpp_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.proto)
 
-#Add the .pb.cc and .grpc.pb.cc file path to LIBOPENFAM_SRC 
 set(LIBOPENFAM_SRC
-  ${LIBOPENFAM_SRC}
+  ${LIBOPENFAM_SRC} 
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.grpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_client.cpp
@@ -35,8 +34,17 @@ set(LIBOPENFAM_SRC
   PARENT_SCOPE
   )
 
-set(MEMORYSERVER_SRC
-  ${MEMORYSERVER_SRC}
+set(MEMORY_SERVER_SRC
+  ${MEMORY_SERVER_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.grpc.pb.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.pb.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_client.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_direct.cpp
+  PARENT_SCOPE
+  )
+
+set(CIS_SERVER_SRC
+  ${CIS_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.grpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_rpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_cis_client.cpp

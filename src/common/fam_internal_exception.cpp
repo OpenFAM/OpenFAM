@@ -33,10 +33,16 @@
 
 namespace openfam {
 
-Memserver_Exception::Memserver_Exception(enum Internal_Error serverErr,
-                                         const char *msg) {
+Memory_Service_Exception::Memory_Service_Exception(
+    enum Internal_Error serverErr, const char *msg) {
     famErrMsg = msg;
     famErr = convert_to_famerror(serverErr);
+}
+
+Memory_Service_Exception::Memory_Service_Exception(enum Fam_Error serverErr,
+                                                   const char *msg) {
+    famErrMsg = msg;
+    famErr = serverErr;
 }
 
 CIS_Exception::CIS_Exception(enum Internal_Error serverErr, const char *msg) {

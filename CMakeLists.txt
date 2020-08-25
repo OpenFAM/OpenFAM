@@ -30,7 +30,6 @@ endif()
 #
 # build type: Release (default) or Debug
 #
-message(STATUS "====================")
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   message(STATUS "Build type: Debug")
 elseif(CMAKE_BUILD_TYPE MATCHES Release)
@@ -48,7 +47,7 @@ endif()
 #
 
 #
-# enable profiling 
+# enable profiling
 #
 if(ENABLE_FAM_PROFILING)
   message(STATUS "FAM profiling enabled")
@@ -56,13 +55,13 @@ if(ENABLE_FAM_PROFILING)
 endif()
 
 if(ENABLE_LIBFABRIC_PROFILING)
-	message(STATUS "LIBFABRIC profiling enabled")
-	add_definitions(-DLIBFABRIC_PROFILE)
+        message(STATUS "LIBFABRIC profiling enabled")
+        add_definitions(-DLIBFABRIC_PROFILE)
 endif()
 
 if(ENABLE_MEMORYSERVER_PROFILING)
-	message(STATUS "Memory Server profile enabled")
-	add_definitions(-DMEMSERVER_PROFILE)
+        message(STATUS "Memory Server profile enabled")
+        add_definitions(-DMEMSERVER_PROFILE)
 endif()
 
 message(STATUS "====================")
@@ -71,11 +70,11 @@ message(STATUS "====================")
 # common gcc flags
 #
 # To Be Fixed :
-# -Wcast-qual : grpc headers throw up these warning during build 
+# -Wcast-qual : grpc headers throw up these warning during build
 # of gRPC generated files
 set(CMAKE_CXX_FLAGS "-std=c++11 -pthread")
 set(CMAKE_CXX_FLAGS
-	"${CMAKE_CXX_FLAGS} -Wall -W -Wextra -Wredundant-decls -Wunused -Wunused-macros -Wno-unused-parameter -Wcast-align -Wwrite-strings -Wmissing-field-initializers -Wendif-labels -Winit-self -Wlogical-op -Wpacked -Wstack-protector -Wformat=2 -Wswitch-enum -Wstrict-overflow=5 -Wpointer-arith -Wnormalized=nfc -Wno-long-long -Wconversion -Wunreachable-code")
+        "${CMAKE_CXX_FLAGS} -Wall -W -Wextra -Wredundant-decls -Wunused -Wunused-macros -Wno-unused-parameter -Wcast-align -Wwrite-strings -Wmissing-field-initializers -Wendif-labels -Winit-self -Wlogical-op -Wpacked -Wstack-protector -Wformat=2 -Wswitch-enum -Wstrict-overflow=5 -Wpointer-arith -Wnormalized=nfc -Wno-long-long -Wconversion -Wunreachable-code")
 # Convert all warnings to errors
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 
@@ -127,49 +126,67 @@ link_directories(/usr/local/lib)
 include_directories(/usr/local/include)
 
 #
-# Set openFAM options to be used only by test. Some individual test cases might override these options. 
+# Set openFAM options to be used only by test. Some individual test cases might override these options.
 #
 
 set( TEST_DEFAULT_REGION "Default" )
-set( TEST_MEMORY_SERVER "0:127.0.0.1" )
+set( TEST_OPENFAM_MODEL "memory_server" )
+set( TEST_CIS_INTERFACE_TYPE "rpc" )
+set( TEST_CIS_SERVER "127.0.0.1" )
 set( TEST_GRPC_PORT "8787" )
-set( TEST_LIBFABRIC_PORT "7500" )
 set( TEST_LIBFABRIC_PROVIDER "sockets" )
 set( TEST_FAM_THREAD_MODEL "FAM_THREAD_SERIALIZE" )
-set( TEST_ALLOCATOR "grpc" )
 set( TEST_FAM_CONTEXT_MODEL "FAM_CONTEXT_DEFAULT" )
 set( TEST_RUNTIME "PMIX" )
 set( TEST_NUM_CONSUMER "1" )
 
-if (ARG_ALLOCATOR)
-	set( TEST_ALLOCATOR ${ARG_ALLOCATOR})
+if (ARG_OPENFAM_MODEL)
+        set( TEST_OPENFAM_MODEL ${ARG_OPENFAM_MODEL})
 endif()
 
-if (ENABLE_METADATA_RPC)
-	message(STATUS "Using Metadata RPC interface")
-	add_definitions(-DMETADATA_RPC)
-	add_definitions(-DMETADATA_SERVER="127.0.0.1")
-	add_definitions(-DMETADATA_RPC_PORT=8989)
+if (${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
+        message(STATUS "Building shared memory model")
+        add_definitions(-DSHM)
 endif()
 
-if (${TEST_ALLOCATOR} STREQUAL "SHM") 
-	message(STATUS "Building shared memory model")
-	add_definitions(-DSHM)
+add_definitions(-DSERVER_LIST="0:127.0.0.1")
+add_definitions(-DMEMSERVER_LIBFABRIC_PORT="7500")
+add_definitions(-DMEMSERVER_LIBFABRIC_PROVIDER="sockets")
+add_definitions(-DMEMSERVER_ADDR="127.0.0.1")
+
+if (ENABLE_METADATA_SERVICE_RPC)
+	if(${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
+		message(STATUS "Error : Can not enable RPC in shared memory model")
+	else()
+        message(STATUS "Using Metadata service RPC interface")
+		add_definitions(-DMETADATA_SERVICE_RPC)
+		add_definitions(-DMETASERVER_RPC_PORT=8788)
+	endif()
+endif()
+
+if (ENABLE_MEMORY_SERVICE_RPC)
+	if(${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
+        message(STATUS "Error : Can not enable RPC in shared memory model")
+    else()
+        message(STATUS "Using memory service RPC interface")
+		add_definitions(-DMEMORY_SERVICE_RPC)
+		add_definitions(-DMEMSERVER_RPC_PORT=8789)
+	endif()
 endif()
 
 if (USE_FAM_PERSIST)
-	message(STATUS "Using FAM persist")
-	add_definitions(-DUSE_FAM_PERSIST)
+        message(STATUS "Using FAM persist")
+        add_definitions(-DUSE_FAM_PERSIST)
 endif()
 
 if (USE_FAM_INVALIDATE)
-	message(STATUS "Using FAM invalidate")
-	add_definitions(-DUSE_FAM_INVALIDATE)
+        message(STATUS "Using FAM invalidate")
+        add_definitions(-DUSE_FAM_INVALIDATE)
 endif()
 
 if (USE_BOOST_FIBER)
-	message(STATUS "Using Boost Fiber")
-	add_definitions(-DUSE_BOOST_FIBER)
+        message(STATUS "Using Boost Fiber")
+        add_definitions(-DUSE_BOOST_FIBER)
 endif()
 
 # Use native atomics

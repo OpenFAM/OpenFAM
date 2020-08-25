@@ -31,7 +31,7 @@
  *
  */
 
-#include "metadata/fam_metadata_service_client.h"
+#include "fam_metadata_service_client.h"
 #include "common/fam_memserver_profile.h"
 using namespace openfam;
 
@@ -60,12 +60,12 @@ void metadata_client_profile_dump() {
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_DUMP_PROFILE_DATA(METADATA_CLIENT, name, prof_##name)
-#include "metadata/metadata_client_counters.tbl"
+#include "metadata_service/metadata_client_counters.tbl"
 
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_PROFILE_TOTAL(METADATA_CLIENT, prof_##name)
-#include "metadata/metadata_client_counters.tbl"
+#include "metadata_service/metadata_client_counters.tbl"
     MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_CLIENT)
 }
 

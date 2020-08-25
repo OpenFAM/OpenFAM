@@ -55,15 +55,14 @@
 
 using namespace std;
 
-using MemServerMap = std::map<uint64_t, std::string>;
-
 namespace openfam {
 
-typedef struct {
+class Fam_Allocator_Client;
+struct Fam_Region_Map_t {
     uint64_t regionId;
     std::map<uint64_t, fid_mr *> *fiRegionMrs;
     pthread_rwlock_t fiRegionLock;
-} Fam_Region_Map_t;
+};
 
 class Fam_Ops_Libfabric : public Fam_Ops {
   public:
@@ -78,15 +77,14 @@ class Fam_Ops_Libfabric : public Fam_Ops {
      * @param famTM - Fam Thread Model
      * @return - {true(0), false(1), errNo(<0)}
      */
-    Fam_Ops_Libfabric(const char *name, const char *service, bool is_source,
-                      char *provider, Fam_Thread_Model famTM,
-                      Fam_Allocator_Client *famAlloc,
-                      Fam_Context_Model famCM = FAM_CONTEXT_DEFAULT);
 
-    Fam_Ops_Libfabric(MemServerMap name, const char *service, bool is_source,
-                      char *provider, Fam_Thread_Model famTM,
-                      Fam_Allocator_Client *famAlloc,
+    Fam_Ops_Libfabric(bool is_source, const char *provider,
+                      Fam_Thread_Model famTM, Fam_Allocator_Client *famAlloc,
                       Fam_Context_Model famCM = FAM_CONTEXT_DEFAULT);
+    Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
+                      Fam_Thread_Model famTM, Fam_Allocator_Client *famAlloc,
+                      Fam_Context_Model famCM, const char *memServerName,
+                      const char *libfabricPort);
     /**
      * Initialize the libfabric library. This method is required to be the first
      * method called when a process uses the OpenFAM library.
@@ -362,10 +360,12 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     char *get_provider() { return provider; };
 
   protected:
-    MemServerMap name;
+    // Server_Map name;
+    char *memoryServerName;
     char *service;
     char *provider;
     bool isSource;
+    uint64_t numMemoryNodes;
     struct fi_info *fi;
     struct fid_fabric *fabric;
     struct fid_eq *eq;

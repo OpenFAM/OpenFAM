@@ -74,7 +74,7 @@ int main() {
     // char *message = strdup("This is the datapath test");
 
     // Initialize openFAM API
-    fam_opts.allocator = strdup("NVMM");
+    fam_opts.openFamModel = strdup("shared_memory");
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {

@@ -65,19 +65,15 @@ class Memserver_Allocator {
     void memserver_allocator_finalize();
     void reset_profile();
     void dump_profile();
-    int create_region(string name, uint64_t &regionId, size_t nbytes,
-                      mode_t permission, uint32_t uid, uint32_t gid);
-    int destroy_region(uint64_t regionId, uint32_t uid, uint32_t gid);
-    int resize_region(uint64_t regionId, uint32_t uid, uint32_t gid,
-                      size_t nbytes);
-    int allocate(string name, uint64_t regionId, size_t nbytes,
-                 uint64_t &offset, mode_t permission, uint32_t uid,
-                 uint32_t gid, void *&localPointer);
-    int deallocate(uint64_t regionId, uint64_t offset, uint32_t uid,
-                   uint32_t gid);
-    void copy(void *dest, void *src, uint64_t nbytes);
+    uint64_t create_region(size_t nbytes);
+    void destroy_region(uint64_t regionId);
+    void resize_region(uint64_t regionId, size_t nbytes);
+    uint64_t allocate(uint64_t regionId, size_t nbytes);
+    void deallocate(uint64_t regionId, uint64_t offset);
+    void copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t destRegionId,
+              uint64_t destOffset, uint64_t size);
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
-    int open_heap(uint64_t regionId);
+    void open_heap(uint64_t regionId);
 
   private:
     MemoryManager *memoryManager;

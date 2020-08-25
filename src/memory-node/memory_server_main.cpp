@@ -1,6 +1,6 @@
 /*
- * memory_server_main.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * cis_server_main.cpp
+ * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -32,10 +32,10 @@
 #include <signal.h>
 #endif
 
-#include "cis/fam_cis_async_handler.h"
+#include "memory_service/fam_memory_service_server.h"
 #include <iostream>
 using namespace std;
-using namespace openfam;
+using namespace metadata;
 
 #ifdef OPENFAM_VERSION
 #define MEMORYSERVER_VERSION OPENFAM_VERSION
@@ -52,20 +52,10 @@ void signal_handler(int signum) {
 }
 #endif
 
-Fam_CIS_Async_Handler *cisServer;
-
-#ifdef MEMSERVER_PROFILE
-void profile_dump_handler(int signum) {
-    cout << "Dumping memory server profile data....!! #" << signum << endl;
-    cisServer->dump_profile();
-}
-#endif
+Fam_Memory_Service_Server *memoryService;
 
 int main(int argc, char *argv[]) {
-    // Example for commandline argument: ./memoryserver 127.0.0.1 8787 7500
-    // sockets
-
-    uint64_t rpcPort = 8787;
+    uint64_t rpcPort = 8789;
     char *name = strdup("127.0.0.1");
     char *libfabricPort = strdup("7500");
     char *provider = strdup("sockets");
@@ -77,27 +67,28 @@ int main(int argc, char *argv[]) {
             exit(0);
         } else if ((std::string(argv[i]) == "-h") ||
                    (std::string(argv[i]) == "--help")) {
-            cout << "Usage : \n"
-                 << "\t./memoryserver <options> \n"
-                 << "\n"
-                 << "Options : \n"
-                 << "\t-m/--memoryserver   : Address of the memory server "
-                    "(default value is localhost) \n"
-                 << "\n"
-                 << "\t-r/--rpcport        : RPC port (default value is 8787)\n"
-                 << "\n"
-                 << "\t-l/--libfabricport  : Libfabric port (default value is "
-                    "7500) \n"
-                 << "\n"
-                 << "\t-p/--provider       : Libfabric provider (default value "
-                    "is \"sockets\") \n"
-                 << "\n"
-                 << "\t-v/--version        : Display memory server version  \n"
-                 << "\n"
-                 << endl;
+            cout
+                << "Usage : \n"
+                << "\t./memory_server <options> \n"
+                << "\n"
+                << "Options : \n"
+                << "\t-a/--address   : Address of the memory server "
+                   "(default value is localhost) \n"
+                << "\n"
+                << "\t-r/--rpcport        : RPC port (default value is 8789)\n"
+                << "\n"
+                << "\t-l/--libfabricport  : Libfabric port (default value is "
+                   "7500)\n"
+                << "\n"
+                << "\t-p/--provider       : Libfabric provider (default value "
+                   "is sockets)\n"
+                << "\n"
+                << "\t-v/--version        : Display metadata server version  \n"
+                << "\n"
+                << endl;
             exit(0);
-        } else if ((std::string(argv[i]) == "-m") ||
-                   (std::string(argv[i]) == "--memoryserver")) {
+        } else if ((std::string(argv[i]) == "-a") ||
+                   (std::string(argv[i]) == "--address")) {
             name = strdup(argv[++i]);
         } else if ((std::string(argv[i]) == "-r") ||
                    (std::string(argv[i]) == "--rpcport")) {
@@ -117,26 +108,22 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, signal_handler);
 #endif
 
-#ifdef MEMSERVER_PROFILE
-    signal(SIGINT, profile_dump_handler);
-#endif
-    cisServer = NULL;
+    memoryService = NULL;
     try {
-        cisServer =
-            new Fam_CIS_Async_Handler(rpcPort, name, libfabricPort, provider);
-        cisServer->run();
-    } catch (Memserver_Exception &e) {
-        if (cisServer) {
-            cisServer->cis_async_handler_finalize();
-            delete cisServer;
+        memoryService = new Fam_Memory_Service_Server(rpcPort, name,
+                                                      libfabricPort, provider);
+        memoryService->run();
+    } catch (Fam_Exception &e) {
+        if (memoryService) {
+            delete memoryService;
         }
         cout << "Error code: " << e.fam_error() << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
     }
 
-    if (cisServer) {
-        cisServer->cis_async_handler_finalize();
-        delete cisServer;
+    if (memoryService) {
+        delete memoryService;
+        memoryService = NULL;
     }
 
     return 0;

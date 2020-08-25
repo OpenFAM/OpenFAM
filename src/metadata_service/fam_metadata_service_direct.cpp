@@ -83,12 +83,12 @@ void metadata_direct_profile_dump(){
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_DUMP_PROFILE_DATA(METADATA_DIRECT, name, prof_##name)
-#include "metadata/metadata_direct_counters.tbl"
+#include "metadata_service/metadata_direct_counters.tbl"
 
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_PROFILE_TOTAL(METADATA_DIRECT, prof_##name)
-#include "metadata/metadata_direct_counters.tbl"
+#include "metadata_service/metadata_direct_counters.tbl"
             MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_DIRECT)}
 
 KeyValueStore::IndexType const KVSTYPE = KeyValueStore::RADIX_TREE;

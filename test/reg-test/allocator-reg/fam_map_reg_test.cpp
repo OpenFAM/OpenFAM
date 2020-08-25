@@ -94,11 +94,6 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
-    char *allocator;
-    EXPECT_NO_THROW(allocator =
-                        (char *)my_fam->fam_get_option(strdup("ALLOCATOR")));
-    EXPECT_NE((void *)NULL, allocator);
-    cout << "Allocator option : " << allocator << endl;
     ret = RUN_ALL_TESTS();
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));

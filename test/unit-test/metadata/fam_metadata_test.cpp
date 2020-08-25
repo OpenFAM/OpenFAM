@@ -32,9 +32,9 @@
  *
  */
 
-#include "../../src/metadata/fam_metadata_service.h"
 #include "common/fam_test_config.h"
-#include "metadata/fam_metadata_service_direct.h"
+#include "metadata_service/fam_metadata_service.h"
+#include "metadata_service/fam_metadata_service_direct.h"
 
 #include <fam/fam.h>
 #include <string.h>
@@ -49,14 +49,15 @@ int main(int argc, char *argv[]) {
 
     Fam_Metadata_Service *manager = new Fam_Metadata_Service_Direct(true);
 
-    int ret;
     uint64_t count = 0, fail = 0;
 
     fam *my_fam = new fam();
     Fam_Options fam_opts;
 
+    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
+
     init_fam_options(&fam_opts);
-    fam_opts.runtime = strdup("NONE");
+
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
@@ -88,8 +89,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (!manager->metadata_find_region(to_string(i), node)) {
-            printf("Region lookup failed: reg name=%s, ret=%d\n", name.c_str(),
-                   ret);
+            printf("Region lookup failed: reg name=%s", name.c_str());
             fail++;
         }
         count++;
@@ -106,13 +106,12 @@ int main(int argc, char *argv[]) {
         }
         count++;
         if (!manager->metadata_find_region(regionId, node)) {
-            printf("Region lookup failed: regid=%lu, ret=%d\n", regionId, ret);
+            printf("Region lookup failed: regid=%lu", regionId);
             fail++;
         }
         count++;
         if (!manager->metadata_find_region(to_string(i), node)) {
-            printf("Region lookup failed: reg name=%s, ret=%d\n", name.c_str(),
-                   ret);
+            printf("Region lookup failed: reg name=%s", name.c_str());
             fail++;
         }
         count++;
@@ -224,8 +223,8 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, regionId, dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
             }
             count++;
             try {
@@ -244,8 +243,8 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, regionId, dinode)) {
-                printf("Dataitem find failed: id=%lu:%lu , ret=%d\n", regionId,
-                       j, ret);
+                printf("Dataitem find failed: id=%lu:%lu ", regionId,
+                       j);
                 fail++;
             }
             count++;
@@ -343,24 +342,24 @@ int main(int argc, char *argv[]) {
             }
             count++;
             if (!manager->metadata_find_dataitem(j, to_string(i), dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;
 
             if (!manager->metadata_find_dataitem(to_string(j), regionId,
                                                  dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;
 
             if (!manager->metadata_find_dataitem(to_string(j), to_string(i),
                                                  dinode)) {
-                printf("Dataitem lookup failed: id=%lu:%lu , ret=%d\n",
-                       regionId, j, ret);
+                printf("Dataitem lookup failed: id=%lu:%lu ",
+                       regionId, j);
                 fail++;
             }
             count++;
@@ -431,6 +430,11 @@ int main(int argc, char *argv[]) {
     std::cout << "Total tests run    : " << count << std::endl;
     std::cout << "Total tests passed : " << count - fail << std::endl;
     std::cout << "Total tests failed : " << fail << std::endl;
+
+    my_fam->fam_finalize("default");
+
+    delete manager;
+    delete my_fam;
 
     if (fail) {
         return 1;

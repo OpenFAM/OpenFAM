@@ -289,13 +289,8 @@ int main(int argc, char **argv) {
     const char *testRegion = get_uniq_str("testGlobal", my_fam);
 
 #if !defined(SHM) && defined(MEMSERVER_PROFILE)
-    const char *memoryServers = strdup(TEST_MEMORY_SERVER);
-    std::string delimiter1 = ",";
-    std::string delimiter2 = ":";
-    CISServerMap memoryServerList =
-        parse_memserver_list(memoryServers, delimiter1, delimiter2);
     EXPECT_NO_THROW(
-        cis = new Fam_CIS_Client(memoryServerList, atoi(TEST_GRPC_PORT)));
+        cis = new Fam_CIS_Client(TEST_CIS_SERVER, atoi(TEST_GRPC_PORT)));
 #endif
     EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(

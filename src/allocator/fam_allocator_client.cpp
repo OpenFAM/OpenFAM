@@ -37,14 +37,9 @@
 using namespace std;
 
 namespace openfam {
-Fam_Allocator_Client::Fam_Allocator_Client(CISServerMap servers,
-                                           uint64_t port) {
-    if (servers.size() == 0) {
-        throw Fam_Allocator_Exception(FAM_ERR_CIS_SERVER_LIST_EMPTY,
-                                      "CIS server name not found");
-    }
+Fam_Allocator_Client::Fam_Allocator_Client(const char *name, uint64_t port) {
     try {
-        famCIS = new Fam_CIS_Client(servers, port);
+        famCIS = new Fam_CIS_Client(name, port);
     } catch (Fam_Exception &e) {
         throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
                                       e.fam_error_msg());
@@ -65,12 +60,17 @@ void Fam_Allocator_Client::allocator_initialize() {}
 
 void Fam_Allocator_Client::allocator_finalize() {}
 
-Fam_Region_Descriptor *Fam_Allocator_Client::create_region(
-    const char *name, uint64_t nbytes, mode_t permissions,
-    Fam_Redundancy_Level redundancyLevel, uint64_t memoryServerId = 0) {
+uint64_t Fam_Allocator_Client::get_num_memory_servers() {
+    return famCIS->get_num_memory_servers();
+}
+
+Fam_Region_Descriptor *
+Fam_Allocator_Client::create_region(const char *name, uint64_t nbytes,
+                                    mode_t permissions,
+                                    Fam_Redundancy_Level redundancyLevel) {
     Fam_Region_Item_Info info;
-        info = famCIS->create_region(name, nbytes, permissions, redundancyLevel,
-                                     memoryServerId, uid, gid);
+    info = famCIS->create_region(name, nbytes, permissions, redundancyLevel,
+                                 uid, gid);
     Fam_Global_Descriptor globalDescriptor;
     globalDescriptor.regionId = info.regionId;
     globalDescriptor.offset = info.offset;
@@ -153,11 +153,9 @@ void Fam_Allocator_Client::change_permission(Fam_Descriptor *descriptor,
                                            memoryServerId, uid, gid);
 }
 
-Fam_Region_Descriptor *
-Fam_Allocator_Client::lookup_region(const char *name,
-                                    uint64_t memoryServerId = 0) {
+Fam_Region_Descriptor *Fam_Allocator_Client::lookup_region(const char *name) {
     Fam_Region_Item_Info info;
-        info = famCIS->lookup_region(name, memoryServerId, uid, gid);
+    info = famCIS->lookup_region(name, uid, gid);
     Fam_Global_Descriptor globalDescriptor;
     globalDescriptor.regionId = info.regionId;
     globalDescriptor.offset = info.offset;
@@ -171,10 +169,9 @@ Fam_Allocator_Client::lookup_region(const char *name,
 }
 
 Fam_Descriptor *Fam_Allocator_Client::lookup(const char *itemName,
-                                             const char *regionName,
-                                             uint64_t memoryServerId = 0) {
+                                             const char *regionName) {
     Fam_Region_Item_Info info;
-        info = famCIS->lookup(itemName, regionName, memoryServerId, uid, gid);
+    info = famCIS->lookup(itemName, regionName, uid, gid);
     Fam_Global_Descriptor globalDescriptor;
     globalDescriptor.regionId = info.regionId;
     globalDescriptor.offset = info.offset;
@@ -304,12 +301,18 @@ void Fam_Allocator_Client::release_CAS_lock(Fam_Descriptor *descriptor) {
 
 int Fam_Allocator_Client::get_addr_size(size_t *addrSize,
                                         uint64_t memoryServerId = 0) {
-    return famCIS->get_addr_size(addrSize, memoryServerId);
+    if ((*addrSize = famCIS->get_addr_size(memoryServerId)) <= 0)
+        return -1;
+    return 0;
 }
 
 int Fam_Allocator_Client::get_addr(void *addr, size_t addrSize,
                                    uint64_t memoryServerId = 0) {
-    return famCIS->get_addr(addr, addrSize, memoryServerId);
+    if (addrSize > famCIS->get_addr_size(memoryServerId))
+        return -1;
+
+    famCIS->get_addr(addr, memoryServerId);
+    return 0;
 }
 
 } // namespace openfam

@@ -47,7 +47,6 @@ int main() {
     int i = 0;
     init_fam_options(&fam_opts);
     fam_opts.grpcPort = strdup("9500");
-    fam_opts.libfabricPort = strdup("9501");
     fam_opts.runtime = strdup("NONE");
 
     try {

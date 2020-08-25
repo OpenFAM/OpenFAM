@@ -32,21 +32,21 @@
 
 namespace openfam {
 
-Fam_CIS_Client::Fam_CIS_Client(CISServerMap servers, uint64_t port) {
+Fam_CIS_Client::Fam_CIS_Client(const char *name, uint64_t port) {
     std::ostringstream message;
 
     /** Creating a channel and stub **/
-    for (auto obj = servers.begin(); obj != servers.end(); ++obj) {
-        string name = obj->second + ":" + std::to_string(port);
-        service stub = Fam_CIS_Rpc::NewStub(
-            grpc::CreateChannel(name, ::grpc::InsecureChannelCredentials()));
-        if (!stub) {
-            message << "Fam Grpc Initialialization failed: stub is null";
-            throw CIS_Exception(FAM_ERR_RPC, message.str().c_str());
+    string name_s(name);
+    name_s += ":" + std::to_string(port);
+    this->stub = Fam_CIS_Rpc::NewStub(
+        grpc::CreateChannel(name_s, ::grpc::InsecureChannelCredentials()));
+    if (!stub) {
+        message << "Fam Grpc Initialialization failed: stub is null";
+        throw CIS_Exception(FAM_ERR_RPC, message.str().c_str());
         }
 
         Fam_Request req;
-        Fam_Start_Response res;
+        Fam_Response res;
 
         ::grpc::ClientContext ctx;
         /** sending a start signal to server **/
@@ -55,33 +55,7 @@ Fam_CIS_Client::Fam_CIS_Client(CISServerMap servers, uint64_t port) {
             throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
         }
 
-        size_t FabricAddrSize = res.addrnamelen();
-        char *fabricAddr = (char *)calloc(1, FabricAddrSize);
-
-        uint32_t lastBytes = 0;
-        int lastBytesCount = (int)(FabricAddrSize % sizeof(uint32_t));
-        int readCount = res.addrname_size();
-
-        if (lastBytesCount > 0)
-            readCount -= 1;
-
-        for (int ndx = 0; ndx < readCount; ndx++) {
-            *((uint32_t *)fabricAddr + ndx) = res.addrname(ndx);
-        }
-
-        if (lastBytesCount > 0) {
-            lastBytes = res.addrname(readCount);
-            memcpy(((uint32_t *)fabricAddr + readCount), &lastBytes,
-                   lastBytesCount);
-        }
-        Fam_CIS_Server_Info *server = new Fam_CIS_Server_Info();
-        server->stub = std::move(stub);
-        server->memServerFabricAddrSize = FabricAddrSize;
-        server->memServerFabricAddr = fabricAddr;
-        ::grpc::CompletionQueue *cq = new ::grpc::CompletionQueue();
-        server->cq = cq;
-        serversInfo.insert(std::make_pair(obj->first, server));
-    }
+        cq = new ::grpc::CompletionQueue();
 }
 
 Fam_CIS_Client::~Fam_CIS_Client() {
@@ -90,22 +64,7 @@ Fam_CIS_Client::~Fam_CIS_Client() {
 
     ::grpc::ClientContext ctx;
 
-    for (auto obj = serversInfo.begin(); obj != serversInfo.end(); ++obj) {
-        Fam_CIS_Server_Info *server = get_server_info(obj->first);
-
-        ::grpc::Status status =
-            server->stub->signal_termination(&ctx, req, &res);
-
-        delete obj->second;
-    }
-}
-
-Fam_CIS_Server_Info *Fam_CIS_Client::get_server_info(uint64_t memoryServerId) {
-    auto obj = serversInfo.find(memoryServerId);
-    if (obj == serversInfo.end()) {
-        throw CIS_Exception(FAM_ERR_RPC_STUB_NOTFOUND, "RPC stub not found");
-    }
-    return obj->second;
+    stub->signal_termination(&ctx, req, &res);
 }
 
 void Fam_CIS_Client::reset_profile(uint64_t memoryServerId) {
@@ -115,8 +74,9 @@ void Fam_CIS_Client::reset_profile(uint64_t memoryServerId) {
 
     ::grpc::ClientContext ctx;
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-    ::grpc::Status status = server->stub->reset_profile(&ctx, req, &res);
+    req.set_memserver_id(memoryServerId);
+
+    ::grpc::Status status = stub->reset_profile(&ctx, req, &res);
 #endif
 }
 
@@ -127,16 +87,28 @@ void Fam_CIS_Client::generate_profile(uint64_t memoryServerId) {
 
     ::grpc::ClientContext ctx;
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-    ::grpc::Status status = server->stub->generate_profile(&ctx, req, &res);
+    req.set_memserver_id(memoryServerId);
+
+    ::grpc::Status status = stub->generate_profile(&ctx, req, &res);
 #endif
+}
+
+uint64_t Fam_CIS_Client::get_num_memory_servers() {
+    Fam_Request req;
+    Fam_Response res;
+    ::grpc::ClientContext ctx;
+
+    ::grpc::Status status = stub->get_num_memory_servers(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+
+    return res.num_memory_server();
 }
 
 Fam_Region_Item_Info
 Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
                               Fam_Redundancy_Level redundancyLevel,
-                              uint64_t memoryServerId, uint32_t uid,
-                              uint32_t gid) {
+                              uint32_t uid, uint32_t gid) {
     Fam_Region_Request req;
     Fam_Region_Response res;
     ::grpc::ClientContext ctx;
@@ -146,12 +118,12 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     req.set_perm(permission);
     req.set_uid(uid);
     req.set_gid(gid);
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-    ::grpc::Status status = server->stub->create_region(&ctx, req, &res);
+
+    ::grpc::Status status = stub->create_region(&ctx, req, &res);
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.regionId = res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
+    info.regionId = res.regionid() | (res.memserver_id() << MEMSERVERID_SHIFT);
     info.offset = res.offset();
     return info;
 }
@@ -165,10 +137,9 @@ void Fam_CIS_Client::destroy_region(uint64_t regionId, uint64_t memoryServerId,
     req.set_regionid(regionId & REGIONID_MASK);
     req.set_uid(uid);
     req.set_gid(gid);
+    req.set_memserver_id(memoryServerId);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status = server->stub->destroy_region(&ctx, req, &res);
+    ::grpc::Status status = stub->destroy_region(&ctx, req, &res);
     STATUS_CHECK(CIS_Exception)
 }
 
@@ -183,10 +154,9 @@ void Fam_CIS_Client::resize_region(uint64_t regionId, size_t nbytes,
     req.set_size(nbytes);
     req.set_uid(uid);
     req.set_gid(gid);
+    req.set_memserver_id(memoryServerId);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status = server->stub->resize_region(&ctx, req, &res);
+    ::grpc::Status status = stub->resize_region(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 }
@@ -206,12 +176,11 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
     req.set_perm(permission);
     req.set_uid(uid);
     req.set_gid(gid);
-
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
+    req.set_memserver_id(memoryServerId);
 
     uint64_t nodeId = memoryServerId;
 
-    ::grpc::Status status = server->stub->allocate(&ctx, req, &res);
+    ::grpc::Status status = stub->allocate(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
     Fam_Region_Item_Info info;
@@ -233,10 +202,9 @@ void Fam_CIS_Client::deallocate(uint64_t regionId, uint64_t offset,
     req.set_offset(offset);
     req.set_uid(uid);
     req.set_gid(gid);
+    req.set_memserver_id(memoryServerId);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status = server->stub->deallocate(&ctx, req, &res);
+    ::grpc::Status status = stub->deallocate(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 }
@@ -253,11 +221,9 @@ void Fam_CIS_Client::change_region_permission(uint64_t regionId,
     req.set_perm((uint64_t)permission);
     req.set_uid(uid);
     req.set_gid(gid);
+    req.set_memserver_id(memoryServerId);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status =
-        server->stub->change_region_permission(&ctx, req, &res);
+    ::grpc::Status status = stub->change_region_permission(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 }
@@ -276,17 +242,14 @@ void Fam_CIS_Client::change_dataitem_permission(uint64_t regionId,
     req.set_perm((uint64_t)permission);
     req.set_uid(uid);
     req.set_gid(gid);
+    req.set_memserver_id(memoryServerId);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status =
-        server->stub->change_dataitem_permission(&ctx, req, &res);
+    ::grpc::Status status = stub->change_dataitem_permission(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 }
 
 Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
-                                                   uint64_t memoryServerId,
                                                    uint32_t uid, uint32_t gid) {
     Fam_Region_Request req;
     Fam_Region_Response res;
@@ -296,14 +259,12 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
     req.set_uid(uid);
     req.set_gid(gid);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status = server->stub->lookup_region(&ctx, req, &res);
+    ::grpc::Status status = stub->lookup_region(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.regionId = res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
+    info.regionId = res.regionid() | (res.memserver_id() << MEMSERVERID_SHIFT);
     info.offset = res.offset();
     info.size = res.size();
     info.perm = (mode_t)res.perm();
@@ -312,7 +273,6 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
 }
 
 Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
-                                            uint64_t memoryServerId,
                                             uint32_t uid, uint32_t gid) {
     Fam_Dataitem_Request req;
     Fam_Dataitem_Response res;
@@ -323,14 +283,12 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
     req.set_uid(uid);
     req.set_gid(gid);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status = server->stub->lookup(&ctx, req, &res);
+    ::grpc::Status status = stub->lookup(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.regionId = res.regionid() | (memoryServerId << MEMSERVERID_SHIFT);
+    info.regionId = res.regionid() | (res.memserver_id() << MEMSERVERID_SHIFT);
     info.offset = res.offset();
     info.key = FAM_KEY_UNINITIALIZED;
     info.size = res.size();
@@ -348,11 +306,10 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
     req.set_regionid(regionId & REGIONID_MASK);
     req.set_gid(gid);
     req.set_uid(uid);
-
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
+    req.set_memserver_id(memoryServerId);
 
     ::grpc::Status status =
-        server->stub->check_permission_get_region_info(&ctx, req, &res);
+        stub->check_permission_get_region_info(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 
@@ -374,11 +331,10 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_item_info(
     req.set_offset(offset);
     req.set_gid(gid);
     req.set_uid(uid);
-
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
+    req.set_memserver_id(memoryServerId);
 
     ::grpc::Status status =
-        server->stub->check_permission_get_item_info(&ctx, req, &res);
+        stub->check_permission_get_item_info(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 
@@ -403,10 +359,9 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
     req.set_offset(offset);
     req.set_gid(gid);
     req.set_uid(uid);
+    req.set_memserver_id(memoryServerId);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status = server->stub->get_stat_info(&ctx, req, &res);
+    ::grpc::Status status = stub->get_stat_info(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 
@@ -434,18 +389,14 @@ void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     copyReq.set_gid(gid);
     copyReq.set_uid(uid);
     copyReq.set_copysize(nbytes);
-
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
+    copyReq.set_memserver_id(memoryServerId);
 
     Fam_Copy_Tag *tag = new Fam_Copy_Tag();
 
     tag->isCompleted = false;
     tag->memServerId = memoryServerId;
 
-    ::grpc::CompletionQueue *cq = server->cq;
-
-    tag->responseReader =
-        server->stub->PrepareAsynccopy(&tag->ctx, copyReq, cq);
+    tag->responseReader = stub->PrepareAsynccopy(&tag->ctx, copyReq, cq);
 
     // StartCall initiates the RPC call
     tag->responseReader->StartCall();
@@ -463,9 +414,6 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
     Fam_Copy_Response res;
 
     tagIn = static_cast<Fam_Copy_Tag *>(waitObj);
-
-    Fam_CIS_Server_Info *server = get_server_info(tagIn->memServerId);
-    ::grpc::CompletionQueue *cq = server->cq;
 
     if (!tagIn) {
         throw CIS_Exception(FAM_ERR_INVALID, "Copy tag is null");
@@ -541,10 +489,9 @@ void Fam_CIS_Client::acquire_CAS_lock(uint64_t offset,
     ::grpc::ClientContext ctx;
 
     req.set_offset(offset);
+    req.set_memserver_id(memoryServerId);
 
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status = server->stub->acquire_CAS_lock(&ctx, req, &res);
+    ::grpc::Status status = stub->acquire_CAS_lock(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 }
@@ -556,41 +503,54 @@ void Fam_CIS_Client::release_CAS_lock(uint64_t offset,
     ::grpc::ClientContext ctx;
 
     req.set_offset(offset);
-
-    Fam_CIS_Server_Info *server = get_server_info(memoryServerId);
-
-    ::grpc::Status status = server->stub->release_CAS_lock(&ctx, req, &res);
+    req.set_memserver_id(memoryServerId);
+    ::grpc::Status status = stub->release_CAS_lock(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
 }
 
-int Fam_CIS_Client::get_addr_size(size_t *addrSize, uint64_t memoryServerId) {
-    auto obj = serversInfo.find(memoryServerId);
-    if (obj == serversInfo.end()) {
-        throw CIS_Exception(FAM_ERR_RPC_STUB_NOTFOUND, "RPC stub not found");
-    }
-    Fam_CIS_Server_Info *server = obj->second;
-    *addrSize = server->memServerFabricAddrSize;
-    if (*addrSize <= 0)
-        return -1;
-    return 0;
+size_t Fam_CIS_Client::get_addr_size(uint64_t memoryServerId) {
+    Fam_Address_Request req;
+    Fam_Address_Response res;
+    ::grpc::ClientContext ctx;
+
+    req.set_memserver_id(memoryServerId);
+    ::grpc::Status status = stub->get_addr_size(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+
+    return (size_t)res.addrnamelen();
 }
 
-int Fam_CIS_Client::get_addr(void *addr, size_t addrSize,
-                             uint64_t memoryServerId) {
-    auto obj = serversInfo.find(memoryServerId);
-    if (obj == serversInfo.end()) {
-        throw CIS_Exception(FAM_ERR_RPC_STUB_NOTFOUND, "RPC stub not found");
+void Fam_CIS_Client::get_addr(void *memServerFabricAddr,
+                              uint64_t memoryServerId) {
+    Fam_Address_Request req;
+    Fam_Address_Response res;
+    ::grpc::ClientContext ctx;
+
+    req.set_memserver_id(memoryServerId);
+    ::grpc::Status status = stub->get_addr(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+
+    size_t memServerFabricAddrSize = res.addrnamelen();
+
+    uint32_t lastBytes = 0;
+    int lastBytesCount = (int)(memServerFabricAddrSize % sizeof(uint32_t));
+    int readCount = res.addrname_size();
+
+    if (lastBytesCount > 0)
+        readCount -= 1;
+
+    for (int ndx = 0; ndx < readCount; ndx++) {
+        *((uint32_t *)memServerFabricAddr + ndx) = res.addrname(ndx);
     }
-    Fam_CIS_Server_Info *server = obj->second;
 
-    if (addrSize > server->memServerFabricAddrSize)
-        return -1;
-
-    if (memcpy(addr, server->memServerFabricAddr, addrSize) == NULL)
-        return -1;
-
-    return 0;
+    if (lastBytesCount > 0) {
+        lastBytes = res.addrname(readCount);
+        memcpy(((uint32_t *)memServerFabricAddr + readCount), &lastBytes,
+               lastBytesCount);
+    }
 }
 
 } // namespace openfam
