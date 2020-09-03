@@ -32,6 +32,7 @@
  */
 
 #include "fam_metadata_service_server.h"
+#include "common/fam_config_info.h"
 #include "common/fam_memserver_profile.h"
 
 namespace metadata {

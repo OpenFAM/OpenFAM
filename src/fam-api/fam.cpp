@@ -34,13 +34,13 @@
 #include <unistd.h>
 
 #include "allocator/fam_allocator_client.h"
+#include "common/fam_config_info.h"
 #include "common/fam_internal.h"
 #include "common/fam_libfabric.h"
 #include "common/fam_ops.h"
 #include "common/fam_ops_libfabric.h"
 #include "common/fam_ops_shm.h"
 #include "common/fam_options.h"
-#include "common/yaml_config_info.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 #include "pmi/fam_runtime.h"
@@ -59,10 +59,6 @@
     catch (Fam_Exception & e) {                                                \
         throw e;                                                               \
     }
-
-#define FILE_MAX_LEN 255
-
-typedef std::map<std::string, std::string> configFileParams;
 
 using namespace std;
 
@@ -364,7 +360,6 @@ class fam::Impl_ {
                              configFileParams config_file_fam_options);
     void clean_fam_options();
     int validate_item(Fam_Descriptor *descriptor);
-    std::string find_config_file(char *config_file);
     configFileParams get_info_from_config_file(std::string filename);
 
   private:
@@ -897,43 +892,7 @@ int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
 }
 
 /*
- * find_config_file - Look for configuration file in path specified by
- * OPENFAM_ROOT environment variable or in /opt/OpenFAM.
- * On Success, return config file with absolute path. Else returns empty string.
- */
-std::string fam::Impl_::find_config_file(char *config_file) {
-    struct stat buffer;
-    std::string config_filename;
-    char *config_file_path = (char *)malloc(FILE_MAX_LEN);
-
-    // Look for config file in OPENFAM_ROOT
-    char *openfam_root = getenv("OPENFAM_ROOT");
-
-    if (openfam_root != NULL) {
-        sprintf(config_file_path, "%s/%s/%s", openfam_root, "config",
-                config_file);
-    }
-    if (stat(config_file_path, &buffer) == 0) {
-        config_filename = config_file_path;
-        free(config_file_path);
-        return config_filename;
-    }
-
-    // Look for config file in /opt
-    sprintf(config_file_path, "%s/%s/%s", "/opt/OpenFAM", "config",
-            config_file);
-    if (stat(config_file_path, &buffer) == 0) {
-        config_filename = config_file_path;
-        free(config_file_path);
-        return config_filename;
-    }
-    free(config_file_path);
-    config_filename.clear();
-    return config_filename;
-}
-
-/*
- * get_info_from_config_file - Obtaine the required information from
+ * get_info_from_config_file - Obtain the required information from
  * fam_pe_config file. On Success, returns a map that has options updated from
  * from configuration file. These inputs are passed on to validate_fam_options.
  * If any field is empty, that would be filled as part of validate_fam_options

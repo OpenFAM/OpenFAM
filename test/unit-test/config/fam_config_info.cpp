@@ -27,13 +27,14 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-
-#include "common/yaml_config_info.h"
+#include "common/fam_config_info.h"
+#include <fam/fam_exception.h>
 #include <iostream>
 #include <map>
 #include <string.h>
 #include <vector>
 using namespace std;
+using namespace openfam;
 int main(int argc, char **argv) {
     if ((argc <= 1) || (argv[1] == NULL)) {
         cout << "./fam_config_info <config-file-path>" << endl;

@@ -1956,6 +1956,22 @@ size_t Fam_Metadata_Service_Direct::Impl_::metadata_maxkeylen() {
 }
 
 Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
+    // Look for options information from config file.
+    // Use config file options only if NULL is passed.
+    std::string config_file_path;
+    configFileParams config_options;
+    // Check for config file in or in path mentioned
+    // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
+    try {
+        config_file_path = find_config_file(strdup("fam_metadata_config.yaml"));
+    } catch (Fam_InvalidOption_Exception &e) {
+        // If the config_file is not present, then ignore the exception.
+    }
+    // Get the configuration info from the configruation file.
+    if (!config_file_path.empty()) {
+        config_options = get_config_info(config_file_path);
+    }
+
     Start(use_meta_reg);
 }
 
@@ -2194,6 +2210,36 @@ size_t Fam_Metadata_Service_Direct::metadata_maxkeylen() {
     ret = pimpl_->metadata_maxkeylen();
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_maxkeylen);
     return ret;
+}
+
+/*
+ * get_info_from_config_file - Obtain the required information from
+ * fam_pe_config file. On Success, returns a map that has options updated from
+ * from configuration file. Set default values if not found in config file.
+ */
+configFileParams
+Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
+    configFileParams options;
+    config_info *info = NULL;
+    if (filename.find("fam_metadata_config.yaml") != std::string::npos) {
+        info = new yaml_config_info(filename);
+        try {
+            options["metadata_manager"] = (char *)strdup(
+                (info->get_key_value("metadata_manager")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["metadata_manager"] = (char *)strdup("radixtree");
+        }
+
+        try {
+            options["metadata_path"] =
+                (char *)strdup((info->get_key_value("metadata_path")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["metadata_path"] = (char *)strdup("/dev/shm");
+        }
+    }
+    return options;
 }
 
 } // end namespace metadata
