@@ -521,9 +521,9 @@ void Fam_Ops_Libfabric::scatter_nonblocking(void *local,
 void *Fam_Ops_Libfabric::copy(Fam_Descriptor *src, uint64_t srcOffset,
                               Fam_Descriptor *dest, uint64_t destOffset,
                               uint64_t nbytes) {
-    if (src->get_memserver_id() == dest->get_memserver_id())
+    if (src->get_memserver_id() == dest->get_memserver_id()) {
         return famAllocator->copy(src, srcOffset, dest, destOffset, nbytes);
-    else {
+    } else {
         char *local = (char *)malloc(nbytes);
         try {
             get_blocking(local, src, srcOffset, nbytes);
@@ -533,7 +533,7 @@ void *Fam_Ops_Libfabric::copy(Fam_Descriptor *src, uint64_t srcOffset,
             free(local);
             throw;
         }
-        Fam_Copy_Tag *tag = new Fam_Copy_Tag();
+        Fam_Copy_Wait_Object *tag = new Fam_Copy_Wait_Object();
         tag->isAcrossServer = true;
         free(local);
         return (void *)tag;
@@ -541,7 +541,8 @@ void *Fam_Ops_Libfabric::copy(Fam_Descriptor *src, uint64_t srcOffset,
 }
 
 void Fam_Ops_Libfabric::wait_for_copy(void *waitObj) {
-    if (!((Fam_Copy_Tag *)waitObj)->isAcrossServer)
+    Fam_Copy_Wait_Object *obj = (Fam_Copy_Wait_Object *)waitObj;
+    if (!(obj->isAcrossServer))
         return famAllocator->wait_for_copy(waitObj);
     else
         return;

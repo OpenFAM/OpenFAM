@@ -39,6 +39,7 @@
 #include "common/fam_internal.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
+#include "memory_service/fam_memory_service.h"
 
 using namespace std;
 
@@ -48,7 +49,14 @@ typedef enum { WRITE = 0, READ, COPY } Fam_Ops_Type;
 
 typedef struct {
     boost::atomic<bool> copyDone;
-} Copy_Tag;
+    Fam_Memory_Service *memoryService;
+    uint64_t srcRegionId;
+    uint64_t destRegionId;
+    uint64_t srcOffset;
+    uint64_t destOffset;
+    uint64_t size;
+    bool isAcrossServer;
+} Fam_Copy_Tag;
 
 typedef struct {
     Fam_Ops_Type opsType;
@@ -59,7 +67,7 @@ typedef struct {
     uint64_t upperBound;
     uint64_t key;
     uint64_t itemSize;
-    Copy_Tag *tag;
+    Fam_Copy_Tag *tag;
 } Fam_Ops_Info;
 
 class Fam_Async_Err {
@@ -92,7 +100,8 @@ class Fam_Async_QHandler {
                        uint64_t upperBound, uint64_t key, uint64_t itemSize);
     void read_handler(void *src, void *dest, uint64_t nbytes, uint64_t offset,
                       uint64_t upperBound, uint64_t key, uint64_t itemSize);
-    void copy_handler(void *src, void *dest, uint64_t nbytes, Copy_Tag *tag);
+    void copy_handler(void *src, void *dest, uint64_t nbytes,
+                      Fam_Copy_Tag *tag);
 
   private:
     class FamAsyncQHandlerImpl_;

@@ -58,12 +58,8 @@ int main() {
 
     // Initialize the libfabric ops
     char *message = strdup("This is the datapath test");
-    char *name = strdup("127.0.0.1");
-    // char *service = strdup(TEST_LIBFABRIC_PORT);
+    char *name = strdup(TEST_CIS_SERVER);
     char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
-    // std::map<uint64_t, string> nameMap;
-    // nameMap.insert({0, name});
-    // initialize gRPC client
 
     // Initialize openFAM API
     init_fam_options(&fam_opts);
@@ -87,7 +83,6 @@ int main() {
         new Fam_Ops_Libfabric(false, provider, FAM_THREAD_MULTIPLE,
                               famAllocator, FAM_CONTEXT_DEFAULT);
 
-    // ret = famOps->initialize(name, service, false, provider);
     ret = famOps->initialize();
     if (ret < 0) {
         cout << "famOps initialization failed" << endl;

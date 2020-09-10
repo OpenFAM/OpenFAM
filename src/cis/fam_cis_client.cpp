@@ -371,99 +371,102 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
     return info;
 }
+
 void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
                            uint64_t srcCopyStart, uint64_t destRegionId,
                            uint64_t destOffset, uint64_t destCopyStar,
                            uint64_t nbytes, uint64_t memoryServerId,
                            uint32_t uid, uint32_t gid) {
-    Fam_Copy_Request copyReq;
-    Fam_Copy_Response copyRes;
+    Fam_Copy_Request req;
+    Fam_Copy_Response res;
     ::grpc::ClientContext ctx;
 
-    copyReq.set_srcregionid(srcRegionId & REGIONID_MASK);
-    copyReq.set_destregionid(destRegionId & REGIONID_MASK);
-    copyReq.set_srcoffset(srcOffset);
-    copyReq.set_destoffset(destOffset);
-    copyReq.set_srccopystart(srcCopyStart);
-    copyReq.set_destcopystart(destCopyStar);
-    copyReq.set_gid(gid);
-    copyReq.set_uid(uid);
-    copyReq.set_copysize(nbytes);
-    copyReq.set_memserver_id(memoryServerId);
+    req.set_srcregionid(srcRegionId & REGIONID_MASK);
+    req.set_destregionid(destRegionId & REGIONID_MASK);
+    req.set_srcoffset(srcOffset);
+    req.set_destoffset(destOffset);
+    req.set_srccopystart(srcCopyStart);
+    req.set_destcopystart(destCopyStar);
+    req.set_gid(gid);
+    req.set_uid(uid);
+    req.set_copysize(nbytes);
+    req.set_memserver_id(memoryServerId);
 
-    Fam_Copy_Tag *tag = new Fam_Copy_Tag();
+    Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
 
-    tag->isCompleted = false;
-    tag->memServerId = memoryServerId;
+    waitObj->isCompleted = false;
+    waitObj->isAcrossServer = false;
+    waitObj->memServerId = memoryServerId;
 
-    tag->responseReader = stub->PrepareAsynccopy(&tag->ctx, copyReq, cq);
+    waitObj->responseReader = stub->PrepareAsynccopy(&waitObj->ctx, req, cq);
 
     // StartCall initiates the RPC call
-    tag->responseReader->StartCall();
+    waitObj->responseReader->StartCall();
 
-    tag->responseReader->Finish(&tag->res, &tag->status, (void *)tag);
+    waitObj->responseReader->Finish(&waitObj->res, &waitObj->status,
+                                    (void *)waitObj);
 
-    return (void *)tag;
+    return (void *)waitObj;
 }
 
 void Fam_CIS_Client::wait_for_copy(void *waitObj) {
-    void *got_tag;
+    void *got_waitObj;
     bool ok = false;
-    Fam_Copy_Tag *tagIn, *tagCompleted;
+    Fam_Copy_Wait_Object *waitObjIn, *waitObjCompleted;
     ::grpc::Status status;
     Fam_Copy_Response res;
 
-    tagIn = static_cast<Fam_Copy_Tag *>(waitObj);
+    waitObjIn = static_cast<Fam_Copy_Wait_Object *>(waitObj);
 
-    if (!tagIn) {
-        throw CIS_Exception(FAM_ERR_INVALID, "Copy tag is null");
+    if (!waitObjIn) {
+        throw CIS_Exception(FAM_ERR_INVALID, "Copy waitObj is null");
     }
 
-    if (tagIn->isCompleted) {
-        if (tagIn->status.ok()) {
-            if (tagIn->res.errorcode()) {
-                res = tagIn->res;
-                delete tagIn;
+    if (waitObjIn->isCompleted) {
+        if (waitObjIn->status.ok()) {
+            if (waitObjIn->res.errorcode()) {
+                res = waitObjIn->res;
+                delete waitObjIn;
                 throw CIS_Exception((enum Fam_Error)res.errorcode(),
                                     res.errormsg().c_str());
             } else {
-                delete tagIn;
+                delete waitObjIn;
                 return;
             }
         } else {
-            status = tagIn->status;
-            delete tagIn;
+            status = waitObjIn->status;
+            delete waitObjIn;
             throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
         }
     } else {
 
         do {
-            GPR_ASSERT(cq->Next(&got_tag, &ok));
-            // The tag is the memory location of Fam_Copy_Tag object
-            tagCompleted = static_cast<Fam_Copy_Tag *>(got_tag);
-            if (!tagCompleted) {
-                throw CIS_Exception(FAM_ERR_INVALID, "Copy tag is null");
+            GPR_ASSERT(cq->Next(&got_waitObj, &ok));
+            // The waitObj is the memory location of Fam_Copy_waitObj object
+            waitObjCompleted = static_cast<Fam_Copy_Wait_Object *>(got_waitObj);
+            if (!waitObjCompleted) {
+                throw CIS_Exception(FAM_ERR_INVALID, "Copy waitObj is null");
             }
-            tagCompleted->isCompleted = true;
+            waitObjCompleted->isCompleted = true;
             // Verify that the request was completed successfully. Note
             // that "ok" corresponds solely to the request for updates
             // introduced by Finish().
             GPR_ASSERT(ok);
-        } while (tagIn != tagCompleted);
+        } while (waitObjIn != waitObjCompleted);
 
-        if (tagCompleted->status.ok()) {
-            if (tagCompleted->res.errorcode()) {
-                res = tagCompleted->res;
-                delete tagCompleted;
+        if (waitObjCompleted->status.ok()) {
+            if (waitObjCompleted->res.errorcode()) {
+                res = waitObjCompleted->res;
+                delete waitObjCompleted;
                 throw CIS_Exception((enum Fam_Error)res.errorcode(),
                                     res.errormsg().c_str());
             } else {
-                delete tagCompleted;
+                delete waitObjCompleted;
                 return;
             }
         } else {
-            status = tagCompleted->status;
-            delete tagCompleted;
+            status = waitObjCompleted->status;
+            delete waitObjCompleted;
             throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
         }
     }
