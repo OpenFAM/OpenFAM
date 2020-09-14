@@ -266,7 +266,7 @@ uint64_t Fam_Memory_Service_Direct::get_key(uint64_t regionId, uint64_t offset,
 }
 
 /*
- * get_info_from_config_file - Obtain the required information from
+ * get_config_info - Obtain the required information from
  * fam_pe_config file. On Success, returns a map that has options updated from
  * from configuration file. Set default values if not found in config file.
  */

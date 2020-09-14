@@ -79,6 +79,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName) {
     // Look for options information from config file.
     std::string config_file_path;
     configFileParams config_options;
+    ostringstream message;
     // Check for config file in or in path mentioned
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
     try {
@@ -105,10 +106,12 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName) {
 
     if (config_options.empty()) {
         // Raise an exception;
+        message << "Fam config options not found.";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
     if (strcmp(config_options["memsrv_interface_type"].c_str(),
-               FAM_OPTIONS_RPC_STR) != 0) {
+               FAM_OPTIONS_RPC_STR) == 0) {
         Server_Map memoryServerList = parse_server_list(
             config_options["memsrv_list"].c_str(), delimiter1, delimiter2);
         for (auto obj = memoryServerList.begin(); obj != memoryServerList.end();
@@ -119,7 +122,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName) {
             memoryServers->insert({obj->first, memoryService});
         }
     } else if (strcmp(config_options["memsrv_interface_type"].c_str(),
-                      FAM_OPTIONS_DIRECT_STR) != 0) {
+                      FAM_OPTIONS_DIRECT_STR) == 0) {
         // Start memory service only with name(ipaddr) and let Memory service
         // direct reads libfabric port and provider from memroy server config
         // file.
@@ -128,12 +131,15 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName) {
         memoryServers->insert({0, memoryService});
     } else {
         // Raise an exception
+        message << "Invalid value specified for Fam config "
+                   "option:memsrv_interface_type.";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
 //TODO: In current implementation metadata server id is same as memory server id
 //later it will be seleted based on some strategy
     if (strcmp(config_options["metadata_interface_type"].c_str(),
-               FAM_OPTIONS_RPC_STR) != 0) {
+               FAM_OPTIONS_RPC_STR) == 0) {
         Server_Map metadataServerList = parse_server_list(
             config_options["metadata_list"].c_str(), delimiter1, delimiter2);
         for (auto obj = metadataServerList.begin();
@@ -145,12 +151,15 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName) {
             metadataServers->insert({obj->first, metadataService});
         }
     } else if (strcmp(config_options["metadata_interface_type"].c_str(),
-                      FAM_OPTIONS_DIRECT_STR) != 0) {
+                      FAM_OPTIONS_DIRECT_STR) == 0) {
         Fam_Metadata_Service *metadataService =
             new Fam_Metadata_Service_Direct();
         metadataServers->insert({0, metadataService});
     } else {
         // Raise an exception
+        message << "Invalid value specified for Fam config "
+                   "option:metadata_interface_type.";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
     memoryServerCount = memoryServers->size();
 }
@@ -920,7 +929,7 @@ void Fam_CIS_Direct::get_addr(void *memServerFabricAddr,
 }
 
 /*
- * get_info_from_config_file - Obtain the required information from
+ * get_config_info - Obtain the required information from
  * fam_pe_config file. On Success, returns a map that has options updated from
  * from configuration file. Set default values if not found in config file.
  */

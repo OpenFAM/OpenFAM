@@ -915,6 +915,14 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
             // validate_fam_options function.
         }
         try {
+            options["client_interface_type"] = (char *)strdup(
+                (info->get_key_value("client_interface_type")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If the parameter client_interface_type is not present, then
+            // ignore the exception. This parameter will be obtained from
+            // validate_fam_options function.
+        }
+        try {
             options["libfabricProvider"] =
                 (char *)strdup((info->get_key_value("provider")).c_str());
         } catch (Fam_InvalidOption_Exception e) {

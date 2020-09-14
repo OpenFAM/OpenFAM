@@ -2213,7 +2213,7 @@ size_t Fam_Metadata_Service_Direct::metadata_maxkeylen() {
 }
 
 /*
- * get_info_from_config_file - Obtain the required information from
+ * get_config_info - Obtain the required information from
  * fam_pe_config file. On Success, returns a map that has options updated from
  * from configuration file. Set default values if not found in config file.
  */
