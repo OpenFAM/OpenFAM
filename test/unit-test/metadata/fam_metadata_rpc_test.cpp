@@ -32,6 +32,7 @@
  *
  */
 
+#include "common/fam_config_info.h"
 #include "common/fam_test_config.h"
 #include "metadata_service/fam_metadata_service.h"
 #include "metadata_service/fam_metadata_service_client.h"
@@ -45,18 +46,79 @@ using namespace nvmm;
 using namespace metadata;
 using namespace openfam;
 using metaServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
+
+char *get_severlist_from_cis_config() {
+    config_info *info = NULL;
+    char *metadataInterfaceType = NULL;
+    char *serverList = NULL;
+    std::string config_file_path;
+
+    // Check for config file in or in path mentioned
+    // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
+    try {
+        config_file_path =
+            find_config_file(strdup("fam_client_interface_config.yaml"));
+    } catch (Fam_InvalidOption_Exception &e) {
+        // If the config_file is not present, then ignore the exception.
+        // All the default parameters will be obtained from validate_cis_options
+        // function.
+    }
+    // Get the configuration info from the configruation file.
+    if (!config_file_path.empty() &&
+        config_file_path.find("fam_client_interface_config.yaml") !=
+            std::string::npos) {
+        info = new yaml_config_info(config_file_path);
+
+        try {
+            metadataInterfaceType = (char *)strdup(
+                (info->get_key_value("metadata_interface_type")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            metadataInterfaceType = (char *)strdup("rpc");
+        }
+
+        if (strcmp(metadataInterfaceType, "rpc") != 0)
+            return (NULL);
+
+        try {
+            std::vector<std::string> temp =
+                info->get_value_list("metadata_list");
+            ostringstream metasrvList;
+
+            for (auto item : temp)
+                metasrvList << item << ",";
+
+            serverList = (char *)strdup(metasrvList.str().c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            serverList = (char *)strdup("0:127.0.0.1:8787");
+        }
+        return serverList;
+    }
+    return (NULL);
+}
+
 int main(int argc, char *argv[]) {
 
     std::string delimiter1 = ",";
     std::string delimiter2 = ":";
 
     metaServerMap *metadataServers = new metaServerMap();
+    // Read metadataServerList from fam_client_interface_service_config.yaml
+    char *metadataServersConfigStr = get_severlist_from_cis_config();
+
+    if (metadataServersConfigStr == NULL) {
+        cout << "Metadata service not configured" << endl;
+        exit(0);
+    }
+
     Server_Map metadataServerList =
-        parse_server_list(SERVER_LIST, delimiter1, delimiter2);
+        parse_server_list(metadataServersConfigStr, delimiter1, delimiter2);
     for (auto obj = metadataServerList.begin(); obj != metadataServerList.end();
          ++obj) {
+        std::pair<std::string, uint64_t> service = obj->second;
         Fam_Metadata_Service *metadataService = new Fam_Metadata_Service_Client(
-            (obj->second).c_str(), METASERVER_RPC_PORT);
+            (service.first).c_str(), service.second);
         metadataServers->insert({obj->first, metadataService});
     }
 

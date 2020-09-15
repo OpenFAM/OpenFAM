@@ -962,7 +962,7 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
             for (auto item : temp)
                 memsrvList << item << ",";
 
-            options["memsrv_list"] = memsrvList.str().c_str();
+            options["memsrv_list"] = (char *)strdup(memsrvList.str().c_str());
         } catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["memsrv_list"] = (char *)strdup("0:127.0.0.1:8787");
@@ -976,7 +976,8 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
             for (auto item : temp)
                 metasrvList << item << ",";
 
-            options["metadata_list"] = metasrvList.str().c_str();
+            options["metadata_list"] =
+                (char *)strdup(metasrvList.str().c_str());
         } catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["metadata_list"] = (char *)strdup("0:127.0.0.1:8787");
