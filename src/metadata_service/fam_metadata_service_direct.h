@@ -45,6 +45,7 @@
 #include "radixtree/kvs.h"
 #include "radixtree/radix_tree.h"
 
+#include "common/fam_config_info.h"
 #include "fam_metadata_service.h"
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
@@ -134,6 +135,7 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
                                     metadata_region_item_op_t op, uint32_t uid,
                                     uint32_t gid);
     size_t metadata_maxkeylen();
+    configFileParams get_config_info(std::string filename);
 
     Fam_Metadata_Service_Direct(bool use_meta_reg = 0);
     ~Fam_Metadata_Service_Direct();

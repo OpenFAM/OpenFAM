@@ -131,7 +131,7 @@ namespace openfam {
         }                                                                      \
     }
 
-using Server_Map = std::map<uint64_t, std::string>;
+using Server_Map = std::map<uint64_t, std::pair<std::string, uint64_t>>;
 
 /**
  *  DataItem Metadata descriptor
@@ -148,6 +148,7 @@ typedef struct {
     size_t maxNameLen;
 } Fam_Region_Item_Info;
 
+// Input string contains <node-id>:<ipaddr>:<grpc-port>,<node-id>:...
 inline Server_Map parse_server_list(std::string memServer,
                                     std::string delimiter1,
                                     std::string delimiter2) {
@@ -159,17 +160,22 @@ inline Server_Map parse_server_list(std::string memServer,
             pos1 = memServer.length();
         std::string token = memServer.substr(prev1, pos1 - prev1);
         if (!token.empty()) {
-            uint64_t prev2 = 0, pos2 = 0, count = 0, nodeid = 0;
+            uint64_t prev2 = 0, pos2 = 0, count = 0, nodeid = 0, portid = 0;
+            std::string ipaddr;
             do {
                 pos2 = token.find(delimiter2, prev2);
                 if (pos2 == string::npos)
                     pos2 = token.length();
                 std::string token2 = token.substr(prev2, pos2 - prev2);
                 if (!token2.empty()) {
-                    if (count % 2 == 0) {
+                    if (count % 3 == 0) {
                         nodeid = stoull(token2);
+                    } else if (count % 3 == 1) {
+                        ipaddr = token2;
                     } else {
-                        memoryServerList.insert({nodeid, token2});
+                        portid = stoull(token2);
+                        memoryServerList.insert(
+                            {nodeid, std::make_pair(ipaddr, portid)});
                     }
                     count++;
                 }

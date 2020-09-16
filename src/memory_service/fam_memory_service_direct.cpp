@@ -28,6 +28,7 @@
  *
  */
 #include "fam_memory_service_direct.h"
+#include "common/fam_config_info.h"
 #include "common/fam_memserver_profile.h"
 #include <thread>
 
@@ -78,8 +79,34 @@ void memory_service_direct_profile_dump() {
 }
 
 Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
-    const char *name, const char *libfabricPort,
-    const char *libfabricProvider) {
+    const char *name, const char *libfabricPort = NULL,
+    const char *libfabricProvider = NULL) {
+
+    // Look for options information from config file.
+    // Use config file options only if NULL is passed.
+    std::string config_file_path;
+    configFileParams config_options;
+    // Check for config file in or in path mentioned
+    // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
+    try {
+        config_file_path =
+            find_config_file(strdup("fam_memoryserver_config.yaml"));
+    } catch (Fam_InvalidOption_Exception &e) {
+        // If the config_file is not present, then ignore the exception.
+    }
+    // Get the configuration info from the configruation file.
+    if (!config_file_path.empty()) {
+        config_options = get_config_info(config_file_path);
+    }
+
+    libfabricPort =
+        (libfabricPort == NULL ? config_options["libfabric_port"].c_str()
+                               : libfabricPort);
+
+    libfabricProvider =
+        (libfabricProvider == NULL ? config_options["provider"].c_str()
+                                   : libfabricProvider);
+
     allocator = new Memserver_Allocator();
 #ifdef SHM
     memoryRegistration = new Fam_Memory_Registration_SHM();
@@ -237,4 +264,35 @@ uint64_t Fam_Memory_Service_Direct::get_key(uint64_t regionId, uint64_t offset,
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_key);
     return key;
 }
+
+/*
+ * get_config_info - Obtain the required information from
+ * fam_pe_config file. On Success, returns a map that has options updated from
+ * from configuration file. Set default values if not found in config file.
+ */
+configFileParams
+Fam_Memory_Service_Direct::get_config_info(std::string filename) {
+    configFileParams options;
+    config_info *info = NULL;
+    if (filename.find("fam_memoryserver_config.yaml") != std::string::npos) {
+        info = new yaml_config_info(filename);
+        try {
+            options["provider"] =
+                (char *)strdup((info->get_key_value("provider")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["provider"] = (char *)strdup("sockets");
+        }
+
+        try {
+            options["libfabric_port"] =
+                (char *)strdup((info->get_key_value("libfabric_port")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["libfabric_port"] = (char *)strdup("7500");
+        }
+    }
+    return options;
+}
+
 } // namespace openfam

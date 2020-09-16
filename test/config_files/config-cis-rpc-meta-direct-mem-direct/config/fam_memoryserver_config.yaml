@@ -13,7 +13,7 @@
 # where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
 # portno is port to be used by OpenFAM for communication between Memory Server and
 # Client Interface Service.
-rpc_interface: 127.0.0.1:8787
+rpc_interface: 127.0.0.1:8789
 
 # Libfabric provider to be used by OpenFAM libfabric datapath operations; default is sockets.
 # Other options are psm2/verbs.

@@ -57,7 +57,9 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
 
     char *name = strdup(TEST_CIS_SERVER);
     char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
-    char *cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);
+    char *cisInterfaceTypeOpt = strdup("CIS_INTERFACE_TYPE");
+    char *cisInterfaceType =
+        (char *)my_fam->fam_get_option(cisInterfaceTypeOpt);
     Fam_Allocator_Client *famAllocator;
     if (strcmp(cisInterfaceType, "rpc") == 0) {
         famAllocator = new Fam_Allocator_Client(name, atoi(TEST_GRPC_PORT));

@@ -26,6 +26,7 @@ set(LIBOPENFAM_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_async_qhandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   PARENT_SCOPE
   )
 
@@ -34,6 +35,7 @@ set(CIS_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   PARENT_SCOPE
 )
 
@@ -42,6 +44,7 @@ set(MEMORY_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   PARENT_SCOPE
   )
 
@@ -49,6 +52,7 @@ set(METADATA_CLIENT_SRC
   ${METADATA_CLIENT_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   PARENT_SCOPE
   )
 
@@ -56,6 +60,7 @@ set(METADATA_SERVER_SRC
   ${METADATA_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   PARENT_SCOPE
   )
 

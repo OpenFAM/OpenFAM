@@ -84,7 +84,7 @@ class Fam_CIS_Async_Handler {
   public:
     Fam_CIS_Async_Handler(uint64_t rpcPort, char *name)
         : serverAddress(name), port(rpcPort) {
-        famCIS = new Fam_CIS_Direct();
+        famCIS = new Fam_CIS_Direct(name);
         service = new sType();
         MEMSERVER_PROFILE_INIT(CIS_ASYNC);
         MEMSERVER_PROFILE_START_TIME(CIS_ASYNC);

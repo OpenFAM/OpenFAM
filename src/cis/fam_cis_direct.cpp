@@ -28,6 +28,7 @@
  *
  */
 #include "cis/fam_cis_direct.h"
+#include "common/fam_config_info.h"
 #include "common/fam_memserver_profile.h"
 #include <thread>
 
@@ -73,41 +74,93 @@ void cis_direct_profile_dump() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(CIS_DIRECT)
 }
 
-Fam_CIS_Direct::Fam_CIS_Direct() {
+Fam_CIS_Direct::Fam_CIS_Direct(char *cisName) {
+
+    // Look for options information from config file.
+    std::string config_file_path;
+    configFileParams config_options;
+    ostringstream message;
+    // Check for config file in or in path mentioned
+    // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
+    try {
+        config_file_path =
+            find_config_file(strdup("fam_client_interface_config.yaml"));
+    } catch (Fam_InvalidOption_Exception &e) {
+        // If the config_file is not present, then ignore the exception.
+        // All the default parameters will be obtained from validate_cis_options
+        // function.
+    }
+    // Get the configuration info from the configruation file.
+    if (!config_file_path.empty()) {
+        config_options = get_config_info(config_file_path);
+    }
+
+    if (cisName == NULL) {
+        // Use localhost/127.0.0.1 as name;
+        cisName = strdup("127.0.0.1");
+    }
     memoryServers = new memoryServerMap();
     metadataServers = new metadataServerMap();
     std::string delimiter1 = ",";
     std::string delimiter2 = ":";
-#ifdef MEMORY_SERVICE_RPC
-    Server_Map memoryServerList =
-        parse_server_list(SERVER_LIST, delimiter1, delimiter2);
-    for (auto obj = memoryServerList.begin(); obj != memoryServerList.end();
-         ++obj) {
-        Fam_Memory_Service *memoryService = new Fam_Memory_Service_Client(
-            (obj->second).c_str(), MEMSERVER_RPC_PORT);
-        memoryServers->insert({obj->first, memoryService});
+
+    if (config_options.empty()) {
+        // Raise an exception;
+        message << "Fam config options not found.";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
-#else
-    Fam_Memory_Service *memoryService = new Fam_Memory_Service_Direct(
-        MEMSERVER_ADDR, MEMSERVER_LIBFABRIC_PORT, MEMSERVER_LIBFABRIC_PROVIDER);
-    memoryServers->insert({0, memoryService});
-#endif
+
+    if (strcmp(config_options["memsrv_interface_type"].c_str(),
+               FAM_OPTIONS_RPC_STR) == 0) {
+        Server_Map memoryServerList = parse_server_list(
+            config_options["memsrv_list"].c_str(), delimiter1, delimiter2);
+        for (auto obj = memoryServerList.begin(); obj != memoryServerList.end();
+             ++obj) {
+            std::pair<std::string, uint64_t> service = obj->second;
+            Fam_Memory_Service *memoryService = new Fam_Memory_Service_Client(
+                (service.first).c_str(), service.second);
+            memoryServers->insert({obj->first, memoryService});
+        }
+    } else if (strcmp(config_options["memsrv_interface_type"].c_str(),
+                      FAM_OPTIONS_DIRECT_STR) == 0) {
+        // Start memory service only with name(ipaddr) and let Memory service
+        // direct reads libfabric port and provider from memroy server config
+        // file.
+        Fam_Memory_Service *memoryService =
+            new Fam_Memory_Service_Direct(cisName, NULL, NULL);
+        memoryServers->insert({0, memoryService});
+    } else {
+        // Raise an exception
+        message << "Invalid value specified for Fam config "
+                   "option:memsrv_interface_type.";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    }
 
 //TODO: In current implementation metadata server id is same as memory server id
 //later it will be seleted based on some strategy
-#ifdef METADATA_SERVICE_RPC
-    Server_Map metadataServerList =
-        parse_server_list(SERVER_LIST, delimiter1, delimiter2);
-    for (auto obj = metadataServerList.begin(); obj != metadataServerList.end();
-         ++obj) {
-        Fam_Metadata_Service *metadataService = new Fam_Metadata_Service_Client(
-            (obj->second).c_str(), METASERVER_RPC_PORT);
-        metadataServers->insert({obj->first, metadataService});
+    if (strcmp(config_options["metadata_interface_type"].c_str(),
+               FAM_OPTIONS_RPC_STR) == 0) {
+        Server_Map metadataServerList = parse_server_list(
+            config_options["metadata_list"].c_str(), delimiter1, delimiter2);
+        for (auto obj = metadataServerList.begin();
+             obj != metadataServerList.end(); ++obj) {
+            std::pair<std::string, uint64_t> service = obj->second;
+            Fam_Metadata_Service *metadataService =
+                new Fam_Metadata_Service_Client((service.first).c_str(),
+                                                service.second);
+            metadataServers->insert({obj->first, metadataService});
+        }
+    } else if (strcmp(config_options["metadata_interface_type"].c_str(),
+                      FAM_OPTIONS_DIRECT_STR) == 0) {
+        Fam_Metadata_Service *metadataService =
+            new Fam_Metadata_Service_Direct();
+        metadataServers->insert({0, metadataService});
+    } else {
+        // Raise an exception
+        message << "Invalid value specified for Fam config "
+                   "option:metadata_interface_type.";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
-#else
-    Fam_Metadata_Service *metadataService = new Fam_Metadata_Service_Direct();
-    metadataServers->insert({0, metadataService});
-#endif
     memoryServerCount = memoryServers->size();
 }
 
@@ -859,9 +912,11 @@ void Fam_CIS_Direct::release_CAS_lock(uint64_t offset,
 
 size_t Fam_CIS_Direct::get_addr_size(uint64_t memoryServerId) {
     CIS_DIRECT_PROFILE_START_OPS()
+    size_t addrSize = 0;
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
-    return memoryService->get_addr_size();
+    addrSize = memoryService->get_addr_size();
     CIS_DIRECT_PROFILE_END_OPS(cis_get_addr_size);
+    return addrSize;
 }
 
 void Fam_CIS_Direct::get_addr(void *memServerFabricAddr,
@@ -871,6 +926,64 @@ void Fam_CIS_Direct::get_addr(void *memServerFabricAddr,
     memcpy(memServerFabricAddr, (void *)memoryService->get_addr(),
            memoryService->get_addr_size());
     CIS_DIRECT_PROFILE_END_OPS(cis_get_addr);
+}
+
+/*
+ * get_config_info - Obtain the required information from
+ * fam_pe_config file. On Success, returns a map that has options updated from
+ * from configuration file. Set default values if not found in config file.
+ */
+configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
+    configFileParams options;
+    config_info *info = NULL;
+    if (filename.find("fam_client_interface_config.yaml") !=
+        std::string::npos) {
+        info = new yaml_config_info(filename);
+        try {
+            options["memsrv_interface_type"] = (char *)strdup(
+                (info->get_key_value("memsrv_interface_type")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["memsrv_interface_type"] = (char *)strdup("rpc");
+        }
+
+        try {
+            options["metadata_interface_type"] = (char *)strdup(
+                (info->get_key_value("metadata_interface_type")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["metadata_interface_type"] = (char *)strdup("rpc");
+        }
+
+        try {
+            std::vector<std::string> temp = info->get_value_list("memsrv_list");
+            ostringstream memsrvList;
+
+            for (auto item : temp)
+                memsrvList << item << ",";
+
+            options["memsrv_list"] = (char *)strdup(memsrvList.str().c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["memsrv_list"] = (char *)strdup("0:127.0.0.1:8787");
+        }
+
+        try {
+            std::vector<std::string> temp =
+                info->get_value_list("metadata_list");
+            ostringstream metasrvList;
+
+            for (auto item : temp)
+                metasrvList << item << ",";
+
+            options["metadata_list"] =
+                (char *)strdup(metasrvList.str().c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["metadata_list"] = (char *)strdup("0:127.0.0.1:8787");
+        }
+    }
+    return options;
 }
 
 } // namespace openfam
