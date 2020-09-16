@@ -87,7 +87,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -g -O2")
 #
 # gcc flags for debug build
 #
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -DDEBUG -Og -g")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -DDEBUG -O0 -g")
 
 #
 # gcc flags for debug build
@@ -131,7 +131,7 @@ include_directories(/usr/local/include)
 
 set( TEST_DEFAULT_REGION "Default" )
 set( TEST_OPENFAM_MODEL "memory_server" )
-set( TEST_CIS_INTERFACE_TYPE "rpc" )
+# set( TEST_CIS_INTERFACE_TYPE "rpc" )
 set( TEST_CIS_SERVER "127.0.0.1" )
 set( TEST_GRPC_PORT "8787" )
 set( TEST_LIBFABRIC_PROVIDER "sockets" )
@@ -147,31 +147,6 @@ endif()
 if (${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
         message(STATUS "Building shared memory model")
         add_definitions(-DSHM)
-endif()
-
-add_definitions(-DSERVER_LIST="0:127.0.0.1")
-add_definitions(-DMEMSERVER_LIBFABRIC_PORT="7500")
-add_definitions(-DMEMSERVER_LIBFABRIC_PROVIDER="sockets")
-add_definitions(-DMEMSERVER_ADDR="127.0.0.1")
-
-if (ENABLE_METADATA_SERVICE_RPC)
-	if(${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
-		message(STATUS "Error : Can not enable RPC in shared memory model")
-	else()
-        message(STATUS "Using Metadata service RPC interface")
-		add_definitions(-DMETADATA_SERVICE_RPC)
-		add_definitions(-DMETASERVER_RPC_PORT=8788)
-	endif()
-endif()
-
-if (ENABLE_MEMORY_SERVICE_RPC)
-	if(${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
-        message(STATUS "Error : Can not enable RPC in shared memory model")
-    else()
-        message(STATUS "Using memory service RPC interface")
-		add_definitions(-DMEMORY_SERVICE_RPC)
-		add_definitions(-DMEMSERVER_RPC_PORT=8789)
-	endif()
 endif()
 
 if (USE_FAM_PERSIST)

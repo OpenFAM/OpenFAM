@@ -77,6 +77,7 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
 
     uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
                      bool rwFlag);
+    configFileParams get_config_info(std::string filename);
 
   private:
     Memserver_Allocator *allocator;

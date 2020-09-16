@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 
     void *buf = malloc(10 * sizeof(int64_t));
     bmap->size = 10 * sizeof(int64_t);
-    bmap->map = &buf;
+    bmap->map = buf;
 
     ret = bitmap_init(bmap);
     if (ret) {

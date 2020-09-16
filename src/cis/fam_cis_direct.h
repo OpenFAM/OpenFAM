@@ -33,6 +33,7 @@
 #include <sys/types.h>
 
 #include "cis/fam_cis.h"
+#include "common/fam_config_info.h"
 #include "memory_service/fam_memory_service.h"
 #include "memory_service/fam_memory_service_client.h"
 #include "memory_service/fam_memory_service_direct.h"
@@ -49,7 +50,7 @@ using metadataServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
 
 class Fam_CIS_Direct : public Fam_CIS {
   public:
-    Fam_CIS_Direct();
+    Fam_CIS_Direct(char *cisName);
 
     ~Fam_CIS_Direct();
 
@@ -124,10 +125,12 @@ class Fam_CIS_Direct : public Fam_CIS {
 
     size_t get_addr_size(uint64_t memoryServerId);
     void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
+    configFileParams get_config_info(std::string filename);
 
   private:
     memoryServerMap *memoryServers;
     metadataServerMap *metadataServers;
+    configFileParams file_options;
     uint64_t memoryServerCount;
     void *get_local_pointer(uint64_t regionId, uint64_t offset,
                             uint64_t memoryServerId);

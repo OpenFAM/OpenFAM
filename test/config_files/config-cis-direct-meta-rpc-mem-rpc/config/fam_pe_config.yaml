@@ -1,0 +1,24 @@
+# PE config file
+
+# Fam thread model: default is single-threaded(single). Other option is multi-threaded(multiple)
+FamThreadModel: single
+
+# Libfabric provider to be used by OpenFAM libfabric datapath operations; default is sockets. 
+# Other options: verbs for Infiniband provider, psm2 for Omnipath provider.
+provider: sockets
+
+# OpenFAM model to be used; default is memory_server, Other option is shared_memory.
+# For shared_memory model, FAM should be present in same node as PE.
+openfam_model: memory_server
+
+# Runtime option used for OpenFAM; default is  PMIX. Other options is PMI2
+runtime: PMIX
+
+# Client Interace Type for OpenFAM; default is direct. Other option is rpc
+# client_interface_type value of rpc implies communication between PE and client interface via rpc.
+# client_interface_type value of direct implies communication happens via function calls.
+client_interface_type: direct
+
+# Address of Client Interface Service - It can be hostname (fully qualified domain name)/ipv4 address.
+# Applicable only if client_interface_type is rpc.
+fam_client_interface_service_address: 127.0.0.1:8787

@@ -32,26 +32,26 @@ add_subdirectory(cis)
 add_library(fammetadata SHARED ${METADATA_CLIENT_SRC})
 add_definitions(-DFAM_ATOMIC_NATIVE)
 
-target_link_libraries(fammetadata nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)
+target_link_libraries(fammetadata yaml-cpp nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)
 
 add_library(openfam SHARED ${LIBOPENFAM_SRC})
 
 if(USE_BOOST_FIBER)
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_fiber boost_context pmix pmi2 fambitmap yaml-cpp)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_fiber boost_context pmix pmi2 fambitmap)
 else()
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection nvmm boost_context pmix pmi2 fambitmap yaml-cpp)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_context pmix pmi2 fambitmap)
 endif()
 
 set_target_properties(openfam PROPERTIES SOVERSION ${VERSION_STR})
 
 add_executable(cis_server ${CIS_SERVER_SRC})
 
-target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection nvmm boost_system fambitmap famradixtree)
+target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_system fambitmap famradixtree)
 
 add_executable (memory_server ${MEMORY_SERVER_SRC})
 
-target_link_libraries(memory_server fabric famradixtree grpc grpc++ grpc++_reflection nvmm boost_system fambitmap)
+target_link_libraries(memory_server fabric famradixtree grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_system fambitmap)
 
 add_executable (metadata_server ${METADATA_SERVER_SRC})
 
-target_link_libraries(metadata_server nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)
+target_link_libraries(metadata_server yaml-cpp nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)

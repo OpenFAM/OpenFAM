@@ -49,7 +49,7 @@ Fam_Allocator_Client::Fam_Allocator_Client(const char *name, uint64_t port) {
 }
 
 Fam_Allocator_Client::Fam_Allocator_Client() {
-    famCIS = new Fam_CIS_Direct();
+    famCIS = new Fam_CIS_Direct(NULL);
     uid = (uint32_t)getuid();
     gid = (uint32_t)getgid();
 }

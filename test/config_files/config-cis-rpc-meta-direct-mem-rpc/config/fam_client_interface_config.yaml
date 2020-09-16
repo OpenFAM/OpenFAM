@@ -32,9 +32,9 @@ rpc_interface: 127.0.0.1:8787
 # And host_address can be hostname (fully qualified domain name)/ipv4 address.
 #
 # Example:
-# 5:127.0.0.1:8787
+# 5:127.0.0.1:8789
 memsrv_list:
-- 0:127.0.0.1:8787
+- 0:127.0.0.1:8789
 
 # List of metadata servers
 # Applicable only if metadata_interface_type is rpc.
@@ -46,6 +46,6 @@ memsrv_list:
 # And host_address can be hostname (fully qualified domain name)/ipv4 address.
 #
 # Example:
-# 5:127.0.0.1:8989
+# 5:127.0.0.1:8788
 metadata_list:
-- 0:127.0.0.1:8989
+- 0:127.0.0.1:8788
