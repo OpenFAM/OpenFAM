@@ -1,17 +1,17 @@
 #!/bin/bash
 CURRENTDIR=`pwd`
-RPC_BUILD_DIR=$CURRENTDIR/build/build-rpc
+MEMSRV_BUILD_DIR=$CURRENTDIR/build/build-mem-server
 SHM_BUILD_DIR=$CURRENTDIR/build/build-shm
 
 #creating build directory if not present
-if [ ! -d "$RPC_BUILD_DIR" ]; then
-  echo "Creating $RPC_BUILD_DIR"
-  mkdir -p $RPC_BUILD_DIR
+if [ ! -d "$MEMSRV_BUILD_DIR" ]; then
+  echo "Creating $MEMSRV_BUILD_DIR"
+  mkdir -p $MEMSRV_BUILD_DIR
 fi
 
-#Build and run test with RPC allocator
-cd $RPC_BUILD_DIR
-# cmake ../..; make -j; make install
+#Build and run test with MemoryServer allocator
+cd $MEMSRV_BUILD_DIR
+cmake ../..; make ; make install
 if [[ $? > 0 ]]
 then
         echo "OpenFAM build with memoryserver version failed.. exit..."
@@ -21,7 +21,7 @@ fi
 echo "==========================================================="
 echo "Test OpenFAM with cis-rpc-meta-direct-mem-rpc configuration"
 echo "==========================================================="
-export OPENFAM_ROOT="$RPC_BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-rpc/"
+export OPENFAM_ROOT="$MEMSRV_BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-rpc/"
 source setup.sh --cisserver=127.0.0.1  --memserver=127.0.0.1
 echo $OPENFAM_ROOT
 make unit-test
@@ -43,7 +43,7 @@ pkill memory_server
 echo "========================================================"
 echo "Test OpenFAM with cis-rpc-meta-rpc-mem-rpc configuration"
 echo "========================================================"
-export OPENFAM_ROOT="$RPC_BUILD_DIR/test/config_files/config-cis-rpc-meta-rpc-mem-rpc/"
+export OPENFAM_ROOT="$MEMSRV_BUILD_DIR/test/config_files/config-cis-rpc-meta-rpc-mem-rpc/"
 source setup.sh --cisserver=127.0.0.1 --metaserver=127.0.0.1 --memserver=127.0.0.1
 make unit-test
 if [[ $? > 0 ]]
@@ -65,7 +65,7 @@ pkill metadata_server
 echo "=============================================================="
 echo "Test OpenFAM with cis-rpc-meta-direct-mem-direct configuration"
 echo "=============================================================="
-export OPENFAM_ROOT="$RPC_BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-direct/"
+export OPENFAM_ROOT="$MEMSRV_BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-direct/"
 source setup.sh --cisserver=127.0.0.1
 make unit-test
 if [[ $? > 0 ]]
@@ -85,7 +85,7 @@ pkill cis_server
 echo "==========================================================="
 echo "Test OpenFAM with cis-direct-meta-rpc-mem-rpc configuration"
 echo "==========================================================="
-export OPENFAM_ROOT="$RPC_BUILD_DIR/test/config_files/config-cis-direct-meta-rpc-mem-rpc/"
+export OPENFAM_ROOT="$MEMSRV_BUILD_DIR/test/config_files/config-cis-direct-meta-rpc-mem-rpc/"
 source setup.sh --metaserver=127.0.0.1 --memserver=127.0.0.1
 make unit-test
 if [[ $? > 0 ]]
@@ -112,7 +112,7 @@ fi
 
 #Build and run test with shared memory model
 cd $SHM_BUILD_DIR
- cmake ../.. -DARG_OPENFAM_MODEL=shared_memory; make -j; make install
+ cmake ../.. -DARG_OPENFAM_MODEL=shared_memory; make ; make install
 if [[ $? > 0 ]]
 then
         echo "OpenFAM build with shared memory model  failed.. exit..."
@@ -133,11 +133,6 @@ if [[ $? > 0 ]]
 then
         echo "One or more reg-test failed while running with shared memory model.. exit..."
         exit 1
-fi
-
-if [ ! -d "$ALL_RPC_BUILD_DIR" ]; then
-	echo "Creating $ALL_RPC_BUILD_DIR"
-	mkdir -p $ALL_RPC_BUILD_DIR
 fi
 
 fi
