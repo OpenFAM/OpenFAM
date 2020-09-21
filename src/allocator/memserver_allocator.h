@@ -60,7 +60,7 @@ using HeapMap = std::map<uint64_t, Heap *>;
 
 class Memserver_Allocator {
   public:
-    Memserver_Allocator(char *fam_path);
+    Memserver_Allocator(const char *fam_path);
     ~Memserver_Allocator();
     void memserver_allocator_finalize();
     void reset_profile();
