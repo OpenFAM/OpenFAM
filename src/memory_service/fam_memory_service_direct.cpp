@@ -87,6 +87,8 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
     // Use config file options only if NULL is passed.
     std::string config_file_path;
     configFileParams config_options;
+    const char *fam_path = NULL;
+
     // Check for config file in or in path mentioned
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
     try {
@@ -108,7 +110,10 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
         (libfabricProvider == NULL ? config_options["provider"].c_str()
                                    : libfabricProvider);
 
-    allocator = new Memserver_Allocator();
+    fam_path =
+        (fam_path == NULL ? config_options["fam_path"].c_str() : fam_path);
+
+    allocator = new Memserver_Allocator(fam_path);
 #ifdef SHM
     memoryRegistration = new Fam_Memory_Registration_SHM();
 #else
@@ -304,6 +309,7 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
         }
 
         try {
+<<<<<<< HEAD
             options["ATL_threads"] =
                 (char *)strdup((info->get_key_value("ATL_threads")).c_str());
         } catch (Fam_InvalidOption_Exception e) {
@@ -325,6 +331,14 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
         } catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["ATL_data_size"] = (char *)strdup("1073741824");
+	}
+
+	try {
+            options["fam_path"] =
+                (char *)strdup((info->get_key_value("fam_path")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["fam_path"] = (char *)strdup("");
         }
     }
     return options;
