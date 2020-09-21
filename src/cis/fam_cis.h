@@ -37,6 +37,7 @@
 #include <grpcpp/grpcpp.h>
 
 #include "cis/fam_cis_rpc.grpc.pb.h"
+#include "common/fam_async_qhandler.h"
 #include "common/fam_internal.h"
 #include "common/fam_internal_exception.h"
 #include "fam/fam.h"
@@ -69,7 +70,9 @@ typedef struct {
 
     std::unique_ptr<::grpc::ClientAsyncResponseReader<Fam_Copy_Response>>
         responseReader;
-} Fam_Copy_Tag;
+
+    Fam_Copy_Tag *tag;
+} Fam_Copy_Wait_Object;
 
 class Fam_CIS {
   public:

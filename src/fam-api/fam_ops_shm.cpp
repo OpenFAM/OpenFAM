@@ -605,8 +605,9 @@ void *Fam_Ops_SHM::copy(Fam_Descriptor *src, uint64_t srcOffset,
             "Destination offset or size is beyond dataitem boundary");
     }
 
-    Copy_Tag *tag = new Copy_Tag();
+    Fam_Copy_Tag *tag = new Fam_Copy_Tag();
     tag->copyDone.store(false, boost::memory_order_seq_cst);
+    tag->memoryService = NULL;
 
     Fam_Ops_Info opsInfo = {COPY, baseSrc, baseDest, nbytes, 0, 0, 0, 0, tag};
     asyncQHandler->initiate_operation(opsInfo);

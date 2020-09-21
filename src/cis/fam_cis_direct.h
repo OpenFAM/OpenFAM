@@ -50,7 +50,7 @@ using metadataServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
 
 class Fam_CIS_Direct : public Fam_CIS {
   public:
-    Fam_CIS_Direct(char *cisName);
+    Fam_CIS_Direct(char *cisName, bool useAsyncCopy_ = false);
 
     ~Fam_CIS_Direct();
 
@@ -60,9 +60,9 @@ class Fam_CIS_Direct : public Fam_CIS {
 
     uint64_t get_num_memory_servers();
 
-    void reset_profile(uint64_t metadataServerId);
+    void reset_profile(uint64_t memoryServerId);
 
-    void dump_profile(uint64_t metadataServerId);
+    void dump_profile(uint64_t memoryServerId);
 
     Fam_Region_Item_Info create_region(string name, size_t nbytes,
                                        mode_t permission,
@@ -113,7 +113,7 @@ class Fam_CIS_Direct : public Fam_CIS {
                uint64_t destCopyStar, uint64_t nbytes, uint64_t memoryServerId,
                uint32_t uid, uint32_t gid);
 
-    void wait_for_copy(void *waitObj) {}
+    void wait_for_copy(void *waitObj);
 
     void *fam_map(uint64_t regionId, uint64_t offset, uint64_t memoryServerId,
                   uint32_t uid, uint32_t gid);
@@ -128,10 +128,12 @@ class Fam_CIS_Direct : public Fam_CIS {
     configFileParams get_config_info(std::string filename);
 
   private:
+    Fam_Async_QHandler *asyncQHandler;
     memoryServerMap *memoryServers;
     metadataServerMap *metadataServers;
     configFileParams file_options;
     uint64_t memoryServerCount;
+    bool useAsyncCopy;
     void *get_local_pointer(uint64_t regionId, uint64_t offset,
                             uint64_t memoryServerId);
 
