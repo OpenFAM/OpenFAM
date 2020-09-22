@@ -29,6 +29,7 @@
  */
 
 #include "fam_memory_service_client.h"
+#include "common/atomic_queue.h"
 #include "common/fam_memserver_profile.h"
 
 #include <boost/atomic.hpp>
@@ -335,6 +336,55 @@ uint64_t Fam_Memory_Service_Client::get_key(uint64_t regionId, uint64_t offset,
 
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_key);
     return res.key();
+}
+
+void Fam_Memory_Service_Client::get_atomic(uint64_t regionId,
+                                           uint64_t srcOffset,
+                                           uint64_t dstOffset, uint64_t nbytes,
+                                           uint64_t key, const char *nodeAddr,
+                                           uint32_t nodeAddrSize) {
+    Fam_Memory_Atomic_Get_Request req;
+    Fam_Memory_Atomic_Response res;
+    ::grpc::ClientContext ctx;
+    //    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_srcoffset(srcOffset);
+    req.set_dstoffset(dstOffset);
+    req.set_nbytes(nbytes);
+    req.set_key(key);
+    req.set_nodeaddr(nodeAddr, nodeAddrSize);
+    req.set_nodeaddrsize(nodeAddrSize);
+    ::grpc::Status status = stub->get_atomic(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    //    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_atomic);
+}
+
+void Fam_Memory_Service_Client::put_atomic(uint64_t regionId,
+                                           uint64_t srcOffset,
+                                           uint64_t dstOffset, uint64_t nbytes,
+                                           uint64_t key, const char *nodeAddr,
+                                           uint32_t nodeAddrSize,
+                                           const char *data) {
+    Fam_Memory_Atomic_Put_Request req;
+    Fam_Memory_Atomic_Response res;
+    ::grpc::ClientContext ctx;
+
+    //    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_srcoffset(srcOffset);
+    req.set_dstoffset(dstOffset);
+    req.set_nbytes(nbytes);
+    req.set_key(key);
+    req.set_nodeaddr(nodeAddr, nodeAddrSize);
+    req.set_nodeaddrsize(nodeAddrSize);
+    if (nbytes <= MAX_DATA_IN_MSG)
+        req.set_data(data, nbytes);
+
+    ::grpc::Status status = stub->put_atomic(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    //    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_put_atomic);
 }
 
 } // namespace openfam

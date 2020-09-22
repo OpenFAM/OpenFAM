@@ -27,6 +27,7 @@ set(LIBOPENFAM_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
   PARENT_SCOPE
   )
 
@@ -36,6 +37,7 @@ set(CIS_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
   PARENT_SCOPE
 )
 
@@ -45,6 +47,7 @@ set(MEMORY_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
   PARENT_SCOPE
   )
 

@@ -80,6 +80,14 @@ class Fam_Memory_Service_Client : public Fam_Memory_Service {
     uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
                      bool rwFlag);
 
+    void get_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
+                    uint64_t nbytes, uint64_t key, const char *nodeAddr,
+                    uint32_t nodeAddrSize);
+
+    void put_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
+                    uint64_t nbytes, uint64_t key, const char *nodeAddr,
+                    uint32_t nodeAddrSize, const char *data);
+
   private:
     std::unique_ptr<Fam_Memory_Service_Rpc::Stub> stub;
     size_t memServerFabricAddrSize;

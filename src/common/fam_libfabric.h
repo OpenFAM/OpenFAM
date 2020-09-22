@@ -1,6 +1,6 @@
 /*
  * fam_libfabric.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -149,7 +149,7 @@ void fabric_quiet(Fam_Context *context);
 
 int fabric_retry(Fam_Context *context, int ret, uint64_t *retry_cnt);
 
-int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx);
+int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx, int ioType);
 
 void fabric_atomic(uint64_t key, void *value, uint64_t offset, enum fi_op op,
                    enum fi_datatype datatype, fi_addr_t fiAddr,
@@ -172,6 +172,12 @@ int fabric_getname_len(struct fid_ep *ep, size_t *addrSize);
 int fabric_getname(struct fid_ep *ep, void *addr, size_t *addrSize);
 
 enum Fam_Error get_fam_error(int fabErr);
+
+void fabric_send_response(void *retStatus, fi_addr_t fiAddr,
+                          Fam_Context *famCtx, size_t nbytes);
+
+fi_context *fabric_post_response_buff(void *retStatus, fi_addr_t fiAddr,
+                                      Fam_Context *famCtx, size_t nbytes);
 
 } // namespace openfam
 #endif

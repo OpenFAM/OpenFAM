@@ -30,8 +30,8 @@
  */
 
 #include "fam_memory_registration_libfabric.h"
+#include "common/atomic_queue.h"
 #include "common/fam_memserver_profile.h"
-
 #include <boost/atomic.hpp>
 
 #include <chrono>
@@ -121,6 +121,7 @@ Fam_Memory_Registration_Libfabric::Fam_Memory_Registration_Libfabric(
 		isBaseRequire = true;
 	else 
 		isBaseRequire = false;
+        famOpsLibfabricQ = famOps;
 }
 
 Fam_Memory_Registration_Libfabric::~Fam_Memory_Registration_Libfabric() {

@@ -35,6 +35,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "common/atomic_queue.h"
 #include "common/fam_memserver_profile.h"
 using namespace std;
 using namespace chrono;
@@ -487,6 +488,96 @@ PoolId Memserver_Allocator::get_free_poolId() {
         return NO_FREE_POOLID;
 
     return (PoolId)freePoolId;
+}
+/*
+ create the fixed region for ATL with ID ATOMIC_REGION_ID
+*/
+void Memserver_Allocator::create_ATL_root(size_t nbytes) {
+    ostringstream message;
+    message << "Error While creating region : ";
+
+    size_t tmpSize;
+    bool regionATLexists = true;
+    int ret;
+    GlobalPtr ATLroot;
+    PoolId poolId = ATOMIC_REGION_ID;
+    ATLroot = memoryManager->GetATLRegionRootPtr(ATL_REGION_ID);
+    if (ATLroot == 0) { // region doesn't exists..create it
+        regionATLexists = false;
+
+        if (nbytes < MIN_REGION_SIZE)
+            tmpSize = MIN_REGION_SIZE;
+        else
+            tmpSize = nbytes;
+        int ret;
+        NVMM_PROFILE_START_OPS()
+        ret = memoryManager->CreateHeap(poolId, tmpSize, MIN_OBJ_SIZE);
+        NVMM_PROFILE_END_OPS(CreateHeap)
+        if (ret == ID_FOUND) {
+            message << "Heap already exists";
+        }
+        if ((ret != NO_ERROR) && (ret != ID_FOUND)) {
+            message << "Heap not created";
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_CREATED,
+                            message.str().c_str());
+        }
+    }
+    Heap *heap = 0;
+    NVMM_PROFILE_START_OPS()
+    ret = memoryManager->FindHeap(poolId, &heap);
+    NVMM_PROFILE_END_OPS(FindHeap)
+    if (ret != NO_ERROR) {
+        message << "Heap not found";
+        delete heap;
+        THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_FOUND,
+                        message.str().c_str());
+    }
+    NVMM_PROFILE_START_OPS()
+    ret = heap->Open(NVMM_NO_BG_THREAD);
+    NVMM_PROFILE_END_OPS(Heap_Open)
+    if (ret != NO_ERROR) {
+        message << "Can not open heap";
+        delete heap;
+        THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_OPENED,
+                        message.str().c_str());
+    }
+
+    uint64_t regionId = (uint64_t)poolId;
+    NVMM_PROFILE_START_OPS()
+    pthread_mutex_lock(&heapMapLock);
+
+    auto heapObj = heapMap->find(regionId);
+    if (heapObj == heapMap->end()) {
+        heapMap->insert({regionId, heap});
+    } else {
+        message << "Can not insert heap. regionId already found in map";
+        pthread_mutex_unlock(&heapMapLock);
+        delete heap;
+        NVMM_PROFILE_START_OPS()
+        ret = memoryManager->DestroyHeap((PoolId)regionId);
+        NVMM_PROFILE_END_OPS(DestroyHeap)
+        if (ret != NO_ERROR) {
+            message << "Can not destroy heap";
+        }
+        THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_INSERTED,
+                        message.str().c_str());
+    }
+
+    pthread_mutex_unlock(&heapMapLock);
+    NVMM_PROFILE_END_OPS(HeapMapInsertOp);
+
+    if (!regionATLexists) {
+        ATLroot = heap->Alloc(sizeof(uint64_t) * MAX_ATOMIC_THREADS);
+        assert(ATLroot.IsValid() == true);
+        ATLroot = memoryManager->SetATLRegionRootPtr(ATL_REGION_ID, ATLroot);
+    }
+
+    atomicRegionIdRoot = memoryManager->GlobalToLocal(ATLroot);
+    if (!regionATLexists) {
+        memset(atomicRegionIdRoot, 0, sizeof(uint64_t) * MAX_ATOMIC_THREADS);
+        openfam_persist(atomicRegionIdRoot,
+                        sizeof(uint64_t) * MAX_ATOMIC_THREADS);
+    }
 }
 
 } // namespace openfam

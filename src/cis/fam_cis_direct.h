@@ -127,6 +127,16 @@ class Fam_CIS_Direct : public Fam_CIS {
     void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
     configFileParams get_config_info(std::string filename);
 
+    int get_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
+                   uint64_t nbytes, uint64_t key, const char *nodeAddr,
+                   uint32_t nodeAddrSize, uint64_t memoryServerId, uint32_t uid,
+                   uint32_t gid);
+
+    int put_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
+                   uint64_t nbytes, uint64_t key, const char *nodeAddr,
+                   uint32_t nodeAddrSize, const char *data,
+                   uint64_t memoryServerId, uint32_t uid, uint32_t gid);
+
   private:
     memoryServerMap *memoryServers;
     metadataServerMap *metadataServers;

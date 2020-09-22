@@ -104,7 +104,9 @@ enum Internal_Error {
     RESIZE_FAILED,
     ITEM_REGISTRATION_FAILED,
     ITEM_DEREGISTRATION_FAILED,
-    METADATA_ERROR
+    METADATA_ERROR,
+    ATOMIC_QUEUE_FULL,
+    ATOMIC_INSERT_ERROR
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -134,6 +136,12 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
 
     case UNIMPLEMENTED:
         return FAM_ERR_UNIMPL;
+
+    case ATOMIC_QUEUE_FULL:
+        return FAM_ERR_ATOMIC_QUEUE_FULL;
+
+    case ATOMIC_INSERT_ERROR:
+        return FAM_ERR_ATOMIC_QUEUE_INSERT;
 
     case ALLOC_NO_ERROR:
     case REGION_NOT_INSERTED:

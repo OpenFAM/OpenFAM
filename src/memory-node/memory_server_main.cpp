@@ -32,6 +32,7 @@
 #include <signal.h>
 #endif
 
+#include "common/atomic_queue.h"
 #include "memory_service/fam_memory_service_server.h"
 #include <iostream>
 using namespace std;
@@ -59,6 +60,7 @@ int main(int argc, char *argv[]) {
     char *name = strdup("127.0.0.1");
     char *libfabricPort = strdup("7500");
     char *provider = strdup("sockets");
+    //    numAtomicThreads = 0;
 
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
@@ -84,7 +86,10 @@ int main(int argc, char *argv[]) {
                    "is sockets)\n"
                 << "\n"
                 << "\t-v/--version        : Display metadata server version  \n"
-                << "\n"
+                //                << "\n"
+                //                << "\t-at/--atomicthreads  : Number of Atomic
+                //                Library Threads\n"
+                //                << "\n"
                 << endl;
             exit(0);
         } else if ((std::string(argv[i]) == "-a") ||
@@ -99,6 +104,11 @@ int main(int argc, char *argv[]) {
         } else if ((std::string(argv[i]) == "-p") ||
                    (std::string(argv[i]) == "--provider")) {
             provider = strdup(argv[++i]);
+            //        } else if ((std::string(argv[i]) == "-at") ||
+            //                   (std::string(argv[i]) == "--atomicthreads")) {
+            //            numAtomicThreads = atoi(argv[++i]);
+            //            if (numAtomicThreads > MAX_ATOMIC_THREADS)
+            //                numAtomicThreads = MAX_ATOMIC_THREADS;
         }
     }
 
@@ -120,6 +130,9 @@ int main(int argc, char *argv[]) {
         cout << "Error code: " << e.fam_error() << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
     }
+
+    //    for (int i = 0; i < numAtomicThreads; i++)
+    //        pthread_join(atid[i],NULL);
 
     if (memoryService) {
         delete memoryService;

@@ -29,6 +29,7 @@
  */
 
 #include "cis/fam_cis_client.h"
+#include "common/atomic_queue.h"
 
 namespace openfam {
 
@@ -551,6 +552,57 @@ void Fam_CIS_Client::get_addr(void *memServerFabricAddr,
         memcpy(((uint32_t *)memServerFabricAddr + readCount), &lastBytes,
                lastBytesCount);
     }
+}
+
+int Fam_CIS_Client::get_atomic(uint64_t regionId, uint64_t srcOffset,
+                               uint64_t dstOffset, uint64_t nbytes,
+                               uint64_t key, const char *nodeAddr,
+                               uint32_t nodeAddrSize, uint64_t memoryServerId,
+                               uint32_t uid, uint32_t gid) {
+    Fam_Atomic_Get_Request req;
+    Fam_Atomic_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_srcoffset(srcOffset);
+    req.set_dstoffset(dstOffset);
+    req.set_nbytes(nbytes);
+    req.set_key(key);
+    req.set_nodeaddr(nodeAddr, nodeAddrSize);
+    req.set_nodeaddrsize(nodeAddrSize);
+    req.set_memserver_id(memoryServerId);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    ::grpc::Status status = stub->get_atomic(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+    return 0;
+}
+
+int Fam_CIS_Client::put_atomic(uint64_t regionId, uint64_t srcOffset,
+                               uint64_t dstOffset, uint64_t nbytes,
+                               uint64_t key, const char *nodeAddr,
+                               uint32_t nodeAddrSize, const char *data,
+                               uint64_t memoryServerId, uint32_t uid,
+                               uint32_t gid) {
+    Fam_Atomic_Put_Request req;
+    Fam_Atomic_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_srcoffset(srcOffset);
+    req.set_dstoffset(dstOffset);
+    req.set_nbytes(nbytes);
+    req.set_key(key);
+    req.set_nodeaddr(nodeAddr, nodeAddrSize);
+    if (nbytes <= MAX_DATA_IN_MSG)
+        req.set_data(data, nbytes);
+    req.set_nodeaddrsize(nodeAddrSize);
+    req.set_memserver_id(memoryServerId);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    ::grpc::Status status = stub->put_atomic(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+    return 0;
 }
 
 } // namespace openfam
