@@ -34,6 +34,7 @@ set(LIBOPENFAM_SRC
 set(CIS_SERVER_SRC
   ${CIS_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_async_qhandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
@@ -44,6 +45,7 @@ set(CIS_SERVER_SRC
 set(MEMORY_SERVER_SRC
   ${MEMORY_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_async_qhandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp

@@ -175,9 +175,8 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
                               ::Fam_Atomic_Response *response) override;
 
   protected:
-    uint64_t port;
-    Fam_CIS_Direct *famCIS;
     int numClients;
+    Fam_CIS_Direct *famCIS;
 };
 
 } // namespace openfam

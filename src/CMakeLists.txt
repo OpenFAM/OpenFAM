@@ -46,11 +46,19 @@ set_target_properties(openfam PROPERTIES SOVERSION ${VERSION_STR})
 
 add_executable(cis_server ${CIS_SERVER_SRC})
 
-target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_system fambitmap famradixtree)
+if(USE_BOOST_FIBER)
+	target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_system boost_thread boost_fiber boost_context fambitmap famradixtree)
+else()
+	target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_system boost_thread boost_context fambitmap famradixtree)
+endif()
 
 add_executable (memory_server ${MEMORY_SERVER_SRC})
 
-target_link_libraries(memory_server fabric famradixtree grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_system fambitmap)
+if(USE_BOOST_FIBER)
+	target_link_libraries(memory_server fabric famradixtree grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_system boost_thread boost_fiber boost_context fambitmap)
+else()
+	target_link_libraries(memory_server fabric famradixtree grpc grpc++ grpc++_reflection yaml-cpp nvmm boost_system boost_thread boost_context fambitmap)
+endif()
 
 add_executable (metadata_server ${METADATA_SERVER_SRC})
 

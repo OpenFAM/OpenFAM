@@ -1,8 +1,9 @@
 /*
  * fam_async_qhandler.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -149,7 +150,7 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
     }
 
     void wait_for_copy(void *waitObj) {
-        Copy_Tag *tag = static_cast<Copy_Tag *>(waitObj);
+        Fam_Copy_Tag *tag = static_cast<Fam_Copy_Tag *>(waitObj);
         {
             AQUIRE_MUTEX(copyMtx);
             while (!tag->copyDone.load(boost::memory_order_seq_cst)) {
@@ -252,10 +253,16 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         return;
     }
 
-    void copy_handler(void *src, void *dest, uint64_t nbytes, Copy_Tag *tag) {
-        memcpy(dest, src, nbytes);
-        openfam_persist(dest, nbytes);
-
+    void copy_handler(void *src, void *dest, uint64_t nbytes,
+                      Fam_Copy_Tag *tag) {
+        if (tag->memoryService)
+            tag->memoryService->copy(tag->srcRegionId, tag->srcOffset,
+                                     tag->destRegionId, tag->destOffset,
+                                     tag->size);
+        else {
+            memcpy(dest, src, nbytes);
+            openfam_persist(dest, nbytes);
+        }
         {
             AQUIRE_MUTEX(copyMtx)
             tag->copyDone.store(true, boost::memory_order_seq_cst);
@@ -329,7 +336,7 @@ void Fam_Async_QHandler::read_handler(void *src, void *dest, uint64_t nbytes,
 }
 
 void Fam_Async_QHandler::copy_handler(void *src, void *dest, uint64_t nbytes,
-                                      Copy_Tag *tag) {
+                                      Fam_Copy_Tag *tag) {
     fAsyncQHandler_->copy_handler(src, dest, nbytes, tag);
 }
 

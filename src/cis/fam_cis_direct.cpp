@@ -74,7 +74,8 @@ void cis_direct_profile_dump() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(CIS_DIRECT)
 }
 
-Fam_CIS_Direct::Fam_CIS_Direct(char *cisName) {
+Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
+    : useAsyncCopy(useAsyncCopy_) {
 
     // Look for options information from config file.
     std::string config_file_path;
@@ -99,6 +100,11 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName) {
         // Use localhost/127.0.0.1 as name;
         cisName = strdup("127.0.0.1");
     }
+
+    if (useAsyncCopy) {
+        asyncQHandler = new Fam_Async_QHandler(1);
+    }
+
     memoryServers = new memoryServerMap();
     metadataServers = new metadataServerMap();
     std::string delimiter1 = ",";
@@ -839,6 +845,7 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
     message << "Error While copying from dataitem : ";
     Fam_DataItem_Metadata srcDataitem;
     Fam_DataItem_Metadata destDataitem;
+    Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
     CIS_DIRECT_PROFILE_START_OPS()
 
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
@@ -884,14 +891,32 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
 
-    memoryService->copy(srcRegionId, (srcOffset + srcCopyStart), destRegionId,
-                        (destOffset + destCopyStart), nbytes);
-
+    if (useAsyncCopy) {
+        Fam_Copy_Tag *tag = new Fam_Copy_Tag();
+        tag->copyDone.store(false, boost::memory_order_seq_cst);
+        tag->memoryService = memoryService;
+        tag->srcRegionId = srcRegionId;
+        tag->srcOffset = (srcOffset + srcCopyStart);
+        tag->destRegionId = destRegionId;
+        tag->destOffset = (destOffset + destCopyStart);
+        tag->size = nbytes;
+        Fam_Ops_Info opsInfo = {COPY, NULL, NULL, 0, 0, 0, 0, 0, tag};
+        asyncQHandler->initiate_operation(opsInfo);
+        waitObj->tag = tag;
+    } else {
+        memoryService->copy(srcRegionId, (srcOffset + srcCopyStart),
+                            destRegionId, (destOffset + destCopyStart), nbytes);
+    }
     CIS_DIRECT_PROFILE_END_OPS(cis_copy);
+    waitObj->isAcrossServer = false;
+    return (void *)waitObj;
+}
 
-    Fam_Copy_Tag *tag = new Fam_Copy_Tag();
-
-    return (void *)tag;
+void Fam_CIS_Direct::wait_for_copy(void *waitObj) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Copy_Wait_Object *obj = (Fam_Copy_Wait_Object *)waitObj;
+    asyncQHandler->wait_for_copy((void *)(obj->tag));
+    CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_copy);
 }
 
 void Fam_CIS_Direct::acquire_CAS_lock(uint64_t offset,
