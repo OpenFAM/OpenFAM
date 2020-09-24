@@ -34,7 +34,7 @@ rpc_interface: 127.0.0.1:8787
 # Example:
 # 5:127.0.0.1:8787
 memsrv_list:
-- 0:127.0.0.1:8787
+- 0:127.0.0.1:8789
 
 # List of metadata servers
 # Applicable only if metadata_interface_type is rpc.

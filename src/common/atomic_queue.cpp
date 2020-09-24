@@ -36,6 +36,7 @@
 #include <fam/fam_exception.h>
 #include <map>
 #include <pthread.h>
+#include <time.h>
 using namespace std;
 namespace openfam {
 
@@ -51,8 +52,7 @@ pthread_mutex_t pushQmutex[MAX_ATOMIC_THREADS] = {PTHREAD_MUTEX_INITIALIZER};
 pthread_t atid[MAX_ATOMIC_THREADS];
 void *atomicRegionIdRoot;
 
-/*Create the queues, called by the memory server
- */
+/* Create the queues, called by the memory server */
 int atomicQueue::create(Memserver_Allocator *in_allocator,
                         const uint32_t in_qid) {
     void *localPointerQ;
@@ -94,7 +94,7 @@ int atomicQueue::create(Memserver_Allocator *in_allocator,
         }
         // queue created. Update the queue information
         lcqData.front = lcqData.rear = 0; // lcqData.size = 0;
-        lcqData.size.store(0, std::memory_order_relaxed);
+        lcqData.size.store(0, std::memory_order_acq_rel);
         lcqData.capacity = queueCapacity;
         lcqData.offsetArray = offsetA;
         memcpy(localPointerQ, &lcqData, sizeof(lcqData));
@@ -129,7 +129,7 @@ int atomicQueue::create(Memserver_Allocator *in_allocator,
     std::cout << "queue front " << lcqData->front << std::endl;
     std::cout << "queue rear " << lcqData->rear << std::endl;
     std::cout << "queue capacity " << lcqData->capacity << std::endl;
-    std::cout << "queue size " << lcqData->size.load(std::memory_order_relaxed)
+    std::cout << "queue size " << lcqData->size.load(std::memory_order_acq_rel)
               << std::endl;
 
     try {
@@ -145,7 +145,7 @@ int atomicQueue::create(Memserver_Allocator *in_allocator,
  * get the rear pointer and populate the input message
  * In case of queue full throw exception
  * For scatter, gather and when rpc message contains data
- *allocate memory for the specified size
+ * allocate memory for the specified size
  * @param inpMsg - struct atomicMsg
  * @param inpDataSG - void *
  * @return - {success(0), failure(1), errNo(<0)}
@@ -179,15 +179,15 @@ int atomicQueue::push(atomicMsg *inpMsg, void *inpDataSG) {
     // Get the offset of the element at the rear
     offsetM = *((uint64_t *)pointerA + lcqData->rear);
     // Get the pointer and copy the incoming message
-    if ((qSize = lcqData->size.load(std::memory_order_relaxed)) >=
+    if ((qSize = lcqData->size.load(std::memory_order_acq_rel)) >=
         lcqData->capacity) {
         message << "Atomic Queue " << qId << " Full";
         pthread_mutex_unlock(&pushQmutex[qId]);
-        return ATOMIC_QUEUE_FULL;
+        return ATL_QUEUE_FULL;
     }
     // Increment the rear and size
     lcqData->rear = (lcqData->rear + 1) % lcqData->capacity;
-    lcqData->size.fetch_add(1, std::memory_order_relaxed);
+    lcqData->size.fetch_add(1, std::memory_order_acq_rel);
     pthread_mutex_unlock(&pushQmutex[qId]);
     try {
         openfam_persist(pointerQ, sizeof(qData));
@@ -197,20 +197,19 @@ int atomicQueue::push(atomicMsg *inpMsg, void *inpDataSG) {
     } catch (...) {
         return PUSHERROR;
     }
-    //    if (lcqData->size.load(std::memory_order_relaxed) == 1)
     if (qSize == 0)
         pthread_cond_signal(&empty[qId]); // Signal to processing thread that
                                           // queue is not empty anymore
     return 0;
 }
-/*Pop element from the queue using front pointer
+/* Pop element from the queue using front pointer
  * @param item - Fam_Global_Descriptor
  * @return - {success(0), failure(1),ATOMIC_QUEUE_EMPTY
  */
 int atomicQueue::read(Fam_Global_Descriptor *item) {
     struct qData *lcqData;
     lcqData = (struct qData *)pointerQ;
-    if (lcqData->size.load(std::memory_order_relaxed) == 0)
+    if (lcqData->size.load(std::memory_order_acq_rel) == 0)
         return ATOMIC_QUEUE_EMPTY; // array empty
     item->regionId = ATOMIC_REGION_ID;
     // front should hold the offset of the data to be read
@@ -228,7 +227,7 @@ int atomicQueue::pop(Fam_Global_Descriptor *item) {
     lcqData = (struct qData *)pointerQ;
     // Adjust the front and size
     lcqData->front = (lcqData->front + 1) % lcqData->capacity;
-    lcqData->size.fetch_add(-1, std::memory_order_relaxed);
+    lcqData->size.fetch_add(-1, std::memory_order_acq_rel);
     try {
         openfam_persist(pointerQ, sizeof(qData));
         localPointerM =
@@ -241,7 +240,7 @@ int atomicQueue::pop(Fam_Global_Descriptor *item) {
     }
     return 0;
 }
-/*Check whether the queue is empty
+/* Check whether the queue is empty
  * return true(1), false(0)
  */
 bool atomicQueue::isQempty() {
@@ -249,7 +248,7 @@ bool atomicQueue::isQempty() {
     lcqData = (struct qData *)pointerQ;
     return ((lcqData->size == 0) ? true : false);
 }
-/*Recover the incomplete transactions during startup
+/* Recover the incomplete transactions during startup
  * @param qId - queue number
  * @param - Memserver_Allocator
  */
@@ -303,7 +302,7 @@ int recover_queue(uint32_t qId, Memserver_Allocator *allocator) {
         }
         // Remove the message from the queue
         atomicQ[qId].pop(&item);
-    } // while(1)
+    }
     return ret;
 }
 /* Main processing thread, one for each queue
@@ -328,6 +327,10 @@ void *process_queue(void *arg) {
     cout << "Recovering Incomplete transactions for queue" << lcTInfo->qId
          << endl;
     ret = recover_queue(lcTInfo->qId, allocator);
+    if (ret) {
+        cout << "Recovery error - Couldn't recover incomplete requests" << endl;
+        pthread_exit(&ret);
+    }
     cout << "Recovery of Incomplete trasactions completed for queue"
          << lcTInfo->qId << endl;
     cout << "processing thread for queue" << lcTInfo->qId << " started" << endl;
@@ -355,12 +358,11 @@ void *process_queue(void *arg) {
         if (it == fiAddrMap.end()) {
             try {
                 std::vector<fi_addr_t> fiAddrV;
-                //                fiAddr =
-                //                fabric_insert_av_atomic(remoteAddr,famOpsLibfabricQ->get_av());
                 ret = fabric_insert_av(remoteAddr, famOpsLibfabricQ->get_av(),
                                        &fiAddrV);
-                fiAddrMap.insert(it, std::pair<fi_addr_t, fi_addr_t>(
-                                         clientAddr, fiAddrV[0]));
+                fiAddr = fiAddrV[0];
+                fiAddrMap.insert(
+                    it, std::pair<fi_addr_t, fi_addr_t>(clientAddr, fiAddr));
             } catch (...) {
                 ret = AVINSERTERROR;
             }
@@ -387,10 +389,10 @@ void *process_queue(void *arg) {
                             famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
                             sizeof(retStatus));
                     } catch (...) {
-                        ret = SENDTOCLIENTERROR;
+                        retStatus = SENDTOCLIENTERROR;
                     }
                 } catch (...) {
-                    retStatus = FABRICARITEERROR;
+                    retStatus = FABRICWRITEERROR;
                     ;
                 }
             } catch (...) {
@@ -403,10 +405,14 @@ void *process_queue(void *arg) {
             // Atomic write
             if (msgPointer->flag & ATOMIC_WRITE_COMPLETED) {
                 // last write completed. If buffer is still allocated,
-                // deallocate and  remove the entry
+                // deallocate and remove the entry
                 if (msgPointer->flag & ATOMIC_BUFFER_ALLOCATED)
-                    allocator->deallocate(ATOMIC_REGION_ID,
-                                          msgPointer->offsetBuffer);
+                    try {
+                        allocator->deallocate(ATOMIC_REGION_ID,
+                                              msgPointer->offsetBuffer);
+                    } catch (...) {
+                        retStatus = DEALLOCATEERROR;
+                    }
                 break;
             }
 
@@ -434,63 +440,73 @@ void *process_queue(void *arg) {
                             allocator->deallocate(ATOMIC_REGION_ID,
                                                   msgPointer->offsetBuffer);
                         } catch (...) {
-                            ret = DEALLOCATEERROR;
+                            retStatus = DEALLOCATEERROR;
                         }
                     } catch (...) {
-                        ret = PERSISTERROR;
-                    }
-                } catch (...) {
-                    ret = MAPERROR;
-                }
-
-                break;
-            }
-            // New write operation
-            // Allocate data item for buffer
-            uint64_t offsetB = 0;
-            try {
-                offsetB =
-                    allocator->allocate(ATOMIC_REGION_ID, msgPointer->size);
-                msgPointer->flag |= ATOMIC_BUFFER_ALLOCATED;
-                // Update the message with the region and offset of buffer
-                msgPointer->offsetBuffer = offsetB;
-                try {
-                    localPointerB =
-                        allocator->get_local_pointer(ATOMIC_REGION_ID, offsetB);
-                    // Read from Client's memory into buffer
-                    try {
-                        ret = fabric_read(
-                            msgPointer->key, localPointerB, msgPointer->size, 0,
-                            fiAddr,
-                            famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
-                        try {
-                            openfam_persist(localPointerB, msgPointer->size);
-                            // Set the flag to indicate write is in progress
-                            msgPointer->flag |= ATOMIC_WRITE_IN_PROGRESS;
-                            openfam_persist(msgPointer,
-                                            sizeof(msgPointer->flag));
-                        } catch (...) {
-                            retStatus = PERSISTERROR;
-                        }
-                    } catch (...) {
-                        retStatus = FABRICREADERROR;
+                        retStatus = PERSISTERROR;
                     }
                 } catch (...) {
                     retStatus = MAPERROR;
                 }
-            } catch (Memory_Service_Exception &e) {
-                retStatus = BUFFERALLOCATEERROR;
-            }
-            // Data is copied to buffer, now send the status back to client
-            try {
-                fabric_send_response(
-                    &retStatus, fiAddr,
-                    famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
-                    sizeof(retStatus));
-            } catch (...) {
-                retStatus = SENDTOCLIENTERROR;
-            }
 
+                break;
+            }
+            if (msgPointer->flag & ATOMIC_WRITE_IN_PROGRESS) {
+                // Write was incomplete. process similar to recovery operation
+                try {
+                    localPointerB = allocator->get_local_pointer(
+                        ATOMIC_REGION_ID, msgPointer->offsetBuffer);
+                } catch (...) {
+                    retStatus = MAPERROR;
+                }
+            } else {
+                // New write operation
+                // Allocate data item for buffer
+                uint64_t offsetB = 0;
+                try {
+                    offsetB =
+                        allocator->allocate(ATOMIC_REGION_ID, msgPointer->size);
+                    msgPointer->flag |= ATOMIC_BUFFER_ALLOCATED;
+                    // Update the message with the region and offset of buffer
+                    msgPointer->offsetBuffer = offsetB;
+                    try {
+                        localPointerB = allocator->get_local_pointer(
+                            ATOMIC_REGION_ID, offsetB);
+                        // Read from Client's memory into buffer
+                        try {
+                            ret = fabric_read(
+                                msgPointer->key, localPointerB,
+                                msgPointer->size, 0, fiAddr,
+                                famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                            try {
+                                openfam_persist(localPointerB,
+                                                msgPointer->size);
+                                // Set the flag to indicate write is in progress
+                                msgPointer->flag |= ATOMIC_WRITE_IN_PROGRESS;
+                                openfam_persist(msgPointer,
+                                                sizeof(msgPointer->flag));
+                            } catch (...) {
+                                retStatus = PERSISTERROR;
+                            }
+                        } catch (...) {
+                            retStatus = FABRICREADERROR;
+                        }
+                    } catch (...) {
+                        retStatus = MAPERROR;
+                    }
+                } catch (Memory_Service_Exception &e) {
+                    retStatus = BUFFERALLOCATEERROR;
+                }
+                // Data is copied to buffer, now send the status back to client
+                try {
+                    fabric_send_response(
+                        &retStatus, fiAddr,
+                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                        sizeof(retStatus));
+                } catch (...) {
+                    retStatus = SENDTOCLIENTERROR;
+                }
+            }
             // Get the pointer of the target and copy
             try {
                 localPointerD = allocator->get_local_pointer(
@@ -527,8 +543,10 @@ void *process_queue(void *arg) {
             break;
         }
         // Remove the element from the queue
-        free(remoteAddr);
-        ret = atomicQ[lcTInfo->qId].pop(&item);
+        if (remoteAddr)
+            free(remoteAddr);
+        if (retStatus == 0)
+            ret = atomicQ[lcTInfo->qId].pop(&item);
     }
     return 0;
 }

@@ -357,6 +357,10 @@ void Fam_Memory_Service_Direct::get_atomic(uint64_t regionId,
     //    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     void *inpData = NULL;
+    if (numAtomicThreads <= 0) {
+        message << "Atomic Thread Library is not enabled";
+        throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
+    }
     string hashStr = "";
     hash<string> mystdhash;
     hashStr = hashStr + std::to_string(regionId);
@@ -375,13 +379,13 @@ void Fam_Memory_Service_Direct::get_atomic(uint64_t regionId,
 
     int ret = atomicQ[qId].push(&InpMsg, inpData);
     if (ret) {
-        if (ret == ATOMIC_QUEUE_FULL) {
+        if (ret == ATL_QUEUE_FULL) {
             message << "Atomic queue Full - Failed to insert";
-            throw Memory_Service_Exception(ATOMIC_QUEUE_FULL,
+            throw Memory_Service_Exception(ATL_QUEUE_FULL,
                                            message.str().c_str());
         } else {
             message << "error inserting into Queue";
-            throw Memory_Service_Exception(ATOMIC_INSERT_ERROR,
+            throw Memory_Service_Exception(ATL_QUEUE_INSERT_ERROR,
                                            message.str().c_str());
         }
     }
@@ -398,6 +402,10 @@ void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
     ostringstream message;
     void *inpData = NULL;
     string hashStr = "";
+    if (numAtomicThreads <= 0) {
+        message << "Atomic Thread Library is not enabled";
+        throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
+    }
     hash<string> mystdhash;
     hashStr = hashStr + std::to_string(regionId);
     hashStr = hashStr + std::to_string(srcOffset);
@@ -420,13 +428,13 @@ void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
 
     int ret = atomicQ[qId].push(&InpMsg, inpData);
     if (ret) {
-        if (ret == ATOMIC_QUEUE_FULL) {
+        if (ret == ATL_QUEUE_FULL) {
             message << "Atomic queue Full - Failed to insert";
-            throw Memory_Service_Exception(ATOMIC_QUEUE_FULL,
+            throw Memory_Service_Exception(ATL_QUEUE_FULL,
                                            message.str().c_str());
         } else {
             message << "Error inserting into Queue";
-            throw Memory_Service_Exception(ATOMIC_INSERT_ERROR,
+            throw Memory_Service_Exception(ATL_QUEUE_INSERT_ERROR,
                                            message.str().c_str());
         }
     }

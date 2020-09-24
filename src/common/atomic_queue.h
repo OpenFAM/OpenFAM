@@ -59,23 +59,24 @@ enum flag {
     ATOMIC_BUFFER_ALLOCATED = 256,
     ATOMIC_CONTAIN_DATA = 512,
 };
-/* Atomic request structure
-flag: records progress and request type
-nodeAddr: client Node address
-nodeAddrSize: client Node address size
-dstDataGdesc: target data item global descriptor
-key: Key of the client memory to read/write
-offsetBuffer: offset of the buffer data item
-offset: offset to target data item for get/put
-size: size of target data item for get/put
-nElements: number of elements for strided scatter/gather
-firstElement: first element for strided scatter/gather
-stride: stride for strided scatter/gather
-elementSize: size of element for strided scatter/gather
-offsetIndex: offset of the index data item for indexed scatter/gather
-indexElements: index elements for indexed scatter/gather
-indexSize: size of element for indexed scatter/gather
-*/
+/*
+ * Atomic request structure
+ * flag: records progress and request type
+ * nodeAddr: client Node address
+ * nodeAddrSize: client Node address size
+ * dstDataGdesc: target data item global descriptor
+ * key: Key of the client memory to read/write
+ * offsetBuffer: offset of the buffer data item
+ * offset: offset to target data item for get/put
+ * size: size of target data item for get/put
+ * nElements: number of elements for strided scatter/gather
+ * firstElement: first element for strided scatter/gather
+ * stride: stride for strided scatter/gather
+ * elementSize: size of element for strided scatter/gather
+ * offsetIndex: offset of the index data item for indexed scatter/gather
+ * indexElements: index elements for indexed scatter/gather
+ * indexSize: size of element for indexed scatter/gather
+ */
 typedef struct atomicMsg {
     short int flag;
     char nodeAddr[MAX_NODE_ADDR_SIZE];
@@ -148,7 +149,7 @@ enum ATLError {
     POPERROR,
     DEALLOCATEERROR,
     AVINSERTERROR,
-    FABRICARITEERROR,
+    FABRICWRITEERROR,
     SENDTOCLIENTERROR,
     BUFFERALLOCATEERROR,
     FABRICREADERROR

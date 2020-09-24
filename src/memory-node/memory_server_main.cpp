@@ -32,7 +32,6 @@
 #include <signal.h>
 #endif
 
-#include "common/atomic_queue.h"
 #include "memory_service/fam_memory_service_server.h"
 #include <iostream>
 using namespace std;
