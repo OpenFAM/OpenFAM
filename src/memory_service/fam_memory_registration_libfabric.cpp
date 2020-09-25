@@ -117,11 +117,11 @@ Fam_Memory_Registration_Libfabric::Fam_Memory_Registration_Libfabric(
             std::thread(&Fam_Memory_Registration_Libfabric::progress_thread, this);
     }
 
-	if (strncmp(famOps->get_provider(), "verbs", 5) == 0) 
-		isBaseRequire = true;
-	else 
-		isBaseRequire = false;
-        famOpsLibfabricQ = famOps;
+    if (strncmp(famOps->get_provider(), "verbs", 5) == 0)
+        isBaseRequire = true;
+    else
+        isBaseRequire = false;
+    famOpsLibfabricQ = famOps;
 }
 
 Fam_Memory_Registration_Libfabric::~Fam_Memory_Registration_Libfabric() {

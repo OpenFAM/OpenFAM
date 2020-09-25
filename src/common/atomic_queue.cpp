@@ -141,6 +141,7 @@ int atomicQueue::create(Memserver_Allocator *in_allocator,
 
     return 0;
 }
+
 /* Push element into the queue
  * get the rear pointer and populate the input message
  * In case of queue full throw exception
@@ -202,6 +203,7 @@ int atomicQueue::push(atomicMsg *inpMsg, void *inpDataSG) {
                                           // queue is not empty anymore
     return 0;
 }
+
 /* Pop element from the queue using front pointer
  * @param item - Fam_Global_Descriptor
  * @return - {success(0), failure(1),ATOMIC_QUEUE_EMPTY
@@ -216,11 +218,11 @@ int atomicQueue::read(Fam_Global_Descriptor *item) {
     item->offset = *((uint64_t *)pointerA + lcqData->front);
     return 0;
 }
+
 /* Remove the element from queue which was poped
  * @param item - Fam_Global_Descriptor
  * @return - {success(0), failure(1)}
  */
-
 int atomicQueue::pop(Fam_Global_Descriptor *item) {
     void *localPointerM;
     struct qData *lcqData;
@@ -240,6 +242,7 @@ int atomicQueue::pop(Fam_Global_Descriptor *item) {
     }
     return 0;
 }
+
 /* Check whether the queue is empty
  * return true(1), false(0)
  */
@@ -248,6 +251,7 @@ bool atomicQueue::isQempty() {
     lcqData = (struct qData *)pointerQ;
     return ((lcqData->size == 0) ? true : false);
 }
+
 /* Recover the incomplete transactions during startup
  * @param qId - queue number
  * @param - Memserver_Allocator
@@ -257,8 +261,10 @@ int recover_queue(uint32_t qId, Memserver_Allocator *allocator) {
     void *localPointer = NULL, *localPointerB = NULL, *localPointerD = NULL;
     atomicMsg *msgPointer;
     int ret = 0;
+    int retryCount = 0;
     while (!atomicQ[qId].isQempty()) {
         atomicQ[qId].read(&item);
+        ret = 0;
         try {
             localPointer =
                 allocator->get_local_pointer(item.regionId, item.offset);
@@ -301,10 +307,19 @@ int recover_queue(uint32_t qId, Memserver_Allocator *allocator) {
             }
         }
         // Remove the message from the queue
+        if (ret) {
+            retryCount++;
+            if (retryCount < 5)
+                continue;
+            else {
+                break;
+            }
+        }
         atomicQ[qId].pop(&item);
     }
     return ret;
 }
+
 /* Main processing thread, one for each queue
  * Pops messages from queue and processes
  * Memory server call this with the argument list
@@ -315,8 +330,8 @@ void *process_queue(void *arg) {
     void *localPointer = NULL, *localPointerB = NULL, *localPointerD = NULL,
          *localPointerInpD = NULL;
     atomicMsg *msgPointer;
-    int ret;
-    int32_t retStatus = 0;
+    int ret = 0;
+    int32_t retStatus = 0, popStatus = 0;
     Memserver_Allocator *allocator = lcTInfo->allocator;
     fi_addr_t fiAddr = 0, clientAddr;
     char *remoteAddr;
@@ -328,7 +343,9 @@ void *process_queue(void *arg) {
          << endl;
     ret = recover_queue(lcTInfo->qId, allocator);
     if (ret) {
+        // Recovery failed - Disable ATL
         cout << "Recovery error - Couldn't recover incomplete requests" << endl;
+        numAtomicThreads = 0;
         pthread_exit(&ret);
     }
     cout << "Recovery of Incomplete trasactions completed for queue"
@@ -343,6 +360,8 @@ void *process_queue(void *arg) {
             pthread_mutex_unlock(&mutex[lcTInfo->qId]);
             continue;
         }
+        retStatus = 0;
+        popStatus = 0;
         // get fiAddr of the remote/client node
         try {
             localPointer =
@@ -364,11 +383,15 @@ void *process_queue(void *arg) {
                 fiAddrMap.insert(
                     it, std::pair<fi_addr_t, fi_addr_t>(clientAddr, fiAddr));
             } catch (...) {
+                // If error pop the item and continue;
                 ret = AVINSERTERROR;
+                cout << "AV insert error, Remore Address " << remoteAddr
+                     << endl;
+                ret = atomicQ[lcTInfo->qId].pop(&item);
+                continue;
             }
         } else
             fiAddr = it->second;
-        retStatus = 0;
         uint64_t function = msgPointer->flag & 0x3F;
         switch (function) {
         case ATOMIC_READ: { // Read function
@@ -382,21 +405,20 @@ void *process_queue(void *arg) {
                     ret = fabric_write(
                         msgPointer->key, localPointerD, msgPointer->size, 0,
                         fiAddr, famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
-                    // send status (retStatus)  back to client
-                    try {
-                        fabric_send_response(
-                            &retStatus, fiAddr,
-                            famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
-                            sizeof(retStatus));
-                    } catch (...) {
-                        retStatus = SENDTOCLIENTERROR;
-                    }
                 } catch (...) {
                     retStatus = FABRICWRITEERROR;
-                    ;
+                }
+                // send status (retStatus)  back to client
+                try {
+                    fabric_send_response(
+                        &retStatus, fiAddr,
+                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                        sizeof(retStatus));
+                } catch (...) {
+                    ret = SENDTOCLIENTERROR;
                 }
             } catch (...) {
-                retStatus = MAPERROR;
+                ret = MAPERROR;
             }
 
             break;
@@ -411,7 +433,7 @@ void *process_queue(void *arg) {
                         allocator->deallocate(ATOMIC_REGION_ID,
                                               msgPointer->offsetBuffer);
                     } catch (...) {
-                        retStatus = DEALLOCATEERROR;
+                        popStatus = DEALLOCATEERROR;
                     }
                 break;
             }
@@ -440,13 +462,13 @@ void *process_queue(void *arg) {
                             allocator->deallocate(ATOMIC_REGION_ID,
                                                   msgPointer->offsetBuffer);
                         } catch (...) {
-                            retStatus = DEALLOCATEERROR;
+                            popStatus = DEALLOCATEERROR;
                         }
                     } catch (...) {
-                        retStatus = PERSISTERROR;
+                        popStatus = PERSISTERROR;
                     }
                 } catch (...) {
-                    retStatus = MAPERROR;
+                    popStatus = MAPERROR;
                 }
 
                 break;
@@ -457,7 +479,7 @@ void *process_queue(void *arg) {
                     localPointerB = allocator->get_local_pointer(
                         ATOMIC_REGION_ID, msgPointer->offsetBuffer);
                 } catch (...) {
-                    retStatus = MAPERROR;
+                    popStatus = MAPERROR;
                 }
             } else {
                 // New write operation
@@ -504,7 +526,7 @@ void *process_queue(void *arg) {
                         famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
                         sizeof(retStatus));
                 } catch (...) {
-                    retStatus = SENDTOCLIENTERROR;
+                    ret = SENDTOCLIENTERROR;
                 }
             }
             // Get the pointer of the target and copy
@@ -513,7 +535,7 @@ void *process_queue(void *arg) {
                     msgPointer->dstDataGdesc.regionId,
                     msgPointer->dstDataGdesc.offset + msgPointer->offset);
             } catch (...) {
-                retStatus = MAPERROR;
+                popStatus = MAPERROR;
             }
 
             memcpy(localPointerD, localPointerB, msgPointer->size);
@@ -524,7 +546,7 @@ void *process_queue(void *arg) {
                 openfam_persist(msgPointer, sizeof(msgPointer->flag));
                 openfam_persist(localPointerD, msgPointer->size);
             } catch (...) {
-                retStatus = PERSISTERROR;
+                popStatus = PERSISTERROR;
             }
 
             // Deallocate the buffer
@@ -532,7 +554,7 @@ void *process_queue(void *arg) {
                 allocator->deallocate(ATOMIC_REGION_ID,
                                       msgPointer->offsetBuffer);
             } catch (...) {
-                retStatus = DEALLOCATEERROR;
+                popStatus = DEALLOCATEERROR;
             }
 
             msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
@@ -545,7 +567,8 @@ void *process_queue(void *arg) {
         // Remove the element from the queue
         if (remoteAddr)
             free(remoteAddr);
-        if (retStatus == 0)
+        // Pop the requests which are processed successfully (popStatus = 0)
+        if (popStatus == 0)
             ret = atomicQ[lcTInfo->qId].pop(&item);
     }
     return 0;

@@ -337,15 +337,23 @@ void Fam_Memory_Service_Direct::init_atomic_queue() {
         int ret = atomicQ[i].create(allocator, i);
         if (ret) {
             cout << "Couldn't create Queue " << i << endl;
+            numAtomicThreads = 0;
+            for (int j = 0; j < i; j++)
+                pthread_cancel(atid[j]);
             break;
         }
         atomicTInfo[i].allocator = allocator;
         atomicTInfo[i].qId = i;
         ret = pthread_create(&(atid[i]), NULL, &process_queue,
                              (void *)&atomicTInfo[i]);
-        if (ret)
+        if (ret) {
             cout << "Couldn't create processing thread for queue " << i
                  << " status = " << ret << endl;
+            numAtomicThreads = 0;
+            for (int j = 0; j < i; j++)
+                pthread_cancel(atid[j]);
+            break;
+        }
     }
 }
 
