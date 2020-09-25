@@ -85,6 +85,7 @@ int main(int argc, char *argv[]) {
                    "is sockets)\n"
                 << "\n"
                 << "\t-v/--version        : Display metadata server version  \n"
+                << "\n"
                 << endl;
             exit(0);
         } else if ((std::string(argv[i]) == "-a") ||

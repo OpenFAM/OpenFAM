@@ -501,7 +501,7 @@ void Memserver_Allocator::create_ATL_root(size_t nbytes) {
     int ret;
     GlobalPtr ATLroot;
     PoolId poolId = ATOMIC_REGION_ID;
-    ATLroot = memoryManager->GetATLRegionRootPtr(ATL_REGION_ID);
+    ATLroot = memoryManager->GetATLRegionRootPtr(ATL_REGION_DATA);
     if (ATLroot == 0) { // region doesn't exists..create it
         regionATLexists = false;
 
@@ -569,7 +569,7 @@ void Memserver_Allocator::create_ATL_root(size_t nbytes) {
     if (!regionATLexists) {
         ATLroot = heap->Alloc(sizeof(uint64_t) * MAX_ATOMIC_THREADS);
         assert(ATLroot.IsValid() == true);
-        ATLroot = memoryManager->SetATLRegionRootPtr(ATL_REGION_ID, ATLroot);
+        ATLroot = memoryManager->SetATLRegionRootPtr(ATL_REGION_DATA, ATLroot);
     }
 
     atomicRegionIdRoot = memoryManager->GlobalToLocal(ATLroot);
