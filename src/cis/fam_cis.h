@@ -299,6 +299,18 @@ class Fam_CIS {
     virtual size_t get_addr_size(uint64_t memoryServerId) = 0;
     virtual void get_addr(void *memServerFabricAddr,
                           uint64_t memoryServerId) = 0;
+
+    virtual int get_atomic(uint64_t regionId, uint64_t srcOffset,
+                           uint64_t dstOffset, uint64_t nbytes, uint64_t key,
+                           const char *nodeAddr, uint32_t nodeAddrSize,
+                           uint64_t memoryServerId, uint32_t uid,
+                           uint32_t gid) = 0;
+
+    virtual int put_atomic(uint64_t regionId, uint64_t srcOffset,
+                           uint64_t dstOffset, uint64_t nbytes, uint64_t key,
+                           const char *nodeAddr, uint32_t nodeAddrSize,
+                           const char *data, uint64_t memoryServerId,
+                           uint32_t uid, uint32_t gid) = 0;
 };
 
 } // namespace openfam

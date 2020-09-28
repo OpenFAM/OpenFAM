@@ -28,6 +28,7 @@
  *
  */
 #include "fam_memory_service_direct.h"
+#include "common/atomic_queue.h"
 #include "common/fam_config_info.h"
 #include "common/fam_memserver_profile.h"
 #include <thread>
@@ -117,10 +118,21 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
     for (int i = 0; i < CAS_LOCK_CNT; i++) {
         (void)pthread_mutex_init(&casLock[i], NULL);
     }
+    char *end;
+    numAtomicThreads = atoi(config_options["ATL_threads"].c_str());
+    if (numAtomicThreads > MAX_ATOMIC_THREADS)
+        numAtomicThreads = MAX_ATOMIC_THREADS;
+    memoryPerThread =
+        1024 * 1024 *
+        strtoul(config_options["ATL_data_size"].c_str(), &end, 10);
+    queueCapacity = atoi(config_options["ATL_queue_size"].c_str());
+    init_atomic_queue();
 }
 
 Fam_Memory_Service_Direct::~Fam_Memory_Service_Direct() {
     allocator->memserver_allocator_finalize();
+    for (int i = 0; i < numAtomicThreads; i++)
+        pthread_join(atid[i], NULL);
     for (int i = 0; i < CAS_LOCK_CNT; i++) {
         (void)pthread_mutex_destroy(&casLock[i]);
     }
@@ -291,8 +303,150 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
             // If parameter is not present, then set the default.
             options["libfabric_port"] = (char *)strdup("7500");
         }
+
+        try {
+            options["ATL_threads"] =
+                (char *)strdup((info->get_key_value("ATL_threads")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["ATL_threads"] = (char *)strdup("0");
+        }
+
+        try {
+            options["ATL_queue_size"] =
+                (char *)strdup((info->get_key_value("ATL_queue_size")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["ATL_queue_size"] = (char *)strdup("1000");
+        }
+
+        try {
+            options["ATL_data_size"] =
+                (char *)strdup((info->get_key_value("ATL_data_size")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["ATL_data_size"] = (char *)strdup("1073741824");
+        }
     }
     return options;
 }
 
+void Fam_Memory_Service_Direct::init_atomic_queue() {
+    allocator->create_ATL_root(memoryPerThread * numAtomicThreads);
+    for (int i = 0; i < numAtomicThreads; i++) {
+        int ret = atomicQ[i].create(allocator, i);
+        if (ret) {
+            cout << "Couldn't create Queue " << i << endl;
+            numAtomicThreads = 0;
+            for (int j = 0; j < i; j++)
+                pthread_cancel(atid[j]);
+            break;
+        }
+        atomicTInfo[i].allocator = allocator;
+        atomicTInfo[i].qId = i;
+        ret = pthread_create(&(atid[i]), NULL, &process_queue,
+                             (void *)&atomicTInfo[i]);
+        if (ret) {
+            cout << "Couldn't create processing thread for queue " << i
+                 << " status = " << ret << endl;
+            numAtomicThreads = 0;
+            for (int j = 0; j < i; j++)
+                pthread_cancel(atid[j]);
+            break;
+        }
+    }
+}
+
+void Fam_Memory_Service_Direct::get_atomic(uint64_t regionId,
+                                           uint64_t srcOffset,
+                                           uint64_t dstOffset, uint64_t nbytes,
+                                           uint64_t key, const char *nodeAddr,
+                                           uint32_t nodeAddrSize) {
+    //    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    ostringstream message;
+    void *inpData = NULL;
+    if (numAtomicThreads <= 0) {
+        message << "Atomic Thread Library is not enabled";
+        throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
+    }
+    string hashStr = "";
+    hash<string> mystdhash;
+    hashStr = hashStr + std::to_string(regionId);
+    hashStr = hashStr + std::to_string(srcOffset);
+    uint64_t qId = mystdhash(hashStr) % numAtomicThreads;
+    atomicMsg InpMsg;
+    memset(&InpMsg, 0, sizeof(atomicMsg));
+    InpMsg.nodeAddrSize = nodeAddrSize;
+    memcpy(&InpMsg.nodeAddr, nodeAddr, nodeAddrSize);
+    InpMsg.dstDataGdesc.regionId = regionId;
+    InpMsg.dstDataGdesc.offset = srcOffset;
+    InpMsg.offset = dstOffset;
+    InpMsg.key = key;
+    InpMsg.size = nbytes;
+    InpMsg.flag |= ATOMIC_READ;
+
+    int ret = atomicQ[qId].push(&InpMsg, inpData);
+    if (ret) {
+        if (ret == ATL_QUEUE_FULL) {
+            message << "Atomic queue Full - Failed to insert";
+            throw Memory_Service_Exception(ATL_QUEUE_FULL,
+                                           message.str().c_str());
+        } else {
+            message << "error inserting into Queue";
+            throw Memory_Service_Exception(ATL_QUEUE_INSERT_ERROR,
+                                           message.str().c_str());
+        }
+    }
+    //    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_atomic)
+}
+
+void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
+                                           uint64_t srcOffset,
+                                           uint64_t dstOffset, uint64_t nbytes,
+                                           uint64_t key, const char *nodeAddr,
+                                           uint32_t nodeAddrSize,
+                                           const char *data) {
+    //    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    ostringstream message;
+    void *inpData = NULL;
+    string hashStr = "";
+    if (numAtomicThreads <= 0) {
+        message << "Atomic Thread Library is not enabled";
+        throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
+    }
+    hash<string> mystdhash;
+    hashStr = hashStr + std::to_string(regionId);
+    hashStr = hashStr + std::to_string(srcOffset);
+    uint64_t qId = mystdhash(hashStr) % numAtomicThreads;
+    atomicMsg InpMsg;
+    memset(&InpMsg, 0, sizeof(atomicMsg));
+    InpMsg.nodeAddrSize = nodeAddrSize;
+    memcpy(&InpMsg.nodeAddr, nodeAddr, nodeAddrSize);
+    InpMsg.dstDataGdesc.regionId = regionId;
+    InpMsg.dstDataGdesc.offset = srcOffset;
+    InpMsg.offset = dstOffset;
+    InpMsg.key = key;
+    InpMsg.size = nbytes;
+    InpMsg.flag |= ATOMIC_WRITE;
+    if ((nbytes > 0) && (nbytes < MAX_DATA_IN_MSG)) {
+        inpData = (void *)malloc(nbytes);
+        memcpy(inpData, data, nbytes);
+        InpMsg.flag |= ATOMIC_CONTAIN_DATA;
+    }
+
+    int ret = atomicQ[qId].push(&InpMsg, inpData);
+    if (ret) {
+        if (ret == ATL_QUEUE_FULL) {
+            message << "Atomic queue Full - Failed to insert";
+            throw Memory_Service_Exception(ATL_QUEUE_FULL,
+                                           message.str().c_str());
+        } else {
+            message << "Error inserting into Queue";
+            throw Memory_Service_Exception(ATL_QUEUE_INSERT_ERROR,
+                                           message.str().c_str());
+        }
+    }
+
+    //    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_put_atomic)
+}
 } // namespace openfam

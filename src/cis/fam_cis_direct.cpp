@@ -1010,5 +1010,82 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
     }
     return options;
 }
+int Fam_CIS_Direct::get_atomic(uint64_t regionId, uint64_t srcOffset,
+                               uint64_t dstOffset, uint64_t nbytes,
+                               uint64_t key, const char *nodeAddr,
+                               uint32_t nodeAddrSize, uint64_t memoryServerId,
+                               uint32_t uid, uint32_t gid) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    ostringstream message;
+
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
+    message << "Error While changing dataitem permission : ";
+    // Check with metadata service if region with the requested Id
+    // is already exist, if not return error
+    uint64_t dataitemId = srcOffset / MIN_OBJ_SIZE;
+    Fam_DataItem_Metadata dataitem;
+    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
+                                                 dataitem)) {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
+    }
+    if (!(metadataService->metadata_check_permissions(
+            &dataitem, META_REGION_ITEM_READ, uid, gid))) {
+        message << "Write operation is not permitted on destination dataitem";
+        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    }
+
+    if (!((dstOffset + nbytes) <= dataitem.size)) {
+        message << "Source offset or size is beyond dataitem boundary";
+        THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
+    }
+
+    memoryService->get_atomic(regionId, srcOffset, dstOffset, nbytes, key,
+                              nodeAddr, nodeAddrSize);
+    //    CIS_DIRECT_PROFILE_END_OPS(cis_get_atomic);
+    return 0;
+}
+
+int Fam_CIS_Direct::put_atomic(uint64_t regionId, uint64_t srcOffset,
+                               uint64_t dstOffset, uint64_t nbytes,
+                               uint64_t key, const char *nodeAddr,
+                               uint32_t nodeAddrSize, const char *data,
+                               uint64_t memoryServerId, uint32_t uid,
+                               uint32_t gid) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    ostringstream message;
+
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(memoryServerId);
+    message << "Error While changing dataitem permission : ";
+    // Check with metadata service if region with the requested Id
+    // is already exist, if not return error
+    uint64_t dataitemId = srcOffset / MIN_OBJ_SIZE;
+    Fam_DataItem_Metadata dataitem;
+    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
+                                                 dataitem)) {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
+    }
+    if (!(metadataService->metadata_check_permissions(
+            &dataitem, META_REGION_ITEM_WRITE, uid, gid))) {
+        message << "Write operation is not permitted on destination dataitem";
+        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    }
+
+    if (!((dstOffset + nbytes) <= dataitem.size)) {
+        message << "Source offset or size is beyond dataitem boundary";
+        THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
+    }
+    memoryService->put_atomic(regionId, srcOffset, dstOffset, nbytes, key,
+                              nodeAddr, nodeAddrSize, data);
+    //    CIS_DIRECT_PROFILE_END_OPS(cis_get_atomic);
+    return 0;
+}
 
 } // namespace openfam

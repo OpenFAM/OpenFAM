@@ -166,6 +166,14 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
                             const Fam_Address_Request *request,
                             Fam_Address_Response *response) override;
 
+    ::grpc::Status get_atomic(::grpc::ServerContext *context,
+                              const ::Fam_Atomic_Get_Request *request,
+                              ::Fam_Atomic_Response *response) override;
+
+    ::grpc::Status put_atomic(::grpc::ServerContext *context,
+                              const ::Fam_Atomic_Put_Request *request,
+                              ::Fam_Atomic_Response *response) override;
+
   protected:
     int numClients;
     Fam_CIS_Direct *famCIS;

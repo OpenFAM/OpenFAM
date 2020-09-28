@@ -90,6 +90,7 @@ Fam_Memory_Service_Server::Fam_Memory_Service_Server(uint64_t rpcPort,
 }
 
 void Fam_Memory_Service_Server::run() {
+    //    memoryService->init_atomic_queue();
     char address[ADDR_SIZE + sizeof(uint64_t)];
     sprintf(address, "%s:%lu", serverAddress, port);
     std::string serverAddress(address);
@@ -355,4 +356,43 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
     // Return status OK
     return ::grpc::Status::OK;
 }
+
+::grpc::Status Fam_Memory_Service_Server::get_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Atomic_Get_Request *request,
+    ::Fam_Memory_Atomic_Response *response) {
+    //    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        memoryService->get_atomic(request->regionid(), request->srcoffset(),
+                                  request->dstoffset(), request->nbytes(),
+                                  request->key(), request->nodeaddr().c_str(),
+                                  request->nodeaddrsize());
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    //    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_get_atomic);
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_Memory_Service_Server::put_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Atomic_Put_Request *request,
+    ::Fam_Memory_Atomic_Response *response) {
+    //    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        memoryService->put_atomic(
+            request->regionid(), request->srcoffset(), request->dstoffset(),
+            request->nbytes(), request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize(), request->data().c_str());
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    //    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_get_atomic);
+    return ::grpc::Status::OK;
+}
+
 } // namespace openfam

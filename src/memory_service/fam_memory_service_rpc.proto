@@ -67,6 +67,11 @@ service Fam_Memory_Service_Rpc {
 
     rpc get_key(Fam_Memory_Service_Request)
         returns (Fam_Memory_Service_Response) {}
+
+    rpc get_atomic(Fam_Memory_Atomic_Get_Request)
+        returns (Fam_Memory_Atomic_Response) {}
+    rpc put_atomic(Fam_Memory_Atomic_Put_Request)
+        returns (Fam_Memory_Atomic_Response) {}
 }
 
 /*
@@ -127,3 +132,30 @@ message Fam_Memory_Copy_Response {
     int32 errorcode = 1;
     string errormsg = 2;
 }
+
+message Fam_Memory_Atomic_Get_Request {
+    uint64 regionid = 1;
+    uint64 srcoffset = 2;
+    uint64 dstoffset = 3;
+    uint64 nbytes = 4;
+    uint64 key = 5;
+    bytes nodeaddr = 6;
+    uint32 nodeaddrsize = 7;
+}
+
+message Fam_Memory_Atomic_Put_Request {
+    uint64 regionid = 1;
+    uint64 srcoffset = 2;
+    uint64 dstoffset = 3;
+    uint64 nbytes = 4;
+    uint64 key = 5;
+    bytes nodeaddr = 6;
+    uint32 nodeaddrsize = 7;
+    bytes data = 8;
+}
+
+message Fam_Memory_Atomic_Response {
+    int32 errorcode = 1;
+    string errormsg = 2;
+}
+

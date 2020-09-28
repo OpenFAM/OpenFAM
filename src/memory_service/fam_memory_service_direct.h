@@ -79,6 +79,15 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
                      bool rwFlag);
     configFileParams get_config_info(std::string filename);
 
+    void init_atomic_queue();
+    void get_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
+                    uint64_t nbytes, uint64_t key, const char *nodeAddr,
+                    uint32_t nodeAddrSize);
+
+    void put_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
+                    uint64_t nbytes, uint64_t key, const char *nodeAddr,
+                    uint32_t nodeAddrSize, const char *data);
+
   private:
     Memserver_Allocator *allocator;
     pthread_mutex_t casLock[CAS_LOCK_CNT];

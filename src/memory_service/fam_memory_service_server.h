@@ -133,6 +133,14 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                            const ::Fam_Memory_Service_Request *request,
                            ::Fam_Memory_Service_Response *response) override;
 
+    ::grpc::Status get_atomic(::grpc::ServerContext *context,
+                              const ::Fam_Memory_Atomic_Get_Request *request,
+                              ::Fam_Memory_Atomic_Response *response) override;
+
+    ::grpc::Status put_atomic(::grpc::ServerContext *context,
+                              const ::Fam_Memory_Atomic_Put_Request *request,
+                              ::Fam_Memory_Atomic_Response *response) override;
+
   protected:
     char *serverAddress;
     uint64_t port;
