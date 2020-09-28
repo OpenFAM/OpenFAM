@@ -13,7 +13,7 @@
 # where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
 # portno is port to be used by OpenFAM for communication between Memory Server and
 # Client Interface Service.
-rpc_interface: 127.0.0.1:8787
+rpc_interface: 127.0.0.1:8789
 
 # Libfabric provider to be used by OpenFAM libfabric datapath operations; default is sockets.
 # Other options are psm2/verbs.
@@ -21,3 +21,13 @@ provider: sockets
 
 #Libfabric port to be used for datapath operations.
 libfabric_port: 7500
+
+# Atomic library threads count - default (0) indicates ATL disabled
+ATL_threads: 0 
+
+# ATL queue size - Number of elements in each queue
+ATL_queue_size: 1000
+
+# ATL data size per thread(MiB) - This will be used to allocate buffers and other queue related
+# data structures
+ATL_data_size: 1024

@@ -74,6 +74,7 @@ class Memserver_Allocator {
               uint64_t destOffset, uint64_t size);
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
     void open_heap(uint64_t regionId);
+    void create_ATL_root(size_t nbytes);
 
   private:
     MemoryManager *memoryManager;

@@ -1,8 +1,9 @@
 /*
  * fam/fam_exception.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -55,7 +56,10 @@ enum Fam_Error {
     FAM_ERR_RESOURCE,
     FAM_ERR_INVALIDOP,
     FAM_ERR_RPC_CLIENT_NOTFOUND,
-    FAM_ERR_MEMSERV_LIST_EMPTY
+    FAM_ERR_MEMSERV_LIST_EMPTY,
+    FAM_ERR_ATL_QUEUE_FULL,
+    FAM_ERR_ATL_QUEUE_INSERT,
+    FAM_ERR_ATL_NOT_ENABLED
 };
 
 class Fam_Exception : public std::exception {
