@@ -59,7 +59,6 @@ int main(int argc, char *argv[]) {
     char *name = strdup("127.0.0.1");
     char *libfabricPort = strdup("7500");
     char *provider = strdup("sockets");
-    //    numAtomicThreads = 0;
 
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
