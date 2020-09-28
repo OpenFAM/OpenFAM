@@ -346,7 +346,7 @@ void Fam_Memory_Service_Client::get_atomic(uint64_t regionId,
     Fam_Memory_Atomic_Get_Request req;
     Fam_Memory_Atomic_Response res;
     ::grpc::ClientContext ctx;
-    //    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
     req.set_regionid(regionId & REGIONID_MASK);
     req.set_srcoffset(srcOffset);
     req.set_dstoffset(dstOffset);
@@ -357,7 +357,7 @@ void Fam_Memory_Service_Client::get_atomic(uint64_t regionId,
     ::grpc::Status status = stub->get_atomic(&ctx, req, &res);
 
     STATUS_CHECK(Memory_Service_Exception)
-    //    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_atomic);
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_atomic);
 }
 
 void Fam_Memory_Service_Client::put_atomic(uint64_t regionId,
@@ -370,7 +370,7 @@ void Fam_Memory_Service_Client::put_atomic(uint64_t regionId,
     Fam_Memory_Atomic_Response res;
     ::grpc::ClientContext ctx;
 
-    //    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
     req.set_regionid(regionId & REGIONID_MASK);
     req.set_srcoffset(srcOffset);
     req.set_dstoffset(dstOffset);
@@ -384,7 +384,105 @@ void Fam_Memory_Service_Client::put_atomic(uint64_t regionId,
     ::grpc::Status status = stub->put_atomic(&ctx, req, &res);
 
     STATUS_CHECK(Memory_Service_Exception)
-    //    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_put_atomic);
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_put_atomic);
+}
+
+void Fam_Memory_Service_Client::scatter_strided_atomic(
+    uint64_t regionId, uint64_t offset, uint64_t nElements,
+    uint64_t firstElement, uint64_t stride, uint64_t elementSize, uint64_t key,
+    const char *nodeAddr, uint32_t nodeAddrSize) {
+    Fam_Memory_Atomic_SG_Strided_Request req;
+    Fam_Memory_Atomic_Response res;
+    ::grpc::ClientContext ctx;
+
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_offset(offset);
+    req.set_nelements(nElements);
+    req.set_firstelement(firstElement);
+    req.set_stride(stride);
+    req.set_elementsize(elementSize);
+    req.set_key(key);
+    req.set_nodeaddr(nodeAddr, nodeAddrSize);
+    req.set_nodeaddrsize(nodeAddrSize);
+
+    ::grpc::Status status = stub->scatter_strided_atomic(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_scatter_strided_atomic);
+}
+
+void Fam_Memory_Service_Client::gather_strided_atomic(
+    uint64_t regionId, uint64_t offset, uint64_t nElements,
+    uint64_t firstElement, uint64_t stride, uint64_t elementSize, uint64_t key,
+    const char *nodeAddr, uint32_t nodeAddrSize) {
+    Fam_Memory_Atomic_SG_Strided_Request req;
+    Fam_Memory_Atomic_Response res;
+    ::grpc::ClientContext ctx;
+
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_offset(offset);
+    req.set_nelements(nElements);
+    req.set_firstelement(firstElement);
+    req.set_stride(stride);
+    req.set_elementsize(elementSize);
+    req.set_key(key);
+    req.set_nodeaddr(nodeAddr, nodeAddrSize);
+    req.set_nodeaddrsize(nodeAddrSize);
+
+    ::grpc::Status status = stub->gather_strided_atomic(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_gather_strided_atomic);
+}
+
+void Fam_Memory_Service_Client::scatter_indexed_atomic(
+    uint64_t regionId, uint64_t offset, uint64_t nElements,
+    const void *elementIndex, uint64_t elementSize, uint64_t key,
+    const char *nodeAddr, uint32_t nodeAddrSize) {
+    Fam_Memory_Atomic_SG_Indexed_Request req;
+    Fam_Memory_Atomic_Response res;
+    ::grpc::ClientContext ctx;
+
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_offset(offset);
+    req.set_nelements(nElements);
+    req.set_elementindex(elementIndex, strlen((char *)elementIndex));
+    req.set_indexsize(elementSize);
+    req.set_key(key);
+    req.set_nodeaddr(nodeAddr, nodeAddrSize);
+    req.set_nodeaddrsize(nodeAddrSize);
+
+    ::grpc::Status status = stub->scatter_indexed_atomic(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_scatter_indexed_atomic);
+}
+
+void Fam_Memory_Service_Client::gather_indexed_atomic(
+    uint64_t regionId, uint64_t offset, uint64_t nElements,
+    const void *elementIndex, uint64_t elementSize, uint64_t key,
+    const char *nodeAddr, uint32_t nodeAddrSize) {
+    Fam_Memory_Atomic_SG_Indexed_Request req;
+    Fam_Memory_Atomic_Response res;
+    ::grpc::ClientContext ctx;
+
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_offset(offset);
+    req.set_nelements(nElements);
+    req.set_elementindex(elementIndex, strlen((char *)elementIndex));
+    req.set_indexsize(elementSize);
+    req.set_key(key);
+    req.set_nodeaddr(nodeAddr, nodeAddrSize);
+    req.set_nodeaddrsize(nodeAddrSize);
+
+    ::grpc::Status status = stub->gather_indexed_atomic(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_gather_indexed_atomic);
 }
 
 } // namespace openfam

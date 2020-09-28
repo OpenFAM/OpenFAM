@@ -533,7 +533,7 @@ Fam_CIS_Server::get_addr_size(::grpc::ServerContext *context,
 Fam_CIS_Server::get_atomic(::grpc::ServerContext *context,
                            const ::Fam_Atomic_Get_Request *request,
                            ::Fam_Atomic_Response *response) {
-    //    CIS_SERVER_PROFILE_START_OPS()
+    CIS_SERVER_PROFILE_START_OPS()
     ostringstream message;
     try {
         famCIS->get_atomic(request->regionid(), request->srcoffset(),
@@ -547,7 +547,7 @@ Fam_CIS_Server::get_atomic(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
 
-    //    CIS_SERVER_PROFILE_END_OPS(get_atomic);
+    CIS_SERVER_PROFILE_END_OPS(get_atomic);
 
     // Return status OK
     return ::grpc::Status::OK;
@@ -557,7 +557,7 @@ Fam_CIS_Server::get_atomic(::grpc::ServerContext *context,
 Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
                            const ::Fam_Atomic_Put_Request *request,
                            ::Fam_Atomic_Response *response) {
-    //    CIS_SERVER_PROFILE_START_OPS()
+    CIS_SERVER_PROFILE_START_OPS()
     ostringstream message;
     try {
         famCIS->put_atomic(
@@ -571,7 +571,107 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
 
-    //    CIS_SERVER_PROFILE_END_OPS(put_atomic);
+    CIS_SERVER_PROFILE_END_OPS(put_atomic);
+
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_CIS_Server::scatter_strided_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Atomic_SG_Strided_Request *request,
+    ::Fam_Atomic_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    ostringstream message;
+    try {
+        famCIS->scatter_strided_atomic(
+            request->regionid(), request->offset(), request->nelements(),
+            request->firstelement(), request->stride(), request->elementsize(),
+            request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize(), request->memserver_id(), request->uid(),
+            request->gid());
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+
+    CIS_SERVER_PROFILE_END_OPS(scatter_strided_atomic);
+
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_CIS_Server::gather_strided_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Atomic_SG_Strided_Request *request,
+    ::Fam_Atomic_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    ostringstream message;
+    try {
+        famCIS->gather_strided_atomic(
+            request->regionid(), request->offset(), request->nelements(),
+            request->firstelement(), request->stride(), request->elementsize(),
+            request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize(), request->memserver_id(), request->uid(),
+            request->gid());
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+
+    CIS_SERVER_PROFILE_END_OPS(gather_strided_atomic);
+
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_CIS_Server::scatter_indexed_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Atomic_SG_Indexed_Request *request,
+    ::Fam_Atomic_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    ostringstream message;
+    try {
+        famCIS->scatter_indexed_atomic(
+            request->regionid(), request->offset(), request->nelements(),
+            request->elementindex().c_str(), request->indexsize(),
+            request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize(), request->memserver_id(), request->uid(),
+            request->gid());
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+
+    CIS_SERVER_PROFILE_END_OPS(scatter_indexed_atomic);
+
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_CIS_Server::gather_indexed_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Atomic_SG_Indexed_Request *request,
+    ::Fam_Atomic_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    ostringstream message;
+    try {
+        famCIS->gather_indexed_atomic(
+            request->regionid(), request->offset(), request->nelements(),
+            request->elementindex().c_str(), request->indexsize(),
+            request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize(), request->memserver_id(), request->uid(),
+            request->gid());
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+
+    CIS_SERVER_PROFILE_END_OPS(gather_indexed_atomic);
 
     // Return status OK
     return ::grpc::Status::OK;

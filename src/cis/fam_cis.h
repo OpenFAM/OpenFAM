@@ -311,6 +311,32 @@ class Fam_CIS {
                            const char *nodeAddr, uint32_t nodeAddrSize,
                            const char *data, uint64_t memoryServerId,
                            uint32_t uid, uint32_t gid) = 0;
+
+    virtual int scatter_strided_atomic(
+        uint64_t regionId, uint64_t offset, uint64_t nElements,
+        uint64_t firstElement, uint64_t stride, uint64_t elementSize,
+        uint64_t key, const char *nodeAddr, uint32_t nodeAddrSize,
+        uint64_t memoryServerId, uint32_t uid, uint32_t gid) = 0;
+
+    virtual int gather_strided_atomic(uint64_t regionId, uint64_t offset,
+                                      uint64_t nElements, uint64_t firstElement,
+                                      uint64_t stride, uint64_t elementSize,
+                                      uint64_t key, const char *nodeAddr,
+                                      uint32_t nodeAddrSize,
+                                      uint64_t memoryServerId, uint32_t uid,
+                                      uint32_t gid) = 0;
+
+    virtual int scatter_indexed_atomic(
+        uint64_t regionId, uint64_t offset, uint64_t nElements,
+        const void *elementIndex, uint64_t elementSize, uint64_t key,
+        const char *nodeAddr, uint32_t nodeAddrSize, uint64_t memoryServerId,
+        uint32_t uid, uint32_t gid) = 0;
+
+    virtual int gather_indexed_atomic(
+        uint64_t regionId, uint64_t offset, uint64_t nElements,
+        const void *elementIndex, uint64_t elementSize, uint64_t key,
+        const char *nodeAddr, uint32_t nodeAddrSize, uint64_t memoryServerId,
+        uint32_t uid, uint32_t gid) = 0;
 };
 
 } // namespace openfam

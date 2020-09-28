@@ -75,6 +75,10 @@ service Fam_CIS_Rpc {
 
     rpc get_atomic(Fam_Atomic_Get_Request) returns (Fam_Atomic_Response) {}
     rpc put_atomic(Fam_Atomic_Put_Request) returns (Fam_Atomic_Response) {}
+    rpc scatter_strided_atomic(Fam_Atomic_SG_Strided_Request) returns (Fam_Atomic_Response) {}
+    rpc scatter_indexed_atomic(Fam_Atomic_SG_Indexed_Request) returns (Fam_Atomic_Response) {}
+    rpc gather_strided_atomic(Fam_Atomic_SG_Strided_Request) returns (Fam_Atomic_Response) {}
+    rpc gather_indexed_atomic(Fam_Atomic_SG_Indexed_Request) returns (Fam_Atomic_Response) {}
 }
 
 /*
@@ -228,5 +232,34 @@ message Fam_Atomic_Put_Request {
 message Fam_Atomic_Response {
     int32 errorcode = 1;
     string errormsg = 2;
+}
+
+message Fam_Atomic_SG_Strided_Request {
+    uint64 regionid = 1;
+    uint64 offset = 2;
+    uint64 key = 3;
+    uint64 nelements = 4;
+    uint64 firstelement = 5;
+    uint64 stride = 6;
+    uint64 elementsize = 7;
+    bytes nodeaddr = 8;
+    uint32 nodeaddrsize = 9;
+    uint64 memserver_id = 10;
+    uint32 uid = 11;
+    uint32 gid = 12;
+}
+
+message Fam_Atomic_SG_Indexed_Request {
+    uint64 regionid = 1;
+    uint64 offset = 2;
+    uint64 key = 3;
+    uint64 nelements = 4;
+    bytes elementindex = 5;
+    uint64 indexsize = 6;
+    bytes nodeaddr = 7;
+    uint32 nodeaddrsize = 8;
+    uint64 memserver_id = 9;
+    uint32 uid = 10;
+    uint32 gid = 11;
 }
 

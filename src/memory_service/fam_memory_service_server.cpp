@@ -361,7 +361,7 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
     ::grpc::ServerContext *context,
     const ::Fam_Memory_Atomic_Get_Request *request,
     ::Fam_Memory_Atomic_Response *response) {
-    //    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
     try {
         memoryService->get_atomic(request->regionid(), request->srcoffset(),
                                   request->dstoffset(), request->nbytes(),
@@ -372,7 +372,7 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
     }
-    //    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_get_atomic);
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_get_atomic);
     return ::grpc::Status::OK;
 }
 
@@ -380,7 +380,7 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
     ::grpc::ServerContext *context,
     const ::Fam_Memory_Atomic_Put_Request *request,
     ::Fam_Memory_Atomic_Response *response) {
-    //    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
     try {
         memoryService->put_atomic(
             request->regionid(), request->srcoffset(), request->dstoffset(),
@@ -391,7 +391,87 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
     }
-    //    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_get_atomic);
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_put_atomic);
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_Memory_Service_Server::scatter_strided_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Atomic_SG_Strided_Request *request,
+    ::Fam_Memory_Atomic_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        memoryService->scatter_strided_atomic(
+            request->regionid(), request->offset(), request->nelements(),
+            request->firstelement(), request->stride(), request->elementsize(),
+            request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize());
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_scatter_strided_atomic);
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_Memory_Service_Server::gather_strided_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Atomic_SG_Strided_Request *request,
+    ::Fam_Memory_Atomic_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        memoryService->gather_strided_atomic(
+            request->regionid(), request->offset(), request->nelements(),
+            request->firstelement(), request->stride(), request->elementsize(),
+            request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize());
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_gather_strided_atomic);
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_Memory_Service_Server::scatter_indexed_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Atomic_SG_Indexed_Request *request,
+    ::Fam_Memory_Atomic_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        memoryService->scatter_indexed_atomic(
+            request->regionid(), request->offset(), request->nelements(),
+            request->elementindex().c_str(), request->indexsize(),
+            request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize());
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_scatter_indexed_atomic);
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_Memory_Service_Server::gather_indexed_atomic(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Atomic_SG_Indexed_Request *request,
+    ::Fam_Memory_Atomic_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        memoryService->gather_indexed_atomic(
+            request->regionid(), request->offset(), request->nelements(),
+            request->elementindex().c_str(), request->indexsize(),
+            request->key(), request->nodeaddr().c_str(),
+            request->nodeaddrsize());
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_gather_indexed_atomic);
     return ::grpc::Status::OK;
 }
 
