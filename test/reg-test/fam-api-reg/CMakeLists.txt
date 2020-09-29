@@ -31,7 +31,7 @@ add_fam_test(fam_options_reg_test)
 if (${TEST_RUNTIME} STREQUAL "PMI2")
 	add_fam_test(fam_runtime_pmi2_reg_test)
 	add_fam_test(fam_runtime_pmi2_abort_reg_test)
-elseif(${TEST_RUNTIME} STREQUAL "PMIX") 
+elseif(${TEST_RUNTIME} STREQUAL "PMIX")
 	add_fam_test(fam_runtime_pmix_reg_test)
 	add_fam_test(fam_runtime_pmix_abort_reg_test)
 endif()
@@ -66,6 +66,7 @@ add_fam_test(fam_copy_reg_test)
 add_fam_test(fam_put_get_mt_reg_test)
 add_fam_test(fam_scatter_gather_blocking_mt_reg_test)
 add_fam_test(fam_stat_reg_test)
+add_fam_test(fam_control_path_reg_test)
 
 
 if (${TEST_OPENFAM_MODEL} STREQUAL "memory_server")
@@ -95,7 +96,7 @@ endif()
 #add_fam_test(fam_invalid_key_test)
 #add_fam_test(fam_invalid_offset_test)
 #add_fam_test(fam_noperm_test)
-# Following tests have been commented as there are some issues with non-blocking calls. 
+# Following tests have been commented as there are some issues with non-blocking calls.
 # Will be uncommented after the issue has been addressed.
 #add_fam_test(fam_arithmetic_atomics_mt_reg_test)
 #add_fam_test(fam_cas_atomics_mt_reg_test)
