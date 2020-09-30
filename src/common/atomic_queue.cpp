@@ -94,7 +94,7 @@ int atomicQueue::create(Memserver_Allocator *in_allocator,
         }
         // queue created. Update the queue information
         lcqData.front = lcqData.rear = 0; // lcqData.size = 0;
-        lcqData.size.store(0, std::memory_order_acq_rel);
+        lcqData.size = 0;
         lcqData.capacity = queueCapacity;
         lcqData.offsetArray = offsetA;
         memcpy(localPointerQ, &lcqData, sizeof(lcqData));
@@ -129,8 +129,7 @@ int atomicQueue::create(Memserver_Allocator *in_allocator,
     std::cout << "queue front " << lcqData->front << std::endl;
     std::cout << "queue rear " << lcqData->rear << std::endl;
     std::cout << "queue capacity " << lcqData->capacity << std::endl;
-    std::cout << "queue size " << lcqData->size.load(std::memory_order_acq_rel)
-              << std::endl;
+    std::cout << "queue size " << lcqData->size;
 
     try {
         openfam_persist(pointerQ, sizeof(qData));
@@ -180,15 +179,14 @@ int atomicQueue::push(atomicMsg *inpMsg, void *inpDataSG) {
     // Get the offset of the element at the rear
     offsetM = *((uint64_t *)pointerA + lcqData->rear);
     // Get the pointer and copy the incoming message
-    if ((qSize = lcqData->size.load(std::memory_order_acq_rel)) >=
-        lcqData->capacity) {
+    if ((qSize = lcqData->size) >= lcqData->capacity) {
         message << "Atomic Queue " << qId << " Full";
         pthread_mutex_unlock(&pushQmutex[qId]);
         return ATL_QUEUE_FULL;
     }
     // Increment the rear and size
     lcqData->rear = (lcqData->rear + 1) % lcqData->capacity;
-    lcqData->size.fetch_add(1, std::memory_order_acq_rel);
+    lcqData->size++;
     pthread_mutex_unlock(&pushQmutex[qId]);
     try {
         openfam_persist(pointerQ, sizeof(qData));
@@ -211,7 +209,7 @@ int atomicQueue::push(atomicMsg *inpMsg, void *inpDataSG) {
 int atomicQueue::read(Fam_Global_Descriptor *item) {
     struct qData *lcqData;
     lcqData = (struct qData *)pointerQ;
-    if (lcqData->size.load(std::memory_order_acq_rel) == 0)
+    if (lcqData->size == 0)
         return ATOMIC_QUEUE_EMPTY; // array empty
     item->regionId = ATOMIC_REGION_ID;
     // front should hold the offset of the data to be read
@@ -229,7 +227,7 @@ int atomicQueue::pop(Fam_Global_Descriptor *item) {
     lcqData = (struct qData *)pointerQ;
     // Adjust the front and size
     lcqData->front = (lcqData->front + 1) % lcqData->capacity;
-    lcqData->size.fetch_add(-1, std::memory_order_acq_rel);
+    lcqData->size--;
     try {
         openfam_persist(pointerQ, sizeof(qData));
         localPointerM =
