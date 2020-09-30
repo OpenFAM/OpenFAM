@@ -41,10 +41,18 @@ set(COVERAGE_REMOVE_PATHS
     '/usr/*'
     '${PROJECT_SOURCE_DIR}/third-party/*'
     '${PROJECT_SOURCE_DIR}/src/metadata/radixtree/*'
-    '${PROJECT_SOURCE_DIR}/src/rpc/fam_rpc.grpc.pb.cc'
-    '${PROJECT_SOURCE_DIR}/src/rpc/fam_rpc.grpc.pb.h'
-    '${PROJECT_SOURCE_DIR}/src/rpc/fam_rpc.pb.cc'
-    '${PROJECT_SOURCE_DIR}/src/rpc/fam_rpc.pb.h'
+    '${PROJECT_SOURCE_DIR}/src/cis/fam_cis_rpc.pb.cc'
+    '${PROJECT_SOURCE_DIR}/src/cis/fam_cis_rpc.grpc.pb.cc'
+    '${PROJECT_SOURCE_DIR}/src/cis/fam_cis_rpc.pb.h'
+    '${PROJECT_SOURCE_DIR}/src/cis/fam_cis_rpc.grpc.pb.h'
+    '${PROJECT_SOURCE_DIR}/src/memory_service/fam_memory_service_rpc.pb.cc'
+    '${PROJECT_SOURCE_DIR}/src/memory_service/fam_memory_service_rpc.grpc.pb.cc'
+    '${PROJECT_SOURCE_DIR}/src/memory_service/fam_memory_service_rpc.pb.h'
+    '${PROJECT_SOURCE_DIR}/src/memory_service/fam_memory_service_rpc.grpc.pb.h'
+    '${PROJECT_SOURCE_DIR}/src/metadata_service/fam_metadata_rpc.pb.cc'
+    '${PROJECT_SOURCE_DIR}/src/metadata_service/fam_metadata_rpc.grpc.pb.cc'
+    '${PROJECT_SOURCE_DIR}/src/metadata_service/fam_metadata_rpc.grpc.pb.h'
+    '${PROJECT_SOURCE_DIR}/src/metadata_service/fam_metadata_rpc.pb.h'
 )
 
 set(Coverage_GENHTML_ARGS --demangle-cpp)

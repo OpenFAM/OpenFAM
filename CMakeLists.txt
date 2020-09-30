@@ -92,7 +92,7 @@ set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -DDEBUG -O0 -g")
 #
 # gcc flags for debug build
 #
-set(CMAKE_CXX_FLAGS_COVERAGE "${CMAKE_CXX_FLAGS} -DDEBUG -DCOVERAGE -Og -g -fprofile-arcs -ftest-coverage")
+set(CMAKE_CXX_FLAGS_COVERAGE "${CMAKE_CXX_FLAGS} -DDEBUG -DCOVERAGE -O0 -g -fprofile-arcs -ftest-coverage")
 
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
