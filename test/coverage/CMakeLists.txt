@@ -40,7 +40,6 @@ endif() # NOT GENHTML_BIN
 set(COVERAGE_REMOVE_PATHS
     '/usr/*'
     '${PROJECT_SOURCE_DIR}/third-party/*'
-    '${PROJECT_SOURCE_DIR}/src/metadata/radixtree/*'
     '${PROJECT_SOURCE_DIR}/src/cis/fam_cis_rpc.pb.cc'
     '${PROJECT_SOURCE_DIR}/src/cis/fam_cis_rpc.grpc.pb.cc'
     '${PROJECT_SOURCE_DIR}/src/cis/fam_cis_rpc.pb.h'

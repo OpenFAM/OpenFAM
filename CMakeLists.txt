@@ -142,7 +142,7 @@ set( TEST_NUM_CONSUMER "1" )
 
 set( TEST_ENABLE_KNOWN_ISSUES "no" )
 if (ENABLE_KNOWN_ISSUES)
-    set( TEST_ENABLE_KNOWN_ISSUES "yes" )
+        set( TEST_ENABLE_KNOWN_ISSUES "yes" )
 endif()
 
 if (ARG_OPENFAM_MODEL)
