@@ -450,7 +450,7 @@ void Fam_Memory_Service_Client::scatter_indexed_atomic(
     req.set_offset(offset);
     req.set_nelements(nElements);
     req.set_elementindex(elementIndex, strlen((char *)elementIndex));
-    req.set_indexsize(elementSize);
+    req.set_elementsize(elementSize);
     req.set_key(key);
     req.set_nodeaddr(nodeAddr, nodeAddrSize);
     req.set_nodeaddrsize(nodeAddrSize);
@@ -474,7 +474,7 @@ void Fam_Memory_Service_Client::gather_indexed_atomic(
     req.set_offset(offset);
     req.set_nelements(nElements);
     req.set_elementindex(elementIndex, strlen((char *)elementIndex));
-    req.set_indexsize(elementSize);
+    req.set_elementsize(elementSize);
     req.set_key(key);
     req.set_nodeaddr(nodeAddr, nodeAddrSize);
     req.set_nodeaddrsize(nodeAddrSize);

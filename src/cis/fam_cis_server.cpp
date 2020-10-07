@@ -636,7 +636,7 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
     try {
         famCIS->scatter_indexed_atomic(
             request->regionid(), request->offset(), request->nelements(),
-            request->elementindex().c_str(), request->indexsize(),
+            request->elementindex().c_str(), request->elementsize(),
             request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
@@ -661,7 +661,7 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
     try {
         famCIS->gather_indexed_atomic(
             request->regionid(), request->offset(), request->nelements(),
-            request->elementindex().c_str(), request->indexsize(),
+            request->elementindex().c_str(), request->elementsize(),
             request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());

@@ -443,7 +443,7 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
     try {
         memoryService->scatter_indexed_atomic(
             request->regionid(), request->offset(), request->nelements(),
-            request->elementindex().c_str(), request->indexsize(),
+            request->elementindex().c_str(), request->elementsize(),
             request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize());
     } catch (Memory_Service_Exception &e) {
@@ -463,7 +463,7 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
     try {
         memoryService->gather_indexed_atomic(
             request->regionid(), request->offset(), request->nelements(),
-            request->elementindex().c_str(), request->indexsize(),
+            request->elementindex().c_str(), request->elementsize(),
             request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize());
     } catch (Memory_Service_Exception &e) {

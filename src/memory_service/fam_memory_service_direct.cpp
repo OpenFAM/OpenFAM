@@ -474,7 +474,7 @@ void Fam_Memory_Service_Direct::scatter_strided_atomic(
     InpMsg.snElements = nElements;
     InpMsg.firstElement = firstElement;
     InpMsg.stride = stride;
-    InpMsg.elementSize = elementSize;
+    InpMsg.selementSize = elementSize;
     InpMsg.key = key;
     InpMsg.flag |= ATOMIC_SCATTER_STRIDE;
 
@@ -518,7 +518,7 @@ void Fam_Memory_Service_Direct::gather_strided_atomic(
     InpMsg.snElements = nElements;
     InpMsg.firstElement = firstElement;
     InpMsg.stride = stride;
-    InpMsg.elementSize = elementSize;
+    InpMsg.selementSize = elementSize;
     InpMsg.key = key;
     InpMsg.flag |= ATOMIC_GATHER_STRIDE;
 
@@ -559,7 +559,7 @@ void Fam_Memory_Service_Direct::scatter_indexed_atomic(
     InpMsg.dstDataGdesc.regionId = regionId;
     InpMsg.dstDataGdesc.offset = offset;
     InpMsg.inElements = nElements;
-    InpMsg.indexSize = elementSize;
+    InpMsg.ielementSize = elementSize;
     InpMsg.key = key;
     InpMsg.flag |= ATOMIC_SCATTER_INDEX;
 
@@ -600,7 +600,7 @@ void Fam_Memory_Service_Direct::gather_indexed_atomic(
     InpMsg.dstDataGdesc.regionId = regionId;
     InpMsg.dstDataGdesc.offset = offset;
     InpMsg.inElements = nElements;
-    InpMsg.indexSize = elementSize;
+    InpMsg.ielementSize = elementSize;
     InpMsg.key = key;
     InpMsg.flag |= ATOMIC_GATHER_INDEX;
 

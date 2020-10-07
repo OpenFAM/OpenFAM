@@ -72,10 +72,10 @@ enum flag {
  * snElements: number of elements for strided scatter/gather
  * firstElement: first element for strided scatter/gather
  * stride: stride for strided scatter/gather
- * elementSize: size of element for strided scatter/gather
+ * selementSize: size of element for strided scatter/gather
  * offsetIndex: offset of the index data item for indexed scatter/gather
  * inElements: index elements for indexed scatter/gather
- * indexSize: size of element for indexed scatter/gather
+ * ielementSize: size of element for indexed scatter/gather
  */
 typedef struct atomicMsg {
     short int flag;
@@ -93,12 +93,12 @@ typedef struct atomicMsg {
             uint64_t snElements;
             uint64_t firstElement;
             uint64_t stride;
-            uint64_t elementSize;
+            uint64_t selementSize;
         };
         struct {
             uint64_t offsetIndex;
             uint64_t inElements;
-            uint64_t indexSize;
+            uint64_t ielementSize;
         };
     };
 } atomicMsg;

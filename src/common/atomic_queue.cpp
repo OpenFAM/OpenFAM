@@ -147,7 +147,9 @@ int atomicQueue::create(Memserver_Allocator *in_allocator,
  * For scatter, gather and when rpc message contains data
  * allocate memory for the specified size
  * @param inpMsg - struct atomicMsg
- * @param inpDataSG - void *
+ * @param inpDataSG - void * (For eager mode it will point to data and for
+ * indexed version of scatter/gather it will point to indexes, For others it
+ * will point to NULL)
  * @return - {success(0), failure(1), errNo(<0)}
  */
 int atomicQueue::push(atomicMsg *inpMsg, const void *inpDataSG) {
@@ -161,6 +163,9 @@ int atomicQueue::push(atomicMsg *inpMsg, const void *inpDataSG) {
             // Allocate data item to hold the source data; update the
             // information in the message
             offsetDSG = allocator->allocate(ATOMIC_REGION_ID, inpMsg->size);
+            // Only for eager mode offsetBuffer will be populated here
+            // For others it will be populated after fabric_read in
+            // process_queue()
             inpMsg->offsetBuffer = offsetDSG;
             localPointerDSG =
                 allocator->get_local_pointer(ATOMIC_REGION_ID, offsetDSG);
@@ -173,8 +178,8 @@ int atomicQueue::push(atomicMsg *inpMsg, const void *inpDataSG) {
     if ((inpMsg->flag & ATOMIC_SCATTER_INDEX) ||
         (inpMsg->flag & ATOMIC_GATHER_INDEX)) {
         try {
-            // Allocate data item to hold the source data; update the
-            // information in the message
+            // Allocate data item to hold the Indexes for indexed version;
+            // update the same in the Message
             size_t indexStrSize = strlen((char *)inpDataSG);
             offsetDSG = allocator->allocate(ATOMIC_REGION_ID, indexStrSize);
             inpMsg->offsetIndex = offsetDSG;
@@ -355,14 +360,15 @@ int recover_queue(uint32_t qId, Memserver_Allocator *allocator) {
             // Copy data from source to destination data item using index
             for (uint64_t numElements = 0; numElements < msgPointer->inElements;
                  ++numElements) {
-                uint64_t srcIndex = numElements * msgPointer->indexSize;
+                uint64_t srcIndex = numElements * msgPointer->ielementSize;
                 uint64_t destIndex =
-                    indexArr[numElements] * msgPointer->indexSize;
+                    indexArr[numElements] * msgPointer->ielementSize;
                 memcpy((char *)localPointerD + destIndex,
-                       (char *)localPointerB + srcIndex, msgPointer->indexSize);
+                       (char *)localPointerB + srcIndex,
+                       msgPointer->ielementSize);
                 try {
                     openfam_persist((char *)localPointerD + destIndex,
-                                    msgPointer->indexSize);
+                                    msgPointer->ielementSize);
                 } catch (...) {
                     ret = PERSISTERROR;
                 }
@@ -402,16 +408,16 @@ int recover_queue(uint32_t qId, Memserver_Allocator *allocator) {
             // Copy data from source to destination data item
             for (uint64_t numElements = 0; numElements < msgPointer->snElements;
                  ++numElements) {
-                uint64_t srcIndex = numElements * msgPointer->elementSize;
+                uint64_t srcIndex = numElements * msgPointer->selementSize;
                 uint64_t destIndex = (msgPointer->firstElement +
                                       msgPointer->stride * numElements) *
-                                     msgPointer->elementSize;
+                                     msgPointer->selementSize;
                 memcpy((char *)localPointerD + destIndex,
                        (char *)localPointerB + srcIndex,
-                       msgPointer->elementSize);
+                       msgPointer->selementSize);
                 try {
                     openfam_persist((char *)localPointerD + destIndex,
-                                    msgPointer->elementSize);
+                                    msgPointer->selementSize);
                 } catch (...) {
                     ret = PERSISTERROR;
                 }
@@ -536,17 +542,17 @@ void *process_queue(void *arg) {
                 } catch (...) {
                     retStatus = FABRICWRITEERROR;
                 }
-                // send status (retStatus)  back to client
-                try {
-                    fabric_send_response(
-                        &retStatus, fiAddr,
-                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
-                        sizeof(retStatus));
-                } catch (...) {
-                    ret = SENDTOCLIENTERROR;
-                }
             } catch (...) {
-                ret = MAPERROR;
+                retStatus = MAPERROR;
+            }
+                // send status (retStatus)  back to client
+            try {
+                fabric_send_response(
+                    &retStatus, fiAddr,
+                    famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                    sizeof(retStatus));
+            } catch (...) {
+                ret = SENDTOCLIENTERROR;
             }
 
             break;
@@ -560,8 +566,15 @@ void *process_queue(void *arg) {
                     try {
                         allocator->deallocate(ATOMIC_REGION_ID,
                                               msgPointer->offsetBuffer);
+                        try {
+                            msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
+                            openfam_persist(msgPointer,
+                                            sizeof(msgPointer->flag));
+                        } catch (...) {
+                            ret = PERSISTERROR;
+                        }
                     } catch (...) {
-                        popStatus = DEALLOCATEERROR;
+                        ret = DEALLOCATEERROR;
                     }
                 break;
             }
@@ -662,30 +675,34 @@ void *process_queue(void *arg) {
                 localPointerD = allocator->get_local_pointer(
                     msgPointer->dstDataGdesc.regionId,
                     msgPointer->dstDataGdesc.offset + msgPointer->offset);
+
+                memcpy(localPointerD, localPointerB, msgPointer->size);
+                // Update the flag to indicate write is completed
+                msgPointer->flag |= ATOMIC_WRITE_COMPLETED;
+                msgPointer->flag &= ~ATOMIC_WRITE_IN_PROGRESS;
+                try {
+                    openfam_persist(msgPointer, sizeof(msgPointer->flag));
+                    openfam_persist(localPointerD, msgPointer->size);
+                } catch (...) {
+                    popStatus = PERSISTERROR;
+                }
             } catch (...) {
                 popStatus = MAPERROR;
-            }
-
-            memcpy(localPointerD, localPointerB, msgPointer->size);
-            // Update the flag to indicate write is completed
-            msgPointer->flag |= ATOMIC_WRITE_COMPLETED;
-            msgPointer->flag &= ~ATOMIC_WRITE_IN_PROGRESS;
-            try {
-                openfam_persist(msgPointer, sizeof(msgPointer->flag));
-                openfam_persist(localPointerD, msgPointer->size);
-            } catch (...) {
-                popStatus = PERSISTERROR;
             }
 
             // Deallocate the buffer
             try {
                 allocator->deallocate(ATOMIC_REGION_ID,
                                       msgPointer->offsetBuffer);
+                try {
+                    msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
+                    openfam_persist(msgPointer, sizeof(msgPointer->flag));
+                } catch (...) {
+                    ret = PERSISTERROR;
+                }
             } catch (...) {
-                popStatus = DEALLOCATEERROR;
+                ret = DEALLOCATEERROR;
             }
-
-            msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
 
             break;
         }
@@ -701,8 +718,15 @@ void *process_queue(void *arg) {
                                               msgPointer->offsetBuffer);
                         allocator->deallocate(ATOMIC_REGION_ID,
                                               msgPointer->offsetIndex);
+                        try {
+                            msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
+                            openfam_persist(msgPointer,
+                                            sizeof(msgPointer->flag));
+                        } catch (...) {
+                            ret = PERSISTERROR;
+                        }
                     } catch (...) {
-                        popStatus = DEALLOCATEERROR;
+                        ret = DEALLOCATEERROR;
                     }
                 }
                 break;
@@ -719,7 +743,7 @@ void *process_queue(void *arg) {
                 // New request; allocate buffer and read from client
                 uint64_t offsetB = 0;
                 uint64_t bufferSize =
-                    msgPointer->inElements * msgPointer->indexSize;
+                    msgPointer->inElements * msgPointer->ielementSize;
                 try {
                     offsetB = allocator->allocate(ATOMIC_REGION_ID, bufferSize);
                     // Update the message with the region and offset of buffer
@@ -740,11 +764,6 @@ void *process_queue(void *arg) {
                                 openfam_persist(localPointerB, bufferSize);
                                 openfam_persist(msgPointer,
                                                 sizeof(msgPointer->flag));
-                            } catch (...) {
-                                retStatus = PERSISTERROR;
-                            }
-                            try {
-                                openfam_persist(localPointerB, bufferSize);
                             } catch (...) {
                                 retStatus = PERSISTERROR;
                             }
@@ -774,33 +793,34 @@ void *process_queue(void *arg) {
                     msgPointer->dstDataGdesc.offset);
                 localPointerI = allocator->get_local_pointer(
                     ATOMIC_REGION_ID, msgPointer->offsetIndex);
-            } catch (...) {
-                popStatus = MAPERROR;
-            }
-            indexArr =
-                parseIndex((char *)localPointerI, msgPointer->inElements);
-            // Copy data from source to destination data item using index
-            for (uint64_t numElements = 0; numElements < msgPointer->inElements;
-                 ++numElements) {
-                uint64_t srcIndex = numElements * msgPointer->indexSize;
-                uint64_t destIndex =
-                    indexArr[numElements] * msgPointer->indexSize;
-                memcpy((char *)localPointerD + destIndex,
-                       (char *)localPointerB + srcIndex, msgPointer->indexSize);
+                indexArr =
+                    parseIndex((char *)localPointerI, msgPointer->inElements);
+                // Copy data from source to destination data item using index
+                for (uint64_t numElements = 0;
+                     numElements < msgPointer->inElements; ++numElements) {
+                    uint64_t srcIndex = numElements * msgPointer->ielementSize;
+                    uint64_t destIndex =
+                        indexArr[numElements] * msgPointer->ielementSize;
+                    memcpy((char *)localPointerD + destIndex,
+                           (char *)localPointerB + srcIndex,
+                           msgPointer->ielementSize);
+                    try {
+                        openfam_persist((char *)localPointerD + destIndex,
+                                        msgPointer->ielementSize);
+                    } catch (...) {
+                        popStatus = PERSISTERROR;
+                    }
+                }
+                // Update the flag to indicate write is completed
+                msgPointer->flag |= ATOMIC_WRITE_COMPLETED;
+                msgPointer->flag &= ~ATOMIC_WRITE_IN_PROGRESS;
                 try {
-                    openfam_persist((char *)localPointerD + destIndex,
-                                    msgPointer->indexSize);
+                    openfam_persist(msgPointer, sizeof(msgPointer->flag));
                 } catch (...) {
                     popStatus = PERSISTERROR;
                 }
-            }
-            // Update the flag to indicate write is completed
-            msgPointer->flag |= ATOMIC_WRITE_COMPLETED;
-            msgPointer->flag &= ~ATOMIC_WRITE_IN_PROGRESS;
-            try {
-                openfam_persist(msgPointer, sizeof(msgPointer->flag));
             } catch (...) {
-                popStatus = PERSISTERROR;
+                popStatus = MAPERROR;
             }
             // Deallocate the buffer
             try {
@@ -808,14 +828,14 @@ void *process_queue(void *arg) {
                                       msgPointer->offsetBuffer);
                 allocator->deallocate(ATOMIC_REGION_ID,
                                       msgPointer->offsetIndex);
+                msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
+                try {
+                    openfam_persist(msgPointer, sizeof(msgPointer->flag));
+                } catch (...) {
+                    ret = PERSISTERROR;
+                }
             } catch (...) {
-                popStatus = DEALLOCATEERROR;
-            }
-            msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
-            try {
-                openfam_persist(msgPointer, sizeof(msgPointer->flag));
-            } catch (...) {
-                popStatus = PERSISTERROR;
+                ret = DEALLOCATEERROR;
             }
             if (indexArr)
                 free(indexArr);
@@ -832,8 +852,16 @@ void *process_queue(void *arg) {
                                               msgPointer->offsetBuffer);
                         allocator->deallocate(ATOMIC_REGION_ID,
                                               msgPointer->offsetIndex);
+                        try {
+                            msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
+                            openfam_persist(msgPointer,
+                                            sizeof(msgPointer->flag));
+                        } catch (...) {
+                            ret = PERSISTERROR;
+                        }
+
                     } catch (...) {
-                        popStatus = DEALLOCATEERROR;
+                        ret = DEALLOCATEERROR;
                     }
                 }
                 break;
@@ -852,7 +880,7 @@ void *process_queue(void *arg) {
                 // client
                 uint64_t offsetB = 0;
                 uint64_t bufferSize =
-                    msgPointer->snElements * msgPointer->elementSize;
+                    msgPointer->snElements * msgPointer->selementSize;
                 try {
                     offsetB = allocator->allocate(ATOMIC_REGION_ID, bufferSize);
                     msgPointer->flag |= ATOMIC_BUFFER_ALLOCATED;
@@ -903,50 +931,52 @@ void *process_queue(void *arg) {
                 localPointerD = allocator->get_local_pointer(
                     msgPointer->dstDataGdesc.regionId,
                     msgPointer->dstDataGdesc.offset);
-            } catch (...) {
-                retStatus = MAPERROR;
-            }
-            for (uint64_t numElements = 0; numElements < msgPointer->snElements;
-                 ++numElements) {
-                uint64_t srcIndex = numElements * msgPointer->elementSize;
-                uint64_t destIndex = (msgPointer->firstElement +
-                                      msgPointer->stride * numElements) *
-                                     msgPointer->elementSize;
-                memcpy((char *)localPointerD + destIndex,
-                       (char *)localPointerB + srcIndex,
-                       msgPointer->elementSize);
+                for (uint64_t numElements = 0;
+                     numElements < msgPointer->snElements; ++numElements) {
+                    uint64_t srcIndex = numElements * msgPointer->selementSize;
+                    uint64_t destIndex = (msgPointer->firstElement +
+                                          msgPointer->stride * numElements) *
+                                         msgPointer->selementSize;
+                    memcpy((char *)localPointerD + destIndex,
+                           (char *)localPointerB + srcIndex,
+                           msgPointer->selementSize);
+                    try {
+                        openfam_persist((char *)localPointerD + destIndex,
+                                        msgPointer->selementSize);
+                    } catch (...) {
+                        popStatus = PERSISTERROR;
+                    }
+                }
+                // Clear the flags to indicate write is complete
+                msgPointer->flag |= ATOMIC_WRITE_COMPLETED;
+                msgPointer->flag &= ~ATOMIC_WRITE_IN_PROGRESS;
                 try {
-                    openfam_persist((char *)localPointerD + destIndex,
-                                    msgPointer->elementSize);
+                    openfam_persist(msgPointer, sizeof(msgPointer->flag));
                 } catch (...) {
                     popStatus = PERSISTERROR;
                 }
-            }
-            // Clear the flags to indicate write is complete
-            msgPointer->flag |= ATOMIC_WRITE_COMPLETED;
-            msgPointer->flag &= ~ATOMIC_WRITE_IN_PROGRESS;
-            try {
-                openfam_persist(msgPointer, sizeof(msgPointer->flag));
             } catch (...) {
-                popStatus = PERSISTERROR;
+                popStatus = MAPERROR;
             }
             // Deallocate source data item and index array
             try {
                 allocator->deallocate(ATOMIC_REGION_ID,
                                       msgPointer->offsetBuffer);
+                msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
+                try {
+                    openfam_persist(msgPointer, sizeof(msgPointer->flag));
+                } catch (...) {
+                    ret = PERSISTERROR;
+                }
             } catch (...) {
-                popStatus = DEALLOCATEERROR;
-            }
-            msgPointer->flag &= ~ATOMIC_BUFFER_ALLOCATED;
-            try {
-                openfam_persist(msgPointer, sizeof(msgPointer->flag));
-            } catch (...) {
-                popStatus = PERSISTERROR;
+                ret = DEALLOCATEERROR;
             }
 
             break;
 
         case ATOMIC_GATHER_INDEX: {
+            uint64_t bufferSize;
+            void *bufferPtr;
             // Gather - Indexed; Map data item and retrieve indexes
             try {
                 localPointerD = allocator->get_local_pointer(
@@ -954,22 +984,22 @@ void *process_queue(void *arg) {
                     msgPointer->dstDataGdesc.offset);
                 localPointerI = allocator->get_local_pointer(
                     ATOMIC_REGION_ID, msgPointer->offsetIndex);
+                bufferSize = msgPointer->inElements * msgPointer->ielementSize;
+                bufferPtr = malloc(bufferSize);
+                indexArr =
+                    parseIndex((char *)localPointerI, msgPointer->inElements);
+                // Copy data from fam to buffer using indexes
+                for (uint64_t numElements = 0;
+                     numElements < msgPointer->inElements; ++numElements) {
+                    uint64_t srcIndex =
+                        indexArr[numElements] * msgPointer->ielementSize;
+                    uint64_t destIndex = numElements * msgPointer->ielementSize;
+                    memcpy((char *)bufferPtr + destIndex,
+                           (char *)localPointerD + srcIndex,
+                           msgPointer->ielementSize);
+                }
             } catch (...) {
                 retStatus = MAPERROR;
-            }
-            uint64_t bufferSize =
-                msgPointer->inElements * msgPointer->indexSize;
-            void *bufferPtr = malloc(bufferSize);
-            indexArr =
-                parseIndex((char *)localPointerI, msgPointer->inElements);
-            // Copy data from fam to buffer using indexes
-            for (uint64_t numElements = 0; numElements < msgPointer->inElements;
-                 ++numElements) {
-                uint64_t srcIndex =
-                    indexArr[numElements] * msgPointer->indexSize;
-                uint64_t destIndex = numElements * msgPointer->indexSize;
-                memcpy((char *)bufferPtr + destIndex,
-                       (char *)localPointerD + srcIndex, msgPointer->indexSize);
             }
             // Copy data to client's memory
             try {
@@ -986,7 +1016,7 @@ void *process_queue(void *arg) {
                     famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
                     sizeof(retStatus));
             } catch (...) {
-                retStatus = SENDTOCLIENTERROR;
+                ret = SENDTOCLIENTERROR;
             }
             if (bufferPtr)
                 free(bufferPtr);
@@ -996,26 +1026,27 @@ void *process_queue(void *arg) {
 
         case ATOMIC_GATHER_STRIDE: {
             // Gather - Strided; Map data item
+            uint64_t bufferSize;
+            void *bufferPtr;
             try {
                 localPointerD = allocator->get_local_pointer(
                     msgPointer->dstDataGdesc.regionId,
                     msgPointer->dstDataGdesc.offset);
+                bufferSize = msgPointer->snElements * msgPointer->selementSize;
+                bufferPtr = malloc(bufferSize);
+                // Copy data from fam to buffer using first element and stride
+                for (uint64_t numElements = 0;
+                     numElements < msgPointer->snElements; ++numElements) {
+                    uint64_t destIndex = numElements * msgPointer->selementSize;
+                    uint64_t srcIndex = (msgPointer->firstElement +
+                                         msgPointer->stride * numElements) *
+                                        msgPointer->selementSize;
+                    memcpy((char *)bufferPtr + destIndex,
+                           (char *)localPointerD + srcIndex,
+                           msgPointer->selementSize);
+                }
             } catch (...) {
                 retStatus = MAPERROR;
-            }
-            uint64_t bufferSize =
-                msgPointer->snElements * msgPointer->elementSize;
-            void *bufferPtr = malloc(bufferSize);
-            // Copy data from fam to buffer using first element and stride
-            for (uint64_t numElements = 0; numElements < msgPointer->snElements;
-                 ++numElements) {
-                uint64_t destIndex = numElements * msgPointer->elementSize;
-                uint64_t srcIndex = (msgPointer->firstElement +
-                                     msgPointer->stride * numElements) *
-                                    msgPointer->elementSize;
-                memcpy((char *)bufferPtr + destIndex,
-                       (char *)localPointerD + srcIndex,
-                       msgPointer->elementSize);
             }
             // Copy data back to client's memory
             try {
@@ -1032,7 +1063,7 @@ void *process_queue(void *arg) {
                     famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
                     sizeof(retStatus));
             } catch (...) {
-                retStatus = SENDTOCLIENTERROR;
+                ret = SENDTOCLIENTERROR;
             }
             if (bufferPtr)
                 free(bufferPtr);

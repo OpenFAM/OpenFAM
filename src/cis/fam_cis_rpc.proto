@@ -255,7 +255,7 @@ message Fam_Atomic_SG_Indexed_Request {
     uint64 key = 3;
     uint64 nelements = 4;
     bytes elementindex = 5;
-    uint64 indexsize = 6;
+    uint64 elementsize = 6;
     bytes nodeaddr = 7;
     uint32 nodeaddrsize = 8;
     uint64 memserver_id = 9;
