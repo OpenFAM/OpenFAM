@@ -81,13 +81,12 @@ void memory_service_direct_profile_dump() {
 
 Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
     const char *name, const char *libfabricPort = NULL,
-    const char *libfabricProvider = NULL) {
+    const char *libfabricProvider = NULL, const char *fam_path = NULL) {
 
     // Look for options information from config file.
     // Use config file options only if NULL is passed.
     std::string config_file_path;
     configFileParams config_options;
-    const char *fam_path = NULL;
 
     // Check for config file in or in path mentioned
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
@@ -309,7 +308,6 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
         }
 
         try {
-<<<<<<< HEAD
             options["ATL_threads"] =
                 (char *)strdup((info->get_key_value("ATL_threads")).c_str());
         } catch (Fam_InvalidOption_Exception e) {

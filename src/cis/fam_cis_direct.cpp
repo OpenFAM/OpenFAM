@@ -134,7 +134,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
         // direct reads libfabric port and provider from memroy server config
         // file.
         Fam_Memory_Service *memoryService =
-            new Fam_Memory_Service_Direct(cisName, NULL, NULL);
+            new Fam_Memory_Service_Direct(cisName, NULL, NULL, NULL);
         memoryServers->insert({0, memoryService});
     } else {
         // Raise an exception

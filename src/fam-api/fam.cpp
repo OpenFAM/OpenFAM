@@ -942,7 +942,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         }
         try {
 
-            std::string allocator = info->get_key_value("openfam_model");
+            options["openfam_model"] = info->get_key_value("openfam_model");
         } catch (Fam_InvalidOption_Exception e) {
             // If the parameter allocator is not present, then ignore the
             // exception. This parameter will be obtained from

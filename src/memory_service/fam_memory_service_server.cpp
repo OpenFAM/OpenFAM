@@ -81,12 +81,13 @@ void memory_service_server_profile_dump() {
 Fam_Memory_Service_Server::Fam_Memory_Service_Server(uint64_t rpcPort,
                                                      char *name,
                                                      char *libfabricPort,
-                                                     char *libfabricProvider)
+                                                     char *libfabricProvider,
+                                                     char *fam_path)
     : serverAddress(name), port(rpcPort) {
     MEMSERVER_PROFILE_INIT(MEMORY_SERVICE_SERVER)
     MEMSERVER_PROFILE_START_TIME(MEMORY_SERVICE_SERVER)
-    memoryService =
-        new Fam_Memory_Service_Direct(name, libfabricPort, libfabricProvider);
+    memoryService = new Fam_Memory_Service_Direct(name, libfabricPort,
+                                                  libfabricProvider, fam_path);
 }
 
 void Fam_Memory_Service_Server::run() {
