@@ -416,7 +416,6 @@ void Fam_CIS_Direct::destroy_region(uint64_t regionId, uint64_t memoryServerId,
             result.get();
         }
     } catch (...) {
-        metadataService->metadata_reset_bitmap(regionId);
         throw;
     }
 
@@ -524,9 +523,10 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         metadataService->metadata_insert_dataitem(dataitemId, regionId,
                                                   &dataitem, name);
     }
-    if (check_dataitem_permission(dataitem, 1, 0, uid, gid)) {
+    if (check_dataitem_permission(dataitem, 1, metadataServiceId, uid, gid)) {
         rwFlag = 1;
-    } else if (check_dataitem_permission(dataitem, 0, 0, uid, gid)) {
+    } else if (check_dataitem_permission(dataitem, 0, metadataServiceId, uid,
+                                         gid)) {
         rwFlag = 0;
     } else {
         message << "Not permitted to use this dataitem";
@@ -729,7 +729,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     }
 
     if (uid != dataitem.uid) {
-        if (!check_dataitem_permission(dataitem, 0, 0, uid, gid)) {
+        if (!check_dataitem_permission(dataitem, 0, metadataServiceId, uid,
+                                       gid)) {
             message << "Not permitted to access the dataitem";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
@@ -801,9 +802,10 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
     }
 
     bool rwFlag;
-    if (check_dataitem_permission(dataitem, 1, 0, uid, gid)) {
+    if (check_dataitem_permission(dataitem, 1, metadataServiceId, uid, gid)) {
         rwFlag = 1;
-    } else if (check_dataitem_permission(dataitem, 0, 0, uid, gid)) {
+    } else if (check_dataitem_permission(dataitem, 0, metadataServiceId, uid,
+                                         gid)) {
         rwFlag = 0;
     } else {
         message << "Not permitted to use this dataitem";
