@@ -49,7 +49,7 @@ class Fam_Memory_Service {
 
     virtual void dump_profile() = 0;
 
-    virtual uint64_t create_region(size_t nbytes) = 0;
+    virtual void create_region(uint64_t regionId, size_t nbytes) = 0;
 
     virtual void destroy_region(uint64_t regionId) = 0;
 

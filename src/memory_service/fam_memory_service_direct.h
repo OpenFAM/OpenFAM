@@ -54,7 +54,7 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
 
     void dump_profile();
 
-    uint64_t create_region(size_t nbytes);
+    void create_region(uint64_t regionId, size_t nbytes);
 
     void destroy_region(uint64_t regionId);
 

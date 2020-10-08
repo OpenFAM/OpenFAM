@@ -80,7 +80,7 @@ class Fam_Metadata_Service_Server : public Fam_Metadata_Rpc::Service {
 
     ::grpc::Status
     metadata_insert_region(::grpc::ServerContext *context,
-                           const ::Fam_Metadata_Request *request,
+                           const ::Fam_Metadata_Region_Request *request,
                            ::Fam_Metadata_Response *response) override;
 
     ::grpc::Status
@@ -91,11 +91,11 @@ class Fam_Metadata_Service_Server : public Fam_Metadata_Rpc::Service {
     ::grpc::Status
     metadata_find_region(::grpc::ServerContext *context,
                          const ::Fam_Metadata_Request *request,
-                         ::Fam_Metadata_Response *response) override;
+                         ::Fam_Metadata_Region_Response *response) override;
 
     ::grpc::Status
     metadata_modify_region(::grpc::ServerContext *context,
-                           const ::Fam_Metadata_Request *request,
+                           const ::Fam_Metadata_Region_Request *request,
                            ::Fam_Metadata_Response *response) override;
 
     ::grpc::Status
@@ -130,6 +130,31 @@ class Fam_Metadata_Service_Server : public Fam_Metadata_Rpc::Service {
     metadata_maxkeylen(::grpc::ServerContext *context,
                        const ::Fam_Metadata_Request *request,
                        ::Fam_Metadata_Response *response) override;
+
+    ::grpc::Status metadata_update_memoryserver(
+        ::grpc::ServerContext *context, const ::Fam_Memservcnt_Request *request,
+        ::Fam_Metadata_Gen_Response *response) override;
+
+    ::grpc::Status
+    metadata_reset_bitmap(::grpc::ServerContext *context,
+                          const ::Fam_Metadata_Request *request,
+                          ::Fam_Metadata_Gen_Response *response) override;
+
+    ::grpc::Status metadata_validate_and_create_region(
+        ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
+        ::Fam_Metadata_Region_Info_Response *response) override;
+
+    ::grpc::Status metadata_validate_and_destroy_region(
+        ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
+        ::Fam_Metadata_Region_Info_Response *response) override;
+
+    ::grpc::Status metadata_validate_and_allocate_dataitem(
+        ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
+        ::Fam_Metadata_Response *response) override;
+
+    ::grpc::Status metadata_validate_and_deallocate_dataitem(
+        ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
+        ::Fam_Metadata_Response *response) override;
 
   private:
     char *serverAddress;

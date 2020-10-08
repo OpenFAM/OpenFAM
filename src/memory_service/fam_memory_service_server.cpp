@@ -173,16 +173,14 @@ Fam_Memory_Service_Server::~Fam_Memory_Service_Server() {
     ::grpc::ServerContext *context, const ::Fam_Memory_Service_Request *request,
     ::Fam_Memory_Service_Response *response) {
     MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
-    uint64_t regionId;
     try {
-        regionId = memoryService->create_region((size_t)request->size());
+        memoryService->create_region((uint64_t)request->region_id(),
+                                     (size_t)request->size());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
     }
-    response->set_region_id(regionId);
-
     MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_create_region);
     // Return status OK
     return ::grpc::Status::OK;

@@ -62,4 +62,4 @@ endif()
 
 add_executable (metadata_server ${METADATA_SERVER_SRC})
 
-target_link_libraries(metadata_server yaml-cpp nvmm famradixtree grpc grpc++ grpc++_reflection boost_system)
+target_link_libraries(metadata_server yaml-cpp nvmm famradixtree grpc grpc++ grpc++_reflection boost_system fambitmap)

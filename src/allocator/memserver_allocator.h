@@ -65,7 +65,7 @@ class Memserver_Allocator {
     void memserver_allocator_finalize();
     void reset_profile();
     void dump_profile();
-    uint64_t create_region(size_t nbytes);
+    void create_region(uint64_t regionId, size_t nbytes);
     void destroy_region(uint64_t regionId);
     void resize_region(uint64_t regionId, size_t nbytes);
     uint64_t allocate(uint64_t regionId, size_t nbytes);

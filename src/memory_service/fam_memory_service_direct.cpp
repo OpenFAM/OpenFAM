@@ -155,14 +155,13 @@ void Fam_Memory_Service_Direct::dump_profile() {
     memoryRegistration->dump_profile();
 }
 
-uint64_t Fam_Memory_Service_Direct::create_region(size_t nbytes) {
-    uint64_t regionId;
+void Fam_Memory_Service_Direct::create_region(uint64_t regionId,
+                                              size_t nbytes) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
 
-    regionId = allocator->create_region(nbytes);
+    allocator->create_region(regionId, nbytes);
 
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_create_region);
-    return regionId;
 }
 
 void Fam_Memory_Service_Direct::destroy_region(uint64_t regionId) {

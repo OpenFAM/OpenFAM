@@ -124,7 +124,7 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.regionId = res.regionid() | (res.memserver_id() << MEMSERVERID_SHIFT);
+    info.regionId = res.regionid();
     info.offset = res.offset();
     return info;
 }
@@ -135,7 +135,7 @@ void Fam_CIS_Client::destroy_region(uint64_t regionId, uint64_t memoryServerId,
     Fam_Region_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_uid(uid);
     req.set_gid(gid);
     req.set_memserver_id(memoryServerId);
@@ -151,7 +151,7 @@ void Fam_CIS_Client::resize_region(uint64_t regionId, size_t nbytes,
     Fam_Region_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_size(nbytes);
     req.set_uid(uid);
     req.set_gid(gid);
@@ -172,20 +172,19 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
     ::grpc::ClientContext ctx;
 
     req.set_name(name);
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_size(nbytes);
     req.set_perm(permission);
     req.set_uid(uid);
     req.set_gid(gid);
     req.set_memserver_id(memoryServerId);
 
-    uint64_t nodeId = memoryServerId;
-
     ::grpc::Status status = stub->allocate(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
     Fam_Region_Item_Info info;
-    info.regionId = res.regionid() | (nodeId << MEMSERVERID_SHIFT);
+    info.regionId = res.regionid();
+    info.memoryServerId = res.memserver_id();
     info.offset = res.offset();
     info.key = res.key();
     info.base = (void *)res.base();
@@ -199,7 +198,7 @@ void Fam_CIS_Client::deallocate(uint64_t regionId, uint64_t offset,
     Fam_Dataitem_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_offset(offset);
     req.set_uid(uid);
     req.set_gid(gid);
@@ -218,7 +217,7 @@ void Fam_CIS_Client::change_region_permission(uint64_t regionId,
     Fam_Region_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_perm((uint64_t)permission);
     req.set_uid(uid);
     req.set_gid(gid);
@@ -238,7 +237,7 @@ void Fam_CIS_Client::change_dataitem_permission(uint64_t regionId,
     Fam_Dataitem_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_offset(offset);
     req.set_perm((uint64_t)permission);
     req.set_uid(uid);
@@ -265,7 +264,7 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.regionId = res.regionid() | (res.memserver_id() << MEMSERVERID_SHIFT);
+    info.regionId = res.regionid();
     info.offset = res.offset();
     info.size = res.size();
     info.perm = (mode_t)res.perm();
@@ -289,11 +288,12 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.regionId = res.regionid() | (res.memserver_id() << MEMSERVERID_SHIFT);
+    info.regionId = res.regionid();
     info.offset = res.offset();
     info.key = FAM_KEY_UNINITIALIZED;
     info.size = res.size();
     info.perm = (mode_t)res.perm();
+    info.memoryServerId = res.memserver_id();
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
     return info;
 }
@@ -304,7 +304,7 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
     Fam_Region_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_gid(gid);
     req.set_uid(uid);
     req.set_memserver_id(memoryServerId);
@@ -328,7 +328,7 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_item_info(
     Fam_Dataitem_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_offset(offset);
     req.set_gid(gid);
     req.set_uid(uid);
@@ -356,7 +356,7 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
     Fam_Dataitem_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_regionid(regionId & REGIONID_MASK);
+    req.set_regionid(regionId);
     req.set_offset(offset);
     req.set_gid(gid);
     req.set_uid(uid);
@@ -382,8 +382,8 @@ void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     Fam_Copy_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_srcregionid(srcRegionId & REGIONID_MASK);
-    req.set_destregionid(destRegionId & REGIONID_MASK);
+    req.set_srcregionid(srcRegionId);
+    req.set_destregionid(destRegionId);
     req.set_srcoffset(srcOffset);
     req.set_destoffset(destOffset);
     req.set_srccopystart(srcCopyStart);

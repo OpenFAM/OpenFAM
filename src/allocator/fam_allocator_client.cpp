@@ -109,9 +109,10 @@ Fam_Descriptor *Fam_Allocator_Client::allocate(const char *name,
     uint64_t regionId = globalDescriptor.regionId;
     uint64_t memoryServerId = region->get_memserver_id();
     Fam_Region_Item_Info info;
-        info = famCIS->allocate(name, nbytes, accessPermissions, regionId,
-                                memoryServerId, uid, gid);
-    globalDescriptor.regionId = info.regionId;
+    info = famCIS->allocate(name, nbytes, accessPermissions, regionId,
+                            memoryServerId, uid, gid);
+    globalDescriptor.regionId =
+        info.regionId | (info.memoryServerId << MEMSERVERID_SHIFT);
     globalDescriptor.offset = info.offset;
     Fam_Descriptor *dataItem = new Fam_Descriptor(globalDescriptor, nbytes);
     dataItem->bind_key(info.key);
@@ -125,7 +126,7 @@ Fam_Descriptor *Fam_Allocator_Client::allocate(const char *name,
 void Fam_Allocator_Client::deallocate(Fam_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
-    uint64_t regionId = globalDescriptor.regionId;
+    uint64_t regionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t offset = globalDescriptor.offset;
     uint64_t memoryServerId = descriptor->get_memserver_id();
     descriptor->set_desc_status(DESC_INVALID);
@@ -146,7 +147,7 @@ void Fam_Allocator_Client::change_permission(Fam_Descriptor *descriptor,
                                              mode_t accessPermissions) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
-    uint64_t regionId = globalDescriptor.regionId;
+    uint64_t regionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t offset = globalDescriptor.offset;
     uint64_t memoryServerId = descriptor->get_memserver_id();
         famCIS->change_dataitem_permission(regionId, offset, accessPermissions,
@@ -173,7 +174,8 @@ Fam_Descriptor *Fam_Allocator_Client::lookup(const char *itemName,
     Fam_Region_Item_Info info;
     info = famCIS->lookup(itemName, regionName, uid, gid);
     Fam_Global_Descriptor globalDescriptor;
-    globalDescriptor.regionId = info.regionId;
+    globalDescriptor.regionId =
+        info.regionId | (info.memoryServerId << MEMSERVERID_SHIFT);
     globalDescriptor.offset = info.offset;
     Fam_Descriptor *dataItem = new Fam_Descriptor(globalDescriptor);
     dataItem->bind_key(FAM_KEY_UNINITIALIZED);
@@ -188,7 +190,7 @@ Fam_Region_Item_Info Fam_Allocator_Client::check_permission_get_info(
     Fam_Region_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
-    uint64_t regionId = globalDescriptor.regionId;
+    uint64_t regionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t memoryServerId = descriptor->get_memserver_id();
         Fam_Region_Item_Info info = famCIS->check_permission_get_region_info(
             regionId, memoryServerId, uid, gid);
@@ -200,7 +202,7 @@ Fam_Region_Item_Info
 Fam_Allocator_Client::check_permission_get_info(Fam_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
-    uint64_t regionId = globalDescriptor.regionId;
+    uint64_t regionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t offset = globalDescriptor.offset;
     uint64_t memoryServerId = descriptor->get_memserver_id();
         Fam_Region_Item_Info info = famCIS->check_permission_get_item_info(
@@ -218,7 +220,7 @@ Fam_Region_Item_Info
 Fam_Allocator_Client::get_stat_info(Fam_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
-    uint64_t regionId = globalDescriptor.regionId;
+    uint64_t regionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t offset = globalDescriptor.offset;
     uint64_t memoryServerId = descriptor->get_memserver_id();
         Fam_Region_Item_Info info =
@@ -234,10 +236,10 @@ void *Fam_Allocator_Client::copy(Fam_Descriptor *src, uint64_t srcCopyStart,
                                  Fam_Descriptor *dest, uint64_t destCopyStart,
                                  uint64_t nbytes) {
     Fam_Global_Descriptor globalDescriptor = src->get_global_descriptor();
-    uint64_t srcRegionId = globalDescriptor.regionId;
+    uint64_t srcRegionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t srcOffset = globalDescriptor.offset;
     globalDescriptor = dest->get_global_descriptor();
-    uint64_t destRegionId = globalDescriptor.regionId;
+    uint64_t destRegionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t destOffset = globalDescriptor.offset;
     uint64_t memoryServerId = src->get_memserver_id();
     uint64_t srcItemSize = src->get_size();
@@ -267,7 +269,7 @@ void Fam_Allocator_Client::wait_for_copy(void *waitObj) {
 void *Fam_Allocator_Client::fam_map(Fam_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
-    uint64_t regionId = globalDescriptor.regionId;
+    uint64_t regionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t offset = globalDescriptor.offset;
     uint64_t memoryServerId = descriptor->get_memserver_id();
         return famCIS->fam_map(regionId, offset, memoryServerId, uid, gid);
@@ -276,7 +278,7 @@ void *Fam_Allocator_Client::fam_map(Fam_Descriptor *descriptor) {
 void Fam_Allocator_Client::fam_unmap(void *local, Fam_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
-    uint64_t regionId = globalDescriptor.regionId;
+    uint64_t regionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t offset = globalDescriptor.offset;
     uint64_t memoryServerId = descriptor->get_memserver_id();
         return famCIS->fam_unmap(local, regionId, offset, memoryServerId, uid,

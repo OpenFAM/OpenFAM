@@ -149,12 +149,12 @@ Fam_CIS_Server::create_region(::grpc::ServerContext *context,
                                      (mode_t)request->perm(),
                                      static_cast<Fam_Redundancy_Level>(0),
                                      request->uid(), request->gid());
+
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
     }
-
     response->set_memserver_id(info.memoryServerId);
     response->set_regionid(info.regionId);
     response->set_offset(info.offset);
@@ -226,6 +226,7 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
     response->set_regionid(request->regionid());
     response->set_offset(info.offset);
     response->set_base((uint64_t)info.base);
+    response->set_memserver_id(info.memoryServerId);
     CIS_SERVER_PROFILE_END_OPS(allocate);
 
     // Return status OK
@@ -411,9 +412,9 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
     Fam_Region_Item_Info info;
     ostringstream message;
     try {
-        info = famCIS->check_permission_get_item_info(
-            request->regionid(), request->offset(), request->memserver_id(),
-            request->uid(), request->gid());
+        info = famCIS->get_stat_info(request->regionid(), request->offset(),
+                                     request->memserver_id(), request->uid(),
+                                     request->gid());
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
