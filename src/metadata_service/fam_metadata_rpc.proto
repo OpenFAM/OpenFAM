@@ -38,13 +38,13 @@ service Fam_Metadata_Rpc {
         returns (Fam_Metadata_Gen_Response) {}
     rpc signal_termination(Fam_Metadata_Gen_Request)
         returns (Fam_Metadata_Gen_Response) {}
-    rpc metadata_insert_region(Fam_Metadata_Request)
+    rpc metadata_insert_region(Fam_Metadata_Region_Request)
         returns (Fam_Metadata_Response) {}
     rpc metadata_delete_region(Fam_Metadata_Request)
         returns (Fam_Metadata_Response) {}
     rpc metadata_find_region(Fam_Metadata_Request)
-        returns (Fam_Metadata_Response) {}
-    rpc metadata_modify_region(Fam_Metadata_Request)
+        returns (Fam_Metadata_Region_Response) {}
+    rpc metadata_modify_region(Fam_Metadata_Region_Request)
         returns (Fam_Metadata_Response) {}
     rpc metadata_insert_dataitem(Fam_Metadata_Request)
         returns (Fam_Metadata_Response) {}
@@ -64,6 +64,18 @@ service Fam_Metadata_Rpc {
         returns (Fam_Metadata_Gen_Response) {}
     rpc dump_profile(Fam_Metadata_Gen_Request)
         returns (Fam_Metadata_Gen_Response) {}
+    rpc metadata_update_memoryserver(Fam_Memservcnt_Request)
+	returns (Fam_Metadata_Gen_Response) {}
+    rpc metadata_reset_bitmap(Fam_Metadata_Request)
+	returns (Fam_Metadata_Gen_Response) {}
+    rpc metadata_validate_and_create_region(Fam_Metadata_Request)
+	returns (Fam_Metadata_Region_Info_Response) {}
+    rpc metadata_validate_and_destroy_region(Fam_Metadata_Request)
+	returns (Fam_Metadata_Region_Info_Response) {}
+    rpc metadata_validate_and_allocate_dataitem(Fam_Metadata_Request)
+	returns (Fam_Metadata_Response) {}
+    rpc metadata_validate_and_deallocate_dataitem(Fam_Metadata_Request)
+	returns (Fam_Metadata_Response) {}
 }
 
 /*
@@ -71,6 +83,40 @@ service Fam_Metadata_Rpc {
  */
 message Fam_Metadata_Gen_Request {}
 
+message Fam_Metadata_Region_Request {
+    optional uint64 key_region_id = 1;
+    optional uint64 key_dataitem_id = 2;
+    optional string key_region_name = 3;
+    optional string key_dataitem_name = 4;
+    optional uint64 region_id = 5;
+    optional string name = 6;
+    optional uint64 offset = 7;
+    optional uint32 uid = 8;
+    optional uint32 gid = 9;
+    optional uint64 perm = 10;
+    optional uint64 size = 11;
+    optional uint32 user_policy = 12;
+    optional uint64 memsrv_cnt = 13;
+    repeated uint64 memsrv_list = 14;
+    optional uint64 memsrv_id = 15;
+}
+
+message Fam_Metadata_Region_Response {
+    optional uint64 region_id = 1;
+    optional string name = 2;
+    optional uint64 offset = 3;
+    optional uint32 uid = 4;
+    optional uint32 gid = 5;
+    optional uint64 perm = 6;
+    optional uint64 size = 7;
+    optional uint64 maxkeylen = 8;
+    optional bool isfound = 9;
+    optional int32 errorcode = 10;
+    optional string errormsg = 11;
+    optional uint64 memsrv_id = 12;
+    repeated uint64 memsrv_list = 13;
+    optional uint64 memsrv_cnt = 14;
+}
 /*
  * Response message used by methods signal_start and signal_termination
  */
@@ -88,6 +134,8 @@ message Fam_Metadata_Request {
     optional uint32 gid = 9;
     optional uint64 perm = 10;
     optional uint64 size = 11;
+    optional uint32 user_policy = 12;
+    optional uint64 memsrv_id = 13;
 }
 
 message Fam_Metadata_Response {
@@ -102,6 +150,7 @@ message Fam_Metadata_Response {
     optional bool isfound = 9;
     optional int32 errorcode = 10;
     optional string errormsg = 11;
+    optional uint64 memsrv_id = 12;
 }
 
 message Fam_Permission_Request {
@@ -123,4 +172,16 @@ message Fam_Permission_Response {
     optional bool is_permitted = 1;
     optional int32 errorcode = 2;
     optional string errormsg = 3;
+}
+
+message Fam_Memservcnt_Request {
+    optional uint32 nmemservers = 1;
+}
+
+message Fam_Metadata_Region_Info_Response {
+    optional uint64 region_id = 1;
+    repeated uint32 memserv_list = 2;
+    optional int32 errorcode = 3;
+    optional string errormsg = 4;
+    optional uint64 memsrv_id = 5;
 }

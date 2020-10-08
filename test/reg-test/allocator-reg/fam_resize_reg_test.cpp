@@ -229,17 +229,21 @@ TEST(FamResize, MultiPeAllocationResizeSuccess) {
 
     if (((*myPE % 2) == 0) && !isLastOddPE) {
         sprintf(testRegion, "Test_%d", *myPE);
-        EXPECT_NO_THROW(
-            desc = my_fam->fam_create_region(testRegion, 1048576, 0777, RAID1));
+        EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 16777216,
+                                                         0777, RAID1));
         EXPECT_NE((void *)NULL, desc);
-
-        EXPECT_NO_THROW(
-            item1 = my_fam->fam_allocate(firstItem, 524288, 0777, desc));
-        EXPECT_NE((void *)NULL, item1);
-
-        EXPECT_THROW(item2 =
-                         my_fam->fam_allocate(secondItem, 524288, 0777, desc),
-                     Fam_Exception);
+        int i = 0;
+        while (1) {
+            char nameItem[100];
+            sprintf(nameItem, "%s_%d", firstItem, i);
+            try {
+                item1 = my_fam->fam_allocate(nameItem, 65536, 0777, desc);
+            } catch (Fam_Exception &e) {
+                break;
+            }
+            EXPECT_NE((void *)NULL, item1);
+            i++;
+        }
     }
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
@@ -252,14 +256,13 @@ TEST(FamResize, MultiPeAllocationResizeSuccess) {
         EXPECT_NE((void *)NULL, desc);
 
         // Resizing the region
-        EXPECT_NO_THROW(my_fam->fam_resize_region(desc, 2097152));
+        EXPECT_NO_THROW(my_fam->fam_resize_region(desc, 33554432));
     }
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
-
     if (((*myPE % 2) == 0) && !isLastOddPE) {
         EXPECT_NO_THROW(
-            item2 = my_fam->fam_allocate(secondItem, 524288, 0777, desc));
+            item2 = my_fam->fam_allocate(secondItem, 65536, 0777, desc));
         EXPECT_NE((void *)NULL, item2);
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item1));

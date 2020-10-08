@@ -50,7 +50,7 @@
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
-
+#define MIN_HEAP_SIZE (10 * (1UL << 20))
 using namespace famradixtree;
 using namespace nvmm;
 using namespace std;
@@ -136,8 +136,26 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
                                     uint32_t gid);
     size_t metadata_maxkeylen();
     configFileParams get_config_info(std::string filename);
+    uint64_t align_to_address(uint64_t size, int multiple);
+    void metadata_update_memoryserver(int nmemServers);
+    void metadata_validate_and_create_region(const std::string regionname,
+                                             size_t size, uint64_t *regionid,
+                                             std::list<int> *memory_server_list,
+                                             int user_policy);
+    void
+    metadata_validate_and_destroy_region(const uint64_t regionId, uint32_t uid,
+                                         uint32_t gid,
+                                         std::list<int> *memory_server_list);
+    void metadata_validate_and_allocate_dataitem(const std::string dataitemName,
+                                                 const uint64_t regionId,
+                                                 uint32_t uid, uint32_t gid,
+                                                 uint64_t *memoryServerId);
 
+    void metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
+                                                   const uint64_t dataitemId,
+                                                   uint32_t uid, uint32_t gid);
     Fam_Metadata_Service_Direct(bool use_meta_reg = 0);
+    void metadata_reset_bitmap(uint64_t regionID);
     ~Fam_Metadata_Service_Direct();
 
   private:

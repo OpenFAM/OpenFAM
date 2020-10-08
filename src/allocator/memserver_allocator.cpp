@@ -78,7 +78,6 @@ Memserver_Allocator::Memserver_Allocator() {
     heapMap = new HeapMap();
     memoryManager = MemoryManager::GetInstance();
     (void)pthread_mutex_init(&heapMapLock, NULL);
-    init_poolId_bmap();
 }
 
 Memserver_Allocator::~Memserver_Allocator() {
@@ -104,17 +103,7 @@ void Memserver_Allocator::reset_profile() {
 }
 void Memserver_Allocator::dump_profile() { NVMM_PROFILE_DUMP(); }
 /*
- * Initalize the region Id bitmap address.
- * Size of bitmap is Max poolId's supported / 8 bytes.
- * Get the Bitmap address reserved from the root shelf.
- */
-void Memserver_Allocator::init_poolId_bmap() {
-    bmap = new bitmap();
-    bmap->size = (ShelfId::kMaxPoolCount * BITSIZE) / sizeof(uint64_t);
-    bmap->map = memoryManager->GetRegionIdBitmapAddr();
-}
 
-/*
  * Create a new region.
  * name - name of the region
  * regionId - return the regionId allocated by this routine
@@ -122,7 +111,7 @@ void Memserver_Allocator::init_poolId_bmap() {
  * permission - Permission for the region
  * uid/gid - user id and group id
  */
-uint64_t Memserver_Allocator::create_region(size_t nbytes) {
+void Memserver_Allocator::create_region(uint64_t regionId, size_t nbytes) {
     ostringstream message;
     message << "Error While creating region : ";
 
@@ -130,14 +119,13 @@ uint64_t Memserver_Allocator::create_region(size_t nbytes) {
     size_t tmpSize;
 
     // TODO: Obtain free regionId from NVMM
-    PoolId poolId = get_free_poolId();
-    if (poolId == (PoolId)NO_FREE_POOLID) {
+    if (regionId == (PoolId)BITMAP_NOTFOUND) {
         message << "No free pool ID";
         THROW_ERRNO_MSG(Memory_Service_Exception, NO_FREE_POOLID,
                         message.str().c_str());
     }
 
-    // Else Create region using NVMM and set the fields in reponse to
+    // Else Create region using NVMM and set the fields in response to
     // appropriate value
 
     if (nbytes < MIN_REGION_SIZE)
@@ -146,24 +134,20 @@ uint64_t Memserver_Allocator::create_region(size_t nbytes) {
         tmpSize = nbytes;
     int ret;
     NVMM_PROFILE_START_OPS()
-    ret = memoryManager->CreateHeap(poolId, tmpSize, MIN_OBJ_SIZE);
+    ret = memoryManager->CreateHeap((PoolId)regionId, tmpSize, MIN_OBJ_SIZE);
     NVMM_PROFILE_END_OPS(CreateHeap)
 
     if (ret != NO_ERROR) {
-        // Reset the poolId bit in the bitmap
-        bitmap_reset(bmap, poolId);
         message << "Heap not created";
         THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_CREATED,
                         message.str().c_str());
     }
     Heap *heap = 0;
     NVMM_PROFILE_START_OPS()
-    ret = memoryManager->FindHeap(poolId, &heap);
+    ret = memoryManager->FindHeap((PoolId)regionId, &heap);
     NVMM_PROFILE_END_OPS(FindHeap)
     if (ret != NO_ERROR) {
         message << "Heap not found";
-        // Reset the poolId bit in the bitmap
-        bitmap_reset(bmap, poolId);
         delete heap;
         THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_FOUND,
                         message.str().c_str());
@@ -173,13 +157,10 @@ uint64_t Memserver_Allocator::create_region(size_t nbytes) {
     NVMM_PROFILE_END_OPS(Heap_Open)
     if (ret != NO_ERROR) {
         message << "Can not open heap";
-        // Reset the poolId bit in the bitmap
-        bitmap_reset(bmap, poolId);
         delete heap;
         THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_OPENED,
                         message.str().c_str());
     }
-    uint64_t regionId = (uint64_t)poolId;
 
     NVMM_PROFILE_START_OPS()
     pthread_mutex_lock(&heapMapLock);
@@ -190,8 +171,6 @@ uint64_t Memserver_Allocator::create_region(size_t nbytes) {
     } else {
         message << "Can not insert heap. regionId already found in map";
         pthread_mutex_unlock(&heapMapLock);
-        // Reset the poolId bit in the bitmap
-        bitmap_reset(bmap, regionId);
         delete heap;
         NVMM_PROFILE_START_OPS()
         ret = memoryManager->DestroyHeap((PoolId)regionId);
@@ -205,8 +184,6 @@ uint64_t Memserver_Allocator::create_region(size_t nbytes) {
 
     pthread_mutex_unlock(&heapMapLock);
     NVMM_PROFILE_END_OPS(HeapMapInsertOp);
-
-    return regionId;
 }
 
 /*
@@ -251,8 +228,6 @@ void Memserver_Allocator::destroy_region(uint64_t regionId) {
                         message.str().c_str());
     }
 
-    // Reset the regionId bit in the bitmap
-    bitmap_reset(bmap, regionId);
 }
 
 /*
@@ -475,20 +450,6 @@ HeapMap::iterator Memserver_Allocator::get_heap(uint64_t regionId,
     return heapObj;
 }
 
-/*
- * Allocate the first free region id to be allocated.
- */
-PoolId Memserver_Allocator::get_free_poolId() {
-    int64_t freePoolId;
-
-    // Find the first free bit after 10th bit in poolId bitmap.
-    // First 10 nvmm ID will be reserved.
-    freePoolId = bitmap_find_and_reserve(bmap, 0, MEMSERVER_REGIONID_START);
-    if (freePoolId == BITMAP_NOTFOUND)
-        return NO_FREE_POOLID;
-
-    return (PoolId)freePoolId;
-}
 /*
  create the fixed region for ATL with ID ATOMIC_REGION_ID
 */
