@@ -50,6 +50,7 @@
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
+#define MAX_MEMORY_SERVERS_CNT 256
 
 using namespace famradixtree;
 using namespace nvmm;
@@ -100,6 +101,9 @@ typedef struct {
     mode_t perm;
     char name[RadixTree::MAX_KEY_LEN];
     uint64_t size;
+    uint64_t used_memsrv_cnt;
+    uint64_t memServerIds[MAX_MEMORY_SERVERS_CNT];
+    bool isHeapCreated;
     //   Fam_Redundancy_Level redundancyLevel;
     GlobalPtr dataItemIdRoot;
     GlobalPtr dataItemNameRoot;
@@ -120,6 +124,7 @@ typedef struct {
     mode_t perm;
     char name[RadixTree::MAX_KEY_LEN];
     uint64_t size;
+    uint64_t memoryServerId;
 } Fam_DataItem_Metadata;
 
 typedef enum metadata_region_item_op {
@@ -130,6 +135,9 @@ typedef enum metadata_region_item_op {
 } metadata_region_item_op_t;
 
 enum metadata_ErrorVal {
+    META_NO_PERMISSION = -6,
+    META_LARGE_NAME = -5,
+    META_NO_FREE_REGIONID = -4,
     META_KEY_ALREADY_EXIST = -3,
     META_KEY_DOES_NOT_EXIST = -2,
     META_ERROR = -1,
@@ -214,6 +222,24 @@ class Fam_Metadata_Service {
     virtual bool metadata_check_permissions(Fam_Region_Metadata *region,
                                             metadata_region_item_op_t op,
                                             uint32_t uid, uint32_t gid) = 0;
+    virtual void metadata_update_memoryserver(int nmemServers) = 0;
+    virtual void metadata_reset_bitmap(uint64_t regionID) = 0;
+
+    virtual void metadata_validate_and_create_region(
+        const std::string regionname, size_t size, uint64_t *regionid,
+        std::list<int> *memory_server_list, int user_policy) = 0;
+    virtual void metadata_validate_and_destroy_region(
+        const uint64_t regionId, uint32_t uid, uint32_t gid,
+        std::list<int> *memory_server_list) = 0;
+    virtual void metadata_validate_and_allocate_dataitem(
+        const std::string dataitemName, const uint64_t regionId, uint32_t uid,
+        uint32_t gid, uint64_t *memoryServerId) = 0;
+
+    virtual void
+    metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
+                                              const uint64_t dataitemId,
+                                              uint32_t uid, uint32_t gid) = 0;
+
     virtual size_t metadata_maxkeylen() = 0;
 };
 

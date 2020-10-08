@@ -162,12 +162,14 @@ void Fam_Memory_Service_Client::dump_profile() {
 #endif
 }
 
-uint64_t Fam_Memory_Service_Client::create_region(size_t nbytes) {
+void Fam_Memory_Service_Client::create_region(uint64_t regionId,
+                                              size_t nbytes) {
 
     Fam_Memory_Service_Request req;
     Fam_Memory_Service_Response res;
     ::grpc::ClientContext ctx;
     MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_region_id(regionId);
     req.set_size(nbytes);
 
     ::grpc::Status status = stub->create_region(&ctx, req, &res);
@@ -175,7 +177,6 @@ uint64_t Fam_Memory_Service_Client::create_region(size_t nbytes) {
     STATUS_CHECK(Memory_Service_Exception)
 
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_create_region);
-    return res.region_id();
 }
 
 void Fam_Memory_Service_Client::destroy_region(uint64_t regionId) {
