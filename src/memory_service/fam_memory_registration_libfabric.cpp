@@ -95,6 +95,7 @@ Fam_Memory_Registration_Libfabric::Fam_Memory_Registration_Libfabric(
 
     fiMrs = NULL;
     fenceMr = 0;
+    fiMemsrvMap = new std::map<uint64_t, fi_addr_t>();
 
     famOps = new Fam_Ops_Libfabric(true, provider, FAM_THREAD_MULTIPLE, NULL,
                                    FAM_CONTEXT_DEFAULT, name, service);
@@ -134,6 +135,7 @@ Fam_Memory_Registration_Libfabric::~Fam_Memory_Registration_Libfabric() {
 
     famOps->finalize();
     delete famOps;
+    delete fiMemsrvMap;
 }
 
 void Fam_Memory_Registration_Libfabric::reset_profile() {

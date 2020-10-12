@@ -374,10 +374,13 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
 }
 
 void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
-                           uint64_t srcCopyStart, uint64_t destRegionId,
-                           uint64_t destOffset, uint64_t destCopyStar,
-                           uint64_t nbytes, uint64_t memoryServerId,
-                           uint32_t uid, uint32_t gid) {
+                           uint64_t srcCopyStart, uint64_t srcKey,
+                           const char *srcAddr, uint32_t srcAddrLen,
+                           uint64_t destRegionId, uint64_t destOffset,
+                           uint64_t destCopyStar, uint64_t nbytes,
+                           uint64_t srcMemoryServerId,
+                           uint64_t destMemoryServerId, uint32_t uid,
+                           uint32_t gid) {
     Fam_Copy_Request req;
     Fam_Copy_Response res;
     ::grpc::ClientContext ctx;
@@ -385,19 +388,22 @@ void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     req.set_srcregionid(srcRegionId);
     req.set_destregionid(destRegionId);
     req.set_srcoffset(srcOffset);
+    req.set_srckey(srcKey);
+    req.set_srcaddr(srcAddr, srcAddrLen);
+    req.set_srcaddrlen(srcAddrLen);
     req.set_destoffset(destOffset);
     req.set_srccopystart(srcCopyStart);
     req.set_destcopystart(destCopyStar);
     req.set_gid(gid);
     req.set_uid(uid);
     req.set_copysize(nbytes);
-    req.set_memserver_id(memoryServerId);
+    req.set_src_memserver_id(srcMemoryServerId);
+    req.set_dest_memserver_id(destMemoryServerId);
 
     Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
 
     waitObj->isCompleted = false;
-    waitObj->isAcrossServer = false;
-    waitObj->memServerId = memoryServerId;
+    waitObj->memServerId = destMemoryServerId;
 
     waitObj->responseReader = stub->PrepareAsynccopy(&waitObj->ctx, req, cq);
 

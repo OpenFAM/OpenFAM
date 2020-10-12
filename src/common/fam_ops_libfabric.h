@@ -364,6 +364,10 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         return av;
     }
 
+    std::map<uint64_t, std::pair<void *, size_t>> *get_memServerAddrs() {
+        return memServerAddrs;
+    };
+
   protected:
     // Server_Map name;
     char *memoryServerName;
@@ -379,6 +383,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     size_t fabric_iov_limit;
     size_t serverAddrNameLen;
     void *serverAddrName;
+    std::map<uint64_t, std::pair<void *, size_t>> *memServerAddrs;
 
     pthread_rwlock_t fiMrLock;
     pthread_mutex_t ctxLock;

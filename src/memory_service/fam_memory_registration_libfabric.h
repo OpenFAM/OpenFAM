@@ -84,6 +84,10 @@ class Fam_Memory_Registration_Libfabric : public Fam_Memory_Registration {
 
     bool is_base_require();
 
+    Fam_Ops_Libfabric *get_famOps() { return famOps; }
+
+    std::map<uint64_t, fi_addr_t> *get_fiMemsrvMap() { return fiMemsrvMap; }
+
   protected:
     Fam_Ops_Libfabric *famOps;
     int libfabricProgressMode;
@@ -93,6 +97,7 @@ class Fam_Memory_Registration_Libfabric : public Fam_Memory_Registration {
 	bool isBaseRequire;
     std::map<uint64_t, Fam_Region_Map_t *> *fiMrs;
     fid_mr *fenceMr;
+    std::map<uint64_t, fi_addr_t> *fiMemsrvMap;
 };
 
 } // namespace openfam

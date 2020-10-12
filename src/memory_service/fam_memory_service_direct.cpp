@@ -232,10 +232,88 @@ void *Fam_Memory_Service_Direct::get_local_pointer(uint64_t regionId,
 }
 
 void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
-                                     uint64_t destRegionId, uint64_t destOffset,
-                                     uint64_t size) {
+                                     uint64_t srcKey, const char *srcAddr,
+                                     uint32_t srcAddrLen, uint64_t destRegionId,
+                                     uint64_t destOffset, uint64_t size,
+                                     uint64_t srcMemserverId,
+                                     uint64_t destMemserverId) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    allocator->copy(srcRegionId, srcOffset, destRegionId, destOffset, size);
+    if (srcMemserverId == destMemserverId)
+        allocator->copy(srcRegionId, srcOffset, destRegionId, destOffset, size);
+    else {
+        // Get memservermap
+        ostringstream message;
+        Fam_Ops_Libfabric *famOps =
+            ((Fam_Memory_Registration_Libfabric *)memoryRegistration)
+                ->get_famOps();
+        std::map<uint64_t, fi_addr_t> *fiMemsrvMap =
+            ((Fam_Memory_Registration_Libfabric *)memoryRegistration)
+                ->get_fiMemsrvMap();
+        std::map<uint64_t, std::pair<void *, size_t>> *memServerAddrs =
+            famOps->get_memServerAddrs();
+        fi_addr_t srcFiAddr = FI_ADDR_UNSPEC;
+
+        // Add or replace srcMemserver addr in the map
+        std::pair<void *, size_t> srcMemSrv;
+        auto obj = memServerAddrs->find(srcMemserverId);
+        if (obj == memServerAddrs->end()) {
+            memServerAddrs->insert(
+                {srcMemserverId, std::make_pair((void *)srcAddr, srcAddrLen)});
+        } else {
+            srcMemSrv = obj->second;
+            if (strncmp((const char *)srcMemSrv.first, srcAddr, srcAddrLen) !=
+                0) {
+                obj->second = std::make_pair((void *)srcAddr, srcAddrLen);
+            } else {
+                // Get fabric addr from the map
+                auto fiAddrObj = fiMemsrvMap->find(srcMemserverId);
+                if (fiAddrObj != fiMemsrvMap->end())
+                    srcFiAddr = fiAddrObj->second;
+            }
+        }
+
+        // Register srcMemserver in the libfabric
+        if (srcFiAddr == FI_ADDR_UNSPEC) {
+            std::vector<fi_addr_t> fiAddrVector;
+            if (fabric_insert_av(srcAddr, famOps->get_av(), &fiAddrVector) ==
+                -1) {
+                // raise an exception
+                message << "fabric_insert_av failed: libfabric error";
+                THROW_ERRNO_MSG(Memory_Service_Exception, LIBFABRIC_ERROR,
+                                message.str().c_str());
+            }
+            // save the registered address in the fiAddrs
+            srcFiAddr = fiAddrVector[0];
+            auto fiAddrObj = fiMemsrvMap->find(srcMemserverId);
+            if (fiAddrObj == fiMemsrvMap->end())
+                fiMemsrvMap->insert({srcMemserverId, srcFiAddr});
+            else
+                fiAddrObj->second = srcFiAddr;
+        }
+
+        // perform fabric_read (blocking) on the source data item
+        char *buffer = (char *)malloc(size);
+        void *destPtr;
+        try {
+            if (fabric_read(srcKey, buffer, size, srcOffset, srcFiAddr,
+                            famOps->get_defaultCtx(uint64_t(0))) != 0) {
+                // raise exception
+                message << "fabric_read failed: libfabric error";
+                THROW_ERRNO_MSG(Memory_Service_Exception, LIBFABRIC_ERROR,
+                                message.str().c_str());
+            }
+            // get local pointer of destination
+            destPtr = allocator->get_local_pointer(destRegionId, destOffset);
+        } catch (...) {
+            free(buffer);
+            throw;
+        }
+        // do mem copy
+        memcpy(buffer, destPtr, size);
+        free(buffer);
+        // return
+    }
+
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_copy);
 }
 

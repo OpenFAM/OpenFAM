@@ -194,7 +194,11 @@ message Fam_Copy_Request {
     uint32 uid = 7;
     uint32 gid = 8;
     uint64 copysize = 9;
-    uint64 memserver_id = 10;
+    uint64 src_memserver_id = 10;
+    uint64 dest_memserver_id = 11;
+    uint64 srckey = 12;
+    bytes srcaddr = 13;
+    uint32 srcaddrlen = 14;
 }
 
 message Fam_Copy_Response {

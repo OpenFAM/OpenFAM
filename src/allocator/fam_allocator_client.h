@@ -72,8 +72,9 @@ class Fam_Allocator_Client {
 
     Fam_Region_Item_Info get_stat_info(Fam_Descriptor *descriptor);
 
-    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
-               uint64_t destOffset, uint64_t nbytes);
+    void *copy(Fam_Descriptor *src, uint64_t srcOffset, const char *srcAddr,
+               uint32_t srcAddrLen, Fam_Descriptor *dest, uint64_t destOffset,
+               uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
 

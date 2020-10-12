@@ -56,7 +56,11 @@ typedef struct {
     uint64_t srcOffset;
     uint64_t destOffset;
     uint64_t size;
-    bool isAcrossServer;
+    uint64_t srcKey;
+    char *srcAddr;
+    uint32_t srcAddrLen;
+    uint64_t srcMemserverId;
+    uint64_t destMemserverId;
 } Fam_Copy_Tag;
 
 typedef struct {

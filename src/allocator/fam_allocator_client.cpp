@@ -233,6 +233,7 @@ Fam_Allocator_Client::get_stat_info(Fam_Descriptor *descriptor) {
 }
 
 void *Fam_Allocator_Client::copy(Fam_Descriptor *src, uint64_t srcCopyStart,
+                                 const char *srcAddr, uint32_t srcAddrLen,
                                  Fam_Descriptor *dest, uint64_t destCopyStart,
                                  uint64_t nbytes) {
     Fam_Global_Descriptor globalDescriptor = src->get_global_descriptor();
@@ -241,9 +242,11 @@ void *Fam_Allocator_Client::copy(Fam_Descriptor *src, uint64_t srcCopyStart,
     globalDescriptor = dest->get_global_descriptor();
     uint64_t destRegionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t destOffset = globalDescriptor.offset;
-    uint64_t memoryServerId = src->get_memserver_id();
+    uint64_t srcMemoryServerId = src->get_memserver_id();
+    uint64_t destMemoryServerId = dest->get_memserver_id();
     uint64_t srcItemSize = src->get_size();
     uint64_t destItemSize = dest->get_size();
+    uint64_t srcKey = src->get_key();
 
     if ((srcCopyStart + nbytes) > srcItemSize) {
         throw Fam_Allocator_Exception(
@@ -257,9 +260,10 @@ void *Fam_Allocator_Client::copy(Fam_Descriptor *src, uint64_t srcCopyStart,
             "Destination offset or size is beyond dataitem boundary");
     }
 
-        return famCIS->copy(srcRegionId, srcOffset, srcCopyStart, destRegionId,
-                            destOffset, destCopyStart, nbytes, memoryServerId,
-                            uid, gid);
+    return famCIS->copy(srcRegionId, srcOffset, srcCopyStart, srcKey, srcAddr,
+                        srcAddrLen, destRegionId, destOffset, destCopyStart,
+                        nbytes, srcMemoryServerId, destMemoryServerId, uid,
+                        gid);
 }
 
 void Fam_Allocator_Client::wait_for_copy(void *waitObj) {
