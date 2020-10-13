@@ -75,10 +75,10 @@ Memserver_Allocator::Memserver_Allocator(const char *fam_path = "") {
     MEMSERVER_PROFILE_INIT(NVMM)
     MEMSERVER_PROFILE_START_TIME(NVMM)
 
-    if (fam_path != (char *)strdup(""))
-        StartNVMM(fam_path);
-    else
+    if (fam_path == NULL || (strcmp(fam_path, "") == 0))
         StartNVMM();
+    else
+        StartNVMM(fam_path);
 
     heapMap = new HeapMap();
     memoryManager = MemoryManager::GetInstance();
