@@ -275,7 +275,7 @@ uint64_t *parseIndex(char *inpStr, uint64_t nElements) {
     char delim[2] = ",";
     char *token;
     int i = 0;
-    uint64_t *indexArr;
+    uint64_t *indexArr = NULL;
     indexArr = (uint64_t *)malloc(nElements * sizeof(uint64_t));
     token = strtok(inpStr, delim);
     while (token != NULL) {
@@ -296,7 +296,7 @@ int recover_queue(uint32_t qId, Memserver_Allocator *allocator) {
     atomicMsg *msgPointer;
     int ret = 0;
     int retryCount = 0;
-    uint64_t *indexArr;
+    uint64_t *indexArr = NULL;
     while (!atomicQ[qId].isQempty()) {
         atomicQ[qId].read(&item);
         ret = 0;
@@ -465,7 +465,7 @@ void *process_queue(void *arg) {
     atomicMsg *msgPointer;
     int ret = 0;
     int32_t retStatus = 0, popStatus = 0;
-    uint64_t *indexArr;
+    uint64_t *indexArr = NULL;
     Memserver_Allocator *allocator = lcTInfo->allocator;
     fi_addr_t fiAddr = 0, clientAddr;
     char *remoteAddr;
