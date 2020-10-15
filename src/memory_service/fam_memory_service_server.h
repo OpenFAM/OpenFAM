@@ -141,6 +141,26 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                               const ::Fam_Memory_Atomic_Put_Request *request,
                               ::Fam_Memory_Atomic_Response *response) override;
 
+    ::grpc::Status scatter_strided_atomic(
+        ::grpc::ServerContext *context,
+        const ::Fam_Memory_Atomic_SG_Strided_Request *request,
+        ::Fam_Memory_Atomic_Response *response) override;
+
+    ::grpc::Status
+    gather_strided_atomic(::grpc::ServerContext *context,
+                          const ::Fam_Memory_Atomic_SG_Strided_Request *request,
+                          ::Fam_Memory_Atomic_Response *response) override;
+
+    ::grpc::Status scatter_indexed_atomic(
+        ::grpc::ServerContext *context,
+        const ::Fam_Memory_Atomic_SG_Indexed_Request *request,
+        ::Fam_Memory_Atomic_Response *response) override;
+
+    ::grpc::Status
+    gather_indexed_atomic(::grpc::ServerContext *context,
+                          const ::Fam_Memory_Atomic_SG_Indexed_Request *request,
+                          ::Fam_Memory_Atomic_Response *response) override;
+
   protected:
     char *serverAddress;
     uint64_t port;

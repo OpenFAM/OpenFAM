@@ -69,13 +69,13 @@ enum flag {
  * offsetBuffer: offset of the buffer data item
  * offset: offset to target data item for get/put
  * size: size of target data item for get/put
- * nElements: number of elements for strided scatter/gather
+ * snElements: number of elements for strided scatter/gather
  * firstElement: first element for strided scatter/gather
  * stride: stride for strided scatter/gather
- * elementSize: size of element for strided scatter/gather
+ * selementSize: size of element for strided scatter/gather
  * offsetIndex: offset of the index data item for indexed scatter/gather
- * indexElements: index elements for indexed scatter/gather
- * indexSize: size of element for indexed scatter/gather
+ * inElements: index elements for indexed scatter/gather
+ * ielementSize: size of element for indexed scatter/gather
  */
 typedef struct atomicMsg {
     short int flag;
@@ -90,15 +90,15 @@ typedef struct atomicMsg {
             uint64_t size;
         };
         struct {
-            uint64_t nElements;
+            uint64_t snElements;
             uint64_t firstElement;
             uint64_t stride;
-            uint64_t elementSize;
+            uint64_t selementSize;
         };
         struct {
             uint64_t offsetIndex;
-            uint64_t indexElements;
-            uint64_t indexSize;
+            uint64_t inElements;
+            uint64_t ielementSize;
         };
     };
 } atomicMsg;
@@ -124,7 +124,7 @@ class atomicQueue {
   public:
     atomicQueue() {}
     int create(Memserver_Allocator *inp_allocator, const uint32_t in_qid);
-    int push(atomicMsg *item, void *inpDataSG);
+    int push(atomicMsg *item, const void *inpDataSG);
     int read(Fam_Global_Descriptor *gitem);
     int pop(Fam_Global_Descriptor *item);
     bool isQempty();
