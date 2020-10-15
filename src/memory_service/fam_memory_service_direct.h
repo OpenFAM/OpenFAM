@@ -46,7 +46,8 @@ namespace openfam {
 class Fam_Memory_Service_Direct : public Fam_Memory_Service {
   public:
     Fam_Memory_Service_Direct(const char *name, const char *libfabricPort,
-                              const char *libfabricProvider);
+                              const char *libfabricProvider,
+                              const char *fam_path);
 
     ~Fam_Memory_Service_Direct();
 

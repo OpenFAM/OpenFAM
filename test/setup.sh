@@ -67,10 +67,13 @@ print_help() {
 	echo "  --metarpcport   : RPC port for metadata server"
 	echo ""
 	echo "  --cisrpcport   : RPC port for CIS server"
-    echo ""
+	echo ""
 	echo "  --libfabricport : Libfabric port"
 	echo ""
 	echo "  --provider      : Libfabric provider"
+	echo ""
+	echo "  --fam_path      : Location of FAM"
+	echo ""
 	exit
 }
 
@@ -131,6 +134,12 @@ while :; do
 		--provider=)
 			echo 'ERROR: "--provider" requires a non-empty option argument.'
             ;;
+		--fam_path=?*)
+			fam_path=${1#*=}
+            ;;
+		--fam_path=)
+			echo 'ERROR: "--fam_path" requires a non-empty option argument.'
+            ;;
 		-?*)
 			echo "WARN: Unknown option (ignored): ${1}"
 			;;
@@ -158,7 +167,10 @@ fi
 #Run Memory Service
 if [ "$memserver" ]; then
 	echo "Starting Memory Server..."
-	./memory_server -a ${memserver} -r ${memrpcport} -l ${libfabricport} -p ${provider} &
+	if [ "$fam_path" ]; then
+         	fam_path_ARG="-f ${fam_path}"		
+	fi
+	./memory_server -a ${memserver} -r ${memrpcport} -l ${libfabricport} -p ${provider} $fam_path_ARG &
 	sleep 1
 fi
 

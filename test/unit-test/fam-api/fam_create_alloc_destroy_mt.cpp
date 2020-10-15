@@ -1,8 +1,9 @@
 /*
  * fam_create_alloc_destroy_mt.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -44,62 +45,70 @@ using namespace openfam;
 /* thread function */
 void *thr_func1(void *arg) {
 
-    Fam_Region_Descriptor *desc1, *desc2, *desc3;
-    Fam_Descriptor *item1, *item2, *item3;
-
     Fam_Options fam_opts;
 
     fam *my_fam;
     my_fam = new fam();
     init_fam_options(&fam_opts);
 
-    fam_opts.openFamModel = strdup("shared_memory");
     fam_opts.runtime = strdup("NONE");
 
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
-        cout << "fam initialization failed" << endl;
+        cout << "fam initialization failed" << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    desc1 = my_fam->fam_lookup_region("test111");
-    if (desc1 == NULL) {
-        cout << "fam lookup region failed" << endl;
+    try {
+        my_fam->fam_lookup_region("test111");
+    } catch (Fam_Exception &e) {
+        cout << "fam lookup region failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    desc2 = my_fam->fam_lookup_region("test112");
-    if (desc2 == NULL) {
-        cout << "fam lookup region failed" << endl;
+    try {
+        my_fam->fam_lookup_region("test112");
+    } catch (Fam_Exception &e) {
+        cout << "fam lookup region failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    desc3 = my_fam->fam_lookup_region("test113");
-    if (desc3 == NULL) {
-        cout << "fam lookup region failed" << endl;
+    try {
+        my_fam->fam_lookup_region("test113");
+    } catch (Fam_Exception &e) {
+        cout << "fam lookup region failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    item2 = my_fam->fam_lookup("second", "test112");
-    if (item2 == NULL) {
-        cout << "fam lookup of data item 'second' failed" << endl;
+    try {
+        my_fam->fam_lookup("second", "test112");
+    } catch (Fam_Exception &e) {
+        cout << "fam lookup failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    item1 = my_fam->fam_lookup("first", "test111");
-    if (item1 == NULL) {
-        cout << "fam lookup of data item 'first' failed" << endl;
+    try {
+        my_fam->fam_lookup("first", "test111");
+    } catch (Fam_Exception &e) {
+        cout << "fam lookup failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    item3 = my_fam->fam_lookup("third", "test113");
-    if (item3 == NULL) {
-        cout << "fam lookup of data item 'third' failed" << endl;
+    try {
+        my_fam->fam_lookup("third", "test113");
+    } catch (Fam_Exception &e) {
+        cout << "fam lookup failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    my_fam->fam_finalize("default");
+    try {
+        my_fam->fam_finalize("default");
+    } catch (Fam_Exception &e) {
+        cout << "fam finalize failed: " << e.fam_error_msg() << endl;
+        exit(1);
+    }
+
     cout << "fam finalize successful" << endl;
     delete my_fam;
 
@@ -113,55 +122,60 @@ int main() {
     fam *my_fam;
 
     Fam_Region_Descriptor *desc1, *desc2, *desc3;
-    Fam_Descriptor *item1, *item2, *item3;
 
     my_fam = new fam();
-    memset((void *)&fam_opts, 0, sizeof(Fam_Options));
 
-    fam_opts.openFamModel = strdup("shared_memory");
+    init_fam_options(&fam_opts);
+
     fam_opts.runtime = strdup("NONE");
 
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
-        cout << "fam initialization failed" << endl;
+        cout << "fam initialization failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    desc1 = my_fam->fam_create_region("test111", 8192, 0777, RAID1);
-    if (desc1 == NULL) {
-        cout << "fam create region failed" << endl;
+    try {
+        desc1 = my_fam->fam_create_region("test111", 8192, 0777, RAID1);
+    } catch (Fam_Exception &e) {
+        cout << "fam create region failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    desc2 = my_fam->fam_create_region("test112", 8192, 0777, RAID1);
-    if (desc2 == NULL) {
-        cout << "fam create region failed" << endl;
+    try {
+        desc2 = my_fam->fam_create_region("test112", 8192, 0777, RAID1);
+    } catch (Fam_Exception &e) {
+        cout << "fam create region failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    desc3 = my_fam->fam_create_region("test113", 8192, 0777, RAID1);
-    if (desc3 == NULL) {
-        cout << "fam create region failed" << endl;
+    try {
+        desc3 = my_fam->fam_create_region("test113", 8192, 0777, RAID1);
+    } catch (Fam_Exception &e) {
+        cout << "fam create region failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
     // Allocating data items in the created region
-    item1 = my_fam->fam_allocate("first", 1024, 0777, desc1);
-    if (item1 == NULL) {
-        cout << "fam allocation of data item 'first' failed" << endl;
+    try {
+        my_fam->fam_allocate("first", 1024, 0777, desc1);
+    } catch (Fam_Exception &e) {
+        cout << "fam allocate data item failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    item2 = my_fam->fam_allocate("second", 1024, 0777, desc2);
-    if (item2 == NULL) {
-        cout << "fam allocation of data item 'second' failed" << endl;
+    try {
+        my_fam->fam_allocate("second", 1024, 0777, desc2);
+    } catch (Fam_Exception &e) {
+        cout << "fam allocate data item failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    item3 = my_fam->fam_allocate("third", 1024, 0777, desc3);
-    if (item3 == NULL) {
-        cout << "fam allocation of data item 'third' failed" << endl;
+    try {
+        my_fam->fam_allocate("third", 1024, 0777, desc3);
+    } catch (Fam_Exception &e) {
+        cout << "fam allocate data item failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
@@ -176,16 +190,26 @@ int main() {
         pthread_join(thr[i], NULL);
     }
 
-    if (desc1 != NULL)
-        my_fam->fam_destroy_region(desc1);
+    try {
+        if (desc1 != NULL)
+            my_fam->fam_destroy_region(desc1);
 
-    if (desc2 != NULL)
-        my_fam->fam_destroy_region(desc2);
+        if (desc2 != NULL)
+            my_fam->fam_destroy_region(desc2);
 
-    if (desc3 != NULL)
-        my_fam->fam_destroy_region(desc3);
+        if (desc3 != NULL)
+            my_fam->fam_destroy_region(desc3);
+    } catch (Fam_Exception &e) {
+        cout << "fam destroy region failed: " << e.fam_error_msg() << endl;
+        exit(1);
+    }
 
-    my_fam->fam_finalize("default");
+    try {
+        my_fam->fam_finalize("default");
+    } catch (Fam_Exception &e) {
+        cout << "fam finalize failed: " << e.fam_error_msg() << endl;
+        exit(1);
+    }
     cout << "fam finalize successful" << endl;
 
     return 0;
