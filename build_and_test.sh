@@ -27,13 +27,13 @@ echo $OPENFAM_ROOT
 make unit-test
 if [[ $? > 0 ]]
 then
-        echo "One or more unit-test failed while running with cis-rpc-meta-direct-mem-rpc coniguration. exit..."
+        echo "One or more unit-test failed while running with cis-rpc-meta-direct-mem-rpc configuration. exit..."
         exit 1
 fi
 make reg-test
 if [[ $? > 0 ]]
 then
-        echo "One or more reg-test failed while running with cis-rpc-meta-direct-mem-rpc coniguration. exit..."
+        echo "One or more reg-test failed while running with cis-rpc-meta-direct-mem-rpc configuration. exit..."
         exit 1
 fi
 
@@ -48,13 +48,13 @@ source setup.sh --cisserver=127.0.0.1 --metaserver=127.0.0.1 --memserver=127.0.0
 make unit-test
 if [[ $? > 0 ]]
 then
-        echo "One or more unit-test failed while running with cis-rpc-meta-rpc-mem-rpc coniguration... exit..."
+        echo "One or more unit-test failed while running with cis-rpc-meta-rpc-mem-rpc configuration... exit..."
         exit 1
 fi
 make reg-test
 if [[ $? > 0 ]]
 then
-        echo "One or more reg-test failed while running with cis-rpc-meta-rpc-mem-rpc coniguration.. exit..."
+        echo "One or more reg-test failed while running with cis-rpc-meta-rpc-mem-rpc configuration.. exit..."
         exit 1
 fi
 
@@ -70,13 +70,13 @@ source setup.sh --cisserver=127.0.0.1
 make unit-test
 if [[ $? > 0 ]]
 then
-        echo "One or more unit-test failed while running with cis-rpc-meta-direct-mem-direct coniguration... exit..."
+        echo "One or more unit-test failed while running with cis-rpc-meta-direct-mem-direct configuration... exit..."
         exit 1
 fi
 make reg-test
 if [[ $? > 0 ]]
 then
-        echo "One or more reg-test failed while running with cis-rpc-meta-direct-mem-direct coniguration.. exit..."
+        echo "One or more reg-test failed while running with cis-rpc-meta-direct-mem-direct configuration.. exit..."
         exit 1
 fi
 
@@ -90,13 +90,13 @@ source setup.sh --metaserver=127.0.0.1 --memserver=127.0.0.1
 make unit-test
 if [[ $? > 0 ]]
 then
-        echo "One or more unit-test failed while running with cis-direct-meta-rpc-mem-rpc coniguration... exit..."
+        echo "One or more unit-test failed while running with cis-direct-meta-rpc-mem-rpc configuration... exit..."
         exit 1
 fi
 make reg-test
 if [[ $? > 0 ]]
 then
-        echo "One or more reg-test failed while running with cis-direct-meta-rpc-mem-rpc coniguration.. exit..."
+        echo "One or more reg-test failed while running with cis-direct-meta-rpc-mem-rpc configuration.. exit..."
         exit 1
 fi
 

@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
     char *name = strdup("127.0.0.1");
     char *libfabricPort = strdup("7500");
     char *provider = strdup("sockets");
+    char *fam_path = NULL;
 
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
@@ -83,6 +84,9 @@ int main(int argc, char *argv[]) {
                 << "\t-p/--provider       : Libfabric provider (default value "
                    "is sockets)\n"
                 << "\n"
+                << "\t-f/--fam_path       : Location of FAM (default value "
+                   "is /dev/shm/<username>)\n"
+                << "\n"
                 << "\t-v/--version        : Display metadata server version  \n"
                 << "\n"
                 << endl;
@@ -99,6 +103,9 @@ int main(int argc, char *argv[]) {
         } else if ((std::string(argv[i]) == "-p") ||
                    (std::string(argv[i]) == "--provider")) {
             provider = strdup(argv[++i]);
+        } else if ((std::string(argv[i]) == "-f") ||
+                   (std::string(argv[i]) == "--fam_path")) {
+            fam_path = strdup(argv[++i]);
         }
     }
 
@@ -110,8 +117,8 @@ int main(int argc, char *argv[]) {
 
     memoryService = NULL;
     try {
-        memoryService = new Fam_Memory_Service_Server(rpcPort, name,
-                                                      libfabricPort, provider);
+        memoryService = new Fam_Memory_Service_Server(
+            rpcPort, name, libfabricPort, provider, fam_path);
         memoryService->run();
     } catch (Fam_Exception &e) {
         if (memoryService) {

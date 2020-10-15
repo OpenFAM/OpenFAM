@@ -71,10 +71,15 @@ void nvmm_profile_dump(){MEMSERVER_PROFILE_END(NVMM)
 #include "allocator/NVMM_counters.tbl"
                                  MEMSERVER_DUMP_PROFILE_SUMMARY(NVMM)}
 
-Memserver_Allocator::Memserver_Allocator() {
+Memserver_Allocator::Memserver_Allocator(const char *fam_path = "") {
     MEMSERVER_PROFILE_INIT(NVMM)
     MEMSERVER_PROFILE_START_TIME(NVMM)
-    StartNVMM();
+
+    if (fam_path == NULL || (strcmp(fam_path, "") == 0))
+        StartNVMM();
+    else
+        StartNVMM(fam_path);
+
     heapMap = new HeapMap();
     memoryManager = MemoryManager::GetInstance();
     (void)pthread_mutex_init(&heapMapLock, NULL);

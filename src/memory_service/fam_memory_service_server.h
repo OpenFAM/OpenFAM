@@ -58,7 +58,7 @@ using grpc::Status;
 class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
   public:
     Fam_Memory_Service_Server(uint64_t rpcPort, char *name, char *libfabricPort,
-                              char *libfabricProvider);
+                              char *libfabricProvider, char *fam_path);
 
     ~Fam_Memory_Service_Server();
 
