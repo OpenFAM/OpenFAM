@@ -976,7 +976,7 @@ void *process_queue(void *arg) {
 
         case ATOMIC_GATHER_INDEX: {
             uint64_t bufferSize;
-            void *bufferPtr;
+            void *bufferPtr = NULL;
             // Gather - Indexed; Map data item and retrieve indexes
             try {
                 localPointerD = allocator->get_local_pointer(
@@ -998,16 +998,16 @@ void *process_queue(void *arg) {
                            (char *)localPointerD + srcIndex,
                            msgPointer->ielementSize);
                 }
+                // Copy data to client's memory
+                try {
+                    retStatus = fabric_write(
+                        msgPointer->key, bufferPtr, bufferSize, 0, fiAddr,
+                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                } catch (...) {
+                    retStatus = FABRICWRITEERROR;
+                }
             } catch (...) {
                 retStatus = MAPERROR;
-            }
-            // Copy data to client's memory
-            try {
-                retStatus = fabric_write(
-                    msgPointer->key, bufferPtr, bufferSize, 0, fiAddr,
-                    famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
-            } catch (...) {
-                retStatus = FABRICWRITEERROR;
             }
             // Send the status of the request to client
             try {
@@ -1027,7 +1027,7 @@ void *process_queue(void *arg) {
         case ATOMIC_GATHER_STRIDE: {
             // Gather - Strided; Map data item
             uint64_t bufferSize;
-            void *bufferPtr;
+            void *bufferPtr = NULL;
             try {
                 localPointerD = allocator->get_local_pointer(
                     msgPointer->dstDataGdesc.regionId,
@@ -1045,16 +1045,16 @@ void *process_queue(void *arg) {
                            (char *)localPointerD + srcIndex,
                            msgPointer->selementSize);
                 }
+                // Copy data back to client's memory
+                try {
+                    retStatus = fabric_write(
+                        msgPointer->key, bufferPtr, bufferSize, 0, fiAddr,
+                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                } catch (...) {
+                    retStatus = FABRICWRITEERROR;
+                }
             } catch (...) {
                 retStatus = MAPERROR;
-            }
-            // Copy data back to client's memory
-            try {
-                retStatus = fabric_write(
-                    msgPointer->key, bufferPtr, bufferSize, 0, fiAddr,
-                    famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
-            } catch (...) {
-                retStatus = FABRICWRITEERROR;
             }
             // Send return status back to client
             try {
