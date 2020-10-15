@@ -174,6 +174,26 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
                               const ::Fam_Atomic_Put_Request *request,
                               ::Fam_Atomic_Response *response) override;
 
+    ::grpc::Status
+    scatter_strided_atomic(::grpc::ServerContext *context,
+                           const ::Fam_Atomic_SG_Strided_Request *request,
+                           ::Fam_Atomic_Response *response) override;
+
+    ::grpc::Status
+    gather_strided_atomic(::grpc::ServerContext *context,
+                          const ::Fam_Atomic_SG_Strided_Request *request,
+                          ::Fam_Atomic_Response *response) override;
+
+    ::grpc::Status
+    scatter_indexed_atomic(::grpc::ServerContext *context,
+                           const ::Fam_Atomic_SG_Indexed_Request *request,
+                           ::Fam_Atomic_Response *response) override;
+
+    ::grpc::Status
+    gather_indexed_atomic(::grpc::ServerContext *context,
+                          const ::Fam_Atomic_SG_Indexed_Request *request,
+                          ::Fam_Atomic_Response *response) override;
+
   protected:
     int numClients;
     Fam_CIS_Direct *famCIS;

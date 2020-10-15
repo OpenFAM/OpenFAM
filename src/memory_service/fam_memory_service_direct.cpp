@@ -347,7 +347,8 @@ void Fam_Memory_Service_Direct::init_atomic_queue() {
     for (int i = 0; i < numAtomicThreads; i++) {
         int ret = atomicQ[i].create(allocator, i);
         if (ret) {
-            cout << "Couldn't create Queue " << i << endl;
+            cout << "Couldn't create ATL Queue " << i << endl;
+            cout << "Disabling ATL" << endl;
             numAtomicThreads = 0;
             for (int j = 0; j < i; j++)
                 pthread_cancel(atid[j]);
@@ -360,6 +361,7 @@ void Fam_Memory_Service_Direct::init_atomic_queue() {
         if (ret) {
             cout << "Couldn't create processing thread for queue " << i
                  << " status = " << ret << endl;
+            cout << "Disabling ATL" << endl;
             numAtomicThreads = 0;
             for (int j = 0; j < i; j++)
                 pthread_cancel(atid[j]);
@@ -373,11 +375,11 @@ void Fam_Memory_Service_Direct::get_atomic(uint64_t regionId,
                                            uint64_t dstOffset, uint64_t nbytes,
                                            uint64_t key, const char *nodeAddr,
                                            uint32_t nodeAddrSize) {
-    //    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     void *inpData = NULL;
     if (numAtomicThreads <= 0) {
-        message << "Atomic Thread Library is not enabled";
+        message << "Atomic Transfer Library is not enabled";
         throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
     }
     string hashStr = "";
@@ -408,7 +410,7 @@ void Fam_Memory_Service_Direct::get_atomic(uint64_t regionId,
                                            message.str().c_str());
         }
     }
-    //    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_atomic)
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_atomic)
 }
 
 void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
@@ -417,12 +419,11 @@ void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
                                            uint64_t key, const char *nodeAddr,
                                            uint32_t nodeAddrSize,
                                            const char *data) {
-    //    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
-    void *inpData = NULL;
     string hashStr = "";
     if (numAtomicThreads <= 0) {
-        message << "Atomic Thread Library is not enabled";
+        message << "Atomic Transfer Library is not enabled";
         throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
     }
     hash<string> mystdhash;
@@ -440,10 +441,53 @@ void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
     InpMsg.size = nbytes;
     InpMsg.flag |= ATOMIC_WRITE;
     if ((nbytes > 0) && (nbytes < MAX_DATA_IN_MSG)) {
-        inpData = (void *)malloc(nbytes);
-        memcpy(inpData, data, nbytes);
         InpMsg.flag |= ATOMIC_CONTAIN_DATA;
     }
+
+    int ret = atomicQ[qId].push(&InpMsg, data);
+    if (ret) {
+        if (ret == ATL_QUEUE_FULL) {
+            message << "Atomic queue Full - Failed to insert";
+            throw Memory_Service_Exception(ATL_QUEUE_FULL,
+                                           message.str().c_str());
+        } else {
+            message << "Error inserting into Queue";
+            throw Memory_Service_Exception(ATL_QUEUE_INSERT_ERROR,
+                                           message.str().c_str());
+        }
+    }
+
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_put_atomic)
+}
+
+void Fam_Memory_Service_Direct::scatter_strided_atomic(
+    uint64_t regionId, uint64_t offset, uint64_t nElements,
+    uint64_t firstElement, uint64_t stride, uint64_t elementSize, uint64_t key,
+    const char *nodeAddr, uint32_t nodeAddrSize) {
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    ostringstream message;
+    void *inpData = NULL;
+    string hashStr = "";
+    if (numAtomicThreads <= 0) {
+        message << "Atomic Transfer Library is not enabled";
+        throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
+    }
+    hash<string> mystdhash;
+    hashStr = hashStr + std::to_string(regionId);
+    hashStr = hashStr + std::to_string(offset);
+    uint64_t qId = mystdhash(hashStr) % numAtomicThreads;
+    atomicMsg InpMsg;
+    memset(&InpMsg, 0, sizeof(atomicMsg));
+    InpMsg.nodeAddrSize = nodeAddrSize;
+    memcpy(&InpMsg.nodeAddr, nodeAddr, nodeAddrSize);
+    InpMsg.dstDataGdesc.regionId = regionId;
+    InpMsg.dstDataGdesc.offset = offset;
+    InpMsg.snElements = nElements;
+    InpMsg.firstElement = firstElement;
+    InpMsg.stride = stride;
+    InpMsg.selementSize = elementSize;
+    InpMsg.key = key;
+    InpMsg.flag |= ATOMIC_SCATTER_STRIDE;
 
     int ret = atomicQ[qId].push(&InpMsg, inpData);
     if (ret) {
@@ -457,7 +501,133 @@ void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
                                            message.str().c_str());
         }
     }
-
-    //    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_put_atomic)
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_scatter_strided_atomic)
 }
+
+void Fam_Memory_Service_Direct::gather_strided_atomic(
+    uint64_t regionId, uint64_t offset, uint64_t nElements,
+    uint64_t firstElement, uint64_t stride, uint64_t elementSize, uint64_t key,
+    const char *nodeAddr, uint32_t nodeAddrSize) {
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    ostringstream message;
+    void *inpData = NULL;
+    string hashStr = "";
+    if (numAtomicThreads <= 0) {
+        message << "Atomic Transfer Library is not enabled";
+        throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
+    }
+    hash<string> mystdhash;
+    hashStr = hashStr + std::to_string(regionId);
+    hashStr = hashStr + std::to_string(offset);
+    uint64_t qId = mystdhash(hashStr) % numAtomicThreads;
+    atomicMsg InpMsg;
+    memset(&InpMsg, 0, sizeof(atomicMsg));
+    InpMsg.nodeAddrSize = nodeAddrSize;
+    memcpy(&InpMsg.nodeAddr, nodeAddr, nodeAddrSize);
+    InpMsg.dstDataGdesc.regionId = regionId;
+    InpMsg.dstDataGdesc.offset = offset;
+    InpMsg.snElements = nElements;
+    InpMsg.firstElement = firstElement;
+    InpMsg.stride = stride;
+    InpMsg.selementSize = elementSize;
+    InpMsg.key = key;
+    InpMsg.flag |= ATOMIC_GATHER_STRIDE;
+
+    int ret = atomicQ[qId].push(&InpMsg, inpData);
+    if (ret) {
+        if (ret == ATL_QUEUE_FULL) {
+            message << "Atomic queue Full - Failed to insert";
+            throw Memory_Service_Exception(ATL_QUEUE_FULL,
+                                           message.str().c_str());
+        } else {
+            message << "Error inserting into Queue";
+            throw Memory_Service_Exception(ATL_QUEUE_INSERT_ERROR,
+                                           message.str().c_str());
+        }
+    }
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_gather_strided_atomic)
+}
+
+void Fam_Memory_Service_Direct::scatter_indexed_atomic(
+    uint64_t regionId, uint64_t offset, uint64_t nElements,
+    const void *elementIndex, uint64_t elementSize, uint64_t key,
+    const char *nodeAddr, uint32_t nodeAddrSize) {
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    ostringstream message;
+    string hashStr = "";
+    if (numAtomicThreads <= 0) {
+        message << "Atomic Transfer Library is not enabled";
+        throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
+    }
+    hash<string> mystdhash;
+    hashStr = hashStr + std::to_string(regionId);
+    hashStr = hashStr + std::to_string(offset);
+    uint64_t qId = mystdhash(hashStr) % numAtomicThreads;
+    atomicMsg InpMsg;
+    memset(&InpMsg, 0, sizeof(atomicMsg));
+    InpMsg.nodeAddrSize = nodeAddrSize;
+    memcpy(&InpMsg.nodeAddr, nodeAddr, nodeAddrSize);
+    InpMsg.dstDataGdesc.regionId = regionId;
+    InpMsg.dstDataGdesc.offset = offset;
+    InpMsg.inElements = nElements;
+    InpMsg.ielementSize = elementSize;
+    InpMsg.key = key;
+    InpMsg.flag |= ATOMIC_SCATTER_INDEX;
+
+    int ret = atomicQ[qId].push(&InpMsg, elementIndex);
+    if (ret) {
+        if (ret == ATL_QUEUE_FULL) {
+            message << "Atomic queue Full - Failed to insert";
+            throw Memory_Service_Exception(ATL_QUEUE_FULL,
+                                           message.str().c_str());
+        } else {
+            message << "Error inserting into Queue";
+            throw Memory_Service_Exception(ATL_QUEUE_INSERT_ERROR,
+                                           message.str().c_str());
+        }
+    }
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_scatter_indexed_atomic)
+}
+
+void Fam_Memory_Service_Direct::gather_indexed_atomic(
+    uint64_t regionId, uint64_t offset, uint64_t nElements,
+    const void *elementIndex, uint64_t elementSize, uint64_t key,
+    const char *nodeAddr, uint32_t nodeAddrSize) {
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    ostringstream message;
+    string hashStr = "";
+    if (numAtomicThreads <= 0) {
+        message << "Atomic Transfer Library is not enabled";
+        throw Memory_Service_Exception(ATL_NOT_ENABLED, message.str().c_str());
+    }
+    hash<string> mystdhash;
+    hashStr = hashStr + std::to_string(regionId);
+    hashStr = hashStr + std::to_string(offset);
+    uint64_t qId = mystdhash(hashStr) % numAtomicThreads;
+    atomicMsg InpMsg;
+    memset(&InpMsg, 0, sizeof(atomicMsg));
+    InpMsg.nodeAddrSize = nodeAddrSize;
+    memcpy(&InpMsg.nodeAddr, nodeAddr, nodeAddrSize);
+    InpMsg.dstDataGdesc.regionId = regionId;
+    InpMsg.dstDataGdesc.offset = offset;
+    InpMsg.inElements = nElements;
+    InpMsg.ielementSize = elementSize;
+    InpMsg.key = key;
+    InpMsg.flag |= ATOMIC_GATHER_INDEX;
+
+    int ret = atomicQ[qId].push(&InpMsg, elementIndex);
+    if (ret) {
+        if (ret == ATL_QUEUE_FULL) {
+            message << "Atomic queue Full - Failed to insert";
+            throw Memory_Service_Exception(ATL_QUEUE_FULL,
+                                           message.str().c_str());
+        } else {
+            message << "Error inserting into Queue";
+            throw Memory_Service_Exception(ATL_QUEUE_INSERT_ERROR,
+                                           message.str().c_str());
+        }
+    }
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_gather_indexed_atomic)
+}
+
 } // namespace openfam
