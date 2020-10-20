@@ -23,6 +23,7 @@ function (add_fam_test file_name)
     add_executable(${file_name} ${file_name}.cpp)
     target_link_libraries(${file_name} fammetadata pmix pmi2 openfam gtest)
     add_test(NAME ${file_name} COMMAND ${PROJECT_SOURCE_DIR}/third-party/build/bin/mpirun --allow-run-as-root -np 1 ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
+    set_tests_properties(${file_name} PROPERTIES SKIP_RETURN_CODE ${TEST_SKIP_STATUS})
     add_definitions(-DFAM_ATOMIC_NATIVE)
 
 endfunction()

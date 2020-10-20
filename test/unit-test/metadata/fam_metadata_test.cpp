@@ -65,6 +65,13 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    char *openfam_model;
+    openfam_model = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
+    // Skip test case if it is not shared memory model
+    if (strcmp(openfam_model, "shared_memory") != 0) {
+        exit(TEST_SKIP_STATUS);
+    }
+
     Fam_Region_Descriptor *desc[2];
     Fam_Region_Metadata node;
     Fam_Region_Metadata *regnode = new Fam_Region_Metadata();
