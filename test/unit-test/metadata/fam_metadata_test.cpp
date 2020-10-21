@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
     // Skip test case if it is not shared memory model
     if (strcmp(openfam_model, "shared_memory") != 0) {
         my_fam->fam_finalize("default");
-        std::cout << "Test case not valid only in shared_memory model, "
+        std::cout << "Test case valid only in shared_memory model, "
                      "skipping with status : "
                   << TEST_SKIP_STATUS << std::endl;
         return TEST_SKIP_STATUS;
