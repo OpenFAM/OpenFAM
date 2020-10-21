@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     uint64_t rpcPort = 8789;
     char *name = strdup("127.0.0.1");
     char *libfabricPort = strdup("7500");
-    char *provider = strdup("sockets");
+    char *provider = strdup("");
     char *fam_path = NULL;
 
     for (int i = 1; i < argc; i++) {

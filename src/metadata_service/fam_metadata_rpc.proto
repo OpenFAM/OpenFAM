@@ -76,6 +76,11 @@ service Fam_Metadata_Rpc {
 	returns (Fam_Metadata_Response) {}
     rpc metadata_validate_and_deallocate_dataitem(Fam_Metadata_Request)
 	returns (Fam_Metadata_Response) {}
+    rpc metadata_find_region_and_check_permissions(Fam_Metadata_Region_Request)
+       returns (Fam_Metadata_Region_Response) {}
+    rpc metadata_find_dataitem_and_check_permissions(Fam_Metadata_Request)
+       returns (Fam_Metadata_Response) {}
+
 }
 
 /*
@@ -99,6 +104,7 @@ message Fam_Metadata_Region_Request {
     optional uint64 memsrv_cnt = 13;
     repeated uint64 memsrv_list = 14;
     optional uint64 memsrv_id = 15;
+    optional int32 op = 16;
 }
 
 message Fam_Metadata_Region_Response {
@@ -136,6 +142,7 @@ message Fam_Metadata_Request {
     optional uint64 size = 11;
     optional uint32 user_policy = 12;
     optional uint64 memsrv_id = 13;
+    optional int32 op = 14;
 }
 
 message Fam_Metadata_Response {
@@ -176,6 +183,7 @@ message Fam_Permission_Response {
 
 message Fam_Memservcnt_Request {
     optional uint32 nmemservers = 1;
+    repeated uint64 memsrv_list = 2;
 }
 
 message Fam_Metadata_Region_Info_Response {
