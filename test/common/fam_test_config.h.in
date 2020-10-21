@@ -62,6 +62,10 @@ using namespace openfam;
 
 #cmakedefine TEST_SKIP_STATUS ${TEST_SKIP_STATUS}
 
+#ifndef TEST_SKIP_STATUS
+#define TEST_SKIP_STATUS 0    
+#endif
+
 void init_fam_options(Fam_Options *famOpts) {
     memset((void *)famOpts, 0, sizeof(Fam_Options));
 

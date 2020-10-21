@@ -69,7 +69,11 @@ int main(int argc, char *argv[]) {
     openfam_model = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
     // Skip test case if it is not shared memory model
     if (strcmp(openfam_model, "shared_memory") != 0) {
-        exit(TEST_SKIP_STATUS);
+        my_fam->fam_finalize("default");
+        std::cout << "Test case not valid only in shared_memory model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
     }
 
     Fam_Region_Descriptor *desc[2];
