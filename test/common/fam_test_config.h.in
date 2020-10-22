@@ -60,6 +60,8 @@ using namespace openfam;
 // Runtime configuration
 #cmakedefine TEST_NPE "${TEST_NPE}"
 
+#define TEST_SKIP_STATUS ${TEST_SKIP_STATUS}
+
 void init_fam_options(Fam_Options *famOpts) {
     memset((void *)famOpts, 0, sizeof(Fam_Options));
 
