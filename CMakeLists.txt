@@ -131,7 +131,8 @@ include_directories(/usr/local/include)
 
 set( TEST_DEFAULT_REGION "Default" )
 set( TEST_OPENFAM_MODEL "memory_server" )
-# set( TEST_CIS_INTERFACE_TYPE "rpc" )
+#set( TEST_CIS_INTERFACE_TYPE "rpc" )
+#set( TEST_CIS_SERVER "10.93.243.13" )
 set( TEST_CIS_SERVER "127.0.0.1" )
 set( TEST_GRPC_PORT "8787" )
 set( TEST_LIBFABRIC_PROVIDER "sockets" )
@@ -179,7 +180,7 @@ add_definitions(-DFAM_ATOMIC_NATIVE)
 # Runtime options to be used to invoke test cases
 set( TEST_NPE 1 ) #Number of pe used with mpirun
 set( TEST_RUNTIME_BIN ${PROJECT_SOURCE_DIR}/third-party/build/bin/mpirun ) # path to mpirun/prun
-set( TEST_RUNTIME_OPTS --allow-run-as-root -n ${TEST_NPE} ) # path to mpirun/prun
+set( TEST_RUNTIME_OPTS --allow-run-as-root -n ${TEST_NPE} -host ${TEST_CIS_SERVER}) # path to mpirun/prun
 
 # Include fam_test_config.h in individual test cases and use the above variables as macros.
 configure_file( ${PROJECT_SOURCE_DIR}/test/common/fam_test_config.h.in ${PROJECT_BINARY_DIR}/test/common/fam_test_config.h )
@@ -212,4 +213,3 @@ install (FILES "${PROJECT_SOURCE_DIR}/test/unit-test/config/sample_config" PERMI
         GROUP_READ WORLD_READ
         DESTINATION ${PROJECT_BINARY_DIR}/test/unit-test/config/)
 
-install (DIRECTORY "${PROJECT_SOURCE_DIR}/test/config_files" DESTINATION "${PROJECT_BINARY_DIR}/test")

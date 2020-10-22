@@ -89,9 +89,15 @@ int main(int argc, char *argv[]) {
                 << "\n"
                 << "\t-v/--version        : Display metadata server version  \n"
                 << "\n"
+				<< "\t-i/--init			  : Initialize the root shelf \n"
+				<< "\n"
                 << endl;
             exit(0);
-        } else if ((std::string(argv[i]) == "-a") ||
+		} else if ((std::string(argv[i]) == "-i") ||
+                   (std::string(argv[i]) == "--init")) {
+            StartNVMM();
+            exit(0);
+		} else if ((std::string(argv[i]) == "-a") ||
                    (std::string(argv[i]) == "--address")) {
             name = strdup(argv[++i]);
         } else if ((std::string(argv[i]) == "-r") ||

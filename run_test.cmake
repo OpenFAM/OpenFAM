@@ -1,6 +1,6 @@
  #
- # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # run_test.cmake
+ # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -19,16 +19,9 @@
  # See https://spdx.org/licenses/BSD-3-Clause
  #
  #
-function (add_fam_test file_name)
-    add_executable(${file_name} ${file_name}.cpp)
-    target_link_libraries(${file_name} openfam gtest)
-	add_test(NAME ${file_name} COMMAND ${CMAKE_COMMAND} -DFILE_NAME=${file_name} -P ${PROJECT_SOURCE_DIR}/run_test.cmake)
-endfunction()
 
-#add tests
-add_fam_test(fam_allocator_reg_test)
-add_fam_test(fam_resize_reg_test)
-
-if (${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
-	add_fam_test(fam_map_reg_test)
+execute_process(COMMAND $ENV{TEST_COMMAND} $ENV{TEST_NODE_NUM_OPT} $ENV{TEST_NODE_NUM_ARG} $ENV{TEST_NPE_OPT} $ENV{TEST_NPE_ARG} $ENV{TEST_HOST_OPT} $ENV{TEST_HOST_ARG} $ENV{TEST_MPI_OPT} ${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME} ${TEST_ARG} RESULT_VARIABLE result)
+if(NOT "${result}" STREQUAL "0")
+    message(FATAL_ERROR "Test failed with return value '${result}'")
 endif()
+

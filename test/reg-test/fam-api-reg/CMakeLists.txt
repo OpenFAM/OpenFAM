@@ -19,10 +19,11 @@
  # See https://spdx.org/licenses/BSD-3-Clause
  #
  #
+message( STATUS "environment variable : " $ENV{TESTS_VAR} )
 function (add_fam_test file_name)
     add_executable(${file_name} ${file_name}.cpp)
     target_link_libraries(${file_name} openfam gtest)
-    add_test(NAME ${file_name} COMMAND ${TEST_RUNTIME_BIN} ${TEST_RUNTIME_OPTS} ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
+	add_test(NAME ${file_name} COMMAND ${CMAKE_COMMAND} -DFILE_NAME=${file_name} -P ${PROJECT_SOURCE_DIR}/run_test.cmake)
 endfunction()
 
 #add tests
