@@ -467,8 +467,13 @@ void Fam_Metadata_Service_Server::run() {
 ::grpc::Status Fam_Metadata_Service_Server::metadata_update_memoryserver(
     ::grpc::ServerContext *context, const ::Fam_Memservcnt_Request *request,
     ::Fam_Metadata_Gen_Response *response) {
+    std::vector<uint64_t> memsrv_id_list;
     METADATA_SERVER_PROFILE_START_OPS()
-    metadataService->metadata_update_memoryserver(request->nmemservers());
+    for (int ndx = 0; ndx < (int)request->nmemservers(); ndx++) {
+        memsrv_id_list.push_back(request->memsrv_list(ndx));
+    }
+    metadataService->metadata_update_memoryserver(request->nmemservers(),
+                                                  memsrv_id_list);
     METADATA_SERVER_PROFILE_END_OPS(server_metadata_update_memoryserver);
     return ::grpc::Status::OK;
 }
@@ -571,6 +576,86 @@ Fam_Metadata_Service_Server::metadata_validate_and_deallocate_dataitem(
 
     METADATA_SERVER_PROFILE_END_OPS(
         server_metadata_validate_and_deallocate_dataitem);
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_Metadata_Service_Server::metadata_find_region_and_check_permissions(
+    ::grpc::ServerContext *context,
+    const ::Fam_Metadata_Region_Request *request,
+    ::Fam_Metadata_Region_Response *response) {
+    METADATA_SERVER_PROFILE_START_OPS();
+    Fam_Region_Metadata region;
+    try {
+        if (request->has_key_region_id())
+            metadataService->metadata_find_region_and_check_permissions(
+                (metadata_region_item_op_t)request->op(),
+                request->key_region_id(), request->uid(), request->gid(),
+                region);
+        else
+            metadataService->metadata_find_region_and_check_permissions(
+                (metadata_region_item_op_t)request->op(),
+                request->key_region_name(), request->uid(), request->gid(),
+                region);
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    response->set_region_id(region.regionId);
+    response->set_name(region.name);
+    response->set_offset(region.offset);
+    response->set_size(region.size);
+    response->set_perm(region.perm);
+    response->set_uid(region.uid);
+    response->set_gid(region.gid);
+    response->set_maxkeylen(metadataService->metadata_maxkeylen());
+    response->set_memsrv_cnt(region.used_memsrv_cnt);
+
+    for (int id = 0; id < (int)region.used_memsrv_cnt; ++id) {
+        response->add_memsrv_list(region.memServerIds[id]);
+    }
+
+    METADATA_SERVER_PROFILE_END_OPS(
+        server_metadata_find_region_and_check_permissions);
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_Metadata_Service_Server::metadata_find_dataitem_and_check_permissions(
+    ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
+    ::Fam_Metadata_Response *response) {
+    METADATA_SERVER_PROFILE_START_OPS();
+    Fam_DataItem_Metadata dataitem;
+
+    try {
+        if (request->has_key_dataitem_id() && request->has_key_region_id())
+            metadataService->metadata_find_dataitem_and_check_permissions(
+                (metadata_region_item_op_t)request->op(),
+                request->key_dataitem_id(), request->key_region_id(),
+                request->uid(), request->gid(), dataitem);
+        else
+            metadataService->metadata_find_dataitem_and_check_permissions(
+                (metadata_region_item_op_t)request->op(),
+                request->key_dataitem_name(), request->key_region_name(),
+                request->uid(), request->gid(), dataitem);
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    response->set_region_id(dataitem.regionId);
+    response->set_name(dataitem.name);
+    response->set_offset(dataitem.offset);
+    response->set_size(dataitem.size);
+    response->set_perm(dataitem.perm);
+    response->set_uid(dataitem.uid);
+    response->set_gid(dataitem.gid);
+    response->set_maxkeylen(metadataService->metadata_maxkeylen());
+    response->set_memsrv_id(dataitem.memoryServerId);
+
+    METADATA_SERVER_PROFILE_END_OPS(
+        server_metadata_find_dataitem_and_check_permissions);
     return ::grpc::Status::OK;
 }
 

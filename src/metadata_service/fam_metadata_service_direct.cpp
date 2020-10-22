@@ -218,9 +218,27 @@ class Fam_Metadata_Service_Direct::Impl_ {
                                                    const uint64_t dataitemId,
                                                    uint32_t uid, uint32_t gid);
     size_t metadata_maxkeylen();
-    void metadata_update_memoryserver(int nmemServers);
+    void metadata_update_memoryserver(int nmemServers,
+                                      std::vector<uint64_t> memsrv_id_list);
     void metadata_reset_bitmap(uint64_t regionID);
     uint64_t align_to_address(uint64_t size, int multiple);
+    void metadata_find_region_and_check_permissions(
+        metadata_region_item_op_t op, const uint64_t regionId, uint32_t uid,
+        uint32_t gid, Fam_Region_Metadata &region);
+
+    void metadata_find_region_and_check_permissions(
+        metadata_region_item_op_t op, const std::string regionName,
+        uint32_t uid, uint32_t gid, Fam_Region_Metadata &region);
+
+    void metadata_find_dataitem_and_check_permissions(
+        metadata_region_item_op_t op, const uint64_t dataitemId,
+        const uint64_t regionId, uint32_t uid, uint32_t gid,
+        Fam_DataItem_Metadata &dataitem);
+
+    void metadata_find_dataitem_and_check_permissions(
+        metadata_region_item_op_t op, const std::string dataitemName,
+        const std::string regionName, uint32_t uid, uint32_t gid,
+        Fam_DataItem_Metadata &dataitem);
 
   private:
     // KVS for region Id tree
@@ -233,6 +251,7 @@ class Fam_Metadata_Service_Direct::Impl_ {
     GlobalPtr regionNameRoot;
     bitmap *bmap;
     int memoryServerCount;
+    std::vector<uint64_t> memoryServerList;
     std::map<string, std::list<int>> regions_memserver_list;
     bool use_meta_region;
     KvsMap *metadataKvsMap;
@@ -2065,8 +2084,11 @@ size_t Fam_Metadata_Service_Direct::Impl_::metadata_maxkeylen() {
 }
 
 void Fam_Metadata_Service_Direct::Impl_::metadata_update_memoryserver(
-    int nmemServers) {
+    int nmemServers, std::vector<uint64_t> memsrv_id_list) {
     memoryServerCount = nmemServers;
+    for (int i = 0; i < nmemServers; i++) {
+        memoryServerList.push_back((int)memsrv_id_list[i]);
+    }
 }
 
 int Fam_Metadata_Service_Direct::Impl_::get_regionid_from_bitmap(
@@ -2276,6 +2298,88 @@ void Fam_Metadata_Service_Direct::Impl_::
     }
 }
 
+void Fam_Metadata_Service_Direct::Impl_::
+    metadata_find_region_and_check_permissions(metadata_region_item_op_t op,
+                                               const uint64_t regionId,
+                                               uint32_t uid, uint32_t gid,
+                                               Fam_Region_Metadata &region) {
+    ostringstream message;
+    // Check with metadata service if the region exist, if not return error
+    bool ret = metadata_find_region(regionId, region);
+    if (ret == 0) {
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
+                        message.str().c_str());
+    }
+    bool isPermitted = metadata_check_permissions(&region, op, uid, gid);
+    if (!isPermitted) {
+        message << "Insufficient Permission";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, NO_PERMISSION,
+                        message.str().c_str());
+    }
+}
+
+void Fam_Metadata_Service_Direct::Impl_::
+    metadata_find_dataitem_and_check_permissions(
+        metadata_region_item_op_t op, const uint64_t dataitemId,
+        const uint64_t regionId, uint32_t uid, uint32_t gid,
+        Fam_DataItem_Metadata &dataitem) {
+    ostringstream message;
+
+    if (!metadata_find_dataitem(dataitemId, regionId, dataitem)) {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
+    }
+    bool isPermitted = metadata_check_permissions(&dataitem, op, uid, gid);
+    if (!isPermitted) {
+        message << "Insufficient Permission";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, NO_PERMISSION,
+                        message.str().c_str());
+    }
+}
+
+void Fam_Metadata_Service_Direct::Impl_::
+    metadata_find_region_and_check_permissions(metadata_region_item_op_t op,
+                                               const std::string regionName,
+                                               uint32_t uid, uint32_t gid,
+                                               Fam_Region_Metadata &region) {
+    ostringstream message;
+    // Check with metadata service if the region exist, if not return error
+    bool ret = metadata_find_region(regionName, region);
+    if (ret == 0) {
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
+                        message.str().c_str());
+    }
+    bool isPermitted = metadata_check_permissions(&region, op, uid, gid);
+    if (!isPermitted) {
+        message << "Insufficient Permission";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, NO_PERMISSION,
+                        message.str().c_str());
+    }
+}
+
+void Fam_Metadata_Service_Direct::Impl_::
+    metadata_find_dataitem_and_check_permissions(
+        metadata_region_item_op_t op, const std::string dataitemName,
+        const std::string regionName, uint32_t uid, uint32_t gid,
+        Fam_DataItem_Metadata &dataitem) {
+    ostringstream message;
+
+    if (!metadata_find_dataitem(dataitemName, regionName, dataitem)) {
+        message << "Dataitem does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
+                        message.str().c_str());
+    }
+    bool isPermitted = metadata_check_permissions(&dataitem, op, uid, gid);
+    if (!isPermitted) {
+        message << "Insufficient Permission";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, NO_PERMISSION,
+                        message.str().c_str());
+    }
+}
+
 std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
     const std::string regionname, size_t size, int user_policy) {
     std::list<int> memsrv_list;
@@ -2293,13 +2397,15 @@ std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
                 ((unsigned int)size / SIZE_PER_MEMSERVER) +
                 ((size % SIZE_PER_MEMSERVER) == 0 ? 0 : 1);
             while (i < numServers) {
-                memsrv_list.push_back(id % memoryServerCount);
+                memsrv_list.push_back(
+                    (int)memoryServerList[id % memoryServerCount]);
                 i++;
                 id++;
             }
         } else {
             while (i < (unsigned int)memoryServerCount) {
-                memsrv_list.push_back(id % memoryServerCount);
+                memsrv_list.push_back(
+                    (int)memoryServerList[id % memoryServerCount]);
                 i++;
                 id++;
             }
@@ -2601,9 +2707,9 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
     return options;
 }
 void Fam_Metadata_Service_Direct::metadata_update_memoryserver(
-    int nmemServers) {
+    int nmemServers, std::vector<uint64_t> memsrv_id_list) {
     METADATA_DIRECT_PROFILE_START_OPS()
-    pimpl_->metadata_update_memoryserver(nmemServers);
+    pimpl_->metadata_update_memoryserver(nmemServers, memsrv_id_list);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_update_memoryserver);
 }
 
@@ -2651,6 +2757,48 @@ void Fam_Metadata_Service_Direct::metadata_validate_and_deallocate_dataitem(
                                                       gid);
     METADATA_DIRECT_PROFILE_END_OPS(
         direct_metadata_validate_and_deallocate_dataitem);
+}
+
+void Fam_Metadata_Service_Direct::metadata_find_region_and_check_permissions(
+    metadata_region_item_op_t op, const uint64_t regionId, uint32_t uid,
+    uint32_t gid, Fam_Region_Metadata &region) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_find_region_and_check_permissions(op, regionId, uid, gid,
+                                                       region);
+    METADATA_DIRECT_PROFILE_END_OPS(
+        direct_metadata_find_region_and_check_permissions);
+}
+
+void Fam_Metadata_Service_Direct::metadata_find_dataitem_and_check_permissions(
+    metadata_region_item_op_t op, const uint64_t dataitemId,
+    const uint64_t regionId, uint32_t uid, uint32_t gid,
+    Fam_DataItem_Metadata &dataitem) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_find_dataitem_and_check_permissions(
+        op, dataitemId, regionId, uid, gid, dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(
+        direct_metadata_find_dataitem_and_check_permissions);
+}
+
+void Fam_Metadata_Service_Direct::metadata_find_region_and_check_permissions(
+    metadata_region_item_op_t op, const std::string regionName, uint32_t uid,
+    uint32_t gid, Fam_Region_Metadata &region) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_find_region_and_check_permissions(op, regionName, uid, gid,
+                                                       region);
+    METADATA_DIRECT_PROFILE_END_OPS(
+        direct_metadata_find_region_and_check_permissions);
+}
+
+void Fam_Metadata_Service_Direct::metadata_find_dataitem_and_check_permissions(
+    metadata_region_item_op_t op, const std::string dataitemName,
+    const std::string regionName, uint32_t uid, uint32_t gid,
+    Fam_DataItem_Metadata &dataitem) {
+    METADATA_DIRECT_PROFILE_START_OPS()
+    pimpl_->metadata_find_dataitem_and_check_permissions(
+        op, dataitemName, regionName, uid, gid, dataitem);
+    METADATA_DIRECT_PROFILE_END_OPS(
+        direct_metadata_find_dataitem_and_check_permissions);
 }
 
 inline uint64_t

@@ -156,6 +156,15 @@ class Fam_Metadata_Service_Server : public Fam_Metadata_Rpc::Service {
         ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
         ::Fam_Metadata_Response *response) override;
 
+    ::grpc::Status metadata_find_region_and_check_permissions(
+        ::grpc::ServerContext *context,
+        const ::Fam_Metadata_Region_Request *request,
+        ::Fam_Metadata_Region_Response *response);
+
+    ::grpc::Status metadata_find_dataitem_and_check_permissions(
+        ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
+        ::Fam_Metadata_Response *response);
+
   private:
     char *serverAddress;
     uint64_t port;

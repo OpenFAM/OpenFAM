@@ -40,6 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#define MIN_REGION_SIZE (1UL << 20)
 using namespace std;
 using namespace chrono;
 namespace openfam {
@@ -110,6 +111,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
     metadataServers = new metadataServerMap();
     std::string delimiter1 = ",";
     std::string delimiter2 = ":";
+    std::vector<uint64_t> memsrv_id_list;
 
     if (config_options.empty()) {
         // Raise an exception;
@@ -127,6 +129,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
             Fam_Memory_Service *memoryService = new Fam_Memory_Service_Client(
                 (service.first).c_str(), service.second);
             memoryServers->insert({obj->first, memoryService});
+            memsrv_id_list.push_back(obj->first);
         }
     } else if (strcmp(config_options["memsrv_interface_type"].c_str(),
                       FAM_OPTIONS_DIRECT_STR) == 0) {
@@ -136,6 +139,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
         Fam_Memory_Service *memoryService =
             new Fam_Memory_Service_Direct(cisName, NULL, NULL, NULL);
         memoryServers->insert({0, memoryService});
+        memsrv_id_list.push_back(0);
     } else {
         // Raise an exception
         message << "Invalid value specified for Fam config "
@@ -160,7 +164,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
             // TODO: This code needs to be revisited. Currently
             // memoryserverCount will be updated to all metadata servers.
             metadataService->metadata_update_memoryserver(
-                (int)memoryServerCount);
+                (int)memoryServerCount, memsrv_id_list);
         }
     } else if (strcmp(config_options["metadata_interface_type"].c_str(),
                       FAM_OPTIONS_DIRECT_STR) == 0) {
@@ -170,7 +174,8 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
         memoryServerCount = memoryServers->size();
         // TODO: This code needs to be revisited. Currently memoryserverCount
         // will be updated to all metadata servers.
-        metadataService->metadata_update_memoryserver((int)memoryServerCount);
+        metadataService->metadata_update_memoryserver((int)memoryServerCount,
+                                                      memsrv_id_list);
     } else {
         // Raise an exception
         message << "Invalid value specified for Fam config "
@@ -323,6 +328,9 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
         size_t aligned_size =
             align_to_address(size, 64); // align the size to a 64-bit boundary.
         size = (aligned_size > size ? aligned_size : size);
+        if (size < MIN_REGION_SIZE)
+            size = MIN_REGION_SIZE;
+
         std::future<void> result(std::async(
             std::launch::async, &openfam::Fam_Memory_Service::create_region,
             memoryService, regionId, size));
@@ -436,17 +444,16 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
         get_metadata_service(metadataServiceId);
     // Check with metadata service if the region exist, if not return error
     Fam_Region_Metadata region;
-    if (!(metadataService->metadata_find_region(regionId, region))) {
-        message << "Region does not exist";
-        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
-    }
-
-    bool isPermitted = metadataService->metadata_check_permissions(
-        &region, META_REGION_ITEM_WRITE, uid, gid);
-    if (!isPermitted) {
-        message << "Region resize not permitted";
-        THROW_ERRNO_MSG(CIS_Exception, REGION_RESIZE_NOT_PERMITTED,
-                        message.str().c_str());
+    try {
+        metadataService->metadata_find_region_and_check_permissions(
+            META_REGION_ITEM_WRITE, regionId, uid, gid, region);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Region resize not permitted";
+            THROW_ERRNO_MSG(CIS_Exception, REGION_RESIZE_NOT_PERMITTED,
+                            message.str().c_str());
+        }
+        throw;
     }
     used_memsrv_cnt = region.used_memsrv_cnt;
     std::list<std::shared_future<void>> resultList;
@@ -688,18 +695,18 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
     message << "Error While locating region : ";
-    if (!metadataService->metadata_find_region(name, region)) {
-        message << "could not find the region";
-        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
-    }
-
-    if (uid != region.uid) {
-        if (!check_region_permission(region, 0, metadataServiceId, uid, gid)) {
+    try {
+        metadataService->metadata_find_region_and_check_permissions(
+            META_REGION_ITEM_READ, name, uid, gid, region);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
+        throw;
     }
+
     info.regionId = region.regionId;
     info.offset = region.offset;
     info.size = region.size;
@@ -720,21 +727,16 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
     Fam_DataItem_Metadata dataitem;
-    message << "Error While locating dataitem : ";
-    if (!metadataService->metadata_find_dataitem(itemName, regionName,
-                                                 dataitem)) {
-        message << "could not find the dataitem ";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-
-    if (uid != dataitem.uid) {
-        if (!check_dataitem_permission(dataitem, 0, metadataServiceId, uid,
-                                       gid)) {
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_READ, itemName, regionName, uid, gid, dataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the dataitem";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
+        throw;
     }
 
     info.regionId = dataitem.regionId;
@@ -749,27 +751,27 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
 }
 
 Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
-    uint64_t regionId, uint64_t metadataServiceId, uint32_t uid, uint32_t gid) {
+    uint64_t regionId, uint64_t memoryServerId, uint32_t uid, uint32_t gid) {
 
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
     Fam_Region_Metadata region;
     ostringstream message;
+    uint64_t metadataServiceId = 0;
 
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
     message << "Error While locating region : ";
-    if (!metadataService->metadata_find_region(regionId, region)) {
-        message << "could not find the region";
-        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_FOUND, message.str().c_str());
-    }
-
-    if (uid != region.uid) {
-        if (!check_region_permission(region, 0, metadataServiceId, uid, gid)) {
+    try {
+        metadataService->metadata_find_region_and_check_permissions(
+            META_REGION_ITEM_READ, regionId, uid, gid, region);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
+        throw;
     }
     info.size = region.size;
     info.perm = region.perm;
@@ -843,20 +845,16 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     Fam_DataItem_Metadata dataitem;
 
     uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
-    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
-                                                 dataitem)) {
-        message << "could not find the dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-
-    if (uid != dataitem.uid) {
-        if (!check_dataitem_permission(dataitem, 0, metadataServiceId, uid,
-                                       gid)) {
-            message << "Not permitted to access the dataitem";
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_READ, dataitemId, regionId, uid, gid, dataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
+        throw;
     }
 
     info.size = dataitem.size;
@@ -928,30 +926,31 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
     uint64_t srcDataitemId = get_dataitem_id(srcOffset, memoryServerId);
     uint64_t destDataitemId = get_dataitem_id(destOffset, memoryServerId);
 
-    if (!metadataService->metadata_find_dataitem(srcDataitemId, srcRegionId,
-                                                 srcDataitem)) {
-        message << "could not find the source dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_READ, srcDataitemId, srcRegionId, uid, gid,
+            srcDataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Read operation is not permitted on source dataitem";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
     }
 
-    if (!(metadataService->metadata_check_permissions(
-            &srcDataitem, META_REGION_ITEM_READ, uid, gid))) {
-        message << "Read operation is not permitted on source dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
-    }
-
-    if (!metadataService->metadata_find_dataitem(destDataitemId, destRegionId,
-                                                 destDataitem)) {
-        message << "could not find the destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-
-    if (!(metadataService->metadata_check_permissions(
-            &destDataitem, META_REGION_ITEM_WRITE, uid, gid))) {
-        message << "Write operation is not permitted on destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_WRITE, destDataitemId, destRegionId, uid, gid,
+            destDataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message
+                << "Write operation is not permitted on destination dataitem";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
     }
 
     if (!((srcCopyStart + nbytes) < srcDataitem.size)) {
@@ -1098,21 +1097,21 @@ int Fam_CIS_Direct::get_atomic(uint64_t regionId, uint64_t srcOffset,
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_Metadata_Service *metadataService =
         get_metadata_service(memoryServerId);
-    message << "Error While changing dataitem permission : ";
+    message << "Error While accessing dataitem : ";
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
-    uint64_t dataitemId = srcOffset / MIN_OBJ_SIZE;
+    uint64_t dataitemId = get_dataitem_id(srcOffset, memoryServerId);
     Fam_DataItem_Metadata dataitem;
-    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
-                                                 dataitem)) {
-        message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-    if (!(metadataService->metadata_check_permissions(
-            &dataitem, META_REGION_ITEM_READ, uid, gid))) {
-        message << "Write operation is not permitted on destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_READ, dataitemId, regionId, uid, gid, dataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Not permitted to access the region";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
     }
 
     if (!((dstOffset + nbytes) <= dataitem.size)) {
@@ -1134,25 +1133,26 @@ int Fam_CIS_Direct::put_atomic(uint64_t regionId, uint64_t srcOffset,
                                uint32_t gid) {
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
+    uint64_t metadataServiceId = 0;
 
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_Metadata_Service *metadataService =
-        get_metadata_service(memoryServerId);
-    message << "Error While changing dataitem permission : ";
+        get_metadata_service(metadataServiceId);
+    message << "Error While accessing dataitem : ";
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
-    uint64_t dataitemId = srcOffset / MIN_OBJ_SIZE;
+    uint64_t dataitemId = get_dataitem_id(srcOffset, memoryServerId);
     Fam_DataItem_Metadata dataitem;
-    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
-                                                 dataitem)) {
-        message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-    if (!(metadataService->metadata_check_permissions(
-            &dataitem, META_REGION_ITEM_WRITE, uid, gid))) {
-        message << "Write operation is not permitted on destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Not permitted to access the region";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
     }
 
     if (!((dstOffset + nbytes) <= dataitem.size)) {
@@ -1173,25 +1173,26 @@ int Fam_CIS_Direct::scatter_strided_atomic(
 
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
+    uint64_t metadataServiceId = 0;
 
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_Metadata_Service *metadataService =
-        get_metadata_service(memoryServerId);
-    message << "Error While changing dataitem permission : ";
+        get_metadata_service(metadataServiceId);
+    message << "Error While accessing dataitem : ";
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
-    uint64_t dataitemId = offset / MIN_OBJ_SIZE;
+    uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
     Fam_DataItem_Metadata dataitem;
-    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
-                                                 dataitem)) {
-        message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-    if (!(metadataService->metadata_check_permissions(
-            &dataitem, META_REGION_ITEM_WRITE, uid, gid))) {
-        message << "Write operation is not permitted on destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Not permitted to access the region";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
     }
 
     memoryService->scatter_strided_atomic(regionId, offset, nElements,
@@ -1209,25 +1210,27 @@ int Fam_CIS_Direct::gather_strided_atomic(
 
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
+    uint64_t metadataServiceId = 0;
 
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_Metadata_Service *metadataService =
-        get_metadata_service(memoryServerId);
-    message << "Error While changing dataitem permission : ";
+        get_metadata_service(metadataServiceId);
+
+    message << "Error While accessing dataitem : ";
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
-    uint64_t dataitemId = offset / MIN_OBJ_SIZE;
+    uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
     Fam_DataItem_Metadata dataitem;
-    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
-                                                 dataitem)) {
-        message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-    if (!(metadataService->metadata_check_permissions(
-            &dataitem, META_REGION_ITEM_WRITE, uid, gid))) {
-        message << "Write operation is not permitted on destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Not permitted to access the region";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
     }
 
     memoryService->gather_strided_atomic(regionId, offset, nElements,
@@ -1245,25 +1248,25 @@ int Fam_CIS_Direct::scatter_indexed_atomic(
 
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
-
+    uint64_t metadataServiceId = 0;
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_Metadata_Service *metadataService =
-        get_metadata_service(memoryServerId);
-    message << "Error While changing dataitem permission : ";
+        get_metadata_service(metadataServiceId);
+    message << "Error While accessing dataitem : ";
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
-    uint64_t dataitemId = offset / MIN_OBJ_SIZE;
+    uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
     Fam_DataItem_Metadata dataitem;
-    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
-                                                 dataitem)) {
-        message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-    if (!(metadataService->metadata_check_permissions(
-            &dataitem, META_REGION_ITEM_WRITE, uid, gid))) {
-        message << "Write operation is not permitted on destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Not permitted to access the region";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
     }
 
     memoryService->scatter_indexed_atomic(regionId, offset, nElements,
@@ -1281,25 +1284,25 @@ int Fam_CIS_Direct::gather_indexed_atomic(
 
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
-
+    uint64_t metadataServiceId = 0;
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_Metadata_Service *metadataService =
-        get_metadata_service(memoryServerId);
-    message << "Error While changing dataitem permission : ";
+        get_metadata_service(metadataServiceId);
+    message << "Error While accessing dataitem : ";
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
-    uint64_t dataitemId = offset / MIN_OBJ_SIZE;
+    uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
     Fam_DataItem_Metadata dataitem;
-    if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
-                                                 dataitem)) {
-        message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
-                        message.str().c_str());
-    }
-    if (!(metadataService->metadata_check_permissions(
-            &dataitem, META_REGION_ITEM_WRITE, uid, gid))) {
-        message << "Write operation is not permitted on destination dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION, message.str().c_str());
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Not permitted to access the region";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
     }
 
     memoryService->gather_indexed_atomic(regionId, offset, nElements,
