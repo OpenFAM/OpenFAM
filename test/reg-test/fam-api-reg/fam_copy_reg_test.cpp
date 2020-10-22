@@ -77,6 +77,9 @@ TEST(FamCopy, CopySuccess) {
         sprintf(itemInfo, "%s_%d", destItemName, i);
         EXPECT_NO_THROW(
             destItem[i] = my_fam->fam_allocate(itemInfo, 128, 0777, destDesc));
+        cout << "Dest Item name: " << itemInfo
+             << " placed on memory server:" << destItem[i]->get_memserver_id()
+             << endl;
         EXPECT_NE((void *)NULL, destItem[i]);
     }
     EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
@@ -279,6 +282,84 @@ TEST(FamCopy, CopyFailLenOutOfRange) {
     free((void *)srcRegionName);
     free((void *)srcItemName);
     free((void *)destRegionName);
+    free((void *)destItemName);
+}
+
+// Test case 5 - fam_copy and fam_copy_wait test (success)
+// fam_copy dataitems from the same region.
+// For multi memory node, these data items may be placed
+// across different memory servers.
+TEST(FamCopy, CopyWithinSameRegionSuccess) {
+    Fam_Region_Descriptor *srcDesc;
+    Fam_Descriptor *srcItem;
+    Fam_Descriptor *destItem[MESSAGE_SIZE];
+
+    char *local = strdup("Test message");
+    const char *srcRegionName = get_uniq_str("Src_Region", my_fam);
+    const char *srcItemName = get_uniq_str("Src_Itemt", my_fam);
+    const char *destItemName = get_uniq_str("Dest_Item", my_fam);
+
+    EXPECT_NO_THROW(srcDesc = my_fam->fam_create_region(srcRegionName, 819200,
+                                                        0777, RAID1));
+    EXPECT_NE((void *)NULL, srcDesc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(srcItem =
+                        my_fam->fam_allocate(srcItemName, 128, 0777, srcDesc));
+    EXPECT_NE((void *)NULL, srcItem);
+
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
+        // Allocating data items in the created region
+        char itemInfo[255];
+        sprintf(itemInfo, "%s_%d", destItemName, i);
+        EXPECT_NO_THROW(destItem[i] =
+                            my_fam->fam_allocate(itemInfo, 128, 0777, srcDesc));
+        cout << "Dest Item name: " << itemInfo
+             << " placed on memory server:" << destItem[i]->get_memserver_id()
+             << endl;
+        EXPECT_NE((void *)NULL, destItem[i]);
+    }
+    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
+
+    void *waitObj[MESSAGE_SIZE];
+    /*
+        for (int i = 0; i < MESSAGE_SIZE; i++) {
+            dest[i] = new Fam_Descriptor();
+        }
+    */
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
+        EXPECT_NO_THROW(
+            waitObj[i] = my_fam->fam_copy(srcItem, 0, destItem[i], 0, i + 1));
+        EXPECT_NE((void *)NULL, waitObj[i]);
+    }
+
+    for (int i = MESSAGE_SIZE - 1; i >= 0; i--) {
+        EXPECT_NO_THROW(my_fam->fam_copy_wait(waitObj[i]));
+    }
+
+    // allocate local memory to receive 20 elements
+    char *tmpLocal = (char *)malloc(20);
+    char *local2 = (char *)malloc(20);
+
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
+        strncpy(tmpLocal, local, i + 1);
+        tmpLocal[i + 1] = '\0';
+        EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, destItem[i], 0, 13));
+        EXPECT_STREQ(tmpLocal, local2);
+    }
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+
+    for (int i = 0; i < MESSAGE_SIZE; i++) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(destItem[i]));
+    }
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+
+    delete srcItem;
+    delete srcDesc;
+
+    free((void *)srcRegionName);
+    free((void *)srcItemName);
     free((void *)destItemName);
 }
 

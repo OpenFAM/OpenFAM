@@ -348,6 +348,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     };
     pthread_rwlock_t *get_mr_lock() { return &fiMrLock; };
 
+    pthread_rwlock_t *get_memsrvaddr_lock() { return &fiMemsrvAddrLock; };
+
     pthread_mutex_t *get_ctx_lock() { return &ctxLock; };
 
     Fam_Context *get_context(Fam_Descriptor *descriptor);
@@ -368,6 +370,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         return memServerAddrs;
     };
 
+    std::map<uint64_t, fi_addr_t> *get_fiMemsrvMap() { return fiMemsrvMap; }
+
   protected:
     // Server_Map name;
     char *memoryServerName;
@@ -384,6 +388,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     size_t serverAddrNameLen;
     void *serverAddrName;
     std::map<uint64_t, std::pair<void *, size_t>> *memServerAddrs;
+    std::map<uint64_t, fi_addr_t> *fiMemsrvMap;
+    pthread_rwlock_t fiMemsrvAddrLock;
 
     pthread_rwlock_t fiMrLock;
     pthread_mutex_t ctxLock;

@@ -988,7 +988,7 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         waitObj->tag = tag;
     } else {
         memoryService->copy(srcRegionId, (srcOffset + srcCopyStart), srcKey,
-                            srcAddr, srcAddrLen, destRegionId,
+                            srcCopyStart, srcAddr, srcAddrLen, destRegionId,
                             (destOffset + destCopyStart), nbytes,
                             srcMemoryServerId, destMemoryServerId);
     }

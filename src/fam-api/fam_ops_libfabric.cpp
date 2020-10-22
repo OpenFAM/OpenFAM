@@ -54,6 +54,7 @@ Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
     delete defContexts;
     delete fiAddrs;
     delete memServerAddrs;
+    delete fiMemsrvMap;
     delete fiMrs;
     free(service);
     free(provider);
@@ -75,6 +76,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
 
     fiAddrs = new std::vector<fi_addr_t>();
     memServerAddrs = new std::map<uint64_t, std::pair<void *, size_t>>();
+    fiMemsrvMap = new std::map<uint64_t, fi_addr_t>();
     fiMrs = new std::map<uint64_t, Fam_Region_Map_t *>();
     contexts = new std::map<uint64_t, Fam_Context *>();
     defContexts = new std::map<uint64_t, Fam_Context *>();
@@ -112,6 +114,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
 
     fiAddrs = new std::vector<fi_addr_t>();
     memServerAddrs = new std::map<uint64_t, std::pair<void *, size_t>>();
+    fiMemsrvMap = new std::map<uint64_t, fi_addr_t>();
     fiMrs = new std::map<uint64_t, Fam_Region_Map_t *>();
     contexts = new std::map<uint64_t, Fam_Context *>();
     defContexts = new std::map<uint64_t, Fam_Context *>();
@@ -138,6 +141,9 @@ int Fam_Ops_Libfabric::initialize() {
 
     // Initialize the mutex lock
     (void)pthread_rwlock_init(&fiMrLock, NULL);
+
+    // Initialize the mutex lock
+    (void)pthread_rwlock_init(&fiMemsrvAddrLock, NULL);
 
     // Initialize the mutex lock
     if (famContextModel == FAM_CONTEXT_REGION)
@@ -180,7 +186,7 @@ int Fam_Ops_Libfabric::initialize() {
                                 message.str().c_str());
             }
 
-            // Save memery server address in memServerAddrs map
+            // Save memory server address in memServerAddrs map
             memServerAddrs->insert(
                 {nodeId, std::make_pair(serverAddrName, serverAddrNameLen)});
 

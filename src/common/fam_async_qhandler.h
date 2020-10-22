@@ -57,6 +57,7 @@ typedef struct {
     uint64_t destOffset;
     uint64_t size;
     uint64_t srcKey;
+    uint64_t srcCopyStart;
     char *srcAddr;
     uint32_t srcAddrLen;
     uint64_t srcMemserverId;

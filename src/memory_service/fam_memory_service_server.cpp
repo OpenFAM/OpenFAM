@@ -273,8 +273,9 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
     try {
         memoryService->copy(
             request->src_region_id(), request->src_offset(), request->src_key(),
-            request->src_addr().c_str(), request->src_addr_len(),
-            request->dest_region_id(), request->dest_offset(), request->size(),
+            request->src_copy_start(), request->src_addr().c_str(),
+            request->src_addr_len(), request->dest_region_id(),
+            request->dest_offset(), request->size(),
             request->src_memserver_id(), request->dest_memserver_id());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());

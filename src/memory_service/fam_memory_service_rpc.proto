@@ -135,10 +135,11 @@ message Fam_Memory_Copy_Request {
     uint64 dest_offset = 4;
     uint64 size = 5;
     uint64 src_key = 6;
-    bytes src_addr = 7;
-    uint32 src_addr_len = 8;
-    uint64 src_memserver_id = 9;
-    uint64 dest_memserver_id = 10;
+    uint64 src_copy_start = 7;
+    bytes src_addr = 8;
+    uint32 src_addr_len = 9;
+    uint64 src_memserver_id = 10;
+    uint64 dest_memserver_id = 11;
 }
 
 message Fam_Memory_Copy_Response {

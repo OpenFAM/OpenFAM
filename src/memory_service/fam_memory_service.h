@@ -60,10 +60,10 @@ class Fam_Memory_Service {
     virtual void deallocate(uint64_t regionId, uint64_t offset) = 0;
 
     virtual void copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcKey,
-                      const char *srcAddr, uint32_t srcAddrLen,
-                      uint64_t destRegionId, uint64_t destOffset,
-                      uint64_t nbytes, uint64_t srcMemserverId,
-                      uint64_t destMemserverId) = 0;
+                      uint64_t srcCopyStart, const char *srcAddr,
+                      uint32_t srcAddrLen, uint64_t destRegionId,
+                      uint64_t destOffset, uint64_t nbytes,
+                      uint64_t srcMemserverId, uint64_t destMemserverId) = 0;
 
     virtual void *get_local_pointer(uint64_t regionId, uint64_t offset) = 0;
 
