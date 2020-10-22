@@ -222,7 +222,9 @@ class Fam_Metadata_Service {
     virtual bool metadata_check_permissions(Fam_Region_Metadata *region,
                                             metadata_region_item_op_t op,
                                             uint32_t uid, uint32_t gid) = 0;
-    virtual void metadata_update_memoryserver(int nmemServers) = 0;
+    virtual void
+    metadata_update_memoryserver(int nmemServers,
+                                 std::vector<uint64_t> memsrv_id_list) = 0;
     virtual void metadata_reset_bitmap(uint64_t regionID) = 0;
 
     virtual void metadata_validate_and_create_region(
@@ -241,6 +243,23 @@ class Fam_Metadata_Service {
                                               uint32_t uid, uint32_t gid) = 0;
 
     virtual size_t metadata_maxkeylen() = 0;
+    virtual void metadata_find_region_and_check_permissions(
+        metadata_region_item_op_t op, const uint64_t regionId, uint32_t uid,
+        uint32_t gid, Fam_Region_Metadata &region) = 0;
+
+    virtual void metadata_find_region_and_check_permissions(
+        metadata_region_item_op_t op, const std::string regionName,
+        uint32_t uid, uint32_t gid, Fam_Region_Metadata &region) = 0;
+
+    virtual void metadata_find_dataitem_and_check_permissions(
+        metadata_region_item_op_t op, const uint64_t dataitemId,
+        const uint64_t regionId, uint32_t uid, uint32_t gid,
+        Fam_DataItem_Metadata &dataitem) = 0;
+
+    virtual void metadata_find_dataitem_and_check_permissions(
+        metadata_region_item_op_t op, const std::string dataitemName,
+        const std::string regionName, uint32_t uid, uint32_t gid,
+        Fam_DataItem_Metadata &dataitem) = 0;
 };
 
 } // namespace metadata

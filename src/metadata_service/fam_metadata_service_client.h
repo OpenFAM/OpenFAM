@@ -127,7 +127,8 @@ class Fam_Metadata_Service_Client : public Fam_Metadata_Service {
                                     metadata_region_item_op_t op, uint32_t uid,
                                     uint32_t gid);
     size_t metadata_maxkeylen();
-    void metadata_update_memoryserver(int nmemServers);
+    void metadata_update_memoryserver(int nmemServers,
+                                      std::vector<uint64_t> memsrv_id_list);
     void metadata_reset_bitmap(uint64_t regionId);
     void metadata_validate_and_create_region(const std::string regionname,
                                              size_t size, uint64_t *regionid,
@@ -145,6 +146,24 @@ class Fam_Metadata_Service_Client : public Fam_Metadata_Service {
                                                  const uint64_t regionId,
                                                  uint32_t uid, uint32_t gid,
                                                  uint64_t *memorServerId);
+
+    void metadata_find_region_and_check_permissions(
+        metadata_region_item_op_t op, const uint64_t regionId, uint32_t uid,
+        uint32_t gid, Fam_Region_Metadata &region);
+
+    void metadata_find_dataitem_and_check_permissions(
+        metadata_region_item_op_t op, const uint64_t dataitemId,
+        const uint64_t regionId, uint32_t uid, uint32_t gid,
+        Fam_DataItem_Metadata &dataitem);
+
+    void metadata_find_region_and_check_permissions(
+        metadata_region_item_op_t op, const std::string regionName,
+        uint32_t uid, uint32_t gid, Fam_Region_Metadata &region);
+
+    void metadata_find_dataitem_and_check_permissions(
+        metadata_region_item_op_t op, const std::string dataitemName,
+        const std::string regionName, uint32_t uid, uint32_t gid,
+        Fam_DataItem_Metadata &dataitem);
 
     Fam_Metadata_Service_Client(const char *name, uint64_t port);
     ~Fam_Metadata_Service_Client();
