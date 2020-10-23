@@ -85,10 +85,10 @@ case $OS in
 		fi
 		case $(get_ubuntu_release) in
 		    *16.04*)
-			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-dev python-pip
+			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-devi python python3 python-pip python3-pip
 			;;
 		    *)
-			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-dev
+			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-dev python python3 python-pip python3-pip
 		esac
 		if [[ $? > 0 ]]
 		then
@@ -98,7 +98,7 @@ case $OS in
 
 		;;
 	"rhel" | "centos")
-		sudo yum install --assumeyes gcc gcc-c++ kernel-devel make cmake autoconf-archive glibc python python-devel automake libtool doxygen epel-release python-pip
+		sudo yum install --assumeyes gcc gcc-c++ kernel-devel make cmake autoconf-archive glibc python python-devel python3 automake libtool doxygen epel-release python-pip python3-pip
 		sudo yum install --assumeyes libevent cmake xmlto libevent-devel yaml-cpp
 		if [[ $? > 0 ]]
 		then
@@ -123,7 +123,7 @@ case $OS in
 
 esac		
 
-pip install ruamel.yaml
+pip3 install ruamel.yaml
 
 echo "Finished installing required RPMS"
 cd $CURRENT_DIR
