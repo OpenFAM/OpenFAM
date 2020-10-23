@@ -77,9 +77,6 @@ TEST(FamCopy, CopySuccess) {
         sprintf(itemInfo, "%s_%d", destItemName, i);
         EXPECT_NO_THROW(
             destItem[i] = my_fam->fam_allocate(itemInfo, 128, 0777, destDesc));
-        cout << "Dest Item name: " << itemInfo
-             << " placed on memory server:" << destItem[i]->get_memserver_id()
-             << endl;
         EXPECT_NE((void *)NULL, destItem[i]);
     }
     EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
@@ -314,9 +311,6 @@ TEST(FamCopy, CopyWithinSameRegionSuccess) {
         sprintf(itemInfo, "%s_%d", destItemName, i);
         EXPECT_NO_THROW(destItem[i] =
                             my_fam->fam_allocate(itemInfo, 128, 0777, srcDesc));
-        cout << "Dest Item name: " << itemInfo
-             << " placed on memory server:" << destItem[i]->get_memserver_id()
-             << endl;
         EXPECT_NE((void *)NULL, destItem[i]);
     }
     EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));

@@ -102,15 +102,18 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
     }
 
     libfabricPort =
-        (libfabricPort == NULL ? config_options["libfabric_port"].c_str()
-                               : libfabricPort);
+        (((libfabricPort == NULL) || (strcmp(libfabricPort, strdup("")) == 0))
+             ? config_options["libfabric_port"].c_str()
+             : libfabricPort);
 
-    libfabricProvider =
-        (libfabricProvider == NULL ? config_options["provider"].c_str()
-                                   : libfabricProvider);
+    libfabricProvider = (((libfabricProvider == NULL) ||
+                          (strcmp(libfabricProvider, strdup("")) == 0))
+                             ? config_options["provider"].c_str()
+                             : libfabricProvider);
 
-    fam_path =
-        (fam_path == NULL ? config_options["fam_path"].c_str() : fam_path);
+    fam_path = (((fam_path == NULL) || (strcmp(fam_path, strdup("")) == 0))
+                    ? config_options["fam_path"].c_str()
+                    : fam_path);
 
     allocator = new Memserver_Allocator(fam_path);
 #ifdef SHM
@@ -238,6 +241,13 @@ void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
                                      uint64_t size, uint64_t srcMemserverId,
                                      uint64_t destMemserverId) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    // srcOffset/destOffset - offset within the region, used only when src and
+    // dest memory server are same.
+
+    // srcCopyStart - offset within the src data Item from where data is copied
+    // to dest. It is used to read source data item from source memory server
+    // using fabric_read, i.e, when src and dest memory server are different.
+
     if (srcMemserverId == destMemserverId)
         allocator->copy(srcRegionId, srcOffset, destRegionId, destOffset, size);
     else {
