@@ -107,7 +107,8 @@ enum Internal_Error {
     METADATA_ERROR,
     ATL_QUEUE_FULL,
     ATL_QUEUE_INSERT_ERROR,
-    ATL_NOT_ENABLED
+    ATL_NOT_ENABLED,
+    LIBFABRIC_ERROR
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -146,6 +147,9 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
 
     case ATL_NOT_ENABLED:
         return FAM_ERR_ATL_NOT_ENABLED;
+
+    case LIBFABRIC_ERROR:
+        return FAM_ERR_LIBFABRIC;
 
     case ALLOC_NO_ERROR:
     case REGION_NOT_INSERTED:

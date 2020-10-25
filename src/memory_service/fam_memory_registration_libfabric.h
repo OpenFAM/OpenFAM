@@ -84,6 +84,8 @@ class Fam_Memory_Registration_Libfabric : public Fam_Memory_Registration {
 
     bool is_base_require();
 
+    Fam_Ops_Libfabric *get_famOps() { return famOps; }
+
   protected:
     Fam_Ops_Libfabric *famOps;
     int libfabricProgressMode;

@@ -170,9 +170,11 @@ class Fam_CIS_Async_Handler {
                 try {
                     void *waitObj = famCIS->copy(
                         request.srcregionid(), request.srcoffset(),
-                        request.srccopystart(), request.destregionid(),
-                        request.destoffset(), request.destcopystart(),
-                        request.copysize(), request.memserver_id(),
+                        request.srccopystart(), request.srckey(),
+                        request.srcaddr().c_str(), request.srcaddrlen(),
+                        request.destregionid(), request.destoffset(),
+                        request.destcopystart(), request.copysize(),
+                        request.src_memserver_id(), request.dest_memserver_id(),
                         request.uid(), request.gid());
                     delete (Fam_Copy_Tag *)waitObj;
                 } catch (Memory_Service_Exception &e) {

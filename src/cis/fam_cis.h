@@ -65,9 +65,6 @@ typedef struct {
 
     uint64_t memServerId;
 
-    // flag to indicate copy across memoryserver
-    bool isAcrossServer;
-
     std::unique_ptr<::grpc::ClientAsyncResponseReader<Fam_Copy_Response>>
         responseReader;
 
@@ -244,19 +241,25 @@ class Fam_CIS {
      * @param srcRegionId - region Id of source region
      * @param srcOffset - offset of source dataitem
      * @param srcCopyStart - start position in source dataitem
+     * @param srcKey - source dataitem key
+     * @param srcAddr - source memory server address
+     * @param srcAddrLen - source memory server address size
      * @param destRegionId - region Id of destination dataitem
      * @param destOffset - offset of destination dataitem
      * @param destCopyStar - start position in destination dataitem
      * @param nbytes - number of bytes to be copied
-     * @param memoryServerId - Memory server Id
+     * @param srcMemoryServerId - Memory server Id
+     * @param destMemoryServerId - Memory server Id
      * @param uid - uid of user
      * @param gid - gid of user
      **/
     virtual void *copy(uint64_t srcRegionId, uint64_t srcOffset,
-                       uint64_t srcCopyStart, uint64_t destRegionId,
-                       uint64_t destOffset, uint64_t destCopyStar,
-                       uint64_t nbytes, uint64_t memoryServerId, uint32_t uid,
-                       uint32_t gid) = 0;
+                       uint64_t srcCopyStart, uint64_t srcKey,
+                       const char *srcAddr, uint32_t srcAddrLen,
+                       uint64_t destRegionId, uint64_t destOffset,
+                       uint64_t destCopyStar, uint64_t nbytes,
+                       uint64_t srcMemoryServerId, uint64_t destMemoryServerId,
+                       uint32_t uid, uint32_t gid) = 0;
 
     /**
      * wait for particular copy issued earlier corresponding to wait object
