@@ -53,6 +53,8 @@ Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
     delete contexts;
     delete defContexts;
     delete fiAddrs;
+    delete memServerAddrs;
+    delete fiMemsrvMap;
     delete fiMrs;
     free(service);
     free(provider);
@@ -73,6 +75,8 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     famAllocator = famAlloc;
 
     fiAddrs = new std::vector<fi_addr_t>();
+    memServerAddrs = new std::map<uint64_t, std::pair<void *, size_t>>();
+    fiMemsrvMap = new std::map<uint64_t, fi_addr_t>();
     fiMrs = new std::map<uint64_t, Fam_Region_Map_t *>();
     contexts = new std::map<uint64_t, Fam_Context *>();
     defContexts = new std::map<uint64_t, Fam_Context *>();
@@ -109,6 +113,8 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     famAllocator = famAlloc;
 
     fiAddrs = new std::vector<fi_addr_t>();
+    memServerAddrs = new std::map<uint64_t, std::pair<void *, size_t>>();
+    fiMemsrvMap = new std::map<uint64_t, fi_addr_t>();
     fiMrs = new std::map<uint64_t, Fam_Region_Map_t *>();
     contexts = new std::map<uint64_t, Fam_Context *>();
     defContexts = new std::map<uint64_t, Fam_Context *>();
@@ -135,6 +141,9 @@ int Fam_Ops_Libfabric::initialize() {
 
     // Initialize the mutex lock
     (void)pthread_rwlock_init(&fiMrLock, NULL);
+
+    // Initialize the mutex lock
+    (void)pthread_rwlock_init(&fiMemsrvAddrLock, NULL);
 
     // Initialize the mutex lock
     if (famContextModel == FAM_CONTEXT_REGION)
@@ -176,6 +185,10 @@ int Fam_Ops_Libfabric::initialize() {
                 THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_ALLOCATOR,
                                 message.str().c_str());
             }
+
+            // Save memory server address in memServerAddrs map
+            memServerAddrs->insert(
+                {nodeId, std::make_pair(serverAddrName, serverAddrNameLen)});
 
             // Initialize defaultCtx
             if (famContextModel == FAM_CONTEXT_DEFAULT) {
@@ -521,31 +534,24 @@ void Fam_Ops_Libfabric::scatter_nonblocking(void *local,
 void *Fam_Ops_Libfabric::copy(Fam_Descriptor *src, uint64_t srcOffset,
                               Fam_Descriptor *dest, uint64_t destOffset,
                               uint64_t nbytes) {
-    if (src->get_memserver_id() == dest->get_memserver_id()) {
-        return famAllocator->copy(src, srcOffset, dest, destOffset, nbytes);
-    } else {
-        char *local = (char *)malloc(nbytes);
-        try {
-            get_blocking(local, src, srcOffset, nbytes);
+    // Perform actual copy operation at the destination memory server
+    // Send additional information to destination:
+    // source addr len, source addr
 
-            put_blocking(local, dest, destOffset, nbytes);
-        } catch (...) {
-            free(local);
-            throw;
-        }
-        Fam_Copy_Wait_Object *tag = new Fam_Copy_Wait_Object();
-        tag->isAcrossServer = true;
-        free(local);
-        return (void *)tag;
-    }
+    std::pair<void *, size_t> srcMemSrv;
+    auto obj = memServerAddrs->find(src->get_memserver_id());
+    if (obj == memServerAddrs->end())
+        THROW_ERR_MSG(Fam_Datapath_Exception, "memserver not found");
+    else
+        srcMemSrv = obj->second;
+
+    return famAllocator->copy(src, srcOffset, (const char *)srcMemSrv.first,
+                              (uint32_t)srcMemSrv.second, dest, destOffset,
+                              nbytes);
 }
 
 void Fam_Ops_Libfabric::wait_for_copy(void *waitObj) {
-    Fam_Copy_Wait_Object *obj = (Fam_Copy_Wait_Object *)waitObj;
-    if (!(obj->isAcrossServer))
-        return famAllocator->wait_for_copy(waitObj);
-    else
-        return;
+    return famAllocator->wait_for_copy(waitObj);
 }
 
 void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {

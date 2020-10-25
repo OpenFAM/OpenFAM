@@ -109,8 +109,10 @@ class Fam_CIS_Direct : public Fam_CIS {
                                        uint32_t gid);
 
     void *copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcCopyStart,
+               uint64_t srcKey, const char *srcAddr, uint32_t srcAddrLen,
                uint64_t destRegionId, uint64_t destOffset,
-               uint64_t destCopyStar, uint64_t nbytes, uint64_t memoryServerId,
+               uint64_t destCopyStar, uint64_t nbytes,
+               uint64_t srcMemoryServerId, uint64_t destMemoryServerId,
                uint32_t uid, uint32_t gid);
 
     void wait_for_copy(void *waitObj);

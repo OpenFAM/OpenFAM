@@ -907,10 +907,13 @@ void Fam_CIS_Direct::fam_unmap(void *local, uint64_t regionId, uint64_t offset,
 }
 
 void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
-                           uint64_t srcCopyStart, uint64_t destRegionId,
-                           uint64_t destOffset, uint64_t destCopyStart,
-                           uint64_t nbytes, uint64_t memoryServerId,
-                           uint32_t uid, uint32_t gid) {
+                           uint64_t srcCopyStart, uint64_t srcKey,
+                           const char *srcAddr, uint32_t srcAddrLen,
+                           uint64_t destRegionId, uint64_t destOffset,
+                           uint64_t destCopyStart, uint64_t nbytes,
+                           uint64_t srcMemoryServerId,
+                           uint64_t destMemoryServerId, uint32_t uid,
+                           uint32_t gid) {
     ostringstream message;
     message << "Error While copying from dataitem : ";
     Fam_DataItem_Metadata srcDataitem;
@@ -918,13 +921,15 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
     Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
-    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    Fam_Memory_Service *memoryService = get_memory_service(destMemoryServerId);
 
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
 
-    uint64_t srcDataitemId = get_dataitem_id(srcOffset, memoryServerId);
-    uint64_t destDataitemId = get_dataitem_id(destOffset, memoryServerId);
+    // Permission check, data item out of bound check, already done on the
+    // client side. This looks redundant, can be removed later.
+    uint64_t srcDataitemId = get_dataitem_id(srcOffset, srcMemoryServerId);
+    uint64_t destDataitemId = get_dataitem_id(destOffset, destMemoryServerId);
 
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
@@ -972,15 +977,22 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         tag->destRegionId = destRegionId;
         tag->destOffset = (destOffset + destCopyStart);
         tag->size = nbytes;
+        tag->srcKey = srcKey;
+        tag->srcAddr = (char *)calloc(1, srcAddrLen);
+        memcpy(tag->srcAddr, srcAddr, srcAddrLen);
+        tag->srcAddrLen = srcAddrLen;
+        tag->srcMemserverId = srcMemoryServerId;
+        tag->destMemserverId = destMemoryServerId;
         Fam_Ops_Info opsInfo = {COPY, NULL, NULL, 0, 0, 0, 0, 0, tag};
         asyncQHandler->initiate_operation(opsInfo);
         waitObj->tag = tag;
     } else {
-        memoryService->copy(srcRegionId, (srcOffset + srcCopyStart),
-                            destRegionId, (destOffset + destCopyStart), nbytes);
+        memoryService->copy(srcRegionId, (srcOffset + srcCopyStart), srcKey,
+                            srcCopyStart, srcAddr, srcAddrLen, destRegionId,
+                            (destOffset + destCopyStart), nbytes,
+                            srcMemoryServerId, destMemoryServerId);
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_copy);
-    waitObj->isAcrossServer = false;
     return (void *)waitObj;
 }
 
