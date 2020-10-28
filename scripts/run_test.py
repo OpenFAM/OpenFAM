@@ -152,7 +152,13 @@ with open(args.inpath+'/fam_metadata_config.yaml') as metaservice_config_infile:
     metaservice_config_doc = ruamel.yaml.load(metaservice_config_infile, ruamel.yaml.RoundTripLoader)
 
 #Assign values to config options if corresponding argument is set
-if args.launcher == "mpi" :
+if args.launcher is None:
+    launcher = "mpi"
+else:
+    launcher = args.launcher
+
+#set environment variable for test command and options
+if launcher == "mpi" :
     os.environ['TEST_COMMAND'] = args.buildpath+'/../../third-party/build/bin/mpirun'
     os.environ['TEST_NPE_OPT'] = '-n'
     os.environ['TEST_NPE_ARG'] = str(args.n)
@@ -262,7 +268,7 @@ ssh_cmd = 'ssh '+os.environ['USER']+'@'
 srun_cmd = 'srun -N 1 --nodelist='
 
 #start all memory services
-if cis_config_doc['memsrv_interface_type'] == "rpc":
+if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['memsrv_interface_type'] == "rpc":
     #Iterate over list of memory servers
     for server in cis_config_doc['memsrv_list']:
         memory_server_addr = server.split(":")[1]
@@ -274,7 +280,7 @@ if cis_config_doc['memsrv_interface_type'] == "rpc":
         os.system(cmd)
 
 #start all metadata services
-if cis_config_doc['metadata_interface_type'] == "rpc":
+if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadata_interface_type'] == "rpc":
     #Iterate over list of metadata servers
     for server in cis_config_doc['metadata_list']:
         metadata_server_addr = server.split(":")[1]
@@ -288,7 +294,7 @@ if cis_config_doc['metadata_interface_type'] == "rpc":
 cmd = 'sleep 1'
 os.system(cmd)
 #Start CIS
-if pe_config_doc['client_interface_type'] == "rpc" :
+if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_interface_type'] == "rpc" :
     cis_addr = cis_config_doc['rpc_interface'].split(":")[0]
     cis_rpc_port = cis_config_doc['rpc_interface'].split(":")[1]
 
@@ -303,7 +309,7 @@ cmd = 'cd '+args.buildpath+';make reg-test; make unit-test; cd -'
 os.system(cmd)
 
 #Terminate all services
-if cis_config_doc['memsrv_interface_type'] == "rpc":
+if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['memsrv_interface_type'] == "rpc":
     for server in cis_config_doc['memsrv_list']:
         memory_server_addr = server.split(":")[1]
         memory_server_rpc_port = server.split(":")[2]
@@ -313,7 +319,7 @@ if cis_config_doc['memsrv_interface_type'] == "rpc":
             cmd = srun_cmd+memory_server_addr+' --mpi=pmix_v2 pkill memory_server'
         os.system(cmd)
 
-if cis_config_doc['metadata_interface_type'] == "rpc":
+if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadata_interface_type'] == "rpc":
     for server in cis_config_doc['metadata_list']:
         metadata_server_addr = server.split(":")[1]
         metadata_server_rpc_port = server.split(":")[2]
@@ -323,7 +329,7 @@ if cis_config_doc['metadata_interface_type'] == "rpc":
             cmd = srun_cmd+metadata_server_addr+' --mpi=pmix_v2 pkill metadata_server'
         os.system(cmd)
 
-if pe_config_doc['client_interface_type'] == "rpc" :
+if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_interface_type'] == "rpc" :
     if args.launcher == "mpi":
         cmd = ssh_cmd+cis_addr+' "sh -c \'pkill cis_server\'"'
     else :

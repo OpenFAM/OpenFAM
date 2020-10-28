@@ -88,8 +88,8 @@ fi
 echo "==========================================================="
 echo "Test OpenFAM with shared memory configuration"
 echo "==========================================================="
-CONFIG_OUT_DIR=$MEMSRV_BUILD_DIR/test/config_files/config-shared-memory
-python3 $SCRIPT_DIR/run_test.py --launcher $LAUNCHER -n 1 --model shared_memory --cisinterface direct --memserverinterface direct --metaserverinterface direct $CONFIG_IN_DIR $CONFIG_OUT_DIR $MEMSRV_BUILD_DIR
+CONFIG_OUT_DIR=$SHM_BUILD_DIR/test/config_files/config-shared-memory
+python3 $SCRIPT_DIR/run_test.py --launcher $LAUNCHER -n 1 --model shared_memory --cisinterface direct --memserverinterface direct --metaserverinterface direct $CONFIG_IN_DIR $CONFIG_OUT_DIR $SHM_BUILD_DIR
 
 if [[ $? > 0 ]]
 then

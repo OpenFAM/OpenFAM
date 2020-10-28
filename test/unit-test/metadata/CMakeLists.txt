@@ -33,6 +33,6 @@ function (add_fam_test file_name)
 endfunction()
 
 #add tests
-#add_fam_test(fam_metadata_test)
+add_fam_test(fam_metadata_test)
 add_fam_test(fam_metadata_rpc_test)
 #add_fam_test(fam_metadata_regress_test)

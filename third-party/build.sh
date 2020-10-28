@@ -99,7 +99,7 @@ case $OS in
 		;;
 	"rhel" | "centos")
 		sudo yum install --assumeyes gcc gcc-c++ kernel-devel make cmake autoconf-archive glibc python python-devel python3 automake libtool doxygen epel-release python-pip python3-pip
-		sudo yum install --assumeyes libevent cmake xmlto libevent-devel yaml-cpp
+		sudo yum install --assumeyes libevent cmake xmlto libevent-devel yaml-cpp yaml-cpp-devel
 		if [[ $? > 0 ]]
 		then
 			exit 1
