@@ -1,8 +1,9 @@
 /*
- * fam_csr_preload_parmat.cpp 
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * fam_csr_preload_parmat.cpp
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -28,11 +29,12 @@
  *
  */
 #include "common/fam_options.h"
+#include "fam_utils.h"
 #include "pagerank_common.h"
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 //#include "common/fam_test_config.h"
 
 using namespace std;
@@ -98,6 +100,7 @@ int LoadGraphMatrix(std::istream& istream, size_t num_rows, size_t num_elements,
                
     return 0;
 }
+
 //
 // This file loads sorted parmat output into fam
 // @input : argv[1] - parmat file
@@ -129,10 +132,14 @@ int main(int argc, char **argv) {
     cout << "nnz : " << nnz << endl;
     cout << "Data Path : " << parmat_file << endl;
 
+    uint64_t start_time = fam_test_get_time();
     nelements = nnz * matRowCount;
 
     // FAM initialize and create region
-    region = spmv_fam_initialize(nelements * 3 * sizeof(int64_t) + 2 * matRowCount * sizeof(double));
+    // TODO: If region creation fails , consider changing the size of the region
+    region = spmv_fam_initialize(
+        (nelements * 3 * sizeof(int64_t) + 2 * matRowCount * sizeof(double)) *
+        4);
 
     // Set config
     config.nrows = matRowCount;
@@ -159,4 +166,7 @@ int main(int argc, char **argv) {
     delete region;
     my_fam->fam_finalize("default");
     delete my_fam;
+
+    uint64_t final_time = fam_test_get_time() - start_time;
+    cout << dec << "load time in nanoseconds = " << final_time << endl;
 }
