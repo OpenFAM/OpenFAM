@@ -135,6 +135,9 @@ class Fam_CIS_Client : public Fam_CIS {
     size_t get_addr_size(uint64_t memoryServerId);
     void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
 
+    size_t get_memserverinfo_size();
+    void get_memserverinfo(void *memServerInfo);
+
     int get_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
                    uint64_t nbytes, uint64_t key, const char *nodeAddr,
                    uint32_t nodeAddrSize, uint64_t memoryServerId, uint32_t uid,

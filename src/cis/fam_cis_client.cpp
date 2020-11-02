@@ -563,6 +563,32 @@ void Fam_CIS_Client::get_addr(void *memServerFabricAddr,
     }
 }
 
+size_t Fam_CIS_Client::get_memserverinfo_size() {
+    Fam_Request req;
+    Fam_Memserverinfo_Response res;
+    ::grpc::ClientContext ctx;
+
+    ::grpc::Status status = stub->get_memserverinfo_size(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+
+    return (size_t)res.memserverinfo_size();
+}
+
+void Fam_CIS_Client::get_memserverinfo(void *memServerInfoBuffer) {
+    Fam_Request req;
+    Fam_Memserverinfo_Response res;
+    ::grpc::ClientContext ctx;
+
+    ::grpc::Status status = stub->get_memserverinfo(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+
+    // copy memserverinfo into the buffer
+    memcpy(memServerInfoBuffer, (void *)res.memserverinfo().c_str(),
+           res.memserverinfo_size());
+}
+
 int Fam_CIS_Client::get_atomic(uint64_t regionId, uint64_t srcOffset,
                                uint64_t dstOffset, uint64_t nbytes,
                                uint64_t key, const char *nodeAddr,
