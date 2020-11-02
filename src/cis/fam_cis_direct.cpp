@@ -1013,8 +1013,8 @@ uint64_t Fam_CIS_Direct::get_dataitem_id(uint64_t offset,
     return ((memoryServerId << 32) + offset / MIN_OBJ_SIZE);
 }
 size_t Fam_CIS_Direct::get_addr_size(uint64_t memoryServerId) {
-    CIS_DIRECT_PROFILE_START_OPS()
     size_t addrSize = 0;
+    CIS_DIRECT_PROFILE_START_OPS()
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     addrSize = memoryService->get_addr_size();
     CIS_DIRECT_PROFILE_END_OPS(cis_get_addr_size);
