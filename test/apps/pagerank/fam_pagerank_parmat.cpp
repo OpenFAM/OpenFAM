@@ -326,7 +326,7 @@ int main(int argc, char **argv) {
         if (myPE == 0) {
             // For the next iteration read rows from the beginning
             spmv_set_row_zero(headerDataItem);
-            // fam_stream << "Completed !!!" << endl;
+            fam_stream << "Completed !!!" << endl;
         }
         my_fam->fam_barrier_all();
     }

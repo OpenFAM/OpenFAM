@@ -133,8 +133,6 @@ int main(int argc, char **argv) {
     cout << "Data Path : " << parmat_file << endl;
 
     uint64_t start_time = fam_test_get_time();
-    cout << "Total elapse load Start time in nanoseconds = " << start_time
-         << endl;
     nelements = nnz * matRowCount;
 
     // FAM initialize and create region
