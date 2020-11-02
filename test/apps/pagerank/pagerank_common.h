@@ -1,8 +1,9 @@
 /*
- * pagerank_common.h 
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * pagerank_common.h
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -134,6 +135,10 @@ Fam_Region_Descriptor *spmv_fam_initialize(size_t size) {
     my_fam = new fam();
     memset((void *)&fam_opts, 0, sizeof(Fam_Options));
     fam_opts.runtime = strdup("NONE");
+
+#ifdef TRACE
+    cout << "Region Size =" << size << endl;
+#endif
 
     try {
         my_fam->fam_initialize("default", &fam_opts);
@@ -374,39 +379,54 @@ int pagerank_initialize_vectors(int rowCount, Fam_Region_Descriptor *region,
    try {
         vector0 = my_fam->fam_allocate("Vector0", (sizeof(double) * rowCount),
                                         perm, region);
-    } catch (...) {
-        cout << "fam allocate failed:" << endl;
-        return -1;
-    }
+#ifdef TRACE
+        Fam_Global_Descriptor global_dataitem;
+        global_dataitem = vector0->get_global_descriptor();
+        cout << " vector0 Fam_Descriptor { Region ID : 0x" << hex << uppercase
+             << global_dataitem.regionId << ", Offset : 0x"
+             << global_dataitem.offset << ", Key : 0x" << vector0->get_key()
+             << " }" << endl;
+#endif
+   } catch (...) {
+       cout << "fam allocate failed:" << endl;
+       return -1;
+   }
 
-    try {
-        vector1 = my_fam->fam_allocate("Vector1", (sizeof(double) * rowCount),
-                                        perm, region);
-    } catch (...) {
-        cout << "fam allocate failed:" << endl;
-        return -1;
-    }
-    local = (double *)malloc((sizeof(double) * rowCount));
-    for (int i = 0; i < rowCount; i++)
-        local[i] = 1.0 / rowCount;
+   try {
+       vector1 = my_fam->fam_allocate("Vector1", (sizeof(double) * rowCount),
+                                      perm, region);
+#ifdef TRACE
+       Fam_Global_Descriptor global_dataitem;
+       global_dataitem = vector1->get_global_descriptor();
+       cout << " Vector1 Fam_Descriptor { Region ID : 0x" << hex << uppercase
+            << global_dataitem.regionId << ", Offset : 0x"
+            << global_dataitem.offset << ", Key : 0x" << vector1->get_key()
+            << " }" << endl;
+#endif
+   } catch (...) {
+       cout << "fam allocate failed:" << endl;
+       return -1;
+   }
+   local = (double *)malloc((sizeof(double) * rowCount));
+   for (int i = 0; i < rowCount; i++)
+       local[i] = 1.0 / rowCount;
 
-    if (spmv_fam_write((char *)local, vector0, 0,
-                       (sizeof(double) * rowCount)) < 0) {
-        free(local);
-        delete vector0;
-        delete vector1;
-        return -1;
-    }
-    if (vector0) {
-        delete vector0;
-    }
-    if (vector1) {
-        delete vector1;
-    }
+   if (spmv_fam_write((char *)local, vector0, 0, (sizeof(double) * rowCount)) <
+       0) {
+       free(local);
+       delete vector0;
+       delete vector1;
+       return -1;
+   }
+   if (vector0) {
+       delete vector0;
+   }
+   if (vector1) {
+       delete vector1;
+   }
 
-    free(local);
-    return 0;
-
+   free(local);
+   return 0;
 }
 
 int spmv_initialize_runtime_header(Fam_Region_Descriptor *region,
@@ -416,6 +436,15 @@ int spmv_initialize_runtime_header(Fam_Region_Descriptor *region,
     try {
         dataitem = my_fam->fam_allocate("Global_header", 1024,
                                         perm, region);
+#ifdef TRACE
+        Fam_Global_Descriptor global_dataitem;
+        global_dataitem = dataitem->get_global_descriptor();
+        cout
+            << " spmv_initialize_runtime_header Fam_Descriptor { Region ID : 0x"
+            << hex << uppercase << global_dataitem.regionId << ", Offset : 0x"
+            << global_dataitem.offset << ", Key : 0x" << dataitem->get_key()
+            << " }" << endl;
+#endif
         delete dataitem;
     } catch (...) {
         cout << "fam allocate failed:" << endl;
@@ -468,6 +497,14 @@ int load_dataitem(char *inpBuf, const char *dataitemName, uint64_t offset,
 
     try {
         dataitem = my_fam->fam_allocate(dataitemName, size, perm, region);
+#ifdef TRACE
+        Fam_Global_Descriptor global_dataitem;
+        global_dataitem = dataitem->get_global_descriptor();
+        cout << " load_dataitem Fam_Descriptor { Region ID : 0x" << hex
+             << uppercase << global_dataitem.regionId << ", Offset : 0x"
+             << global_dataitem.offset << ", Key : 0x" << dataitem->get_key()
+             << " }" << endl;
+#endif
     } catch (...) {
         cout << "fam allocate failed:" << endl;
         return -1;
@@ -497,8 +534,17 @@ int spmv_load_file_to_dataitem(char *inpFilename, char *dataitemName,
         printf("File not found:%s\n", inpFilename);
         return -1;
     }
+
     try {
         dataitem = my_fam->fam_allocate(dataitemName, size, perm, region);
+#ifdef TRACE
+        Fam_Global_Descriptor global_dataitem;
+        global_dataitem = dataitem->get_global_descriptor();
+        cout << " Fam_Descriptor { Region ID : 0x" << hex << uppercase
+             << global_dataitem.regionId << ", Offset : 0x"
+             << global_dataitem.offset << ", Key : 0x" << dataitem->get_key()
+             << " }" << endl;
+#endif
     } catch (...) {
         cout << "fam allocate failed:" << endl;
         return -1;

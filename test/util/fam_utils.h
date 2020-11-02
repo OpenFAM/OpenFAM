@@ -1,6 +1,6 @@
 /*
  * fam_utils.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -30,7 +30,11 @@
 #ifndef FAM_UTILS_H_
 #define FAM_UTILS_H_
 
+#include <chrono>
 #include <fam/fam.h>
+
+using namespace std;
+using namespace chrono;
 
 #define create_region(pass, my_fam, region, name, size, permission,            \
                       redundancy)                                              \
@@ -103,4 +107,13 @@
         cout << "Error msg: " << e.fam_error_msg() << endl;                    \
         cout << "Error: " << e.fam_error() << endl;                            \
     }
+
+static inline uint64_t fam_test_get_time() {
+    long int time = static_cast<long int>(
+        duration_cast<nanoseconds>(
+            high_resolution_clock::now().time_since_epoch())
+            .count());
+    return time;
+}
+
 #endif /* end of FAM_UTILS_H_ */

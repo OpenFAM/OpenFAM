@@ -1,8 +1,9 @@
 /*
  * fam_pagerank_parmat.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -29,11 +30,12 @@
  */
 #include "common/fam_options.h"
 #include "common/fam_test_config.h"
+#include "fam_utils.h"
 #include "pagerank_common.h"
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 using namespace std;
 using namespace openfam;
@@ -167,6 +169,8 @@ int main(int argc, char **argv) {
 		exit(-1);
 	}
     }
+    my_fam->fam_barrier_all();
+    uint64_t start_time = fam_test_get_time();
 
     for (int iter = 0; iter < pagerank_Iter; iter++) {
         // Read input vector, Vector0 or Vector1 based on iteration
@@ -181,9 +185,11 @@ int main(int argc, char **argv) {
         resultDataItem =
             spmv_get_dataitem(vector_dataitem_name[(iter + 1) % 2]);
 
+#ifdef TRACE
         if (myPE == 0)
             fam_stream << "Reading input  vector, pagerank iter = " << iter
                        << endl;
+#endif
 
         for (int i = 0; i < nsegments; i = i + 1) {
             // Each PE to read rows_per_iter rows
@@ -285,8 +291,8 @@ int main(int argc, char **argv) {
                     fam_stream << "Reading value data failed" << endl;
                     exit(1);
                 }
-		std::cout<<"Reading values successful!!"<<std::endl;
 #ifdef TRACE
+                std::cout << "Reading values successful!!" << std::endl;
                 std::cout << "#### Row : " << rowBegin << " : " << rowEnd
                           << " colptr : " << local_row[0] << " : "
                           << local_row[curRows] << std::endl;
@@ -324,6 +330,9 @@ int main(int argc, char **argv) {
         }
         my_fam->fam_barrier_all();
     }
+    uint64_t final_time = fam_test_get_time() - start_time;
+    cout << "Pagerank time for PE=" << myPE << " for no. of iteration "
+         << pagerank_Iter << " in nanoseconds = " << final_time << endl;
 #ifdef PRINT_OUTPUT
     if (myPE == 0) {
         ofstream outfile;
@@ -352,5 +361,6 @@ int main(int argc, char **argv) {
 
     my_fam->fam_finalize("default");
     delete my_fam;
+
     return 0;
 }
