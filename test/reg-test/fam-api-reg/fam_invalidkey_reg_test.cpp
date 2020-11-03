@@ -55,14 +55,15 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
 
     uint64_t invalidKey = -1;
 
-    char *name = strdup(TEST_CIS_SERVER);
-    char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
-    char *cisInterfaceTypeOpt = strdup("CIS_INTERFACE_TYPE");
+    char *name = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
+    char *provider =
+        (char *)my_fam->fam_get_option(strdup("LIBFABRIC_PROVIDER"));
     char *cisInterfaceType =
-        (char *)my_fam->fam_get_option(cisInterfaceTypeOpt);
-    Fam_Allocator_Client *famAllocator;
+        (char *)my_fam->fam_get_option(strdup("CIS_INTERFACE_TYPE"));
+    char *rpcPort = (char *)my_fam->fam_get_option(strdup("GRPC_PORT"));
+    Fam_Allocator_Client *famAllocator = NULL;
     if (strcmp(cisInterfaceType, "rpc") == 0) {
-        famAllocator = new Fam_Allocator_Client(name, atoi(TEST_GRPC_PORT));
+        famAllocator = new Fam_Allocator_Client(name, atoi(rpcPort));
     } else {
         famAllocator = new Fam_Allocator_Client();
     }
@@ -116,6 +117,17 @@ int main(int argc, char **argv) {
     init_fam_options(&fam_opts);
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
+
+    char *openFamModel =
+        (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
+
+    if (strcmp(openFamModel, "memory_server") != 0) {
+        my_fam->fam_finalize("default");
+        std::cout << "Test case valid only in memory server model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
+    }
 
     ret = RUN_ALL_TESTS();
 

@@ -127,19 +127,21 @@ include_directories(/usr/local/include)
 
 #
 # Set openFAM options to be used only by test. Some individual test cases might override these options.
-#
-
-set( TEST_DEFAULT_REGION "Default" )
+# To use the following OpenFAM options set USE_FAM_OPTION flag
+set( TEST_RUNTIME "PMIX" )
+set( TEST_NPE 1 ) #Number of pe used with mpirun
 set( TEST_OPENFAM_MODEL "memory_server" )
-#set( TEST_CIS_INTERFACE_TYPE "rpc" )
-#set( TEST_CIS_SERVER "10.93.243.13" )
+set( TEST_DEFAULT_REGION "Default" )
 set( TEST_CIS_SERVER "127.0.0.1" )
 set( TEST_GRPC_PORT "8787" )
 set( TEST_LIBFABRIC_PROVIDER "sockets" )
 set( TEST_FAM_THREAD_MODEL "FAM_THREAD_SERIALIZE" )
 set( TEST_FAM_CONTEXT_MODEL "FAM_CONTEXT_DEFAULT" )
-set( TEST_RUNTIME "PMIX" )
 set( TEST_NUM_CONSUMER "1" )
+if (USE_FAM_OPTION)
+	add_definitions(-DUSE_FAM_OPTION)	
+endif()
+	
 IF (${CMAKE_MAJOR_VERSION} GREATER 2)
         set( TEST_SKIP_STATUS 77 )
 ELSE ()
@@ -176,11 +178,6 @@ endif()
 
 # Use native atomics
 add_definitions(-DFAM_ATOMIC_NATIVE)
-
-# Runtime options to be used to invoke test cases
-set( TEST_NPE 1 ) #Number of pe used with mpirun
-set( TEST_RUNTIME_BIN ${PROJECT_SOURCE_DIR}/third-party/build/bin/mpirun ) # path to mpirun/prun
-set( TEST_RUNTIME_OPTS --allow-run-as-root -n ${TEST_NPE} -host ${TEST_CIS_SERVER}) # path to mpirun/prun
 
 # Include fam_test_config.h in individual test cases and use the above variables as macros.
 configure_file( ${PROJECT_SOURCE_DIR}/test/common/fam_test_config.h.in ${PROJECT_BINARY_DIR}/test/common/fam_test_config.h )

@@ -54,6 +54,17 @@ int main() {
         exit(1);
     }
 
+    char *openFamModel =
+        (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
+
+    if (strcmp(openFamModel, "memory_server") != 0) {
+        my_fam->fam_finalize("default");
+        std::cout << "Test case valid only in memory server model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
+    }
+
     Fam_Region_Descriptor *desc;
 
     desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);

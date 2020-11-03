@@ -1,5 +1,5 @@
- #
- # run_test.cmake
+#!/bin/bash
+ # run_test.sh
  # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
@@ -20,8 +20,6 @@
  #
  #
 
-execute_process(COMMAND $ENV{TEST_COMMAND} $ENV{TEST_NODE_NUM_OPT} $ENV{TEST_NODE_NUM_ARG} $ENV{TEST_NPE_OPT} $ENV{TEST_NPE_ARG} $ENV{TEST_HOST_OPT} $ENV{TEST_HOST_ARG} $ENV{TEST_MPI_OPT} ${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME} ${TEST_ARG} RESULT_VARIABLE result)
-if(NOT "${result}" STREQUAL "0")
-    message(FATAL_ERROR "Test failed with return value '${result}'")
-endif()
-
+TEST_EXE=$1
+TEST_ARG=$2
+$TEST_COMMAND $TEST_OPT $TEST_EXE $TEST_ARG

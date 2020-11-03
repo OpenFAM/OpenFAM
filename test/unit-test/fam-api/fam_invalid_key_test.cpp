@@ -58,8 +58,6 @@ int main() {
 
     // Initialize the libfabric ops
     char *message = strdup("This is the datapath test");
-    char *name = strdup(TEST_CIS_SERVER);
-    char *provider = strdup(TEST_LIBFABRIC_PROVIDER);
 
     // Initialize openFAM API
     init_fam_options(&fam_opts);
@@ -70,12 +68,26 @@ int main() {
         exit(1);
     }
 
-    char *cisInterfaceTypeOpt = strdup("CIS_INTERFACE_TYPE");
+    char *openFamModel =
+        (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
+
+    if (strcmp(openFamModel, "memory_server") != 0) {
+        my_fam->fam_finalize("default");
+        std::cout << "Test case valid only in memory server model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
+    }
+
+    char *name = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
+    char *provider =
+        (char *)my_fam->fam_get_option(strdup("LIBFABRIC_PROVIDER"));
     char *cisInterfaceType =
-        (char *)my_fam->fam_get_option(cisInterfaceTypeOpt);
+        (char *)my_fam->fam_get_option(strdup("CIS_INTERFACE_TYPE"));
+    char *rpcPort = (char *)my_fam->fam_get_option(strdup("GRPC_PORT"));
     Fam_Allocator_Client *famAllocator;
     if (strcmp(cisInterfaceType, "rpc") == 0) {
-        famAllocator = new Fam_Allocator_Client(name, atoi(TEST_GRPC_PORT));
+        famAllocator = new Fam_Allocator_Client(name, atoi(rpcPort));
     } else {
         famAllocator = new Fam_Allocator_Client();
     }

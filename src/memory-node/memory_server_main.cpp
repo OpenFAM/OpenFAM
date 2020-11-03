@@ -122,6 +122,7 @@ int main(int argc, char *argv[]) {
             StartNVMM(fam_path);
         exit(0);
 	}
+
 #ifdef COVERAGE
     signal(SIGINT, signal_handler);
     signal(SIGQUIT, signal_handler);

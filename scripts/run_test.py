@@ -3,9 +3,10 @@ import sys
 import argparse
 import ruamel.yaml
 import time
+import math
 
 # Create the parser
-my_parser = argparse.ArgumentParser(description='Generate the config files')
+my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@', description='Generate the config files')
 
 # Add the arguments
 my_parser.add_argument('inpath',
@@ -26,13 +27,7 @@ my_parser.add_argument('buildpath',
 my_parser.add_argument('-n',
                         action='store',
                         type=int,
-                        help='Number of PEs',
-                        required=True)
-
-my_parser.add_argument('-N',
-                        action='store',
-                        type=int,
-                        help='Number of PEs per node')
+                        help='Number of PEs')
 
 my_parser.add_argument('--pehosts',
                         action='store',
@@ -152,33 +147,10 @@ with open(args.inpath+'/fam_metadata_config.yaml') as metaservice_config_infile:
     metaservice_config_doc = ruamel.yaml.load(metaservice_config_infile, ruamel.yaml.RoundTripLoader)
 
 #Assign values to config options if corresponding argument is set
-if args.launcher is None:
-    launcher = "mpi"
+if args.n is not None:
+    npe = args.n
 else:
-    launcher = args.launcher
-
-#set environment variable for test command and options
-if launcher == "mpi" :
-    os.environ['TEST_COMMAND'] = args.buildpath+'/../../third-party/build/bin/mpirun'
-    os.environ['TEST_NPE_OPT'] = '-n'
-    os.environ['TEST_NPE_ARG'] = str(args.n)
-    if args.pehosts is not None :
-        os.environ['TEST_HOST_OPT'] = '-host'
-        host_list = ""
-        for host in arg.pehosts.split(','):
-            host_list=host_list+':'+str(args.N)+','
-        os.environ['TEST_HOST_ARG'] = host_list
-else :
-    if args.pehosts is None:
-        print("ERROR: --pehosts option is required when slurm is used as launcher")
-        sys.exit()
-    os.environ['TEST_COMMAND'] = 'srun'
-    os.environ['TEST_NODE_NUM_OPT'] = '-N'
-    os.environ['TEST_NODE_NUM_ARG'] = str(len(args.pehosts.split(',')))
-    os.environ['TEST_NPE_OPT'] = '-n'
-    os.environ['TEST_NPE_ARG'] = str(args.n)
-    os.environ['TEST_HOST_OPT'] = '--nodelist='+args.pehosts
-    os.environ['TEST_MPI_OPT'] = '--mpi=pmix_v2'
+    npe = 1
 
 if args.model is not None :
     pe_config_doc['openfam_model'] = args.model
@@ -236,6 +208,31 @@ if args.atldatasize is not None :
 cmd = 'mkdir -p '+args.outpath+'/config'
 os.system(cmd)
 
+#set environment variable for test command and options
+if args.launcher is None:
+    pe_config_doc['runtime'] = "NONE"
+elif args.launcher == "mpi" :
+    os.environ['TEST_COMMAND'] = args.buildpath+'/../../third-party/build/bin/mpirun'
+    if args.pehosts is not None :
+        if len(args.pehosts.split(',')) < npe :
+            pe_per_host = npe
+        else :
+            pe_per_host = math.ceil(len(args.pehosts.split(','))/npe)
+        print(pe_per_host)
+        host_list = ""
+        for host in args.pehosts.split(','):
+            host_list=host_list+host+':'+str(pe_per_host)+','
+        print(host_list)
+        os.environ['TEST_OPT'] = '-n '+str(npe)+' -host '+host_list+' -x OPENFAM_ROOT='+args.outpath
+    else :
+        os.environ['TEST_OPT'] = '-n '+str(npe)
+else :
+    if args.pehosts is None:
+        print("ERROR: --pehosts option is required when slurm is used as launcher")
+        sys.exit()
+    os.environ['TEST_COMMAND'] = 'srun'
+    os.environ['TEST_OPT'] = '-N '+str(len(args.pehosts.split(',')))+' -n '+str(npe)+' --nodelist='+args.pehosts+' --mpi=pmix_v2'
+
 #Check if user has provided any service interface as "rpc" when openfam model is shared_memeoyr
 if pe_config_doc['openfam_model'] == "shared_memory":
     if "rpc" in [str(pe_config_doc['client_interface_type']), str(cis_config_doc['memsrv_interface_type']), str(cis_config_doc['metadata_interface_type'])]:
@@ -275,8 +272,10 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['memsrv_
         memory_server_rpc_port = server.split(":")[2]
         if args.launcher == "mpi":
             cmd = ssh_cmd+memory_server_addr+' "sh -c \''+env_cmd+'nohup '+args.buildpath+'/src/memory_server -a '+memory_server_addr+' -r '+str(memory_server_rpc_port)+' -l '+str(memservice_config_doc['libfabric_port'])+' -p '+memservice_config_doc['provider']+'> /dev/null 2>&1 &\'"'
-        else :
+        elif args.launcher == "slurm":
             cmd = srun_cmd+memory_server_addr+' --mpi=pmix_v2 '+args.buildpath+'/src/memory_server -a '+memory_server_addr+' -r '+str(memory_server_rpc_port)+' -l '+                 str(memservice_config_doc['libfabric_port'])+' -p '+memservice_config_doc['provider']+' &'
+        else :
+            cmd = args.buildpath+'/src/memory_server -a '+memory_server_addr+' -r '+str(memory_server_rpc_port)+' -l '+str(memservice_config_doc['libfabric_port'])+' -p '+memservice_config_doc['provider']+' &'
         os.system(cmd)
 
 #start all metadata services
@@ -287,9 +286,12 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadat
         metadata_server_rpc_port = server.split(":")[2]
         if args.launcher == "mpi":
             cmd = ssh_cmd+metadata_server_addr+' "sh -c \''+env_cmd+'nohup '+args.buildpath+'/src/metadata_server -a '+metadata_server_addr+' -r '+str(metadata_server_rpc_port)+'> /dev/null 2>&1 &\'"'
-        else :
+        elif args.launcher == "slurm" :
             cmd = srun_cmd+metadata_server_addr+' --mpi=pmix_v2 '+args.buildpath+'/src/metadata_server -a '+metadata_server_addr+' -r '+str(metadata_server_rpc_port)+' &'
+        else :
+            cmd = args.buildpath+'/src/metadata_server -a '+metadata_server_addr+' -r '+str(metadata_server_rpc_port)+' &'
         os.system(cmd)
+
 
 cmd = 'sleep 1'
 os.system(cmd)
@@ -300,12 +302,14 @@ if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_i
 
     if args.launcher == "mpi":
         cmd = ssh_cmd+cis_addr+' "sh -c \''+env_cmd+'nohup '+args.buildpath+'/src/cis_server -a '+cis_addr+' -r '+str(cis_rpc_port)+'> /dev/null 2>&1 &\'"'
-    else :
+    elif args.launcher == "slurm":
         cmd = srun_cmd+cis_addr+' --mpi=pmix_v2 '+args.buildpath+'/src/cis_server -a '+cis_addr+' -r '+str(cis_rpc_port)+' &'
+    else :
+        cmd = args.buildpath+'/src/cis_server -a '+cis_addr+' -r '+str(cis_rpc_port)+' &'
     os.system(cmd)
 
 #Run regression and unit tests
-cmd = 'cd '+args.buildpath+';make reg-test; make unit-test; cd -'
+cmd = 'cd '+args.buildpath+'; make reg-test; make unit-test; cd -'
 os.system(cmd)
 
 #Terminate all services
@@ -315,8 +319,10 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['memsrv_
         memory_server_rpc_port = server.split(":")[2]
         if args.launcher == "mpi":
             cmd = ssh_cmd+memory_server_addr+' "sh -c \'pkill memory_server\'"'
-        else :
+        elif args.launcher == "slurm" :
             cmd = srun_cmd+memory_server_addr+' --mpi=pmix_v2 pkill memory_server'
+        else :
+            cmd = 'pkill memory_server'
         os.system(cmd)
 
 if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadata_interface_type'] == "rpc":
@@ -325,15 +331,19 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadat
         metadata_server_rpc_port = server.split(":")[2]
         if args.launcher == "mpi":
             cmd = ssh_cmd+metadata_server_addr+' "sh -c \'pkill metadata_server\'"'
-        else :
+        elif args.launcher == "slurm" :
             cmd = srun_cmd+metadata_server_addr+' --mpi=pmix_v2 pkill metadata_server'
+        else :
+            cmd = 'pkill metadata_server'
         os.system(cmd)
 
 if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_interface_type'] == "rpc" :
     if args.launcher == "mpi":
         cmd = ssh_cmd+cis_addr+' "sh -c \'pkill cis_server\'"'
-    else :
+    elif largs.launcher == "slurm" :
         cmd = srun_cmd+cis_addr+' --mpi=pmix_v2 pkill cis_server'
+    else :
+        cmd = 'pkill cis_server'
     os.system(cmd)
 
 
