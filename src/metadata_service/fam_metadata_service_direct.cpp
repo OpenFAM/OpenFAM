@@ -113,7 +113,7 @@ class Fam_Metadata_Service_Direct::Impl_ {
     ~Impl_() {}
 
     int Init(bool use_meta_reg, bool enable_region_spanning,
-             size_t size_per_memoryserver);
+             size_t region_span_size_per_memoryserver);
 
     int Final();
 
@@ -258,7 +258,7 @@ class Fam_Metadata_Service_Direct::Impl_ {
 
     MemoryManager *memoryManager;
     bool enable_region_spanning;
-    size_t size_per_memoryserver;
+    size_t region_span_size_per_memoryserver;
 
     GlobalPtr create_metadata_kvs_tree(size_t heap_size = METADATA_HEAP_SIZE,
                                        nvmm::PoolId heap_id = METADATA_HEAP_ID);
@@ -300,7 +300,7 @@ int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg, bool flag,
 
     memoryManager = MemoryManager::GetInstance();
     enable_region_spanning = flag;
-    size_per_memoryserver = size;
+    region_span_size_per_memoryserver = size;
     metadataKvsMap = new KvsMap();
     (void)pthread_mutex_init(&kvsMapLock, NULL);
     use_meta_region = use_meta_reg;
@@ -2404,14 +2404,16 @@ std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
     uint64_t aligned_size = align_to_address(size, 64);
     size = (aligned_size > size ? aligned_size : size);
     if (enable_region_spanning == 1) {
-        if (size <= size_per_memoryserver) {
+        if (size <= region_span_size_per_memoryserver) {
             // Size is smaller than page size and hence using single memory.
-            memsrv_list.push_back(id);
+            memsrv_list.push_back((int)memoryServerList[id]);
         } else {
-            if ((size / (size_per_memoryserver * memoryServerCount) < 1)) {
+            if ((size /
+                     (region_span_size_per_memoryserver * memoryServerCount) <
+                 1)) {
                 unsigned int numServers =
-                    ((unsigned int)(size / size_per_memoryserver)) +
-                    ((size % size_per_memoryserver) == 0 ? 0 : 1);
+                    ((unsigned int)(size / region_span_size_per_memoryserver)) +
+                    ((size % region_span_size_per_memoryserver) == 0 ? 0 : 1);
                 while (i < numServers) {
                     memsrv_list.push_back(
                         (int)memoryServerList[id % memoryServerCount]);
@@ -2445,7 +2447,7 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     std::string config_file_path;
     configFileParams config_options;
     bool enable_region_spanning;
-    size_t size_per_memoryserver;
+    size_t region_span_size_per_memoryserver;
 
     // Check for config file in or in path mentioned
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
@@ -2463,10 +2465,12 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     } else {
         enable_region_spanning = 0;
     }
-    size_per_memoryserver =
-        atoi((const char *)(config_options["size_per_memoryserver"].c_str()));
+    region_span_size_per_memoryserver =
+        atoi((const char *)(config_options["region_span_size_per_memoryserver"]
+                                .c_str()));
 
-    Start(use_meta_reg, enable_region_spanning, size_per_memoryserver);
+    Start(use_meta_reg, enable_region_spanning,
+          region_span_size_per_memoryserver);
 }
 
 Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() { Stop(); }
@@ -2478,9 +2482,9 @@ void Fam_Metadata_Service_Direct::Stop() {
         delete pimpl_;
 }
 
-void Fam_Metadata_Service_Direct::Start(bool use_meta_reg,
-                                        bool enable_region_spanning,
-                                        size_t size_per_memoryserver) {
+void Fam_Metadata_Service_Direct::Start(
+    bool use_meta_reg, bool enable_region_spanning,
+    size_t region_span_size_per_memoryserver) {
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
@@ -2488,7 +2492,7 @@ void Fam_Metadata_Service_Direct::Start(bool use_meta_reg,
     pimpl_ = new Impl_;
     assert(pimpl_);
     int ret = pimpl_->Init(use_meta_reg, enable_region_spanning,
-                           size_per_memoryserver);
+                           region_span_size_per_memoryserver);
     assert(ret == META_NO_ERROR);
 }
 
@@ -2744,11 +2748,13 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
         }
         try {
 
-            options["size_per_memoryserver"] = (char *)strdup(
-                (info->get_key_value("size_per_memoryserver")).c_str());
+            options["region_span_size_per_memoryserver"] = (char *)strdup(
+                (info->get_key_value("region_span_size_per_memoryserver"))
+                    .c_str());
         } catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
-            options["size_per_memoryserver"] = (char *)strdup("1048576");
+            options["region_span_size_per_memoryserver"] =
+                (char *)strdup("1073741824");
         }
     }
     return options;
