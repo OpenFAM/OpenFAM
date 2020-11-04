@@ -48,8 +48,6 @@
 #include "common/fam_internal.h"
 #include "common/fam_memserver_profile.h"
 
-#define SIZE_PER_MEMSERVER 1048576
-
 #define OPEN_METADATA_KVS(root, heap_size, heap_id, kvs)                       \
     if (use_meta_region) {                                                     \
         kvs = open_metadata_kvs(root);                                         \
@@ -114,7 +112,8 @@ class Fam_Metadata_Service_Direct::Impl_ {
 
     ~Impl_() {}
 
-    int Init(bool use_meta_reg);
+    int Init(bool use_meta_reg, bool enable_region_spanning,
+             size_t region_span_size_per_memoryserver);
 
     int Final();
 
@@ -258,6 +257,8 @@ class Fam_Metadata_Service_Direct::Impl_ {
     pthread_mutex_t kvsMapLock;
 
     MemoryManager *memoryManager;
+    bool enable_region_spanning;
+    size_t region_span_size_per_memoryserver;
 
     GlobalPtr create_metadata_kvs_tree(size_t heap_size = METADATA_HEAP_SIZE,
                                        nvmm::PoolId heap_id = METADATA_HEAP_ID);
@@ -294,13 +295,14 @@ class Fam_Metadata_Service_Direct::Impl_ {
 /*
  * Initialize the FAM metadata manager
  */
-int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg) {
+int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg, bool flag,
+                                             size_t size) {
 
     memoryManager = MemoryManager::GetInstance();
-
+    enable_region_spanning = flag;
+    region_span_size_per_memoryserver = size;
     metadataKvsMap = new KvsMap();
     (void)pthread_mutex_init(&kvsMapLock, NULL);
-
     use_meta_region = use_meta_reg;
 
     // Create the KVS tree for Region ID
@@ -2311,6 +2313,10 @@ void Fam_Metadata_Service_Direct::Impl_::
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
+    if (((op & META_OWNER_ALLOW) > 0) && (uid == region.uid)) {
+        return;
+    }
+
     bool isPermitted = metadata_check_permissions(&region, op, uid, gid);
     if (!isPermitted) {
         message << "Insufficient Permission";
@@ -2330,6 +2336,9 @@ void Fam_Metadata_Service_Direct::Impl_::
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
+    }
+    if (((op & META_OWNER_ALLOW) > 0) && (uid == dataitem.uid)) {
+        return;
     }
     bool isPermitted = metadata_check_permissions(&dataitem, op, uid, gid);
     if (!isPermitted) {
@@ -2352,6 +2361,9 @@ void Fam_Metadata_Service_Direct::Impl_::
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
+    if (((op & META_OWNER_ALLOW) > 0) && (uid == region.uid)) {
+        return;
+    }
     bool isPermitted = metadata_check_permissions(&region, op, uid, gid);
     if (!isPermitted) {
         message << "Insufficient Permission";
@@ -2372,6 +2384,9 @@ void Fam_Metadata_Service_Direct::Impl_::
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
+    if (((op & META_OWNER_ALLOW) > 0) && (uid == dataitem.uid)) {
+        return;
+    }
     bool isPermitted = metadata_check_permissions(&dataitem, op, uid, gid);
     if (!isPermitted) {
         message << "Insufficient Permission";
@@ -2388,28 +2403,35 @@ std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
     unsigned int i = 0;
     uint64_t aligned_size = align_to_address(size, 64);
     size = (aligned_size > size ? aligned_size : size);
-    if (size <= SIZE_PER_MEMSERVER) {
-        // Size is smaller than page size and hence using single memory.
-        memsrv_list.push_back(id);
-    } else {
-        if ((size / (SIZE_PER_MEMSERVER * memoryServerCount) < 1)) {
-            unsigned int numServers =
-                ((unsigned int)size / SIZE_PER_MEMSERVER) +
-                ((size % SIZE_PER_MEMSERVER) == 0 ? 0 : 1);
-            while (i < numServers) {
-                memsrv_list.push_back(
-                    (int)memoryServerList[id % memoryServerCount]);
-                i++;
-                id++;
-            }
+    if (enable_region_spanning == 1) {
+        if (size <= region_span_size_per_memoryserver) {
+            // Size is smaller than region_span_size_per_memoryserver and hence
+            // using single memory server.
+            memsrv_list.push_back((int)memoryServerList[id]);
         } else {
-            while (i < (unsigned int)memoryServerCount) {
-                memsrv_list.push_back(
-                    (int)memoryServerList[id % memoryServerCount]);
-                i++;
-                id++;
+            if ((size /
+                     (region_span_size_per_memoryserver * memoryServerCount) <
+                 1)) {
+                unsigned int numServers =
+                    ((unsigned int)(size / region_span_size_per_memoryserver)) +
+                    ((size % region_span_size_per_memoryserver) == 0 ? 0 : 1);
+                while (i < numServers) {
+                    memsrv_list.push_back(
+                        (int)memoryServerList[id % memoryServerCount]);
+                    i++;
+                    id++;
+                }
+            } else {
+                while (i < (unsigned int)memoryServerCount) {
+                    memsrv_list.push_back(
+                        (int)memoryServerList[id % memoryServerCount]);
+                    i++;
+                    id++;
+                }
             }
         }
+    } else {
+        memsrv_list.push_back(id);
     }
     regions_memserver_list[regionname] = memsrv_list;
     return memsrv_list;
@@ -2425,6 +2447,9 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     // Use config file options only if NULL is passed.
     std::string config_file_path;
     configFileParams config_options;
+    bool enable_region_spanning;
+    size_t region_span_size_per_memoryserver;
+
     // Check for config file in or in path mentioned
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
     try {
@@ -2436,8 +2461,17 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     if (!config_file_path.empty()) {
         config_options = get_config_info(config_file_path);
     }
+    if ((config_options["enable_region_spanning"]) == "true") {
+        enable_region_spanning = 1;
+    } else {
+        enable_region_spanning = 0;
+    }
+    region_span_size_per_memoryserver =
+        atoi((const char *)(config_options["region_span_size_per_memoryserver"]
+                                .c_str()));
 
-    Start(use_meta_reg);
+    Start(use_meta_reg, enable_region_spanning,
+          region_span_size_per_memoryserver);
 }
 
 Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() { Stop(); }
@@ -2449,14 +2483,17 @@ void Fam_Metadata_Service_Direct::Stop() {
         delete pimpl_;
 }
 
-void Fam_Metadata_Service_Direct::Start(bool use_meta_reg) {
+void Fam_Metadata_Service_Direct::Start(
+    bool use_meta_reg, bool enable_region_spanning,
+    size_t region_span_size_per_memoryserver) {
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
     StartNVMM();
     pimpl_ = new Impl_;
     assert(pimpl_);
-    int ret = pimpl_->Init(use_meta_reg);
+    int ret = pimpl_->Init(use_meta_reg, enable_region_spanning,
+                           region_span_size_per_memoryserver);
     assert(ret == META_NO_ERROR);
 }
 
@@ -2702,6 +2739,22 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
         } catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["metadata_path"] = (char *)strdup("/dev/shm");
+        }
+        try {
+            options["enable_region_spanning"] = (char *)strdup(
+                (info->get_key_value("enable_region_spanning")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["enable_region_spanning"] = (char *)strdup("true");
+        }
+        try {
+            options["region_span_size_per_memoryserver"] = (char *)strdup(
+                (info->get_key_value("region_span_size_per_memoryserver"))
+                    .c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["region_span_size_per_memoryserver"] =
+                (char *)strdup("1073741824");
         }
     }
     return options;

@@ -697,7 +697,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     message << "Error While locating region : ";
     try {
         metadataService->metadata_find_region_and_check_permissions(
-            META_REGION_ITEM_READ, name, uid, gid, region);
+            META_REGION_ITEM_READ_ALLOW_OWNER, name, uid, gid, region);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
@@ -729,7 +729,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     Fam_DataItem_Metadata dataitem;
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
-            META_REGION_ITEM_READ, itemName, regionName, uid, gid, dataitem);
+            META_REGION_ITEM_READ_ALLOW_OWNER, itemName, regionName, uid, gid,
+            dataitem);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the dataitem";
@@ -764,7 +765,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     message << "Error While locating region : ";
     try {
         metadataService->metadata_find_region_and_check_permissions(
-            META_REGION_ITEM_READ, regionId, uid, gid, region);
+            META_REGION_ITEM_WRITE_ALLOW_OWNER, regionId, uid, gid, region);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
@@ -847,7 +848,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
-            META_REGION_ITEM_READ, dataitemId, regionId, uid, gid, dataitem);
+            META_REGION_ITEM_READ_ALLOW_OWNER, dataitemId, regionId, uid, gid,
+            dataitem);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
