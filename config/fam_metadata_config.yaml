@@ -23,7 +23,7 @@ rpc_interface: 127.0.0.1:8788
 # Flag to enable or disable region spanning. By default, it is set to true.
 enable_region_spanning: true
 
-#If region spanning is enabled, obtain the value for region_span_size_per_memoryserver.
-#Default value is 1GB.
+# If region spanning is enabled, obtain the value for region_span_size_per_memoryserver.
+# Default value is 1GB.
 region_span_size_per_memoryserver=1073741824
 
