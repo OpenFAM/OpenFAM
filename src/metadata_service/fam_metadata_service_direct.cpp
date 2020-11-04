@@ -2405,7 +2405,8 @@ std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
     size = (aligned_size > size ? aligned_size : size);
     if (enable_region_spanning == 1) {
         if (size <= region_span_size_per_memoryserver) {
-            // Size is smaller than page size and hence using single memory.
+            // Size is smaller than region_span_size_per_memoryserver and hence
+            // using single memory server.
             memsrv_list.push_back((int)memoryServerList[id]);
         } else {
             if ((size /
@@ -2747,7 +2748,6 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
             options["enable_region_spanning"] = (char *)strdup("true");
         }
         try {
-
             options["region_span_size_per_memoryserver"] = (char *)strdup(
                 (info->get_key_value("region_span_size_per_memoryserver"))
                     .c_str());
