@@ -312,12 +312,19 @@ void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
 
                 // save the registered address in the fiMemsrvMap
                 srcFiAddr = fiAddrVector[0];
-                if (obj != memServerAddrs->end())
-                    obj->second = std::make_pair((void *)srcAddr, srcAddrLen);
-                else
+                // Make a copy of the srcAddr to save in the map.
+                void *srcMemAddr = calloc(1, srcAddrLen);
+
+                memcpy(srcMemAddr, srcAddr, srcAddrLen);
+                if (obj != memServerAddrs->end()) {
+                    // Free the existing src memory server address, before
+                    // replacing with the new src addr.
+                    free(srcMemSrv.first);
+                    obj->second = std::make_pair(srcMemAddr, srcAddrLen);
+                } else
                     memServerAddrs->insert(
                         {srcMemserverId,
-                         std::make_pair((void *)srcAddr, srcAddrLen)});
+                         std::make_pair(srcMemAddr, srcAddrLen)});
                 if (fiAddrObj != fiMemsrvMap->end())
                     fiAddrObj->second = srcFiAddr;
                 else

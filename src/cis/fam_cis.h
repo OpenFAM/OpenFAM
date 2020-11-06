@@ -303,6 +303,9 @@ class Fam_CIS {
     virtual void get_addr(void *memServerFabricAddr,
                           uint64_t memoryServerId) = 0;
 
+    virtual size_t get_memserverinfo_size() = 0;
+    virtual void get_memserverinfo(void *memServerInfo) = 0;
+
     virtual int get_atomic(uint64_t regionId, uint64_t srcOffset,
                            uint64_t dstOffset, uint64_t nbytes, uint64_t key,
                            const char *nodeAddr, uint32_t nodeAddrSize,

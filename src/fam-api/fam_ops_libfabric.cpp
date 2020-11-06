@@ -169,42 +169,75 @@ int Fam_Ops_Libfabric::initialize() {
             message << "Libfabric initialize: memory server name not specified";
             THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
         }
-        for (uint64_t nodeId = 0; nodeId < numMemoryNodes; nodeId++) {
-            // Request memory server address from famAllocator
-            ret = famAllocator->get_addr_size(&serverAddrNameLen, nodeId);
-            if (serverAddrNameLen <= 0) {
-                message << "Fam allocator get_addr_size failed";
-                THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_ALLOCATOR,
-                                message.str().c_str());
-            }
-            serverAddrName = calloc(1, serverAddrNameLen);
-            ret = famAllocator->get_addr(serverAddrName, serverAddrNameLen,
-                                         nodeId);
+        size_t memServerInfoSize = 0;
+        ret = famAllocator->get_memserverinfo_size(&memServerInfoSize);
+        if (ret < 0) {
+            message << "Fam allocator get_memserverinfo_size failed";
+            THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_ALLOCATOR,
+                            message.str().c_str());
+        }
+
+        if (memServerInfoSize) {
+            void *memServerInfoBuffer = calloc(1, memServerInfoSize);
+            ret = famAllocator->get_memserverinfo(memServerInfoBuffer);
+
             if (ret < 0) {
-                message << "Fam Allocator get_addr failed";
+                message << "Fam Allocator get_memserverinfo failed";
                 THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_ALLOCATOR,
                                 message.str().c_str());
             }
 
-            // Save memory server address in memServerAddrs map
-            memServerAddrs->insert(
-                {nodeId, std::make_pair(serverAddrName, serverAddrNameLen)});
+            size_t bufPtr = 0;
+            uint64_t nodeId;
+            size_t addrSize;
+            void *nodeAddr;
+            uint64_t fiAddrsSize = fiAddrs->size();
+            auto fiAddrsItr = fiAddrs->begin();
 
-            // Initialize defaultCtx
-            if (famContextModel == FAM_CONTEXT_DEFAULT) {
-                Fam_Context *defaultCtx =
-                    new Fam_Context(fi, domain, famThreadModel);
-                defContexts->insert({nodeId, defaultCtx});
-                ret = fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
+            while (bufPtr < memServerInfoSize) {
+                memcpy(&nodeId, ((char *)memServerInfoBuffer + bufPtr),
+                       sizeof(uint64_t));
+                bufPtr += sizeof(uint64_t);
+                memcpy(&addrSize, ((char *)memServerInfoBuffer + bufPtr),
+                       sizeof(size_t));
+                bufPtr += sizeof(size_t);
+                nodeAddr = calloc(1, addrSize);
+                memcpy(nodeAddr, ((char *)memServerInfoBuffer + bufPtr),
+                       addrSize);
+                bufPtr += addrSize;
+                // Save memory server address in memServerAddrs map
+                memServerAddrs->insert(
+                    {nodeId, std::make_pair(nodeAddr, addrSize)});
+
+                // Initialize defaultCtx
+                if (famContextModel == FAM_CONTEXT_DEFAULT) {
+                    Fam_Context *defaultCtx =
+                        new Fam_Context(fi, domain, famThreadModel);
+                    defContexts->insert({nodeId, defaultCtx});
+                    ret =
+                        fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
+                    if (ret < 0) {
+                        // TODO: Log error
+                        return ret;
+                    }
+                }
+                std::vector<fi_addr_t> tmpAddrV;
+                ret = fabric_insert_av((char *)nodeAddr, av, &tmpAddrV);
+
                 if (ret < 0) {
                     // TODO: Log error
                     return ret;
                 }
-            }
-            ret = fabric_insert_av((char *)serverAddrName, av, fiAddrs);
-            if (ret < 0) {
-                // TODO: Log error
-                return ret;
+
+                // Place the fi_addr_t at nodeId index of fiAddrs vector.
+                if (nodeId > fiAddrsSize) {
+                    // Increase the size of fiAddrs vector to accomodate
+                    // nodeId larger than the current size.
+                    fiAddrs->resize(nodeId + 512, FI_ADDR_UNSPEC);
+                    fiAddrsSize = fiAddrs->size();
+                    fiAddrsItr = fiAddrs->begin();
+                }
+                fiAddrs->insert(fiAddrsItr + nodeId, tmpAddrV[0]);
             }
         }
     } else {
@@ -560,8 +593,8 @@ void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {
     uint64_t nodeId = 0;
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
         for (auto fam_ctx : *defContexts) {
+            nodeId = fam_ctx.first;
             fabric_fence((*fiAddr)[nodeId], fam_ctx.second);
-            nodeId++;
         }
     } else if (famContextModel == FAM_CONTEXT_REGION) {
         // ctx mutex lock

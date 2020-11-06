@@ -112,6 +112,10 @@ class Fam_Allocator_Client {
 
     int get_addr(void *addr, size_t addrSize, uint64_t nodeId);
 
+    int get_memserverinfo_size(size_t *memServerInfoSize);
+
+    int get_memserverinfo(void *memServerInfoBuffer);
+
   private:
     Fam_CIS *famCIS;
     uint32_t uid;

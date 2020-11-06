@@ -531,6 +531,51 @@ Fam_CIS_Server::get_addr_size(::grpc::ServerContext *context,
 }
 
 ::grpc::Status
+Fam_CIS_Server::get_memserverinfo_size(::grpc::ServerContext *context,
+                                       const ::Fam_Request *request,
+                                       ::Fam_Memserverinfo_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    size_t memServerInfoSize;
+    try {
+        memServerInfoSize = famCIS->get_memserverinfo_size();
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    response->set_memserverinfo_size(memServerInfoSize);
+    CIS_SERVER_PROFILE_END_OPS(get_memserverinfo_size);
+
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::get_memserverinfo(::grpc::ServerContext *context,
+                                  const ::Fam_Request *request,
+                                  ::Fam_Memserverinfo_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    size_t memServerInfoSize;
+    void *memServerInfoBuffer;
+    try {
+        memServerInfoSize = famCIS->get_memserverinfo_size();
+        memServerInfoBuffer = calloc(1, memServerInfoSize);
+        famCIS->get_memserverinfo(memServerInfoBuffer);
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    response->set_memserverinfo_size(memServerInfoSize);
+    response->set_memserverinfo(memServerInfoBuffer, memServerInfoSize);
+    free(memServerInfoBuffer);
+    CIS_SERVER_PROFILE_END_OPS(get_memserverinfo);
+
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
 Fam_CIS_Server::get_atomic(::grpc::ServerContext *context,
                            const ::Fam_Atomic_Get_Request *request,
                            ::Fam_Atomic_Response *response) {

@@ -107,6 +107,10 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
         asyncQHandler = new Fam_Async_QHandler(1);
     }
 
+    memoryServerCount = 0;
+    memServerInfoSize = 0;
+    memServerInfoBuffer = NULL;
+    memServerInfoV = new std::vector<std::tuple<uint64_t, size_t, void *>>();
     memoryServers = new memoryServerMap();
     metadataServers = new metadataServerMap();
     std::string delimiter1 = ",";
@@ -130,6 +134,13 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
                 (service.first).c_str(), service.second);
             memoryServers->insert({obj->first, memoryService});
             memsrv_id_list.push_back(obj->first);
+
+            size_t addrSize = get_addr_size(obj->first);
+            void *addr = calloc(1, addrSize);
+            get_addr(addr, obj->first);
+            memServerInfoV->push_back(
+                std::make_tuple(obj->first, addrSize, addr));
+            memServerInfoSize += (sizeof(uint64_t) + sizeof(size_t) + addrSize);
         }
     } else if (strcmp(config_options["memsrv_interface_type"].c_str(),
                       FAM_OPTIONS_DIRECT_STR) == 0) {
@@ -140,11 +151,39 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
             new Fam_Memory_Service_Direct(cisName, NULL, NULL, NULL);
         memoryServers->insert({0, memoryService});
         memsrv_id_list.push_back(0);
+
+        // Note: Need to perform this only for memory server model.
+        size_t addrSize = get_addr_size(0);
+        void *addr = calloc(1, addrSize);
+        get_addr(addr, 0);
+        memServerInfoV->push_back(std::make_tuple(0, addrSize, addr));
+        memServerInfoSize += (sizeof(uint64_t) + sizeof(size_t) + addrSize);
     } else {
         // Raise an exception
         message << "Invalid value specified for Fam config "
                    "option:memsrv_interface_type.";
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    }
+
+    // Allocate buffer for memServerInfo and populate the info from
+    // memServerInfoV
+    if (memServerInfoSize) {
+        uint64_t offsetPtr = 0;
+        memServerInfoBuffer = calloc(1, memServerInfoSize);
+        for (size_t i = 0; i < memServerInfoV->size(); i++) {
+            uint64_t nodeId = (uint64_t)get<0>((*memServerInfoV)[i]);
+            size_t addrSize = (uint64_t)get<1>((*memServerInfoV)[i]);
+            void *nodeAddr = (void *)get<2>((*memServerInfoV)[i]);
+            memcpy(((char *)memServerInfoBuffer + offsetPtr), &nodeId,
+                   sizeof(uint64_t));
+            offsetPtr += sizeof(uint64_t);
+            memcpy(((char *)memServerInfoBuffer + offsetPtr), &addrSize,
+                   sizeof(size_t));
+            offsetPtr += sizeof(size_t);
+            memcpy(((char *)memServerInfoBuffer + offsetPtr), nodeAddr,
+                   addrSize);
+            offsetPtr += addrSize;
+        }
     }
 
     // TODO: In current implementation metadata server id is 0.
@@ -194,6 +233,15 @@ Fam_CIS_Direct::~Fam_CIS_Direct() {
          ++obj) {
         delete obj->second;
     }
+
+    for (size_t i = 0; i < memServerInfoV->size(); i++) {
+        free(get<2>((*memServerInfoV)[i]));
+    }
+
+    if (memServerInfoBuffer)
+        free(memServerInfoBuffer);
+
+    delete memServerInfoV;
     delete memoryServers;
     delete metadataServers;
 }
@@ -1025,6 +1073,7 @@ uint64_t Fam_CIS_Direct::get_dataitem_id(uint64_t offset,
                                          uint64_t memoryServerId) {
     return ((memoryServerId << 32) + offset / MIN_OBJ_SIZE);
 }
+
 size_t Fam_CIS_Direct::get_addr_size(uint64_t memoryServerId) {
     size_t addrSize = 0;
     CIS_DIRECT_PROFILE_START_OPS()
@@ -1041,6 +1090,21 @@ void Fam_CIS_Direct::get_addr(void *memServerFabricAddr,
     memcpy(memServerFabricAddr, (void *)memoryService->get_addr(),
            memoryService->get_addr_size());
     CIS_DIRECT_PROFILE_END_OPS(cis_get_addr);
+}
+
+size_t Fam_CIS_Direct::get_memserverinfo_size() {
+    ostringstream message;
+    if (!memoryServerCount) {
+        message
+            << "Memory service is not initialized, memory server list is empty";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_MEMSERV_LIST_EMPTY,
+                        message.str().c_str());
+    }
+    return memServerInfoSize;
+}
+
+void Fam_CIS_Direct::get_memserverinfo(void *memServerInfo) {
+    memcpy(memServerInfo, memServerInfoBuffer, memServerInfoSize);
 }
 
 /*
