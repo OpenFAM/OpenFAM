@@ -127,7 +127,12 @@ class Fam_CIS_Direct : public Fam_CIS {
     uint64_t get_dataitem_id(uint64_t offset, uint64_t memoryServerId);
     size_t get_addr_size(uint64_t memoryServerId);
     void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
+
+    size_t get_memserverinfo_size();
+    void get_memserverinfo(void *memServerInfoBuffer);
+
     configFileParams get_config_info(std::string filename);
+
     uint64_t align_to_address(uint64_t size, int multiple);
 
     int get_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
@@ -174,6 +179,9 @@ class Fam_CIS_Direct : public Fam_CIS {
     metadataServerMap *metadataServers;
     configFileParams file_options;
     uint64_t memoryServerCount;
+    uint64_t memServerInfoSize;
+    std::vector<std::tuple<uint64_t, size_t, void *>> *memServerInfoV;
+    void *memServerInfoBuffer;
     bool useAsyncCopy;
     void *get_local_pointer(uint64_t regionId, uint64_t offset,
                             uint64_t memoryServerId);

@@ -321,4 +321,15 @@ int Fam_Allocator_Client::get_addr(void *addr, size_t addrSize,
     return 0;
 }
 
+int Fam_Allocator_Client::get_memserverinfo_size(size_t *memServerInfoSize) {
+    if ((*memServerInfoSize = famCIS->get_memserverinfo_size()) <= 0)
+        return -1;
+    return 0;
+}
+
+int Fam_Allocator_Client::get_memserverinfo(void *memServerInfoBuffer) {
+
+    famCIS->get_memserverinfo(memServerInfoBuffer);
+    return 0;
+}
 } // namespace openfam

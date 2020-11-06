@@ -73,6 +73,11 @@ service Fam_CIS_Rpc {
 
     rpc get_num_memory_servers(Fam_Request) returns (Fam_Response) {}
 
+    rpc get_memserverinfo_size(Fam_Request)
+        returns (Fam_Memserverinfo_Response) {}
+
+    rpc get_memserverinfo(Fam_Request) returns (Fam_Memserverinfo_Response) {}
+
     rpc get_atomic(Fam_Atomic_Get_Request) returns (Fam_Atomic_Response) {}
     rpc put_atomic(Fam_Atomic_Put_Request) returns (Fam_Atomic_Response) {}
     rpc scatter_strided_atomic(Fam_Atomic_SG_Strided_Request) returns (Fam_Atomic_Response) {}
@@ -108,6 +113,18 @@ message Fam_Address_Request { uint64 memserver_id = 1; }
 message Fam_Address_Response {
     repeated fixed32 addrname = 1;
     uint64 addrnamelen = 2;
+    int32 errorcode = 3;
+    string errormsg = 4;
+}
+
+/*
+ * Response message used by method get_memserverinfo
+ * memserverinfo_size : size of memory server info
+ * memserverinfo : bytes containing memory server info
+ */
+message Fam_Memserverinfo_Response {
+    uint64 memserverinfo_size = 1;
+    bytes memserverinfo = 2;
     int32 errorcode = 3;
     string errormsg = 4;
 }
