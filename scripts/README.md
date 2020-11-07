@@ -1,8 +1,8 @@
-#run_test.py
+# run_test.py
 This script generates config files for given configuration parameters and starts services accordingly and run both reggression and unit tests.
 
-##Description
-
+## Description
+```
 usage: run_test.py [-h] [-n N] [--pehosts PEHOSTS] [--launcher {mpi,slurm}]
                    [--model {memory_server,shared_memory}]
                    [--thrdmodel {single,multiple}] [--provider PROVIDER]
@@ -15,10 +15,10 @@ usage: run_test.py [-h] [-n N] [--pehosts PEHOSTS] [--launcher {mpi,slurm}]
                    [--libfabricport LIBFABRICPORT] [--metapath METAPATH]
                    [--fampath FAMPATH] [--atlthreads ATLTHREADS]
                    [--atlqsize ATLQSIZE] [--atldatasize ATLDATASIZE]
-                   inpath outpath buildpath
+                   rootpath outpath buildpath
 
 positional arguments:
-  inpath                path to template config files
+  rootpath              path to OpenFAM root dir
   outpath               path where generated output config files to be stored
   buildpath             OpenFAM build path
 
@@ -60,6 +60,7 @@ optional arguments:
   --atlqsize ATLQSIZE   ATL queue size
   --atldatasize ATLDATASIZE
                         TL data size per thread(MiB)
+```
 
   Note : arguments can also be passed via argument file, for example
 
@@ -67,7 +68,7 @@ optional arguments:
   $python3 run_test.py @arg_file
   ```
 
-  In arg_file arguments has to be mentioned one per line 
+  In arg_file arguments has to be mentioned one per line, for example: 
   
   arg_file
   ```
@@ -76,6 +77,5 @@ optional arguments:
   $OpenFAM/config
   $OpenFAM/config_out
   $OpenFAM/build
-
-
   ```
+

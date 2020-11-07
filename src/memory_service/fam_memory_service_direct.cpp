@@ -80,8 +80,8 @@ void memory_service_direct_profile_dump() {
 }
 
 Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
-    const char *name, const char *libfabricPort = NULL,
-    const char *libfabricProvider = NULL, const char *fam_path = NULL) {
+    const char *name, const char *libfabricPort, const char *libfabricProvider,
+    const char *fam_path, bool isSharedMemory) {
 
     // Look for options information from config file.
     // Use config file options only if NULL is passed.
@@ -116,12 +116,14 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
                     : fam_path);
 
     allocator = new Memserver_Allocator(fam_path);
-#ifdef SHM
-    memoryRegistration = new Fam_Memory_Registration_SHM();
-#else
-    memoryRegistration = new Fam_Memory_Registration_Libfabric(name, libfabricPort,
-                                                           libfabricProvider);
-#endif
+
+    if (isSharedMemory) {
+        memoryRegistration = new Fam_Memory_Registration_SHM();
+    } else {
+        memoryRegistration = new Fam_Memory_Registration_Libfabric(
+            name, libfabricPort, libfabricProvider);
+    }
+
     for (int i = 0; i < CAS_LOCK_CNT; i++) {
         (void)pthread_mutex_init(&casLock[i], NULL);
     }

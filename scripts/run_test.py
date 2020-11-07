@@ -9,10 +9,10 @@ import math
 my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@', description='Generate the config files')
 
 # Add the arguments
-my_parser.add_argument('inpath',
+my_parser.add_argument('rootpath',
                         action='store',
                         type=str,
-                        help='path to template config files')
+                        help='path to OpenFAM root dir')
 
 my_parser.add_argument('outpath',
                         action='store',
@@ -134,16 +134,16 @@ my_parser.add_argument('--atldatasize',
 args = my_parser.parse_args()
 
 #Open all config file templates
-with open(args.inpath+'/fam_pe_config.yaml') as pe_config_infile:
+with open(args.rootpath+'/config/fam_pe_config.yaml') as pe_config_infile:
     pe_config_doc = ruamel.yaml.load(pe_config_infile, ruamel.yaml.RoundTripLoader)
 
-with open(args.inpath+'/fam_client_interface_config.yaml') as cis_config_infile:
+with open(args.rootpath+'/config/fam_client_interface_config.yaml') as cis_config_infile:
     cis_config_doc = ruamel.yaml.load(cis_config_infile, ruamel.yaml.RoundTripLoader)
 
-with open(args.inpath+'/fam_memoryserver_config.yaml') as memservice_config_infile:
+with open(args.rootpath+'/config/fam_memoryserver_config.yaml') as memservice_config_infile:
     memservice_config_doc = ruamel.yaml.load(memservice_config_infile, ruamel.yaml.RoundTripLoader)
 
-with open(args.inpath+'/fam_metadata_config.yaml') as metaservice_config_infile:
+with open(args.rootpath+'/config/fam_metadata_config.yaml') as metaservice_config_infile:
     metaservice_config_doc = ruamel.yaml.load(metaservice_config_infile, ruamel.yaml.RoundTripLoader)
 
 #Assign values to config options if corresponding argument is set
@@ -212,7 +212,7 @@ os.system(cmd)
 if args.launcher is None:
     pe_config_doc['runtime'] = "NONE"
 elif args.launcher == "mpi" :
-    os.environ['TEST_COMMAND'] = args.buildpath+'/../../third-party/build/bin/mpirun'
+    os.environ['TEST_COMMAND'] = args.rootpath+'/third-party/build/bin/mpirun'
     if args.pehosts is not None :
         if len(args.pehosts.split(',')) < npe :
             pe_per_host = npe
@@ -258,7 +258,7 @@ with open(args.outpath+'/config/fam_metadata_config.yaml', 'w') as metaservice_c
 
 #Set OPENFAM_ROOT environment variable
 os.environ['OPENFAM_ROOT'] = args.outpath
-env_cmd = 'export OPENFAM_ROOT='+args.outpath+';'+'export PATH='+args.buildpath+'/../../third-party/build/bin/:$PATH;export LD_LIBRARY_PATH='+args.buildpath+'/../../third-party/build/lib:$LD_LIBRARY_PATH;'
+env_cmd = 'export OPENFAM_ROOT='+args.outpath+';'+'export PATH='+args.rootpath+'/third-party/build/bin/:$PATH;export LD_LIBRARY_PATH='+args.rootpath+'/third-party/build/lib:$LD_LIBRARY_PATH;'
 os.system(env_cmd)
 
 ssh_cmd = 'ssh '+os.environ['USER']+'@'

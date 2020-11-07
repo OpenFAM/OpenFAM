@@ -39,7 +39,7 @@ class Fam_Allocator_Client {
   public:
     Fam_Allocator_Client(const char *name, uint64_t port);
 
-    Fam_Allocator_Client();
+    Fam_Allocator_Client(bool isSharedMemory = false);
 
     ~Fam_Allocator_Client();
 
