@@ -63,7 +63,6 @@ namespace openfam {
     } while (0)
 
 enum Internal_Error {
-    ALLOC_NO_ERROR = 0,
     REGION_EXIST = MIN_ERR_VAL,
     DATAITEM_EXIST,
     DESTROY_REGION_NOT_PERMITTED,
@@ -81,10 +80,9 @@ enum Internal_Error {
     HEAP_NOT_OPENED,
     HEAP_NOT_CLOSED,
     HEAP_ALLOCATE_FAILED,
-    HEAP_NO_LOCALPTR,
-    RBT_HEAP_NOT_INSERTED,
-    RBT_HEAP_NOT_REMOVED,
-    RBT_HEAP_NOT_FOUND,
+    HEAPMAP_INSERT_FAILED,
+    HEAPMAP_REMOVE_FAILED,
+    HEAPMAP_HEAP_NOT_FOUND,
     REGION_PERM_MODIFY_NOT_PERMITTED,
     ITEM_PERM_MODIFY_NOT_PERMITTED,
     NO_PERMISSION,
@@ -100,7 +98,6 @@ enum Internal_Error {
     REGION_NAME_TOO_LONG,
     DATAITEM_NAME_TOO_LONG,
     REGION_RESIZE_NOT_PERMITTED,
-    REGION_NOT_MODIFIED,
     RESIZE_FAILED,
     ITEM_REGISTRATION_FAILED,
     ITEM_DEREGISTRATION_FAILED,
@@ -151,12 +148,14 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case LIBFABRIC_ERROR:
         return FAM_ERR_LIBFABRIC;
 
-    case ALLOC_NO_ERROR:
     case REGION_NOT_INSERTED:
     case DATAITEM_NOT_INSERTED:
     case REGION_NOT_REMOVED:
     case DATAITEM_NOT_REMOVED:
-    case REGION_NOT_MODIFIED:
+    case REGION_NAME_TOO_LONG:
+    case DATAITEM_NAME_TOO_LONG:
+    case METADATA_ERROR:
+        return FAM_ERR_METADATA;
     case HEAP_NOT_FOUND:
     case HEAP_NOT_CREATED:
     case HEAP_NOT_DESTROYED:
@@ -164,21 +163,18 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case HEAP_NOT_CLOSED:
     case HEAP_ALLOCATE_FAILED:
     case HEAP_MERGE_FAILED:
-    case HEAP_NO_LOCALPTR:
     case RESIZE_FAILED:
-    case RBT_HEAP_NOT_INSERTED:
-    case RBT_HEAP_NOT_REMOVED:
-    case RBT_HEAP_NOT_FOUND:
+    case HEAPMAP_INSERT_FAILED:
+    case HEAPMAP_REMOVE_FAILED:
+    case HEAPMAP_HEAP_NOT_FOUND:
     case NO_FREE_POOLID:
     case NO_LOCAL_POINTER:
     case OPS_INIT_FAILED:
     case FENCE_REG_FAILED:
     case FENCE_DEREG_FAILED:
-    case REGION_NAME_TOO_LONG:
-    case DATAITEM_NAME_TOO_LONG:
     case ITEM_REGISTRATION_FAILED:
     case ITEM_DEREGISTRATION_FAILED:
-    case METADATA_ERROR:
+        return FAM_ERR_MEMORY;
     default:
         return FAM_ERR_RESOURCE;
     }
