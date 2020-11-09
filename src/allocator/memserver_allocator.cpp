@@ -183,7 +183,7 @@ void Memserver_Allocator::create_region(uint64_t regionId, size_t nbytes) {
         if (ret != NO_ERROR) {
             message << "Can not destroy heap";
         }
-        THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_INSERTED,
+        THROW_ERRNO_MSG(Memory_Service_Exception, HEAPMAP_INSERT_FAILED,
                         message.str().c_str());
     }
 
@@ -253,7 +253,7 @@ void Memserver_Allocator::resize_region(uint64_t regionId, size_t nbytes) {
         it = get_heap(regionId, heap);
         if (it == heapMap->end()) {
             message << "Can not find heap in map";
-            THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_FOUND,
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAPMAP_HEAP_NOT_FOUND,
                             message.str().c_str());
         }
     }
@@ -292,7 +292,7 @@ uint64_t Memserver_Allocator::allocate(uint64_t regionId, size_t nbytes) {
         it = get_heap(regionId, heap);
         if (it == heapMap->end()) {
             message << "Can not find heap in map";
-            THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_FOUND,
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAPMAP_HEAP_NOT_FOUND,
                             message.str().c_str());
         }
     }
@@ -354,7 +354,7 @@ void Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset) {
         it = get_heap(regionId, heap);
         if (it == heapMap->end()) {
             message << "Can not find heap in map";
-            THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_FOUND,
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAPMAP_HEAP_NOT_FOUND,
                             message.str().c_str());
         }
         NVMM_PROFILE_START_OPS()
@@ -525,7 +525,7 @@ void Memserver_Allocator::create_ATL_root(size_t nbytes) {
         if (ret != NO_ERROR) {
             message << "Can not destroy heap";
         }
-        THROW_ERRNO_MSG(Memory_Service_Exception, RBT_HEAP_NOT_INSERTED,
+        THROW_ERRNO_MSG(Memory_Service_Exception, HEAPMAP_INSERT_FAILED,
                         message.str().c_str());
     }
 
