@@ -85,7 +85,7 @@ case $OS in
 		fi
 		case $(get_ubuntu_release) in
 		    *16.04*)
-			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-devi python python3 python-pip python3-pip
+			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-dev python python3 python-pip python3-pip
 			;;
 		    *)
 			sudo apt-get install --assume-yes libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-dev python python3 python-pip python3-pip

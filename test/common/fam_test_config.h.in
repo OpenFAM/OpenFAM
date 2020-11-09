@@ -66,7 +66,7 @@ void init_fam_options(Fam_Options *famOpts) {
 
 memset((void *)famOpts, 0, sizeof(Fam_Options));
 
-#ifdef USE_FAM_OPTIONS
+#ifndef USE_CONFIG_OPTIONS
     famOpts->openFamModel = strdup(TEST_OPENFAM_MODEL);
     // Read this from pe_config file.
     //famOpts->cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);

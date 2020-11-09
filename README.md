@@ -66,16 +66,15 @@ $ cd $OpenFAM
     ```
 
    d. set OPENFAM_ROOT variable to point to config file location
-      (sample config files are located in config directory, User can also configure OpenFAM using openFAM options
-           to enable openFAM options during testing set USE_FAM_OPTION flag in cmake build as, cmake .. -DUSE_FAM_OPTION=ON)
+      (sample config files are located in config directory, User can configure OpenFAM using either fam options or configuration files. For testing default is fam options, to enable configuration file options during testing set USE_CONFIG_OPTION flag in cmake build as, cmake .. -DUSE_CONFIG_OPTION=ON)
 
-        ```
-        export OPENFAM_ROOT="$OpenFAM"
-        ```
+    ```
+    export OPENFAM_ROOT="$OpenFAM"
+    ```
 
    e. Start all services on localhost(127.0.0.1) as a background process on the current terminal.
       (In sample configurtion Memory Service and  Metadata Service are using direct interface and CIS has RPC interface,
-           edit the configuratuion files to run with desired configuration and start services accordingly)
+       edit the configuratuion files to run with desired configuration and start services accordingly)
 
     ```
     $ source setup.sh --cisserver=127.0.0.1
@@ -136,36 +135,26 @@ The script [setup.sh](https://github.com/OpenFAM/OpenFAM/blob/master/test/setup.
 Usage :
 
         source setup.sh <options>
+```
 
-OPTIONS :
-  -h/--help       : help
-
-  -n              : Number of PEs
-
-  --memserver     : IP address of memory server
-                    Note : This option is necessary to start the memory server
-
-  --metaserver    : IP address of metadata server
-                    Note : This option is necessary to start the metadata server
-
-  --cisserver     : IP address of CIS server
-                    Note : This option is necessary to start the CIS server
-
-  --memrpcport    : RPC port for memory service
-
-  --metarpcport   : RPC port for metadata server
-
-  --cisrpcport    : RPC port for CIS server
-
-  --libfabricport : Libfabric port
-
-  --provider      : Libfabric provider
-
-  --fam_path      : Location of FAM
-
-  --init          : Initializes NVMM (use this option for shared memory model)
+| Options | Description |
+| :---    | :---        |
+| -h/--help       | help
+| -n              | Number of PEs                                               |
+| --memserver     | IP address of memory server                                 |
+|                 | Note : This option is necessary to start the memory server  |
+| --metaserver    | IP address of metadata server                               |
+|                 | Note : This option is necessary to start the metadata server|
+| --cisserver     | IP address of CIS server                                    |
+|                 | Note : This option is necessary to start the CIS server     |
+| --memrpcport    | RPC port for memory service                                 |
+| --metarpcport   | RPC port for metadata server                                |
+| --cisrpcport    | RPC port for CIS server                                     |
+| --libfabricport | Libfabric port                                              |
+| --provider      | Libfabric provider                                          |
+| --fam_path      | Location of FAM                                             |
+| --init          | Initializes NVMM (use this option for shared memory model)  |
 
 (Note : Do no use source command for -h/--help and --init options eg : ./setup.sh -h or ./setup.sh --init)
-```
 
 Note: cmake command should be re-run if fam\_rpc.proto file is modified to generate updated fam\_rpc.grpc.pb.cc and fam_rpc.pb.cc files

@@ -30,8 +30,8 @@
 
 #!/bin/bash
 CURRENTDIR=`pwd`
-export PATH="$CURRENTDIR/../../third-party/build/bin/:$PATH"
-export LD_LIBRARY_PATH="$CURRENTDIR/../../third-party/build/lib:$LD_LIBRARY_PATH"
+export PATH="$CURRENTDIR/../third-party/build/bin/:$PATH"
+export LD_LIBRARY_PATH="$CURRENTDIR/../third-party/build/lib:$LD_LIBRARY_PATH"
 
 initialize=
 memserver=
@@ -170,8 +170,8 @@ pkill metadata_server
 pkill cis_server
 
 #set environment variables for running tests
-export TEST_COMMAND="$CURRENTDIR/../../third-party/build/bin/mpirun"
-export TEST_OPT="-n $npe"
+export OPENFAM_TEST_COMMAND="$CURRENTDIR/../third-party/build/bin/mpirun"
+export OPENFAM_TEST_OPT="-n $npe"
 
 cd src
 

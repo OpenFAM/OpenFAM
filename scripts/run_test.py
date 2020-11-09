@@ -212,7 +212,7 @@ os.system(cmd)
 if args.launcher is None:
     pe_config_doc['runtime'] = "NONE"
 elif args.launcher == "mpi" :
-    os.environ['TEST_COMMAND'] = args.rootpath+'/third-party/build/bin/mpirun'
+    os.environ['OPENFAM_TEST_COMMAND'] = args.rootpath+'/third-party/build/bin/mpirun'
     if args.pehosts is not None :
         if len(args.pehosts.split(',')) < npe :
             pe_per_host = npe
@@ -223,15 +223,15 @@ elif args.launcher == "mpi" :
         for host in args.pehosts.split(','):
             host_list=host_list+host+':'+str(pe_per_host)+','
         print(host_list)
-        os.environ['TEST_OPT'] = '-n '+str(npe)+' -host '+host_list+' -x OPENFAM_ROOT='+args.outpath
+        os.environ['OPENFAM_TEST_OPT'] = '-n '+str(npe)+' -host '+host_list+' -x OPENFAM_ROOT='+args.outpath
     else :
-        os.environ['TEST_OPT'] = '-n '+str(npe)
+        os.environ['OPENFAM_TEST_OPT'] = '-n '+str(npe)
 else :
     if args.pehosts is None:
         print("ERROR: --pehosts option is required when slurm is used as launcher")
         sys.exit()
-    os.environ['TEST_COMMAND'] = 'srun'
-    os.environ['TEST_OPT'] = '-N '+str(len(args.pehosts.split(',')))+' -n '+str(npe)+' --nodelist='+args.pehosts+' --mpi=pmix_v2'
+    os.environ['OPENFAM_TEST_COMMAND'] = 'srun'
+    os.environ['OPENFAM_TEST_OPT'] = '-N '+str(len(args.pehosts.split(',')))+' -n '+str(npe)+' --nodelist='+args.pehosts+' --mpi=pmix_v2'
 
 #Check if user has provided any service interface as "rpc" when openfam model is shared_memeoyr
 if pe_config_doc['openfam_model'] == "shared_memory":
