@@ -708,9 +708,15 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
             // Could not insert the region id in KVS.
             // Remove the region name from region name KVS
             regionNameKVS->Del(regionName.c_str(), regionName.size());
-            message << "Region Id insertion failed";
-            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
-                            message.str().c_str());
+            if (ret == META_KEY_ALREADY_EXIST) {
+                message << "Region already exist";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_EXIST,
+                                message.str().c_str());
+            } else {
+                message << "Region Id insertion failed";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
+            }
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
@@ -749,7 +755,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
         pthread_mutex_unlock(&kvsMapLock);
     } else if (ret == META_KEY_ALREADY_EXIST) {
         message << "Region already exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_EXIST,
                         message.str().c_str());
     } else {
         DEBUG_STDERR(regionId, "Insert failed.");
@@ -779,7 +785,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_region(
         // Region key does not exist
         DEBUG_STDOUT(regionId, "Region not found.");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     } else {
         // KVS found... update the value of dataitem root from the region node
@@ -833,7 +839,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_region(
         // Region key does not exist
         DEBUG_STDOUT(regionName, "Region not found.");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -878,7 +884,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
     if (ret == META_KEY_DOES_NOT_EXIST) {
         DEBUG_STDOUT(regionName, "Region not found.");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     } else if (ret == META_NO_ERROR) {
         pthread_mutex_lock(&kvsMapLock);
@@ -899,8 +905,8 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
         ret = regionIdKVS->Del(regionId.c_str(), regionId.size());
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionName, "Region id not found.");
-            message << "Regioin does not exist";
-            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+            message << "Region does not exist";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                             message.str().c_str());
         } else if (ret == META_ERROR) {
             DEBUG_STDERR(regionName, "Region id lookup failed.");
@@ -914,8 +920,8 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
 
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionName, "Region not found.");
-            message << "Regioin does not exist";
-            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+            message << "Region does not exist";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                             message.str().c_str());
         } else if (ret == META_NO_ERROR) {
             return;
@@ -969,8 +975,8 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
 
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionId, "Region not found");
-            message << "Regioin does not exist";
-            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+            message << "Region does not exist";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                             message.str().c_str());
         } else if (ret == META_ERROR) {
             DEBUG_STDERR(regionId, "Del failed.");
@@ -986,7 +992,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionId, "Region not found");
             message << "Region does not exist";
-            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+            THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                             message.str().c_str());
         } else if (ret == META_ERROR) {
             DEBUG_STDERR(regionId, "Del failed.");
@@ -997,7 +1003,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
     } else {
         DEBUG_STDOUT(regionId, "Region lookup failed.");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1049,9 +1055,16 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
 
             if (ret != META_NO_ERROR) {
                 DEBUG_STDERR(dataitemId, "FindOrCreate failed");
-                message << "Failed to insert metadata into dataitem name KVS";
-                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
-                                message.str().c_str());
+                if (ret == META_KEY_ALREADY_EXIST) {
+                    message << "Dataitem already exist";
+                    THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_EXIST,
+                                    message.str().c_str());
+                } else {
+                    message
+                        << "Failed to insert metadata into dataitem name KVS";
+                    THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                    message.str().c_str());
+                }
             }
         }
 
@@ -1063,25 +1076,32 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
 
         if (ret != META_NO_ERROR) {
             DEBUG_STDERR(dataitemId, "FindOrCreate failed");
-            // if entry was added in dataitem name KVS, then delete it
-            if (!dataitemName.empty()) {
-                int ret1 = dataitemNameKVS->Del(dataitemName.c_str(),
-                                                dataitemName.size());
-                if (ret1 != META_NO_ERROR) {
-                    message << "Failed to remove dataitem name entry from KVS, "
+            if (ret == META_KEY_ALREADY_EXIST) {
+                message << "Dataitem already exist";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_EXIST,
+                                message.str().c_str());
+            } else {
+                // if entry was added in dataitem name KVS, then delete it
+                if (!dataitemName.empty()) {
+                    int ret1 = dataitemNameKVS->Del(dataitemName.c_str(),
+                                                    dataitemName.size());
+                    if (ret1 != META_NO_ERROR) {
+                        message
+                            << "Failed to remove dataitem name entry from KVS, "
                                "while cleanup";
-                    THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
-                                    message.str().c_str());
+                        THROW_ERRNO_MSG(Metadata_Service_Exception,
+                                        METADATA_ERROR, message.str().c_str());
+                    }
                 }
+                message << "Failed to insert metadata into dataitem Id KVS";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
-            message << "Failed to insert metadata into dataitem Id KVS";
-            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
-                            message.str().c_str());
         }
     } else {
         DEBUG_STDOUT(regionName, "region not found");
-        message << "Regioin does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        message << "Region does not exist";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1131,9 +1151,16 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
 
             if (ret != META_NO_ERROR) {
                 DEBUG_STDERR(dataitemName, "FindOrCreate failed");
-                message << "Failed to insert metadata into dataitem name KVS";
-                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
-                                message.str().c_str());
+                if (ret == META_KEY_ALREADY_EXIST) {
+                    message << "Dataitem already exist";
+                    THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_EXIST,
+                                    message.str().c_str());
+                } else {
+                    message
+                        << "Failed to insert metadata into dataitem name KVS";
+                    THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                    message.str().c_str());
+                }
             }
         }
         ResetBuf(val_buf, val_len, max_val_len);
@@ -1143,25 +1170,32 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
             sizeof(Fam_DataItem_Metadata), val_buf, val_len);
         if (ret != META_NO_ERROR) {
             DEBUG_STDERR(dataitemKey, "FindOrCreate failed.");
-            // if entry was added in dataitem name KVS, then delete it
-            if (!dataitemName.empty()) {
-                int ret1 = dataitemNameKVS->Del(dataitemName.c_str(),
-                                                dataitemName.size());
-                if (ret1 != META_NO_ERROR) {
-                    message << "Failed to remove dataitem name entry from KVS, "
+            if (ret == META_KEY_ALREADY_EXIST) {
+                message << "Dataitem already exist";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_EXIST,
+                                message.str().c_str());
+            } else {
+                // if entry was added in dataitem name KVS, then delete it
+                if (!dataitemName.empty()) {
+                    int ret1 = dataitemNameKVS->Del(dataitemName.c_str(),
+                                                    dataitemName.size());
+                    if (ret1 != META_NO_ERROR) {
+                        message
+                            << "Failed to remove dataitem name entry from KVS, "
                                "while cleanup";
-                    THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
-                                    message.str().c_str());
+                        THROW_ERRNO_MSG(Metadata_Service_Exception,
+                                        METADATA_ERROR, message.str().c_str());
+                    }
                 }
+                message << "Failed to insert metadata into dataitem Id KVS";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
-            message << "Failed to insert metadata into dataitem Id KVS ";
-            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
-                            message.str().c_str());
         }
     } else {
         DEBUG_STDOUT(regionId, "region not found");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1229,7 +1263,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
         }
     } else {
         message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1315,7 +1349,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
         }
     } else {
         message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1378,7 +1412,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
         }
     } else {
         message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1451,7 +1485,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
         }
     } else {
         message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1513,7 +1547,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
         }
     } else {
         message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1563,7 +1597,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
         }
     } else {
         message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1621,7 +1655,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
         }
     } else {
         message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1691,7 +1725,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
         }
     } else {
         message << "Dataitem does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1735,14 +1769,18 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
             memcpy((char *)&dataitem, (char const *)val_buf,
                    sizeof(Fam_DataItem_Metadata));
             return true;
-        } else {
+        } else if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDERR(dataitemId, "Get failed.");
             return false;
+        } else {
+            message << "Failed to find dataitem";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
     } else {
         DEBUG_STDOUT(regionId, "Region not found");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1787,14 +1825,18 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
             memcpy((char *)&dataitem, (char const *)val_buf,
                    sizeof(Fam_DataItem_Metadata));
             return true;
-        } else {
+        } else if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDERR(dataitemId, "Get failed.");
             return false;
+        } else {
+            message << "Failed to find dataitem";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
     } else {
         DEBUG_STDOUT(regionName, "Region not found");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1843,16 +1885,26 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
                 memcpy((char *)&dataitem, (char const *)val_buf,
                        sizeof(Fam_DataItem_Metadata));
                 return true;
-            } else {
-                DEBUG_STDERR(dataitemName, "Get failed.");
+            } else if (ret == META_KEY_DOES_NOT_EXIST) {
+                DEBUG_STDERR(dataitemId, "Get failed.");
                 return false;
+            } else {
+                message << "Failed to find dataitem";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
+        } else if (ret == META_KEY_DOES_NOT_EXIST) {
+            DEBUG_STDERR(dataitemId, "Get failed.");
+            return false;
+        } else {
+            message << "Failed to find dataitem";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
-        return false;
     } else {
         DEBUG_STDOUT(regionName, "Region not found");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
 }
@@ -1905,16 +1957,26 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
                 memcpy((char *)&dataitem, (char const *)val_buf,
                        sizeof(Fam_DataItem_Metadata));
                 return true;
-            } else {
-                DEBUG_STDERR(dataitemName, "Get failed.");
+            } else if (ret == META_KEY_DOES_NOT_EXIST) {
+                DEBUG_STDERR(dataitemId, "Get failed.");
                 return false;
+            } else {
+                message << "Failed to find dataitem";
+                THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                                message.str().c_str());
             }
+        } else if (ret == META_KEY_DOES_NOT_EXIST) {
+            DEBUG_STDERR(dataitemId, "Get failed.");
+            return false;
+        } else {
+            message << "Failed to find dataitem";
+            THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+                            message.str().c_str());
         }
-        return false;
     } else {
         DEBUG_STDOUT(regionName, "Region not found");
         message << "Region does not exist";
-        THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
 }
