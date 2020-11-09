@@ -152,10 +152,11 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case DATAITEM_NOT_INSERTED:
     case REGION_NOT_REMOVED:
     case DATAITEM_NOT_REMOVED:
-    case REGION_NAME_TOO_LONG:
-    case DATAITEM_NAME_TOO_LONG:
     case METADATA_ERROR:
         return FAM_ERR_METADATA;
+    case REGION_NAME_TOO_LONG:
+    case DATAITEM_NAME_TOO_LONG:
+        return FAM_ERR_NAME_TOO_LONG;
     case HEAP_NOT_FOUND:
     case HEAP_NOT_CREATED:
     case HEAP_NOT_DESTROYED:

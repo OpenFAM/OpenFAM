@@ -905,7 +905,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
         ret = regionIdKVS->Del(regionId.c_str(), regionId.size());
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionName, "Region id not found.");
-            message << "Regioin does not exist";
+            message << "Region does not exist";
             THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                             message.str().c_str());
         } else if (ret == META_ERROR) {
@@ -920,7 +920,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
 
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionName, "Region not found.");
-            message << "Regioin does not exist";
+            message << "Region does not exist";
             THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                             message.str().c_str());
         } else if (ret == META_NO_ERROR) {
@@ -975,7 +975,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
 
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionId, "Region not found");
-            message << "Regioin does not exist";
+            message << "Region does not exist";
             THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                             message.str().c_str());
         } else if (ret == META_ERROR) {
@@ -1100,7 +1100,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
         }
     } else {
         DEBUG_STDOUT(regionName, "region not found");
-        message << "Regioin does not exist";
+        message << "Region does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
