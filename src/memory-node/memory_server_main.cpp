@@ -116,7 +116,7 @@ int main(int argc, char *argv[]) {
     }
 
 	if(initFlag) {
-		if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
+        if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
             StartNVMM();
         } else
             StartNVMM(fam_path);

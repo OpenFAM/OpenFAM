@@ -27,7 +27,7 @@ python3 $SCRIPT_DIR/run_test.py --launcher $LAUNCHER -n 1 --cisinterface rpc --c
 
 if [[ $? > 0 ]]
 then
-        echo "OpenFAM test with cis-rpc-meta-direct-mem-rpc coniguration failed. exit..."
+        echo "OpenFAM test with cis-rpc-meta-direct-mem-rpc configuration failed. exit..."
         exit 1
 fi
 
@@ -39,7 +39,7 @@ python3 $SCRIPT_DIR/run_test.py --launcher $LAUNCHER -n 1 --cisinterface rpc --c
 
 if [[ $? > 0 ]]
 then
-        echo "OpenFAM test with cis-rpc-meta-rpc-mem-rpc coniguration failed. exit..."
+        echo "OpenFAM test with cis-rpc-meta-rpc-mem-rpc configuration failed. exit..."
         exit 1
 fi
 
@@ -51,7 +51,7 @@ python3 $SCRIPT_DIR/run_test.py --launcher $LAUNCHER -n 1 --cisinterface rpc --c
 
 if [[ $? > 0 ]]
 then
-        echo "OpenFAM test with cis-rpc-meta-direct-mem-direct coniguration failed. exit..."
+        echo "OpenFAM test with cis-rpc-meta-direct-mem-direct configuration failed. exit..."
         exit 1
 fi
 
@@ -63,7 +63,7 @@ python3 $SCRIPT_DIR/run_test.py --launcher $LAUNCHER -n 1 --cisinterface direct 
 
 if [[ $? > 0 ]]
 then
-        echo "OpenFAM test with cis-direct-meta-rpc-mem-rpc coniguration failed. exit..."
+        echo "OpenFAM test with cis-direct-meta-rpc-mem-rpc configuration failed. exit..."
         exit 1
 fi
 
@@ -75,7 +75,7 @@ python3 $SCRIPT_DIR/run_test.py --launcher $LAUNCHER -n 1 --model shared_memory 
 
 if [[ $? > 0 ]]
 then
-        echo "OpenFAM test with shared memory coniguration failed. exit..."
+        echo "OpenFAM test with shared memory configuration failed. exit..."
         exit 1
 fi
 cd $CURRENTDIR

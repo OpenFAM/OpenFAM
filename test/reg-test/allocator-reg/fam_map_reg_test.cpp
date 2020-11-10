@@ -99,7 +99,7 @@ int main(int argc, char **argv) {
 
     if (strcmp(openFamModel, "shared_memory") != 0) {
         my_fam->fam_finalize("default");
-        std::cout << "Test case valid only in memory servhared memoryr model, "
+        std::cout << "Test case valid only in shared memory model, "
                      "skipping with status : "
                   << TEST_SKIP_STATUS << std::endl;
         return TEST_SKIP_STATUS;
