@@ -285,13 +285,27 @@ int main(int argc, char **argv) {
     uint64_t testOffset = 0;
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
+// Note:this test can not be run with multiple memory server model, when memory
+// server profiling is enabled.
+#ifdef MEMSERVER_PROFILE
+    char *openFamModel;
+    EXPECT_NO_THROW(
+        openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL")));
+    if (strcmp(openFamModel, "memory_server") != 0) {
+        EXPECT_NO_THROW(my_fam->fam_finalize("default"));
+        std::cout << "Test case valid only in memory server model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
+    }
+    char *cisServer = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
+    int *rpcPort = (int *)my_fam->fam_get_option(strdup("GRPC_PORT"));
+    EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, *rpcPort));
+#endif
+
     const char *dataItem = get_uniq_str("firstGlobal", my_fam);
     const char *testRegion = get_uniq_str("testGlobal", my_fam);
 
-#if !defined(SHM) && defined(MEMSERVER_PROFILE)
-    EXPECT_NO_THROW(
-        cis = new Fam_CIS_Client(TEST_CIS_SERVER, atoi(TEST_GRPC_PORT)));
-#endif
     EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(
                         testRegion, BIG_REGION_SIZE, 0777, RAID1));
@@ -315,7 +329,7 @@ int main(int argc, char **argv) {
     }
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
-#if !defined(SHM) && defined(MEMSERVER_PROFILE)
+#ifdef MEMSERVER_PROFILE
     EXPECT_NO_THROW(cis->reset_profile(0));
     EXPECT_NO_THROW(fabric_reset_profile());
     EXPECT_NO_THROW(my_fam->fam_barrier_all());

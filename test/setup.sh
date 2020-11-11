@@ -30,9 +30,10 @@
 
 #!/bin/bash
 CURRENTDIR=`pwd`
-export PATH="$CURRENTDIR/../../third-party/build/bin/:$PATH"
-export LD_LIBRARY_PATH="$CURRENTDIR/../../third-party/build/lib:$LD_LIBRARY_PATH"
+export PATH="$CURRENTDIR/../third-party/build/bin/:$PATH"
+export LD_LIBRARY_PATH="$CURRENTDIR/../third-party/build/lib:$LD_LIBRARY_PATH"
 
+initialize=
 memserver=
 metaserver=
 cisserver=
@@ -41,7 +42,7 @@ metarpcport=8788
 memrpcport=8789
 libfabricport=7500
 provider=sockets
-
+npe=1
 print_help() {
 	tput bold
 	echo "SYNOPSIS :"
@@ -52,6 +53,8 @@ print_help() {
 	tput bold
 	echo "OPTIONS :"
 	tput reset
+	echo ""
+    echo "  -n				: Number of PEs"
 	echo ""
 	echo "  --memserver     : IP address of memory server"
 	echo "                    Note : This option is necessary to start the memory server"
@@ -74,6 +77,8 @@ print_help() {
 	echo ""
 	echo "  --fam_path      : Location of FAM"
 	echo ""
+	echo "  --init          : Initializes NVMM (use this option for shared memory model)"
+	echo ""
 	exit
 }
 
@@ -86,6 +91,15 @@ while :; do
 		-h|-\?|--help)
 			print_help
 			;;
+		--init)
+			initialize=true
+			;;
+		-n=?*)
+			npe=${1#*=}
+			;;
+		-n=)
+            echo 'ERROR: "-n" requires a non-empty option argument.'
+            ;;
 		--memserver=?*)
 			memserver=${1#*=}
 			;;
@@ -155,7 +169,19 @@ pkill memory_server
 pkill metadata_server
 pkill cis_server
 
+#set environment variables for running tests
+export OPENFAM_TEST_COMMAND="$CURRENTDIR/../third-party/build/bin/mpirun"
+export OPENFAM_TEST_OPT="-n $npe"
+
 cd src
+
+#itialize nvmm 
+if [ "$initialize" ]; then
+	if [ "$fam_path" ]; then
+            fam_path_ARG="-f ${fam_path}"
+    fi
+    ./memory_server -i $fam_path_ARG
+fi 
 
 #Run Metadata Service
 if [ "$metaserver" ]; then

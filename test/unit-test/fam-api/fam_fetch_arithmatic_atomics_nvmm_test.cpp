@@ -60,13 +60,23 @@ int main() {
     Fam_Descriptor *item;
 
     init_fam_options(&fam_opts);
-    fam_opts.openFamModel = strdup(TEST_OPENFAM_MODEL);
 
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
         cout << "fam initialization failed" << endl;
         exit(1);
+    }
+
+    char *openFamModel =
+        (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
+
+    if (strcmp(openFamModel, "shared_memory") != 0) {
+        my_fam->fam_finalize("default");
+        std::cout << "Test case valid only in shared memory model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
     }
 
     desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);

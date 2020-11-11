@@ -76,7 +76,8 @@ void cis_direct_profile_dump() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(CIS_DIRECT)
 }
 
-Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
+Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
+                               bool isSharedMemory)
     : useAsyncCopy(useAsyncCopy_) {
 
     // Look for options information from config file.
@@ -123,8 +124,13 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
-    if (strcmp(config_options["memsrv_interface_type"].c_str(),
-               FAM_OPTIONS_RPC_STR) == 0) {
+    if (isSharedMemory) {
+        Fam_Memory_Service *memoryService = new Fam_Memory_Service_Direct(
+            cisName, NULL, NULL, NULL, isSharedMemory);
+        memoryServers->insert({0, memoryService});
+        memsrv_id_list.push_back(0);
+    } else if (strcmp(config_options["memsrv_interface_type"].c_str(),
+                      FAM_OPTIONS_RPC_STR) == 0) {
         Server_Map memoryServerList = parse_server_list(
             config_options["memsrv_list"].c_str(), delimiter1, delimiter2);
         for (auto obj = memoryServerList.begin(); obj != memoryServerList.end();
@@ -188,8 +194,17 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_)
 
     // TODO: In current implementation metadata server id is 0.
     // later it will be selected based on some strategy
-    if (strcmp(config_options["metadata_interface_type"].c_str(),
-               FAM_OPTIONS_RPC_STR) == 0) {
+    if (isSharedMemory) {
+        Fam_Metadata_Service *metadataService =
+            new Fam_Metadata_Service_Direct();
+        metadataServers->insert({0, metadataService});
+        memoryServerCount = memoryServers->size();
+        // TODO: This code needs to be revisited. Currently memoryserverCount
+        // will be updated to all metadata servers.
+        metadataService->metadata_update_memoryserver((int)memoryServerCount,
+                                                      memsrv_id_list);
+    } else if (strcmp(config_options["metadata_interface_type"].c_str(),
+                      FAM_OPTIONS_RPC_STR) == 0) {
         Server_Map metadataServerList = parse_server_list(
             config_options["metadata_list"].c_str(), delimiter1, delimiter2);
         for (auto obj = metadataServerList.begin();
@@ -745,7 +760,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     message << "Error While locating region : ";
     try {
         metadataService->metadata_find_region_and_check_permissions(
-            META_REGION_ITEM_READ_ALLOW_OWNER, name, uid, gid, region);
+            META_REGION_ITEM_READ, name, uid, gid, region);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
@@ -777,8 +792,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     Fam_DataItem_Metadata dataitem;
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
-            META_REGION_ITEM_READ_ALLOW_OWNER, itemName, regionName, uid, gid,
-            dataitem);
+            META_REGION_ITEM_READ, itemName, regionName, uid, gid, dataitem);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the dataitem";
@@ -813,7 +827,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     message << "Error While locating region : ";
     try {
         metadataService->metadata_find_region_and_check_permissions(
-            META_REGION_ITEM_WRITE_ALLOW_OWNER, regionId, uid, gid, region);
+            META_REGION_ITEM_READ, regionId, uid, gid, region);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
@@ -896,8 +910,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
-            META_REGION_ITEM_READ_ALLOW_OWNER, dataitemId, regionId, uid, gid,
-            dataitem);
+            META_REGION_ITEM_READ, dataitemId, regionId, uid, gid, dataitem);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
@@ -1075,8 +1088,8 @@ uint64_t Fam_CIS_Direct::get_dataitem_id(uint64_t offset,
 }
 
 size_t Fam_CIS_Direct::get_addr_size(uint64_t memoryServerId) {
-    size_t addrSize = 0;
     CIS_DIRECT_PROFILE_START_OPS()
+    size_t addrSize = 0;
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     addrSize = memoryService->get_addr_size();
     CIS_DIRECT_PROFILE_END_OPS(cis_get_addr_size);

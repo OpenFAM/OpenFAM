@@ -673,7 +673,7 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
 
     if (strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) == 0) {
         // initialize shared memory client
-        famAllocator = new Fam_Allocator_Client();
+        famAllocator = new Fam_Allocator_Client(true);
         famOps = new Fam_Ops_SHM(famThreadModel, famContextModel, famAllocator,
                                  atoi(famOptions.numConsumer));
         ret = famOps->initialize();

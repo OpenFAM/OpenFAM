@@ -50,7 +50,8 @@ using metadataServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
 
 class Fam_CIS_Direct : public Fam_CIS {
   public:
-    Fam_CIS_Direct(char *cisName, bool useAsyncCopy_ = false);
+    Fam_CIS_Direct(char *cisName, bool useAsyncCopy_ = false,
+                   bool isSharedMemory = false);
 
     ~Fam_CIS_Direct();
 
