@@ -2493,7 +2493,7 @@ std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
             }
         }
     } else {
-        memsrv_list.push_back(id);
+        memsrv_list.push_back((int)memoryServerList[id]);
     }
     regions_memserver_list[regionname] = memsrv_list;
     return memsrv_list;
