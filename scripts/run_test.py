@@ -209,9 +209,7 @@ cmd = 'mkdir -p '+args.outpath+'/config'
 os.system(cmd)
 
 #set environment variable for test command and options
-if args.launcher is None:
-    pe_config_doc['runtime'] = "NONE"
-elif args.launcher == "mpi" :
+if args.launcher is None or args.launcher == "mpi" :
     os.environ['OPENFAM_TEST_COMMAND'] = args.rootpath+'/third-party/build/bin/mpirun'
     if args.pehosts is not None :
         if len(args.pehosts.split(',')) < npe :
@@ -275,7 +273,7 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['memsrv_
         elif args.launcher == "slurm":
             cmd = srun_cmd+memory_server_addr+' --mpi=pmix_v2 '+args.buildpath+'/src/memory_server -a '+memory_server_addr+' -r '+str(memory_server_rpc_port)+' -l '+                 str(memservice_config_doc['libfabric_port'])+' -p '+memservice_config_doc['provider']+' &'
         else :
-            cmd = args.buildpath+'/src/memory_server -a '+memory_server_addr+' -r '+str(memory_server_rpc_port)+' -l '+str(memservice_config_doc['libfabric_port'])+' -p '+memservice_config_doc['provider']+' &'
+            cmd = env_cmd+args.buildpath+'/src/memory_server -a '+memory_server_addr+' -r '+str(memory_server_rpc_port)+' -l '+str(memservice_config_doc['libfabric_port'])+' -p '+memservice_config_doc['provider']+' &'
         os.system(cmd)
 
 #start all metadata services
@@ -289,7 +287,7 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadat
         elif args.launcher == "slurm" :
             cmd = srun_cmd+metadata_server_addr+' --mpi=pmix_v2 '+args.buildpath+'/src/metadata_server -a '+metadata_server_addr+' -r '+str(metadata_server_rpc_port)+' &'
         else :
-            cmd = args.buildpath+'/src/metadata_server -a '+metadata_server_addr+' -r '+str(metadata_server_rpc_port)+' &'
+            cmd = env_cmd+args.buildpath+'/src/metadata_server -a '+metadata_server_addr+' -r '+str(metadata_server_rpc_port)+' &'
         os.system(cmd)
 
 
@@ -305,7 +303,7 @@ if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_i
     elif args.launcher == "slurm":
         cmd = srun_cmd+cis_addr+' --mpi=pmix_v2 '+args.buildpath+'/src/cis_server -a '+cis_addr+' -r '+str(cis_rpc_port)+' &'
     else :
-        cmd = args.buildpath+'/src/cis_server -a '+cis_addr+' -r '+str(cis_rpc_port)+' &'
+        cmd = env_cmd+args.buildpath+'/src/cis_server -a '+cis_addr+' -r '+str(cis_rpc_port)+' &'
     os.system(cmd)
 
 #Run regression and unit tests
@@ -340,7 +338,7 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadat
 if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_interface_type'] == "rpc" :
     if args.launcher == "mpi":
         cmd = ssh_cmd+cis_addr+' "sh -c \'pkill cis_server\'"'
-    elif largs.launcher == "slurm" :
+    elif args.launcher == "slurm" :
         cmd = srun_cmd+cis_addr+' --mpi=pmix_v2 pkill cis_server'
     else :
         cmd = 'pkill cis_server'
