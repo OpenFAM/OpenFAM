@@ -94,6 +94,17 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
+    char *openFamModel =
+        (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
+
+    if (strcmp(openFamModel, "shared_memory") != 0) {
+        my_fam->fam_finalize("default");
+        std::cout << "Test case valid only in shared memory model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
+    }
+
     ret = RUN_ALL_TESTS();
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));

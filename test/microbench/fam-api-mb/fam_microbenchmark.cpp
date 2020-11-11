@@ -58,7 +58,7 @@ Fam_Region_Descriptor *desc;
 mode_t test_perm_mode;
 size_t test_item_size;
 
-#if !defined(SHM) && defined(MEMSERVER_PROFILE)
+#ifdef MEMSERVER_PROFILE
 #define RESET_PROFILE()                                                        \
     {                                                                          \
         cis->reset_profile(0);                                                 \
@@ -2490,18 +2490,30 @@ int main(int argc, char **argv) {
         DATA_ITEM_SIZE = atoi(argv[2]);
     }
 
-// Note:this test can not be run with multiple memory server model, when memory
-// server profiling is enabled.
-#if !defined(SHM) && defined(MEMSERVER_PROFILE)
-    EXPECT_NO_THROW(
-        cis = new Fam_CIS_Client(TEST_CIS_SERVER, atoi(TEST_GRPC_PORT)));
-#endif
-
     my_fam = new fam();
 
     init_fam_options(&fam_opts);
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
+
+// Note:this test can not be run with multiple memory server model, when memory
+// server profiling is enabled.
+#ifdef MEMSERVER_PROFILE
+    char *openFamModel;
+    EXPECT_NO_THROW(
+        openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL")));
+    if (strcmp(openFamModel, "memory_server") != 0) {
+        EXPECT_NO_THROW(my_fam->fam_finalize("default"));
+        std::cout << "Test case valid only in memory server model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
+    }
+    char *cisServer = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
+    int *rpcPort = (int *)my_fam->fam_get_option(strdup("GRPC_PORT"));
+    EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, *rpcPort));
+#endif
+
     EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));
 
     EXPECT_NE((void *)NULL, myPE);

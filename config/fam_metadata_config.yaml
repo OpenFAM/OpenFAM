@@ -25,5 +25,5 @@ enable_region_spanning: true
 
 # If region spanning is enabled, obtain the value for region_span_size_per_memoryserver.
 # Default value is 1GB.
-region_span_size_per_memoryserver=1073741824
+region_span_size_per_memoryserver: 1073741824
 

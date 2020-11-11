@@ -45,11 +45,15 @@ using namespace openfam;
 fam *my_fam;
 Fam_Options fam_opts;
 
+char *openFamModel;
+
 Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 
 #define REGION_SIZE (1024 * 1024)
 #define REGION_PERM 0777
+
+#define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
 
 // Test case 1 - Fetch logical atomics for UInt32
 TEST(FamLogicalAtomics, FetchLogicalUInt32) {
@@ -408,76 +412,76 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativePerm) {
                  << ", permission=" << test_perm_mode[sm]
                  << ", Dataitem size=" << test_item_size[sm]
                  << ", offset=" << testOffset[ofs] << endl;
-#ifdef SHM
-            // uint32 operations
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                Fam_Exception);
+            if (SHM_CHECK) {
+                // uint32 operations
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_and(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_and(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_or(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_or(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_xor(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_xor(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
 
-            // uint64 operations
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                Fam_Exception);
+                // uint64 operations
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_and(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_and(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_or(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_or(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_xor(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_xor(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
 
-#else
-            // uint32 operations
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            } else {
+                // uint32 operations
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_and(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_and(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_or(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_or(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_xor(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_xor(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            // uint64 operations
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                // uint64 operations
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_and(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_and(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_or(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_or(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_xor(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+                EXPECT_NO_THROW(
+                    my_fam->fam_xor(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
         }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
@@ -514,17 +518,17 @@ TEST(FamLogicalAtomics, FetchLogicalNegativePerm) {
                  << ", Dataitem size=" << test_item_size[sm]
                  << ", offset=" << testOffset[ofs] << endl;
 
-#ifdef SHM
-            // uint32 operations
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                Fam_Exception);
-#else
-            // uint32 operations
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                // uint32 operations
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
+            } else {
+                // uint32 operations
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_and(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
@@ -537,17 +541,17 @@ TEST(FamLogicalAtomics, FetchLogicalNegativePerm) {
                 my_fam->fam_fetch_xor(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            // uint32 operations
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                Fam_Exception);
-#else
-            // uint64 operations
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                // uint32 operations
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
+            } else {
+                // uint64 operations
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
 
             EXPECT_THROW(
                 my_fam->fam_fetch_and(item, testOffset[ofs], operandUint64[1]),
@@ -596,75 +600,75 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
                  << ", Dataitem size=" << test_item_size[sm]
                  << ", offset=" << testOffset[ofs] << endl;
 
-#ifdef SHM
-            // uint32 operations
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                Fam_Exception);
+            if (SHM_CHECK) {
+                // uint32 operations
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_and(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_and(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_or(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_or(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_xor(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_xor(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
 
-            // uint64 operations
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                Fam_Exception);
+                // uint64 operations
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_and(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_and(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_or(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_or(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_xor(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
-#else
-            // uint32 operations
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_xor(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
+            } else {
+                // uint32 operations
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_and(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_and(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_or(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_or(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_xor(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_xor(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            // uint64 operations
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                // uint64 operations
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_and(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_and(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_or(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_or(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_xor(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+                EXPECT_NO_THROW(
+                    my_fam->fam_xor(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
         }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
@@ -701,17 +705,17 @@ TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
                  << ", Dataitem size=" << test_item_size[sm]
                  << ", offset=" << testOffset[ofs] << endl;
 
-#ifdef SHM
-            // uint32 operations
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                Fam_Exception);
-#else
-            // uint32 operations
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                // uint32 operations
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
+            } else {
+                // uint32 operations
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
 
             EXPECT_THROW(
                 my_fam->fam_fetch_and(item, testOffset[ofs], operandUint32[1]),
@@ -725,17 +729,17 @@ TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
                 my_fam->fam_fetch_xor(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            // uint32 operations
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                Fam_Exception);
-#else
-            // uint64 operations
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                // uint32 operations
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
+            } else {
+                // uint64 operations
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
 
             EXPECT_THROW(
                 my_fam->fam_fetch_and(item, testOffset[ofs], operandUint64[1]),
@@ -767,6 +771,8 @@ int main(int argc, char **argv) {
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
     testRegionStr = get_uniq_str("test", my_fam);
+
+    openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
                         testRegionStr, REGION_SIZE, REGION_PERM, RAID1));

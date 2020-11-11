@@ -52,6 +52,8 @@ using namespace openfam;
 fam *my_fam;
 Fam_Options fam_opts;
 
+char *openFamModel;
+
 Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 
@@ -59,6 +61,8 @@ int rc;
 #define NUM_THREADS 10
 #define REGION_SIZE (32 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
+
+#define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
 
 typedef struct {
     Fam_Descriptor *item;
@@ -807,16 +811,16 @@ void *thrd_min_max_inv_perms(void *arg) {
     float operandFloat[2] = {0.1f, 1234.56f};
     double operandDouble[2] = {123456.78, 999999.99};
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-#endif
+}
            EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt32[1]),
                 Fam_Exception);
@@ -824,30 +828,30 @@ void *thrd_min_max_inv_perms(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandInt32[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint32[1]),
                 Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, offset, operandUint32[1]),
                 Fam_Exception);
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt64[1]),
                 Fam_Exception);
@@ -855,15 +859,15 @@ void *thrd_min_max_inv_perms(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandInt64[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint64[1]),
                 Fam_Exception);
@@ -871,15 +875,15 @@ void *thrd_min_max_inv_perms(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandUint64[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandFloat[1]),
                 Fam_Exception);
@@ -887,15 +891,15 @@ void *thrd_min_max_inv_perms(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandFloat[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandDouble[1]),
                 Fam_Exception);
@@ -953,7 +957,7 @@ void *thrd_min_max_inv_perms2(void *arg) {
     uint64_t operandUint64[2] = {0x12345678, 0xffffffffffffffff};
     float operandFloat[2] = {0.1f, 1234.56f};
     double operandDouble[2] = {123456.78, 999999.99};
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]),
                 Fam_Exception);
@@ -1014,7 +1018,7 @@ void *thrd_min_max_inv_perms2(void *arg) {
                 my_fam->fam_max(item, offset, operandDouble[1]),
                 Fam_Exception);
 
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
@@ -1074,7 +1078,7 @@ void *thrd_min_max_inv_perms2(void *arg) {
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
 
     pthread_exit(NULL);
 }	    
@@ -1124,7 +1128,7 @@ void *thrd_min_max_inv_offset(void *arg) {
     uint64_t operandUint64[2] = {0x12345678, 0xffffffffffffffff};
     float operandFloat[2] = {0.1f, 1234.56f};
     double operandDouble[2] = {123456.78, 999999.99};
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]),
                 Fam_Exception);
@@ -1184,7 +1188,7 @@ void *thrd_min_max_inv_offset(void *arg) {
             EXPECT_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
@@ -1244,7 +1248,7 @@ void *thrd_min_max_inv_offset(void *arg) {
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
 
     pthread_exit(NULL);
 }	    
@@ -1296,15 +1300,15 @@ void *thrd_min_max_inv_offset2(void *arg) {
     uint64_t operandUint64[2] = {0x12345678, 0xffffffffffffffff};
     float operandFloat[2] = {0.1f, 1234.56f};
     double operandDouble[2] = {123456.78, 999999.99};
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt32[1]),
                 Fam_Exception);
@@ -1312,15 +1316,15 @@ void *thrd_min_max_inv_offset2(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandInt32[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint32[1]),
                 Fam_Exception);
@@ -1328,15 +1332,15 @@ void *thrd_min_max_inv_offset2(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandUint32[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt64[1]),
                 Fam_Exception);
@@ -1344,15 +1348,15 @@ void *thrd_min_max_inv_offset2(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandInt64[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint64[1]),
                 Fam_Exception);
@@ -1360,15 +1364,15 @@ void *thrd_min_max_inv_offset2(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandUint64[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandFloat[1]),
                 Fam_Exception);
@@ -1376,15 +1380,15 @@ void *thrd_min_max_inv_offset2(void *arg) {
                 my_fam->fam_fetch_max(item, offset, operandFloat[1]),
                 Fam_Exception);
 
-#ifdef SHM
+if (SHM_CHECK) {
             EXPECT_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]),
                 Fam_Exception);
-#else
+} else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
             EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+}
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandDouble[1]),
                 Fam_Exception);
@@ -1440,6 +1444,8 @@ int main(int argc, char **argv) {
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
     testRegionStr = get_uniq_str("test", my_fam);
+
+    openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
                         testRegionStr, REGION_SIZE, REGION_PERM, RAID1));

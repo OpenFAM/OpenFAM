@@ -1,6 +1,6 @@
- #
- # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+#!/bin/bash
+ # run_test.sh
+ # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -19,23 +19,7 @@
  # See https://spdx.org/licenses/BSD-3-Clause
  #
  #
-function (add_pmix_test file_name)
-    add_executable(${file_name} ${file_name}.cpp)
-    target_link_libraries(${file_name} openfam pmix pmi2)
-	add_test(NAME ${file_name} COMMAND COMMAND ${PROJECT_SOURCE_DIR}/run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
-	IF (${CMAKE_MAJOR_VERSION} GREATER 2)
-        set_tests_properties(${file_name} PROPERTIES SKIP_RETURN_CODE ${TEST_SKIP_STATUS})
-    ENDIF()
-endfunction()
-#add tests
 
-if (${TEST_RUNTIME} STREQUAL "PMI2")
-	add_pmix_test(pmi2_test)
-	add_pmix_test(fam_initialize_runtime_pmi2)
-elseif (${TEST_RUNTIME} STREQUAL "PMIX")
-	add_pmix_test(pmix_test)
-	add_pmix_test(pmix_abort)
-	add_pmix_test(fam_initialize_runtime_pmix)
-endif()
-add_pmix_test(fam_initialize_runtime_none)
-
+OPENFAM_TEST_EXE=$1
+OPENFAM_TEST_ARG=$2
+$OPENFAM_TEST_COMMAND $OPENFAM_TEST_OPT $OPENFAM_TEST_EXE $OPENFAM_TEST_ARG

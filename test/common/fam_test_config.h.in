@@ -63,8 +63,10 @@ using namespace openfam;
 #define TEST_SKIP_STATUS ${TEST_SKIP_STATUS}
 
 void init_fam_options(Fam_Options *famOpts) {
-    memset((void *)famOpts, 0, sizeof(Fam_Options));
 
+memset((void *)famOpts, 0, sizeof(Fam_Options));
+
+#ifndef USE_CONFIG_OPTIONS
     famOpts->openFamModel = strdup(TEST_OPENFAM_MODEL);
     // Read this from pe_config file.
     //famOpts->cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);
@@ -74,6 +76,7 @@ void init_fam_options(Fam_Options *famOpts) {
     famOpts->famThreadModel = strdup(TEST_FAM_THREAD_MODEL);
     famOpts->famContextModel = strdup(TEST_FAM_CONTEXT_MODEL);
     famOpts->runtime = strdup(TEST_RUNTIME);
+#endif
 }
 
 // This function return uniq string per pe, by appending pe_id to base string

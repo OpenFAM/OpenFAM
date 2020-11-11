@@ -23,19 +23,15 @@ $ cd $OpenFAM
 
 
 4. Build and Test with the script.
-   Note that this script will build OpenFAM under build/build-rpc directory and run unit tests and regression tests.
-
+   (Note that this script will build OpenFAM under build directory and run unit tests and regression tests.
+   script takes one argument which specify launcher for tests, argument can take 2 values mpi or slurm)
+   For mpi :
  ```
- $ ./build_and_run.sh
+ $ ./build_and_run.sh mpi
  ```
-   By default this script will run only CIS with RPC interface. To run the following combination
-   a. All services with RPC interface
-   b. Shared memory model
-
-   use the following command
-
+   For slurm :
  ```
- $ ./build_and_run.sh all
+ $ ./build_and_run.sh slurm
  ```
 
 5. (Optional) Build and Test manually.
@@ -69,23 +65,35 @@ $ cd $OpenFAM
     $ make install
     ```
 
-   d. Start the memoryserver on localhost(127.0.0.1) as a background process on the current terminal.
+   d. set OPENFAM_ROOT variable to point to config file location
+      (sample config files are located in config directory, User can configure OpenFAM using either fam options or configuration files. For testing default is fam options, to enable configuration file options during testing set USE_CONFIG_OPTION flag in cmake build as, cmake .. -DUSE_CONFIG_OPTION=ON)
 
     ```
-    $ ./src/memoryserver -m 127.0.0.1 &
+    export OPENFAM_ROOT="$OpenFAM"
     ```
 
-   e. Run the unit tests and regresssion tests.
+   e. Start all services on localhost(127.0.0.1) as a background process on the current terminal.
+      (In sample configurtion Memory Service and  Metadata Service are using direct interface and CIS has RPC interface,
+       edit the configuratuion files to run with desired configuration and start services accordingly)
+
+    ```
+    $ source setup.sh --cisserver=127.0.0.1
+    ```
+    (see setup.sh script description below)
+
+   f. Run the unit tests and regresssion tests.
 
     ```
     $ make unit-test
     $ make reg-test
     ```
 
-   f. Stop the memoryserver running locally on the current terminal.
+   g. Stop all services running locally on the current terminal.
 
     ```
-    $ pkill memoryserver
+    $ pkill memory_server
+        $ pkill metadata_server
+        $ pkill cis_server
     ```
 
 
@@ -119,5 +127,34 @@ $ cd $OpenFAM
     A summary report is displayed on the terminal, while the details coverage results in html format is placed under build/test/coverage directory.
     To collect additional coverage information of memoryserver, repeat this step after stopping memoryserver instance(5-f).
 
+## setup script
+The script [setup.sh](https://github.com/OpenFAM/OpenFAM/blob/master/test/setup.sh) is used to start all services locally and set the environment variable which are necessary to run tests manually
+
+### Description
+```
+Usage :
+
+        source setup.sh <options>
+```
+
+| Options | Description |
+| :---    | :---        |
+| -h/--help       | help
+| -n              | Number of PEs                                               |
+| --memserver     | IP address of memory server                                 |
+|                 | Note : This option is necessary to start the memory server  |
+| --metaserver    | IP address of metadata server                               |
+|                 | Note : This option is necessary to start the metadata server|
+| --cisserver     | IP address of CIS server                                    |
+|                 | Note : This option is necessary to start the CIS server     |
+| --memrpcport    | RPC port for memory service                                 |
+| --metarpcport   | RPC port for metadata server                                |
+| --cisrpcport    | RPC port for CIS server                                     |
+| --libfabricport | Libfabric port                                              |
+| --provider      | Libfabric provider                                          |
+| --fam_path      | Location of FAM                                             |
+| --init          | Initializes NVMM (use this option for shared memory model)  |
+
+(Note : Do no use source command for -h/--help and --init options eg : ./setup.sh -h or ./setup.sh --init)
 
 Note: cmake command should be re-run if fam\_rpc.proto file is modified to generate updated fam\_rpc.grpc.pb.cc and fam_rpc.pb.cc files

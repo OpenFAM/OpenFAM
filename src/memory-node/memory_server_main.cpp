@@ -60,6 +60,7 @@ int main(int argc, char *argv[]) {
     char *libfabricPort = strdup("7500");
     char *provider = strdup("");
     char *fam_path = NULL;
+	bool initFlag = false;
 
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
@@ -89,9 +90,14 @@ int main(int argc, char *argv[]) {
                 << "\n"
                 << "\t-v/--version        : Display metadata server version  \n"
                 << "\n"
+				<< "\t-i/--init			  : Initialize the root shelf \n"
+				<< "\n"
                 << endl;
             exit(0);
-        } else if ((std::string(argv[i]) == "-a") ||
+		} else if ((std::string(argv[i]) == "-i") ||
+                   (std::string(argv[i]) == "--init")) {
+        	initFlag = true;
+		} else if ((std::string(argv[i]) == "-a") ||
                    (std::string(argv[i]) == "--address")) {
             name = strdup(argv[++i]);
         } else if ((std::string(argv[i]) == "-r") ||
@@ -108,6 +114,14 @@ int main(int argc, char *argv[]) {
             fam_path = strdup(argv[++i]);
         }
     }
+
+	if(initFlag) {
+        if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
+            StartNVMM();
+        } else
+            StartNVMM(fam_path);
+        exit(0);
+	}
 
 #ifdef COVERAGE
     signal(SIGINT, signal_handler);

@@ -45,11 +45,15 @@ using namespace openfam;
 fam *my_fam;
 Fam_Options fam_opts;
 
+char *openFamModel;
+
 Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 
 #define REGION_SIZE (1024 * 1024)
 #define REGION_PERM 0777
+
+#define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
 /*
 // Test case 1 - MinMaxInt32NonBlock
 TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
@@ -786,45 +790,45 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockPerm) {
                                   (test_item_size[sm] - sizeof(double) - 1)};
 
         for (ofs = 0; ofs < 3; ofs++) {
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandInt32[1]),
                 Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt32[1]),
                 Fam_Exception);
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
             EXPECT_THROW(
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandInt64[1]),
                 Fam_Exception);
@@ -832,15 +836,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockPerm) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt64[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandUint64[1]),
                 Fam_Exception);
@@ -848,15 +852,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockPerm) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandUint64[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandFloat[1]),
                 Fam_Exception);
@@ -864,15 +868,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockPerm) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandFloat[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandDouble[1]),
                 Fam_Exception);
@@ -914,128 +918,128 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockPerm) {
                                   (test_item_size[sm] - sizeof(double) - 1)};
 
         for (ofs = 0; ofs < 3; ofs++) {
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandInt32[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandInt32[1]),
-                Fam_Exception);
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt32[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt32[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandInt64[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandInt64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt64[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt64[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandFloat[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandFloat[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandFloat[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandFloat[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandDouble[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandDouble[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandDouble[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandDouble[1]),
+                    Fam_Exception);
 
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandFloat[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandFloat[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandDouble[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandDouble[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
         }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
@@ -1071,127 +1075,127 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
                                   (test_item_size[sm] + 1)};
 
         for (ofs = 0; ofs < 3; ofs++) {
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandInt32[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandInt32[1]),
-                Fam_Exception);
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt32[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt32[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandUint32[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandInt64[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandInt64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt64[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt64[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandUint64[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandFloat[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandFloat[1]),
-                Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandFloat[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandFloat[1]),
+                    Fam_Exception);
 
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandDouble[1]),
-                Fam_Exception);
-            EXPECT_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandDouble[1]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandDouble[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandDouble[1]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandFloat[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandFloat[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_min(item, testOffset[ofs], operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            EXPECT_NO_THROW(
-                my_fam->fam_max(item, testOffset[ofs], operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandDouble[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandDouble[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
         }
 
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
@@ -1227,15 +1231,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                                   (test_item_size[sm] + 1)};
 
         for (ofs = 0; ofs < 3; ofs++) {
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandInt32[1]),
                 Fam_Exception);
@@ -1243,15 +1247,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt32[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
@@ -1259,15 +1263,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandInt64[1]),
                 Fam_Exception);
@@ -1275,15 +1279,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt64[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandUint64[1]),
                 Fam_Exception);
@@ -1291,15 +1295,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandUint64[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandFloat[1]),
                 Fam_Exception);
@@ -1307,15 +1311,15 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandFloat[1]),
                 Fam_Exception);
 
-#ifdef SHM
-            EXPECT_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
-                Fam_Exception);
-#else
-            EXPECT_NO_THROW(
-                my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-#endif
+            if (SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, testOffset[ofs], operandDouble[1]),
                 Fam_Exception);
@@ -1341,6 +1345,8 @@ int main(int argc, char **argv) {
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
     testRegionStr = get_uniq_str("test", my_fam);
+
+    openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
                         testRegionStr, REGION_SIZE, REGION_PERM, RAID1));

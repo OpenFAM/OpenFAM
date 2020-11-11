@@ -26,6 +26,6 @@ add_executable (fam_allocator_test_nvmm fam_allocator_test_nvmm.cpp)
 target_link_libraries(fam_allocator_test openfam  pmix pmi2)
 target_link_libraries(fam_allocator_test_nvmm openfam  pmix pmi2)
 
-add_test(NAME fam_allocator_test  COMMAND ${PROJECT_SOURCE_DIR}/third-party/build/bin/mpirun --allow-run-as-root -np 1 ${CMAKE_CURRENT_BINARY_DIR}/fam_allocator_test)
-#add_test(NAME fam_allocator_test_nvmm  COMMAND ${PROJECT_SOURCE_DIR}/third-party/build/bin/mpirun --allow-run-as-root -np 1 ${CMAKE_CURRENT_BINARY_DIR}/fam_allocator_test_nvmm)
+add_test(NAME fam_allocator_test COMMAND ${PROJECT_SOURCE_DIR}/run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/fam_allocator_test)
+#add_test(NAME fam_allocator_test_nvmm COMMAND ${PROJECT_SOURCE_DIR}/run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/fam_allocator_test_nvmm)
 

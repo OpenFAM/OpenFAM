@@ -22,7 +22,11 @@
 function (add_fam_test file_name)
     add_executable(${file_name} ${file_name}.cpp)
     target_link_libraries(${file_name} openfam gtest yaml-cpp)
-    add_test(NAME ${file_name} COMMAND ${TEST_RUNTIME_BIN} ${TEST_RUNTIME_OPTS} ${CMAKE_CURRENT_BINARY_DIR}/${file_name} ${CMAKE_CURRENT_BINARY_DIR}/sample_config)
+   	add_test(NAME ${file_name} COMMAND ${PROJECT_SOURCE_DIR}/run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/${file_name} ${CMAKE_CURRENT_BINARY_DIR}/sample_config) 
+    IF (${CMAKE_MAJOR_VERSION} GREATER 2)
+        set_tests_properties(${file_name} PROPERTIES SKIP_RETURN_CODE ${TEST_SKIP_STATUS})
+    ENDIF()
+
 endfunction()
 
 #add tests

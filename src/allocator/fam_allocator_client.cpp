@@ -48,8 +48,8 @@ Fam_Allocator_Client::Fam_Allocator_Client(const char *name, uint64_t port) {
     gid = (uint32_t)getgid();
 }
 
-Fam_Allocator_Client::Fam_Allocator_Client() {
-    famCIS = new Fam_CIS_Direct(NULL, true);
+Fam_Allocator_Client::Fam_Allocator_Client(bool isSharedMemory) {
+    famCIS = new Fam_CIS_Direct(NULL, true, isSharedMemory);
     uid = (uint32_t)getuid();
     gid = (uint32_t)getgid();
 }
