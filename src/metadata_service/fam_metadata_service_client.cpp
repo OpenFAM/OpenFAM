@@ -807,6 +807,7 @@ void Fam_Metadata_Service_Client::metadata_find_dataitem_and_check_permissions(
     METADATA_CLIENT_PROFILE_START_OPS()
     req.set_key_region_id(regionId);
     req.set_key_dataitem_id(dataitemId);
+    req.set_op(op);
     req.set_uid(uid);
     req.set_gid(gid);
 
@@ -835,6 +836,7 @@ void Fam_Metadata_Service_Client::metadata_find_dataitem_and_check_permissions(
     METADATA_CLIENT_PROFILE_START_OPS()
     req.set_key_region_name(regionName);
     req.set_key_dataitem_name(dataitemName);
+    req.set_op(op);
     req.set_uid(uid);
     req.set_gid(gid);
 
