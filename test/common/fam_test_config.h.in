@@ -67,8 +67,8 @@ void init_fam_options(Fam_Options *famOpts) {
 memset((void *)famOpts, 0, sizeof(Fam_Options));
 
 #ifndef USE_CONFIG_OPTIONS
-    famOpts->openFamModel = strdup(TEST_OPENFAM_MODEL);
     // Read this from pe_config file.
+    //famOpts->openFamModel = strdup(TEST_OPENFAM_MODEL);
     //famOpts->cisInterfaceType = strdup(TEST_CIS_INTERFACE_TYPE);
     famOpts->cisServer = strdup(TEST_CIS_SERVER);
     famOpts->grpcPort = strdup(TEST_GRPC_PORT);
