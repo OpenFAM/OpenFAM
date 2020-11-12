@@ -130,7 +130,6 @@ include_directories(/usr/local/include)
 # To use the following OpenFAM options set USE_FAM_OPTION flag
 set( TEST_RUNTIME "PMIX" )
 set( TEST_NPE 1 ) #Number of pe used with mpirun
-set( TEST_OPENFAM_MODEL "memory_server" )
 set( TEST_DEFAULT_REGION "Default" )
 set( TEST_CIS_SERVER "127.0.0.1" )
 set( TEST_GRPC_PORT "8787" )
@@ -151,15 +150,6 @@ ENDIF()
 set( TEST_ENABLE_KNOWN_ISSUES "no" )
 if (ENABLE_KNOWN_ISSUES)
         set( TEST_ENABLE_KNOWN_ISSUES "yes" )
-endif()
-
-if (ARG_OPENFAM_MODEL)
-        set( TEST_OPENFAM_MODEL ${ARG_OPENFAM_MODEL})
-endif()
-
-if (${TEST_OPENFAM_MODEL} STREQUAL "shared_memory")
-        message(STATUS "Building shared memory model")
-        add_definitions(-DSHM)
 endif()
 
 if (USE_FAM_PERSIST)
