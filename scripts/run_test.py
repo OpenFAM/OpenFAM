@@ -309,8 +309,13 @@ if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_i
     os.system(cmd)
 
 #Run regression and unit tests
-cmd = 'cd '+args.buildpath+'; make reg-test; make unit-test; cd -'
-os.system(cmd)
+cmd = 'cd '+args.buildpath+'; make reg-test'
+result = os.system(cmd)
+if((result >> 8) != 0) :
+    sys.exit()
+cmd = 'cd '+args.buildpath+'; make unit-test'
+if((result >> 8) != 0) :
+    sys.exit()
 
 #Terminate all services
 if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['memsrv_interface_type'] == "rpc":

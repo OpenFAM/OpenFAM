@@ -37,6 +37,8 @@ then
         exit 1
 fi
 
+sleep 5
+
 echo "========================================================"
 echo "Test OpenFAM with cis-rpc-meta-rpc-mem-rpc configuration"
 echo "========================================================"
@@ -48,6 +50,8 @@ then
         echo "OpenFAM test with cis-rpc-meta-rpc-mem-rpc configuration failed. exit..."
         exit 1
 fi
+
+sleep 5 
 
 echo "=============================================================="
 echo "Test OpenFAM with cis-rpc-meta-direct-mem-direct configuration"
@@ -61,6 +65,8 @@ then
         exit 1
 fi
 
+sleep 5 
+
 echo "==========================================================="
 echo "Test OpenFAM with cis-direct-meta-rpc-mem-rpc configuration"
 echo "==========================================================="
@@ -72,6 +78,8 @@ then
         echo "OpenFAM test with cis-direct-meta-rpc-mem-rpc configuration failed. exit..."
         exit 1
 fi
+
+sleep 5 
 
 echo "==========================================================="
 echo "Test OpenFAM with shared memory configuration"
