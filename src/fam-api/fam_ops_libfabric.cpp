@@ -192,7 +192,6 @@ int Fam_Ops_Libfabric::initialize() {
             size_t addrSize;
             void *nodeAddr;
             uint64_t fiAddrsSize = fiAddrs->size();
-            auto fiAddrsItr = fiAddrs->begin();
 
             while (bufPtr < memServerInfoSize) {
                 memcpy(&nodeId, ((char *)memServerInfoBuffer + bufPtr),
@@ -230,14 +229,13 @@ int Fam_Ops_Libfabric::initialize() {
                 }
 
                 // Place the fi_addr_t at nodeId index of fiAddrs vector.
-                if (nodeId > fiAddrsSize) {
+                if (nodeId >= fiAddrsSize) {
                     // Increase the size of fiAddrs vector to accomodate
                     // nodeId larger than the current size.
                     fiAddrs->resize(nodeId + 512, FI_ADDR_UNSPEC);
                     fiAddrsSize = fiAddrs->size();
-                    fiAddrsItr = fiAddrs->begin();
                 }
-                fiAddrs->insert(fiAddrsItr + nodeId, tmpAddrV[0]);
+                fiAddrs->at(nodeId) = tmpAddrV[0];
             }
         }
     } else {
