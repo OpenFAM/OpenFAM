@@ -4,6 +4,7 @@ import argparse
 import ruamel.yaml
 import time
 import math
+import subprocess
 
 # Create the parser
 my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@', description='Generate the config files')
@@ -293,6 +294,7 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadat
 
 cmd = 'sleep 1'
 os.system(cmd)
+
 #Start CIS
 if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_interface_type'] == "rpc" :
     cis_addr = cis_config_doc['rpc_interface'].split(":")[0]

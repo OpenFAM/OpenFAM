@@ -423,7 +423,7 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
         }
 
         message << "Region creation failed in one or more memory server";
-        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_INSERTED,
+        THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_CREATED,
                         message.str().c_str());
     }
     // Register the region into metadata service
@@ -566,6 +566,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
 
     uint64_t id = 0;
     uint64_t metadataServiceId = 0;
+
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
     // Check with metadata service if the given data item can be allocated.
@@ -574,8 +575,35 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     Fam_Memory_Service *memoryService = get_memory_service((uint64_t)id);
     Fam_DataItem_Metadata dataitem;
 
-    bool rwFlag;
-    info = memoryService->allocate(regionId, nbytes);
+    bool rwFlag, allocateSuccess = true;
+    try {
+        info = memoryService->allocate(regionId, nbytes);
+    } catch (...) {
+        std::list<int> memserverList =
+            metadataService->get_memory_server_list(regionId);
+        allocateSuccess = false;
+        for (const auto &item : memserverList) {
+            if ((uint64_t)item == id) {
+                continue;
+            }
+            try {
+                memoryService = get_memory_service((uint64_t)item);
+                info = memoryService->allocate(regionId, nbytes);
+            } catch (...) {
+                continue;
+            }
+            allocateSuccess = true;
+            id = (uint64_t)item;
+            break;
+        }
+    }
+
+    if (!allocateSuccess) {
+        message << "Failed to allocate dataitem in any memory server";
+        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_CREATED,
+                        message.str().c_str());
+    }
+
     uint64_t dataitemId = get_dataitem_id(info.offset, id);
 
     dataitem.regionId = regionId;
@@ -760,7 +788,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     message << "Error While locating region : ";
     try {
         metadataService->metadata_find_region_and_check_permissions(
-            META_REGION_ITEM_READ, name, uid, gid, region);
+            META_REGION_ITEM_READ_ALLOW_OWNER, name, uid, gid, region);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
@@ -792,7 +820,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     Fam_DataItem_Metadata dataitem;
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
-            META_REGION_ITEM_READ, itemName, regionName, uid, gid, dataitem);
+            META_REGION_ITEM_READ_ALLOW_OWNER, itemName, regionName, uid, gid,
+            dataitem);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the dataitem";
@@ -827,7 +856,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     message << "Error While locating region : ";
     try {
         metadataService->metadata_find_region_and_check_permissions(
-            META_REGION_ITEM_READ, regionId, uid, gid, region);
+            META_REGION_ITEM_READ_ALLOW_OWNER, regionId, uid, gid, region);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
@@ -910,7 +939,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
-            META_REGION_ITEM_READ, dataitemId, regionId, uid, gid, dataitem);
+            META_REGION_ITEM_READ_ALLOW_OWNER, dataitemId, regionId, uid, gid,
+            dataitem);
     } catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
@@ -1088,8 +1118,8 @@ uint64_t Fam_CIS_Direct::get_dataitem_id(uint64_t offset,
 }
 
 size_t Fam_CIS_Direct::get_addr_size(uint64_t memoryServerId) {
-    CIS_DIRECT_PROFILE_START_OPS()
     size_t addrSize = 0;
+    CIS_DIRECT_PROFILE_START_OPS()
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     addrSize = memoryService->get_addr_size();
     CIS_DIRECT_PROFILE_END_OPS(cis_get_addr_size);

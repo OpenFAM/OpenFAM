@@ -80,7 +80,8 @@ service Fam_Metadata_Rpc {
        returns (Fam_Metadata_Region_Response) {}
     rpc metadata_find_dataitem_and_check_permissions(Fam_Metadata_Request)
        returns (Fam_Metadata_Response) {}
-
+	rpc get_memory_server_list(Fam_Metadata_Request)
+	    returns (Fam_Metadata_Region_Info_Response) {}
 }
 
 /*
