@@ -4,7 +4,6 @@ import argparse
 import ruamel.yaml
 import time
 import math
-import subprocess
 
 # Create the parser
 my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@', description='Generate the config files')
@@ -228,7 +227,7 @@ if args.launcher is None or args.launcher == "mpi" :
 else :
     if args.pehosts is None:
         print("ERROR: --pehosts option is required when slurm is used as launcher")
-        sys.exit()
+        sys.exit(1)
     os.environ['OPENFAM_TEST_COMMAND'] = 'srun'
     os.environ['OPENFAM_TEST_OPT'] = '-N '+str(len(args.pehosts.split(',')))+' -n '+str(npe)+' --nodelist='+args.pehosts+' --mpi=pmix_v2'
 
@@ -236,11 +235,11 @@ else :
 if pe_config_doc['openfam_model'] == "shared_memory":
     if "rpc" in [str(pe_config_doc['client_interface_type']), str(cis_config_doc['memsrv_interface_type']), str(cis_config_doc['metadata_interface_type'])]:
         print("\033[1;31;40mERROR: In shared memory model interface type of all services has to be direct, one or more service interfcae is mentioned as \"rpc\" \033[0;37;40m")
-        sys.exit()
+        sys.exit(1)
 else:
     if "rpc" not in [str(pe_config_doc['client_interface_type']), str(cis_config_doc['memsrv_interface_type']), str(cis_config_doc['metadata_interface_type'])]:
         print("\033[1;31;40mERROR: In memory server model interface type of all services can not to be \"direct\", change model to \"shared memory\" \033[0;37;40m")
-        sys.exit()
+        sys.exit(1)
 
 #Write to output config files
 with open(args.outpath+'/config/fam_pe_config.yaml', 'w') as pe_config_outfile:
@@ -292,7 +291,7 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadat
         os.system(cmd)
 
 
-cmd = 'sleep 1'
+cmd = 'sleep 5'
 os.system(cmd)
 
 #Start CIS
@@ -308,47 +307,58 @@ if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_i
         cmd = env_cmd+args.buildpath+'/src/cis_server -a '+cis_addr+' -r '+str(cis_rpc_port)+' &'
     os.system(cmd)
 
+cmd = 'sleep 5'
+os.system(cmd)
+
+#Terminate all services
+def terminate_services():
+    if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['memsrv_interface_type'] == "rpc":
+	    for server in cis_config_doc['memsrv_list']:
+		    memory_server_addr = server.split(":")[1]
+		    memory_server_rpc_port = server.split(":")[2]
+		    if args.launcher == "mpi":
+			    cmd = ssh_cmd+memory_server_addr+' "sh -c \'pkill memory_server\'"'
+		    elif args.launcher == "slurm" :
+			    cmd = srun_cmd+memory_server_addr+' --mpi=pmix_v2 pkill memory_server'
+		    else :
+			    cmd = 'pkill memory_server'
+		    os.system(cmd)
+
+    if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadata_interface_type'] == "rpc":
+	    for server in cis_config_doc['metadata_list']:
+		    metadata_server_addr = server.split(":")[1]
+		    metadata_server_rpc_port = server.split(":")[2]
+		    if args.launcher == "mpi":
+			    cmd = ssh_cmd+metadata_server_addr+' "sh -c \'pkill metadata_server\'"'
+		    elif args.launcher == "slurm" :
+			    cmd = srun_cmd+metadata_server_addr+' --mpi=pmix_v2 pkill metadata_server'
+		    else :
+			    cmd = 'pkill metadata_server'
+		    os.system(cmd)
+
+    if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_interface_type'] == "rpc" :
+	    if args.launcher == "mpi":
+		    cmd = ssh_cmd+cis_addr+' "sh -c \'pkill cis_server\'"'
+	    elif args.launcher == "slurm" :
+		    cmd = srun_cmd+cis_addr+' --mpi=pmix_v2 pkill cis_server'
+	    else :
+		    cmd = 'pkill cis_server'
+	    os.system(cmd)
+
+
 #Run regression and unit tests
 cmd = 'cd '+args.buildpath+'; make reg-test'
 result = os.system(cmd)
 if((result >> 8) != 0) :
-    sys.exit()
+    print("\033[1;31;40mERROR: Regrresion test failed \033[0;37;40m")
+    terminate_services()
+    sys.exit(1)
 cmd = 'cd '+args.buildpath+'; make unit-test'
+result = os.system(cmd)
 if((result >> 8) != 0) :
-    sys.exit()
+    print("\033[1;31;40mERROR: Unit test failed \033[0;37;40m")
+    terminate_services()
+    sys.exit(1)
 
-#Terminate all services
-if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['memsrv_interface_type'] == "rpc":
-    for server in cis_config_doc['memsrv_list']:
-        memory_server_addr = server.split(":")[1]
-        memory_server_rpc_port = server.split(":")[2]
-        if args.launcher == "mpi":
-            cmd = ssh_cmd+memory_server_addr+' "sh -c \'pkill memory_server\'"'
-        elif args.launcher == "slurm" :
-            cmd = srun_cmd+memory_server_addr+' --mpi=pmix_v2 pkill memory_server'
-        else :
-            cmd = 'pkill memory_server'
-        os.system(cmd)
-
-if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadata_interface_type'] == "rpc":
-    for server in cis_config_doc['metadata_list']:
-        metadata_server_addr = server.split(":")[1]
-        metadata_server_rpc_port = server.split(":")[2]
-        if args.launcher == "mpi":
-            cmd = ssh_cmd+metadata_server_addr+' "sh -c \'pkill metadata_server\'"'
-        elif args.launcher == "slurm" :
-            cmd = srun_cmd+metadata_server_addr+' --mpi=pmix_v2 pkill metadata_server'
-        else :
-            cmd = 'pkill metadata_server'
-        os.system(cmd)
-
-if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_interface_type'] == "rpc" :
-    if args.launcher == "mpi":
-        cmd = ssh_cmd+cis_addr+' "sh -c \'pkill cis_server\'"'
-    elif args.launcher == "slurm" :
-        cmd = srun_cmd+cis_addr+' --mpi=pmix_v2 pkill cis_server'
-    else :
-        cmd = 'pkill cis_server'
-    os.system(cmd)
-
+terminate_services()
 

@@ -253,7 +253,6 @@ class Fam_Metadata_Service_Direct::Impl_ {
     bitmap *bmap;
     int memoryServerCount;
     std::vector<uint64_t> memoryServerList;
-    // std::map<string, std::list<int>> regions_memserver_list;
     bool use_meta_region;
     KvsMap *metadataKvsMap;
     pthread_mutex_t kvsMapLock;
@@ -2498,7 +2497,6 @@ std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
     } else {
         memsrv_list.push_back((int)memoryServerList[id]);
     }
-    // regions_memserver_list[regionname] = memsrv_list;
     return memsrv_list;
 }
 
@@ -2507,7 +2505,6 @@ Fam_Metadata_Service_Direct::Impl_::get_memory_server_list(uint64_t regionId) {
     ostringstream message;
     Fam_Region_Metadata region;
     std::list<int> memsrv_list;
-    cout << "region id : " << regionId << endl;
     if (!metadata_find_region(regionId, region)) {
         message << "Region not found";
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
