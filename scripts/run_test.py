@@ -290,9 +290,7 @@ if pe_config_doc['openfam_model'] == "memory_server" and cis_config_doc['metadat
             cmd = env_cmd+args.buildpath+'/src/metadata_server -a '+metadata_server_addr+' -r '+str(metadata_server_rpc_port)+' &'
         os.system(cmd)
 
-
-cmd = 'sleep 5'
-os.system(cmd)
+time.sleep(5)
 
 #Start CIS
 if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_interface_type'] == "rpc" :
@@ -307,8 +305,7 @@ if pe_config_doc['openfam_model'] == "memory_server" and pe_config_doc['client_i
         cmd = env_cmd+args.buildpath+'/src/cis_server -a '+cis_addr+' -r '+str(cis_rpc_port)+' &'
     os.system(cmd)
 
-cmd = 'sleep 5'
-os.system(cmd)
+time.sleep(5)
 
 #Terminate all services
 def terminate_services():
