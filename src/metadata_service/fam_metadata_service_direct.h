@@ -174,6 +174,8 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
         const std::string regionName, uint32_t uid, uint32_t gid,
         Fam_DataItem_Metadata &dataitem);
 
+    std::list<int> get_memory_server_list(uint64_t regionId);
+
     Fam_Metadata_Service_Direct(bool use_meta_reg = 0);
     void metadata_reset_bitmap(uint64_t regionID);
     ~Fam_Metadata_Service_Direct();

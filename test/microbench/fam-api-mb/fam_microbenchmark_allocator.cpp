@@ -556,7 +556,7 @@ int main(int argc, char **argv) {
 // Note:this test can not be run with multiple memory server model, when memory
 // server profiling is enabled.
 #ifdef MEMSERVER_PROFILE
-    char *openFamModel;
+    char *openFamModel = NULL;
     EXPECT_NO_THROW(
         openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL")));
     if (strcmp(openFamModel, "memory_server") != 0) {

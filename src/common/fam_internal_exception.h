@@ -68,6 +68,8 @@ enum Internal_Error {
     DESTROY_REGION_NOT_PERMITTED,
     DATAITEM_ALLOC_NOT_PERMITTED,
     DATAITEM_DEALLOC_NOT_PERMITTED,
+    REGION_NOT_CREATED,
+    DATAITEM_NOT_CREATED,
     REGION_NOT_INSERTED,
     DATAITEM_NOT_INSERTED,
     REGION_NOT_FOUND,
@@ -114,6 +116,9 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case DATAITEM_EXIST:
         return FAM_ERR_ALREADYEXIST;
 
+    case REGION_NOT_CREATED:
+    case DATAITEM_NOT_CREATED:
+        return FAM_ERR_NOT_CREATED;
     case REGION_NOT_FOUND:
     case DATAITEM_NOT_FOUND:
         return FAM_ERR_NOTFOUND;
