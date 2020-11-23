@@ -2933,7 +2933,7 @@ Fam_Metadata_Service_Direct::get_memory_server_list(uint64_t regionId) {
     std::list<int> memServerList;
     METADATA_DIRECT_PROFILE_START_OPS()
     memServerList = pimpl_->get_memory_server_list(regionId);
-    METADATA_DIRECT_PROFILE_END_OPS(get_memory_server_list);
+    METADATA_DIRECT_PROFILE_END_OPS(direct_get_memory_server_list);
     return memServerList;
 }
 

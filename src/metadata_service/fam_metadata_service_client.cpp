@@ -898,6 +898,7 @@ void Fam_Metadata_Service_Client::metadata_validate_and_deallocate_dataitem(
 
 std::list<int>
 Fam_Metadata_Service_Client::get_memory_server_list(uint64_t regionId) {
+    std::list<int> memory_server_list;
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
     Fam_Metadata_Region_Info_Response res;
@@ -908,13 +909,12 @@ Fam_Metadata_Service_Client::get_memory_server_list(uint64_t regionId) {
     ::grpc::Status status = stub->get_memory_server_list(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
 
-    std::list<int> memory_server_list;
     int memsrv_count = res.memserv_list_size();
     for (int i = 0; i < memsrv_count; i++) {
         memory_server_list.push_back((res.memserv_list(i)));
     }
 
+    METADATA_CLIENT_PROFILE_END_OPS(client_get_memory_server_list);
     return memory_server_list;
-    METADATA_CLIENT_PROFILE_END_OPS(get_memory_server_list);
 }
 } // namespace metadata

@@ -676,7 +676,7 @@ Fam_Metadata_Service_Server::metadata_find_dataitem_and_check_permissions(
     for (auto it = memoryServerIds.begin(); it != memoryServerIds.end(); ++it) {
         response->add_memserv_list(*it);
     }
-    METADATA_SERVER_PROFILE_END_OPS(get_memory_server_list);
+    METADATA_SERVER_PROFILE_END_OPS(server_get_memory_server_list);
     return ::grpc::Status::OK;
 }
 
