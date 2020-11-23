@@ -265,6 +265,8 @@ class Fam_Metadata_Service {
         metadata_region_item_op_t op, const std::string dataitemName,
         const std::string regionName, uint32_t uid, uint32_t gid,
         Fam_DataItem_Metadata &dataitem) = 0;
+
+    virtual std::list<int> get_memory_server_list(uint64_t regionId) = 0;
 };
 
 } // namespace metadata

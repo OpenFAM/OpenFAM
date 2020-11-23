@@ -659,4 +659,25 @@ Fam_Metadata_Service_Server::metadata_find_dataitem_and_check_permissions(
     return ::grpc::Status::OK;
 }
 
+::grpc::Status Fam_Metadata_Service_Server::get_memory_server_list(
+    ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
+    ::Fam_Metadata_Region_Info_Response *response) {
+    METADATA_SERVER_PROFILE_START_OPS();
+    std::list<int> memoryServerIds;
+    try {
+        memoryServerIds =
+            metadataService->get_memory_server_list(request->region_id());
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+
+    for (auto it = memoryServerIds.begin(); it != memoryServerIds.end(); ++it) {
+        response->add_memserv_list(*it);
+    }
+    METADATA_SERVER_PROFILE_END_OPS(server_get_memory_server_list);
+    return ::grpc::Status::OK;
+}
+
 } // namespace metadata

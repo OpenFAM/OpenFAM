@@ -165,6 +165,7 @@ class Fam_Metadata_Service_Client : public Fam_Metadata_Service {
         const std::string regionName, uint32_t uid, uint32_t gid,
         Fam_DataItem_Metadata &dataitem);
 
+    std::list<int> get_memory_server_list(uint64_t region);
     Fam_Metadata_Service_Client(const char *name, uint64_t port);
     ~Fam_Metadata_Service_Client();
 

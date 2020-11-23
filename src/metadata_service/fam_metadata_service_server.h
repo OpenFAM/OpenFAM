@@ -165,6 +165,10 @@ class Fam_Metadata_Service_Server : public Fam_Metadata_Rpc::Service {
         ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
         ::Fam_Metadata_Response *response);
 
+    ::grpc::Status get_memory_server_list(
+        ::grpc::ServerContext *context, const ::Fam_Metadata_Request *request,
+        ::Fam_Metadata_Region_Info_Response *response) override;
+
   private:
     char *serverAddress;
     uint64_t port;
