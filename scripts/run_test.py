@@ -344,13 +344,13 @@ def terminate_services():
 
 
 #Run regression and unit tests
-cmd = 'cd '+args.buildpath+'; make reg-test'
+cmd = 'cd '+args.buildpath+'; '+env_cmd+' make reg-test'
 result = os.system(cmd)
 if((result >> 8) != 0) :
     print("\033[1;31;40mERROR: Regrresion test failed \033[0;37;40m")
     terminate_services()
     sys.exit(1)
-cmd = 'cd '+args.buildpath+'; make unit-test'
+cmd = 'cd '+args.buildpath+'; '+env_cmd+' make unit-test'
 result = os.system(cmd)
 if((result >> 8) != 0) :
     print("\033[1;31;40mERROR: Unit test failed \033[0;37;40m")
