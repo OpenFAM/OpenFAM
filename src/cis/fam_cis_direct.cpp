@@ -404,14 +404,14 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     std::vector<int> create_region_failed_list;
     // Wait for region creation to complete.
     int id = 0;
-    Fam_Exception exception;
+    Fam_Exception ex;
     for (auto result : resultList) {
         try {
             result.get();
             create_region_success_list.push_back(id++);
         } catch (Fam_Exception &e) {
             create_region_failed_list.push_back(id++);
-            exception = e;
+            ex = e;
         } catch (...) {
             create_region_failed_list.push_back(id++);
         }
@@ -425,8 +425,8 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
             metadataService->metadata_reset_bitmap(regionId);
         }
         if (create_region_failed_list.size() == 1) {
-            THROW_ERRNO_MSG(CIS_Exception, (Fam_Error)exception.fam_error(),
-                            exception.fam_error_msg());
+            THROW_ERRNO_MSG(CIS_Exception, (Fam_Error)ex.fam_error(),
+                            ex.fam_error_msg());
         } else {
             message << "Multiple memory servers failed to create region";
             THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_CREATED,
