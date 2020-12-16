@@ -233,18 +233,19 @@ cd $CURRENT_DIR
 
 #build and install radixtree in third-party/build
 #radixtree is required to build fammetadata library.
-tar -zxvf radixtree.tar.gz
 
 cd radixtree; mkdir build; cd build
-cmake ..; make
+cmake .. -DFAME=OFF; make
 
 if [[ $? > 0 ]]
 then
         echo "radixtree build failed exiting..."
         exit 1
 fi
-cp  libfamradixtree.so  ../../$LIB_DIR/.
-mkdir ../../$INCLUDE_DIR/radixtree
-cp ../*.h  ../../$INCLUDE_DIR/radixtree
+
+cp  ./src/libradixtree.so  ../../$LIB_DIR/.
+cp -r ../include/radixtree ../../$INCLUDE_DIR/
+cp ../src/*.h  ../../$INCLUDE_DIR/radixtree
 
 cd $CURRENT_DIR
+

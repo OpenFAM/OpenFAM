@@ -80,7 +80,7 @@
 
 #include <grpcpp/grpcpp.h>
 
-using namespace famradixtree;
+using namespace radixtree;
 using namespace nvmm;
 using namespace std;
 

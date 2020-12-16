@@ -55,7 +55,7 @@
         kvs = open_metadata_kvs(root, heap_size, heap_id);                     \
     }
 
-using namespace famradixtree;
+using namespace radixtree;
 using namespace openfam;
 using namespace nvmm;
 using namespace std;

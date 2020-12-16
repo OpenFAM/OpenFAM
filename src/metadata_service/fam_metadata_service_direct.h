@@ -51,7 +51,7 @@
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
 #define MIN_HEAP_SIZE (10 * (1UL << 20))
-using namespace famradixtree;
+using namespace radixtree;
 using namespace nvmm;
 using namespace std;
 

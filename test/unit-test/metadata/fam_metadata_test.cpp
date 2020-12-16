@@ -40,7 +40,7 @@
 #include <string.h>
 #include <unistd.h>
 
-using namespace famradixtree;
+using namespace radixtree;
 using namespace nvmm;
 using namespace metadata;
 using namespace openfam;

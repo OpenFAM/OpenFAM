@@ -52,7 +52,7 @@
 #include "nvmm/memory_manager.h"
 #define MAX_MEMORY_SERVERS_CNT 256
 
-using namespace famradixtree;
+using namespace radixtree;
 using namespace nvmm;
 using namespace std;
 

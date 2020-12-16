@@ -56,8 +56,8 @@ git checkout tags/v3.0.2 -b openfam
 #OPENMPI v4.0.1
 cd $CURRENT_DIR
 echo "Downloading OPENMPI source"
-wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.1.tar.gz
-tar -zxvf openmpi-4.0.1.tar.gz >/dev/null
+#wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.1.tar.gz
+#tar -zxvf openmpi-4.0.1.tar.gz >/dev/null
 
 #GOOGLETEST 
 cd $CURRENT_DIR
@@ -71,5 +71,10 @@ cd $CURRENT_DIR
 echo "Downloading NVMM source"
 git clone https://github.com/HewlettPackard/gull.git nvmm
 
+#Radixtree
+echo "Downloading radixtree source"
+git clone https://github.com/HewlettPackard/meadowlark.git radixtree
+
 cd $CURRENT_DIR
 echo "Done..............."
+
