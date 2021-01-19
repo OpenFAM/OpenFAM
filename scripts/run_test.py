@@ -342,12 +342,13 @@ def terminate_services():
 		    cmd = 'pkill cis_server'
 	    os.system(cmd)
 
+    time.sleep(5) # sufficient time to terminate the services
 
 #Run regression and unit tests
 cmd = 'cd '+args.buildpath+'; '+env_cmd+' make reg-test'
 result = os.system(cmd)
 if((result >> 8) != 0) :
-    print("\033[1;31;40mERROR: Regrresion test failed \033[0;37;40m")
+    print("\033[1;31;40mERROR: Regression test failed \033[0;37;40m")
     terminate_services()
     sys.exit(1)
 cmd = 'cd '+args.buildpath+'; '+env_cmd+' make unit-test'
