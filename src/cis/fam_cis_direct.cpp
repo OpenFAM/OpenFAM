@@ -1221,10 +1221,11 @@ int Fam_CIS_Direct::get_atomic(uint64_t regionId, uint64_t srcOffset,
                                uint32_t uid, uint32_t gid) {
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
+    uint64_t metadataServiceId = 0;
 
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_Metadata_Service *metadataService =
-        get_metadata_service(memoryServerId);
+        get_metadata_service(metadataServiceId);
     message << "Error While accessing dataitem : ";
     // Check with metadata service if region with the requested Id
     // is already exist, if not return error
