@@ -47,8 +47,6 @@ using namespace openfam;
 
 int main(int argc, char *argv[]) {
 
-    Fam_Metadata_Service *manager = new Fam_Metadata_Service_Direct(true);
-
     uint64_t count = 0, fail = 0;
 
     fam *my_fam = new fam();
@@ -75,6 +73,8 @@ int main(int argc, char *argv[]) {
                   << TEST_SKIP_STATUS << std::endl;
         return TEST_SKIP_STATUS;
     }
+
+    Fam_Metadata_Service *manager = new Fam_Metadata_Service_Direct(true);
 
     Fam_Region_Descriptor *desc[2];
     Fam_Region_Metadata node;

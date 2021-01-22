@@ -56,7 +56,7 @@ sleep 5
 echo "=============================================================="
 echo "Test OpenFAM with cis-rpc-meta-direct-mem-direct configuration"
 echo "=============================================================="
-CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-rpc-meta-rpc-mem-rpc
+CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-direct
 python3 $SCRIPT_DIR/run_test.py $LAUNCHER -n 1 --cisinterface rpc --cisrpcaddr 127.0.0.1:8787 --memserverinterface direct --metaserverinterface direct $CURRENTDIR $CONFIG_OUT_DIR $BUILD_DIR
 
 if [[ $? > 0 ]]
@@ -70,7 +70,7 @@ sleep 5
 echo "==========================================================="
 echo "Test OpenFAM with cis-direct-meta-rpc-mem-rpc configuration"
 echo "==========================================================="
-CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-rpc-meta-rpc-mem-rpc
+CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-direct-meta-rpc-mem-rpc
 python3 $SCRIPT_DIR/run_test.py $LAUNCHER -n 1 --cisinterface direct --memserverinterface rpc --metaserverinterface rpc --memserverlist 0:127.0.0.1:8789 --metaserverlist 0:127.0.0.1:8788 $CURRENTDIR $CONFIG_OUT_DIR $BUILD_DIR
 
 if [[ $? > 0 ]]
