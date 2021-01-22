@@ -19,10 +19,10 @@ rpc_interface: 127.0.0.1:8789
 # Other options are psm2/verbs.
 provider: sockets
 
-#Libfabric port to be used for datapath operations.
+# Libfabric port to be used for datapath operations.
 libfabric_port: 7500
 
-#Libfabric port to be used for datapath operations.
+# Number of threads used for delayed free.
 delayed_free_threads: 0 
 
 # Atomic library threads count - default (0) indicates ATL disabled
