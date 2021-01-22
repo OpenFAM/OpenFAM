@@ -1,6 +1,6 @@
 /*
  * memserver_allocator.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -71,7 +71,8 @@ void nvmm_profile_dump(){MEMSERVER_PROFILE_END(NVMM)
 #include "allocator/NVMM_counters.tbl"
                                  MEMSERVER_DUMP_PROFILE_SUMMARY(NVMM)}
 
-Memserver_Allocator::Memserver_Allocator(const char *fam_path = "") {
+Memserver_Allocator::Memserver_Allocator(uint64_t delayed_free_threads,
+                                         const char *fam_path = "") {
     MEMSERVER_PROFILE_INIT(NVMM)
     MEMSERVER_PROFILE_START_TIME(NVMM)
 
@@ -80,14 +81,35 @@ Memserver_Allocator::Memserver_Allocator(const char *fam_path = "") {
     else
         StartNVMM(fam_path);
 
+    num_delayed_free_threads = delayed_free_threads;
     heapMap = new HeapMap();
     memoryManager = MemoryManager::GetInstance();
+    em = EpochManager::GetInstance();
     (void)pthread_mutex_init(&heapMapLock, NULL);
+    for (uint64_t i = 0; i < num_delayed_free_threads; i++) {
+        delayed_free_thread_array.push_back(gc_th_struct_t());
+        delayed_free_thread_array[i].pthread_running = true;
+        delayed_free_thread_array[i].heap_list = new HeapInfo();
+        pthread_rwlock_init(&delayed_free_thread_array[i].rwLock, NULL);
+    }
+
+    uint64_t i = 0;
+    for (auto itr = delayed_free_thread_array.begin();
+         itr != delayed_free_thread_array.end(); i++, itr++) {
+        itr->delayed_free_thread =
+            std::thread(&Memserver_Allocator::delayed_free_th, this, i);
+    }
 }
 
 Memserver_Allocator::~Memserver_Allocator() {
     delete heapMap;
     pthread_mutex_destroy(&heapMapLock);
+    for (uint64_t i = 0; i < num_delayed_free_threads; i++) {
+        delayed_free_thread_array[i].pthread_running = false;
+        if (delayed_free_thread_array[i].delayed_free_thread.joinable()) {
+            delayed_free_thread_array[i].delayed_free_thread.join();
+        }
+    }
 }
 
 void Memserver_Allocator::memserver_allocator_finalize() {
@@ -107,6 +129,30 @@ void Memserver_Allocator::reset_profile() {
     MEMSERVER_PROFILE_START_TIME(NVMM)
 }
 void Memserver_Allocator::dump_profile() { NVMM_PROFILE_DUMP(); }
+
+void Memserver_Allocator::delayed_free_th(uint64_t thread_index) {
+    gc_th_struct_t *gc_th_obj = &delayed_free_thread_array[thread_index];
+    while (gc_th_obj->pthread_running == true) {
+        HeapInfo::iterator itr;
+        uint64_t nextId;
+        pthread_rwlock_rdlock(&gc_th_obj->rwLock);
+        while ((itr = gc_th_obj->heap_list->upper_bound(nextId)) !=
+               gc_th_obj->heap_list->end()) {
+            nextId = itr->first;
+            Fam_Heap_Info_t *heapInfo = itr->second;
+            pthread_rwlock_rdlock(&heapInfo->rwLock);
+            pthread_rwlock_unlock(&gc_th_obj->rwLock);
+            if (heapInfo->isValid && heapInfo->heap->IsOpen()) {
+                heapInfo->heap->delayed_free_fn();
+            }
+            pthread_rwlock_unlock(&heapInfo->rwLock);
+            pthread_rwlock_rdlock(&gc_th_obj->rwLock);
+        }
+        pthread_rwlock_unlock(&gc_th_obj->rwLock);
+        usleep(delayed_free_th_sleep_MicroSeconds);
+    }
+}
+
 /*
 
  * Create a new region.
@@ -130,6 +176,10 @@ void Memserver_Allocator::create_region(uint64_t regionId, size_t nbytes) {
                         message.str().c_str());
     }
 
+    uint64_t flags = 0;
+    if (num_delayed_free_threads != 0)
+        flags = NVMM_FAST_ALLOC;
+
     // Else Create region using NVMM and set the fields in response to
     // appropriate value
 
@@ -139,7 +189,8 @@ void Memserver_Allocator::create_region(uint64_t regionId, size_t nbytes) {
         tmpSize = nbytes;
     int ret;
     NVMM_PROFILE_START_OPS()
-    ret = memoryManager->CreateHeap((PoolId)regionId, tmpSize, MIN_OBJ_SIZE);
+    ret = memoryManager->CreateHeap((PoolId)regionId, tmpSize, MIN_OBJ_SIZE,
+                                    flags);
     NVMM_PROFILE_END_OPS(CreateHeap)
 
     if (ret != NO_ERROR) {
@@ -166,7 +217,16 @@ void Memserver_Allocator::create_region(uint64_t regionId, size_t nbytes) {
         THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_OPENED,
                         message.str().c_str());
     }
-
+    if (num_delayed_free_threads != 0) {
+        uint64_t idx = regionId % num_delayed_free_threads;
+        pthread_rwlock_wrlock(&delayed_free_thread_array[idx].rwLock);
+        Fam_Heap_Info_t *heapInfo = new Fam_Heap_Info_t();
+        heapInfo->heap = heap;
+        heapInfo->isValid = true;
+        pthread_rwlock_init(&heapInfo->rwLock, NULL);
+        delayed_free_thread_array[idx].heap_list->insert({regionId, heapInfo});
+        pthread_rwlock_unlock(&delayed_free_thread_array[idx].rwLock);
+    }
     NVMM_PROFILE_START_OPS()
     pthread_mutex_lock(&heapMapLock);
 
@@ -190,7 +250,23 @@ void Memserver_Allocator::create_region(uint64_t regionId, size_t nbytes) {
     pthread_mutex_unlock(&heapMapLock);
     NVMM_PROFILE_END_OPS(HeapMapInsertOp);
 }
-
+Fam_Heap_Info_t *Memserver_Allocator::remove_heap_from_list(uint64_t regionId) {
+    if (num_delayed_free_threads != 0) {
+        uint64_t idx = regionId % num_delayed_free_threads;
+        Fam_Heap_Info_t *heapInfo = NULL;
+        pthread_rwlock_wrlock(&delayed_free_thread_array[idx].rwLock);
+        auto obj = delayed_free_thread_array[idx].heap_list->find(regionId);
+        if (obj != delayed_free_thread_array[idx].heap_list->end()) {
+            heapInfo = obj->second;
+            heapInfo->isValid = false;
+            delayed_free_thread_array[idx].heap_list->erase(regionId);
+        }
+        pthread_rwlock_unlock(&delayed_free_thread_array[idx].rwLock);
+        return heapInfo;
+    } else {
+        return NULL;
+    }
+}
 /*
  * destroy a region
  * regionId - region Id of the region to be destroyed
@@ -208,14 +284,25 @@ void Memserver_Allocator::destroy_region(uint64_t regionId) {
     HeapMap::iterator it = get_heap(regionId, heap);
 
     if (it != heapMap->end()) {
+        Fam_Heap_Info_t *heapInfo;
         NVMM_PROFILE_START_OPS()
         pthread_mutex_lock(&heapMapLock);
         heapMap->erase(it);
         pthread_mutex_unlock(&heapMapLock);
+        heapInfo = remove_heap_from_list(regionId);
         NVMM_PROFILE_END_OPS(HeapMapEraseOp)
-        NVMM_PROFILE_START_OPS()
-        ret = heap->Close();
-        NVMM_PROFILE_END_OPS(Heap_Close)
+        if (heapInfo) {
+            pthread_rwlock_wrlock(&heapInfo->rwLock);
+            NVMM_PROFILE_START_OPS()
+            ret = heap->Close();
+            NVMM_PROFILE_END_OPS(Heap_Close)
+            pthread_rwlock_unlock(&heapInfo->rwLock);
+            delete heapInfo;
+        } else {
+            NVMM_PROFILE_START_OPS()
+            ret = heap->Close();
+            NVMM_PROFILE_END_OPS(Heap_Close)
+        }
         if (ret != NO_ERROR) {
             message << "Can not close heap";
             THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_CLOSED,
@@ -232,7 +319,6 @@ void Memserver_Allocator::destroy_region(uint64_t regionId) {
         THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_NOT_DESTROYED,
                         message.str().c_str());
     }
-
 }
 
 /*
@@ -346,7 +432,12 @@ void Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset) {
     HeapMap::iterator it = get_heap(regionId, heap);
     if (it != heapMap->end()) {
         NVMM_PROFILE_START_OPS()
-        heap->Free(offset);
+        if (num_delayed_free_threads > 0) {
+            EpochOp op(em);
+            heap->Free(op, offset);
+        } else {
+            heap->Free(offset);
+        }
         NVMM_PROFILE_END_OPS(Heap_Free)
     } else {
         // Heap not found in map. Get the heap from NVMM
@@ -358,7 +449,12 @@ void Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset) {
                             message.str().c_str());
         }
         NVMM_PROFILE_START_OPS()
-        heap->Free(offset);
+        if (num_delayed_free_threads > 0) {
+            EpochOp op(em);
+            heap->Free(op, offset);
+        } else {
+            heap->Free(offset);
+        }
         NVMM_PROFILE_END_OPS(Heap_Free)
     }
 }
@@ -419,6 +515,18 @@ void Memserver_Allocator::open_heap(uint64_t regionId) {
         NVMM_PROFILE_START_OPS()
         heap->Open(NVMM_NO_BG_THREAD);
         NVMM_PROFILE_END_OPS(Heap_Open)
+
+        if (num_delayed_free_threads != 0) {
+            uint64_t idx = regionId % num_delayed_free_threads;
+            pthread_rwlock_wrlock(&delayed_free_thread_array[idx].rwLock);
+            Fam_Heap_Info_t *heapInfo = new Fam_Heap_Info_t();
+            heapInfo->heap = heap;
+            heapInfo->isValid = true;
+            pthread_rwlock_init(&heapInfo->rwLock, NULL);
+            delayed_free_thread_array[idx].heap_list->insert(
+                {regionId, heapInfo});
+            pthread_rwlock_unlock(&delayed_free_thread_array[idx].rwLock);
+        }
         NVMM_PROFILE_START_OPS()
         pthread_mutex_lock(&heapMapLock);
 

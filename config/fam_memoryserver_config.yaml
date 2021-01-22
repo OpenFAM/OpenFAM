@@ -22,6 +22,9 @@ provider: sockets
 #Libfabric port to be used for datapath operations.
 libfabric_port: 7500
 
+#Libfabric port to be used for datapath operations.
+delayed_free_threads: 0 
+
 # Atomic library threads count - default (0) indicates ATL disabled
 ATL_threads: 0 
 
