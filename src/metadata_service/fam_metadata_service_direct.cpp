@@ -255,7 +255,7 @@ class Fam_Metadata_Service_Direct::Impl_ {
     std::vector<uint64_t> memoryServerList;
     bool use_meta_region;
     KvsMap *metadataKvsMap;
-    pthread_mutex_t kvsMapLock;
+    pthread_rwlock_t kvsMapLock;
 
     MemoryManager *memoryManager;
     bool enable_region_spanning;
@@ -303,7 +303,7 @@ int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg, bool flag,
     enable_region_spanning = flag;
     region_span_size_per_memoryserver = size;
     metadataKvsMap = new KvsMap();
-    (void)pthread_mutex_init(&kvsMapLock, NULL);
+    pthread_rwlock_init(&kvsMapLock, NULL);
     use_meta_region = use_meta_reg;
 
     // Create the KVS tree for Region ID
@@ -354,7 +354,7 @@ int Fam_Metadata_Service_Direct::Impl_::Final() {
     delete regionIdKVS;
     delete regionNameKVS;
     delete metadataKvsMap;
-    pthread_mutex_destroy(&kvsMapLock);
+    // pthread_mutex_destroy(&kvsMapLock);
 
     return META_NO_ERROR;
 }
@@ -405,10 +405,10 @@ int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
     KeyValueStore *&dataitemNameKVS) {
 
     int ret = META_NO_ERROR;
-    pthread_mutex_lock(&kvsMapLock);
+    pthread_rwlock_rdlock(&kvsMapLock);
     auto kvsObj = metadataKvsMap->find(regionId);
     if (kvsObj == metadataKvsMap->end()) {
-        pthread_mutex_unlock(&kvsMapLock);
+      pthread_rwlock_unlock(&kvsMapLock);
         // If regionId is not present in KVS map, open the KVS using
         // root pointer and insert the KVS in the map
         Fam_Region_Metadata regNode;
@@ -434,19 +434,24 @@ int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
         diKVS *kvs = new diKVS();
         kvs->diNameKVS = dataitemNameKVS;
         kvs->diIdKVS = dataitemIdKVS;
-        pthread_mutex_lock(&kvsMapLock);
+        pthread_rwlock_init(&kvs->kvsLock, NULL);
+        pthread_rwlock_rdlock(&kvsMapLock);
         auto kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj == metadataKvsMap->end()) {
+          pthread_rwlock_unlock(&kvsMapLock);
+          pthread_rwlock_wrlock(&kvsMapLock);
             metadataKvsMap->insert({regionId, kvs});
+            pthread_rwlock_unlock(&kvsMapLock);
         } else {
-            pthread_mutex_unlock(&kvsMapLock);
+          pthread_rwlock_unlock(&kvsMapLock);
             return META_NO_ERROR;
         }
-        pthread_mutex_unlock(&kvsMapLock);
     } else {
-        pthread_mutex_unlock(&kvsMapLock);
+      pthread_rwlock_rdlock(&(kvsObj->second)->kvsLock);
+      pthread_rwlock_unlock(&kvsMapLock);
         dataitemIdKVS = (kvsObj->second)->diIdKVS;
         dataitemNameKVS = (kvsObj->second)->diNameKVS;
+        pthread_rwlock_unlock(&(kvsObj->second)->kvsLock);
     }
 
     if ((dataitemIdKVS == nullptr) || (dataitemNameKVS == nullptr)) {
@@ -678,8 +683,8 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
 
     // Insert region name -> region id mapping in regionDataKVS
     ret = insert_in_regionname_kvs(regionName, regionKey);
-    size_t tmpSize =
-        (region->size > MIN_HEAP_SIZE ? region->size : MIN_HEAP_SIZE);
+    size_t tmpSize = region->size / 4;
+    tmpSize = (tmpSize < MIN_HEAP_SIZE ? MIN_HEAP_SIZE : tmpSize);
     if (ret == META_NO_ERROR) {
         // Region key does not exist, create an entry
 
@@ -692,7 +697,6 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
         } else {
             region->isHeapCreated =
                 create_heap_for_dataitem_metadata_KVS(regionId, tmpSize);
-
             dataitemIdRoot =
                 create_metadata_kvs_tree(tmpSize, (PoolId)regionId);
             dataitemNameRoot =
@@ -728,7 +732,6 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
         }
-
         OPEN_METADATA_KVS(dataitemNameRoot, tmpSize, regionId, dataitemNameKVS);
 
         if (dataitemNameKVS == nullptr) {
@@ -742,18 +745,21 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
         diKVS *kvs = new diKVS();
         kvs->diNameKVS = dataitemNameKVS;
         kvs->diIdKVS = dataitemIdKVS;
-        pthread_mutex_lock(&kvsMapLock);
+        pthread_rwlock_init(&kvs->kvsLock, NULL);
+        pthread_rwlock_rdlock(&kvsMapLock);
         auto kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj == metadataKvsMap->end()) {
+          pthread_rwlock_unlock(&kvsMapLock);
+          pthread_rwlock_wrlock(&kvsMapLock);
             metadataKvsMap->insert({regionId, kvs});
+            pthread_rwlock_unlock(&kvsMapLock);
         } else {
-            pthread_mutex_unlock(&kvsMapLock);
+          pthread_rwlock_unlock(&kvsMapLock);
             delete kvs;
             message << "KVS pointers already exist in map";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
         }
-        pthread_mutex_unlock(&kvsMapLock);
     } else if (ret == META_KEY_ALREADY_EXIST) {
         message << "Region already exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_EXIST,
@@ -888,16 +894,20 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     } else if (ret == META_NO_ERROR) {
-        pthread_mutex_lock(&kvsMapLock);
+      pthread_rwlock_rdlock(&kvsMapLock);
         regionid = stoull(regionId);
         auto kvsObj = metadataKvsMap->find(regionid);
         if (kvsObj != metadataKvsMap->end()) {
+          pthread_rwlock_wrlock(&(kvsObj->second)->kvsLock);
+          pthread_rwlock_unlock(&kvsMapLock);
             delete (kvsObj->second)->diIdKVS;
             delete (kvsObj->second)->diNameKVS;
+            pthread_rwlock_wrlock(&kvsMapLock);
+            pthread_rwlock_unlock(&(kvsObj->second)->kvsLock);
             delete kvsObj->second;
             metadataKvsMap->erase(kvsObj);
         }
-        pthread_mutex_unlock(&kvsMapLock);
+        pthread_rwlock_unlock(&kvsMapLock);
 
         if (metadata_find_region(regionName, regNode)) {
             destroy_dataitem_metadata_KVS(regionid, regNode);
@@ -950,17 +960,21 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
     Fam_Region_Metadata regNode;
 
     int ret;
-
     if (metadata_find_region(regionId, regNode)) {
-        pthread_mutex_lock(&kvsMapLock);
-        auto kvsObj = metadataKvsMap->find(regionId);
+      pthread_rwlock_rdlock(&kvsMapLock);
+      KvsMap::iterator kvsObj;
+      kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj != metadataKvsMap->end()) {
+          pthread_rwlock_wrlock(&(kvsObj->second)->kvsLock);
+          pthread_rwlock_unlock(&kvsMapLock);
             delete (kvsObj->second)->diIdKVS;
             delete (kvsObj->second)->diNameKVS;
+            pthread_rwlock_wrlock(&kvsMapLock);
+            pthread_rwlock_unlock(&(kvsObj->second)->kvsLock);
             delete kvsObj->second;
             metadataKvsMap->erase(kvsObj);
         }
-        pthread_mutex_unlock(&kvsMapLock);
+        pthread_rwlock_unlock(&kvsMapLock);
 
         // Destroying heap incase heap is created by metadata service
         // which is used for dataitem metadata KVS
@@ -973,7 +987,6 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
         std::string regionName = regNode.name;
 
         ret = regionNameKVS->Del(regionName.c_str(), regionName.size());
-
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionId, "Region not found");
             message << "Region does not exist";
@@ -989,7 +1002,6 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
         // delete the region id for region ID KVS
         std::string regionKey = std::to_string(regionId);
         ret = regionIdKVS->Del(regionKey.c_str(), regionKey.size());
-
         if (ret == META_KEY_DOES_NOT_EXIST) {
             DEBUG_STDOUT(regionId, "Region not found");
             message << "Region does not exist";
@@ -2258,7 +2270,6 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_destroy_region(
 
     // Return memory server list to user
     *memory_server_list = get_memory_server_list(regionId);
-
     // remove region from metadata service.
     // metadata_delete_region() is called before DestroyHeap() as
     // cached KVS is freed in metadata_delete_region and calling

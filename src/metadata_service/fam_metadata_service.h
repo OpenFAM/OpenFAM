@@ -80,6 +80,7 @@ namespace metadata {
 typedef struct {
     KeyValueStore *diIdKVS;
     KeyValueStore *diNameKVS;
+    pthread_rwlock_t kvsLock;
 } diKVS;
 
 using KvsMap = std::map<uint64_t, diKVS *>;
