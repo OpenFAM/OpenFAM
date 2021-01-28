@@ -132,9 +132,10 @@ void Memserver_Allocator::dump_profile() { NVMM_PROFILE_DUMP(); }
 
 void Memserver_Allocator::delayed_free_th(uint64_t thread_index) {
     gc_th_struct_t *gc_th_obj = &delayed_free_thread_array[thread_index];
+    uint64_t nextId;
     while (gc_th_obj->pthread_running == true) {
+        nextId = 0;
         HeapInfo::iterator itr;
-        uint64_t nextId;
         pthread_rwlock_rdlock(&gc_th_obj->rwLock);
         while ((itr = gc_th_obj->heap_list->upper_bound(nextId)) !=
                gc_th_obj->heap_list->end()) {
