@@ -80,9 +80,9 @@ MEMSERVER_PROFILE_START(METADATA_DIRECT)
 #define METADATA_DIRECT_PROFILE_DUMP()
 #endif
 
-void metadata_direct_profile_dump(){
+void metadata_direct_profile_dump() {
     MEMSERVER_PROFILE_END(METADATA_DIRECT)
-        MEMSERVER_DUMP_PROFILE_BANNER(METADATA_DIRECT)
+    MEMSERVER_DUMP_PROFILE_BANNER(METADATA_DIRECT)
 #undef MEMSERVER_COUNTER
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_DUMP_PROFILE_DATA(METADATA_DIRECT, name, prof_##name)
@@ -92,7 +92,8 @@ void metadata_direct_profile_dump(){
 #define MEMSERVER_COUNTER(name)                                                \
     MEMSERVER_PROFILE_TOTAL(METADATA_DIRECT, prof_##name)
 #include "metadata_service/metadata_direct_counters.tbl"
-            MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_DIRECT)}
+    MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_DIRECT)
+}
 
 KeyValueStore::IndexType const KVSTYPE = KeyValueStore::RADIX_TREE;
 
@@ -354,7 +355,7 @@ int Fam_Metadata_Service_Direct::Impl_::Final() {
     delete regionIdKVS;
     delete regionNameKVS;
     delete metadataKvsMap;
-    // pthread_mutex_destroy(&kvsMapLock);
+    pthread_rwlock_destroy(&kvsMapLock);
 
     return META_NO_ERROR;
 }
@@ -408,7 +409,7 @@ int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
     pthread_rwlock_rdlock(&kvsMapLock);
     auto kvsObj = metadataKvsMap->find(regionId);
     if (kvsObj == metadataKvsMap->end()) {
-      pthread_rwlock_unlock(&kvsMapLock);
+        pthread_rwlock_unlock(&kvsMapLock);
         // If regionId is not present in KVS map, open the KVS using
         // root pointer and insert the KVS in the map
         Fam_Region_Metadata regNode;
@@ -438,17 +439,20 @@ int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
         pthread_rwlock_rdlock(&kvsMapLock);
         auto kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj == metadataKvsMap->end()) {
-          pthread_rwlock_unlock(&kvsMapLock);
-          pthread_rwlock_wrlock(&kvsMapLock);
-            metadataKvsMap->insert({regionId, kvs});
+            pthread_rwlock_unlock(&kvsMapLock);
+            pthread_rwlock_wrlock(&kvsMapLock);
+            kvsObj = metadataKvsMap->find(regionId);
+            if (kvsObj == metadataKvsMap->end()) {
+                metadataKvsMap->insert({ regionId, kvs });
+            }
             pthread_rwlock_unlock(&kvsMapLock);
         } else {
-          pthread_rwlock_unlock(&kvsMapLock);
+            pthread_rwlock_unlock(&kvsMapLock);
             return META_NO_ERROR;
         }
     } else {
-      pthread_rwlock_rdlock(&(kvsObj->second)->kvsLock);
-      pthread_rwlock_unlock(&kvsMapLock);
+        pthread_rwlock_rdlock(&(kvsObj->second)->kvsLock);
+        pthread_rwlock_unlock(&kvsMapLock);
         dataitemIdKVS = (kvsObj->second)->diIdKVS;
         dataitemNameKVS = (kvsObj->second)->diNameKVS;
         pthread_rwlock_unlock(&(kvsObj->second)->kvsLock);
@@ -749,12 +753,15 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
         pthread_rwlock_rdlock(&kvsMapLock);
         auto kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj == metadataKvsMap->end()) {
-          pthread_rwlock_unlock(&kvsMapLock);
-          pthread_rwlock_wrlock(&kvsMapLock);
-            metadataKvsMap->insert({regionId, kvs});
+            pthread_rwlock_unlock(&kvsMapLock);
+            pthread_rwlock_wrlock(&kvsMapLock);
+            kvsObj = metadataKvsMap->find(regionId);
+            if (kvsObj == metadataKvsMap->end()) {
+                metadataKvsMap->insert({ regionId, kvs });
+            }
             pthread_rwlock_unlock(&kvsMapLock);
         } else {
-          pthread_rwlock_unlock(&kvsMapLock);
+            pthread_rwlock_unlock(&kvsMapLock);
             delete kvs;
             message << "KVS pointers already exist in map";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
@@ -881,7 +888,6 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
     const std::string regionName) {
     ostringstream message;
 
-
     std::string regionId;
     uint64_t regionid;
     Fam_Region_Metadata regNode;
@@ -894,12 +900,12 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     } else if (ret == META_NO_ERROR) {
-      pthread_rwlock_rdlock(&kvsMapLock);
+        pthread_rwlock_rdlock(&kvsMapLock);
         regionid = stoull(regionId);
         auto kvsObj = metadataKvsMap->find(regionid);
         if (kvsObj != metadataKvsMap->end()) {
-          pthread_rwlock_wrlock(&(kvsObj->second)->kvsLock);
-          pthread_rwlock_unlock(&kvsMapLock);
+            pthread_rwlock_wrlock(&(kvsObj->second)->kvsLock);
+            pthread_rwlock_unlock(&kvsMapLock);
             delete (kvsObj->second)->diIdKVS;
             delete (kvsObj->second)->diNameKVS;
             pthread_rwlock_wrlock(&kvsMapLock);
@@ -961,12 +967,12 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
 
     int ret;
     if (metadata_find_region(regionId, regNode)) {
-      pthread_rwlock_rdlock(&kvsMapLock);
-      KvsMap::iterator kvsObj;
-      kvsObj = metadataKvsMap->find(regionId);
+        pthread_rwlock_rdlock(&kvsMapLock);
+        KvsMap::iterator kvsObj;
+        kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj != metadataKvsMap->end()) {
-          pthread_rwlock_wrlock(&(kvsObj->second)->kvsLock);
-          pthread_rwlock_unlock(&kvsMapLock);
+            pthread_rwlock_wrlock(&(kvsObj->second)->kvsLock);
+            pthread_rwlock_unlock(&kvsMapLock);
             delete (kvsObj->second)->diIdKVS;
             delete (kvsObj->second)->diNameKVS;
             pthread_rwlock_wrlock(&kvsMapLock);
@@ -2180,8 +2186,8 @@ int Fam_Metadata_Service_Direct::Impl_::get_regionid_from_bitmap(
     return META_NO_ERROR;
 }
 
-void Fam_Metadata_Service_Direct::Impl_::metadata_reset_bitmap(
-    uint64_t regionID) {
+void
+Fam_Metadata_Service_Direct::Impl_::metadata_reset_bitmap(uint64_t regionID) {
     bitmap_reset(bmap, regionID);
 }
 
@@ -2277,7 +2283,8 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_destroy_region(
 
     try {
         metadata_delete_region(regionId);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         message
             << "Destroy Region error : couldnt remove region with region ID: "
             << regionId << endl;
@@ -2286,11 +2293,10 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_destroy_region(
     }
 }
 
-void Fam_Metadata_Service_Direct::Impl_::
-    metadata_validate_and_allocate_dataitem(const std::string dataitemName,
-                                            const uint64_t regionId,
-                                            uint32_t uid, uint32_t gid,
-                                            uint64_t *memoryServerId) {
+void
+Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_allocate_dataitem(
+    const std::string dataitemName, const uint64_t regionId, uint32_t uid,
+    uint32_t gid, uint64_t *memoryServerId) {
     ostringstream message;
     bool ret;
     // Check if the name size is bigger than MAX_KEY_LEN supported
@@ -2338,10 +2344,10 @@ void Fam_Metadata_Service_Direct::Impl_::
     *memoryServerId = region.memServerIds[id];
 }
 
-void Fam_Metadata_Service_Direct::Impl_::
-    metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
-                                              const uint64_t dataitemId,
-                                              uint32_t uid, uint32_t gid) {
+void
+Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_deallocate_dataitem(
+    const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
+    uint32_t gid) {
     ostringstream message;
     // Check with metadata service if data item with the requested name
     // is already exist, if not return error
@@ -2368,18 +2374,18 @@ void Fam_Metadata_Service_Direct::Impl_::
     // Remove data item from metadata service
     try {
         metadata_delete_dataitem(dataitemId, regionId);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         message << "Deallocate dataitem error : Couldnt delete dataitem";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_REMOVED,
                         message.str().c_str());
     }
 }
 
-void Fam_Metadata_Service_Direct::Impl_::
-    metadata_find_region_and_check_permissions(metadata_region_item_op_t op,
-                                               const uint64_t regionId,
-                                               uint32_t uid, uint32_t gid,
-                                               Fam_Region_Metadata &region) {
+void
+Fam_Metadata_Service_Direct::Impl_::metadata_find_region_and_check_permissions(
+    metadata_region_item_op_t op, const uint64_t regionId, uint32_t uid,
+    uint32_t gid, Fam_Region_Metadata &region) {
     ostringstream message;
     // Check with metadata service if the region exist, if not return error
     bool ret = metadata_find_region(regionId, region);
@@ -2423,11 +2429,10 @@ void Fam_Metadata_Service_Direct::Impl_::
     }
 }
 
-void Fam_Metadata_Service_Direct::Impl_::
-    metadata_find_region_and_check_permissions(metadata_region_item_op_t op,
-                                               const std::string regionName,
-                                               uint32_t uid, uint32_t gid,
-                                               Fam_Region_Metadata &region) {
+void
+Fam_Metadata_Service_Direct::Impl_::metadata_find_region_and_check_permissions(
+    metadata_region_item_op_t op, const std::string regionName, uint32_t uid,
+    uint32_t gid, Fam_Region_Metadata &region) {
     ostringstream message;
     // Check with metadata service if the region exist, if not return error
     bool ret = metadata_find_region(regionName, region);
@@ -2473,7 +2478,8 @@ void Fam_Metadata_Service_Direct::Impl_::
 std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
     const std::string regionname, size_t size, int user_policy) {
     std::list<int> memsrv_list;
-    std::uint64_t hashVal = std::hash<std::string>{}(regionname);
+    std::uint64_t hashVal = std::hash<std::string> {}
+    (regionname);
     unsigned int id = (int)(hashVal % memoryServerCount);
     unsigned int i = 0;
     uint64_t aligned_size = align_to_address(size, 64);
@@ -2539,7 +2545,8 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
     try {
         config_file_path = find_config_file(strdup("fam_metadata_config.yaml"));
-    } catch (Fam_InvalidOption_Exception &e) {
+    }
+    catch (Fam_InvalidOption_Exception &e) {
         // If the config_file is not present, then ignore the exception.
     }
     // Get the configuration info from the configruation file.
@@ -2568,9 +2575,10 @@ void Fam_Metadata_Service_Direct::Stop() {
         delete pimpl_;
 }
 
-void Fam_Metadata_Service_Direct::Start(
-    bool use_meta_reg, bool enable_region_spanning,
-    size_t region_span_size_per_memoryserver) {
+void
+Fam_Metadata_Service_Direct::Start(bool use_meta_reg,
+                                   bool enable_region_spanning,
+                                   size_t region_span_size_per_memoryserver) {
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
@@ -2599,8 +2607,8 @@ void Fam_Metadata_Service_Direct::metadata_insert_region(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_insert_region);
 }
 
-void Fam_Metadata_Service_Direct::metadata_delete_region(
-    const uint64_t regionID) {
+void
+Fam_Metadata_Service_Direct::metadata_delete_region(const uint64_t regionID) {
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_delete_region(regionID);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_region);
@@ -2613,8 +2621,9 @@ void Fam_Metadata_Service_Direct::metadata_delete_region(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_region);
 }
 
-bool Fam_Metadata_Service_Direct::metadata_find_region(
-    const std::string regionName, Fam_Region_Metadata &region) {
+bool
+Fam_Metadata_Service_Direct::metadata_find_region(const std::string regionName,
+                                                  Fam_Region_Metadata &region) {
     bool ret;
     METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_region(regionName, region);
@@ -2622,8 +2631,9 @@ bool Fam_Metadata_Service_Direct::metadata_find_region(
     return ret;
 }
 
-bool Fam_Metadata_Service_Direct::metadata_find_region(
-    const uint64_t regionId, Fam_Region_Metadata &region) {
+bool
+Fam_Metadata_Service_Direct::metadata_find_region(const uint64_t regionId,
+                                                  Fam_Region_Metadata &region) {
     bool ret;
     METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_region(regionId, region);
@@ -2672,8 +2682,9 @@ void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_dataitem);
 }
 
-void Fam_Metadata_Service_Direct::metadata_delete_dataitem(
-    const uint64_t dataitemId, const uint64_t regionId) {
+void
+Fam_Metadata_Service_Direct::metadata_delete_dataitem(const uint64_t dataitemId,
+                                                      const uint64_t regionId) {
 
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_delete_dataitem(dataitemId, regionId);
@@ -2813,7 +2824,8 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
         try {
             options["metadata_manager"] = (char *)strdup(
                 (info->get_key_value("metadata_manager")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        }
+        catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["metadata_manager"] = (char *)strdup("radixtree");
         }
@@ -2821,14 +2833,16 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
         try {
             options["metadata_path"] =
                 (char *)strdup((info->get_key_value("metadata_path")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        }
+        catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["metadata_path"] = (char *)strdup("/dev/shm");
         }
         try {
             options["enable_region_spanning"] = (char *)strdup(
                 (info->get_key_value("enable_region_spanning")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        }
+        catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["enable_region_spanning"] = (char *)strdup("true");
         }
@@ -2836,7 +2850,8 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
             options["region_span_size_per_memoryserver"] = (char *)strdup(
                 (info->get_key_value("region_span_size_per_memoryserver"))
                     .c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        }
+        catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["region_span_size_per_memoryserver"] =
                 (char *)strdup("1073741824");
