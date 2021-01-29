@@ -1,6 +1,6 @@
 /*
  * memserver_allocator.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -34,6 +34,7 @@
 #include <iostream>
 #include <pthread.h>
 #include <sys/types.h> // needed for mode_t
+#include <thread>
 
 #include <boost/atomic.hpp>
 #include <nvmm/error_code.h>
@@ -55,12 +56,25 @@ using namespace std;
 using namespace nvmm;
 
 namespace openfam {
-
+typedef struct Fam_Heap_Info {
+    Heap *heap;
+    bool isValid;
+    pthread_rwlock_t rwLock;
+} Fam_Heap_Info_t;
+using HeapInfo = std::map<uint64_t, Fam_Heap_Info_t *>;
 using HeapMap = std::map<uint64_t, Heap *>;
+typedef struct gc_th_struct {
+    std::thread delayed_free_thread;
+    // int num_heaps;
+    bool pthread_running;
+    HeapInfo *heap_list;
+    pthread_rwlock_t rwLock;
+} gc_th_struct_t;
 
 class Memserver_Allocator {
   public:
-    Memserver_Allocator(const char *fam_path);
+    Memserver_Allocator(uint64_t num_delayed_free_threads,
+                        const char *fam_path);
     ~Memserver_Allocator();
     void memserver_allocator_finalize();
     void reset_profile();
@@ -75,15 +89,21 @@ class Memserver_Allocator {
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
     void open_heap(uint64_t regionId);
     void create_ATL_root(size_t nbytes);
+    Fam_Heap_Info_t *remove_heap_from_list(uint64_t regionId);
+    void delayed_free_th(uint64_t thread_index);
 
   private:
     MemoryManager *memoryManager;
+    EpochManager *em;
     HeapMap *heapMap;
     pthread_mutex_t heapMapLock;
     HeapMap::iterator get_heap(uint64_t regionId, Heap *&heap);
     PoolId get_free_poolId();
     bitmap *bmap;
     void init_poolId_bmap();
+    uint64_t num_delayed_free_threads;
+    static uint64_t const delayed_free_th_sleep_MicroSeconds = 1000;
+    std::vector<gc_th_struct_t> delayed_free_thread_array;
 };
 
 } // namespace openfam
