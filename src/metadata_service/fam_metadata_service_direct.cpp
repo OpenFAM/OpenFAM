@@ -441,9 +441,9 @@ int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
         if (kvsObj == metadataKvsMap->end()) {
             pthread_rwlock_unlock(&kvsMapLock);
             pthread_rwlock_wrlock(&kvsMapLock);
-            kvsObj = metadataKvsMap->find(regionId);
-            if (kvsObj == metadataKvsMap->end()) {
-                metadataKvsMap->insert({ regionId, kvs });
+            auto res = metadataKvsMap->insert({ regionId, kvs });
+            if (!res.second) {
+                delete kvs;
             }
             pthread_rwlock_unlock(&kvsMapLock);
         } else {
@@ -755,9 +755,9 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
         if (kvsObj == metadataKvsMap->end()) {
             pthread_rwlock_unlock(&kvsMapLock);
             pthread_rwlock_wrlock(&kvsMapLock);
-            kvsObj = metadataKvsMap->find(regionId);
-            if (kvsObj == metadataKvsMap->end()) {
-                metadataKvsMap->insert({ regionId, kvs });
+            auto res = metadataKvsMap->insert({ regionId, kvs });
+            if (!res.second) {
+                delete kvs;
             }
             pthread_rwlock_unlock(&kvsMapLock);
         } else {
