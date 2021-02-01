@@ -436,18 +436,16 @@ int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
         kvs->diNameKVS = dataitemNameKVS;
         kvs->diIdKVS = dataitemIdKVS;
         pthread_rwlock_init(&kvs->kvsLock, NULL);
-        pthread_rwlock_rdlock(&kvsMapLock);
-        auto kvsObj = metadataKvsMap->find(regionId);
-        if (kvsObj == metadataKvsMap->end()) {
-            pthread_rwlock_unlock(&kvsMapLock);
-            pthread_rwlock_wrlock(&kvsMapLock);
-            auto res = metadataKvsMap->insert({ regionId, kvs });
-            if (!res.second) {
-                delete kvs;
-            }
-            pthread_rwlock_unlock(&kvsMapLock);
-        } else {
-            pthread_rwlock_unlock(&kvsMapLock);
+        pthread_rwlock_wrlock(&kvsMapLock);
+        auto res = metadataKvsMap->insert({ regionId, kvs });
+        pthread_rwlock_unlock(&kvsMapLock);
+        if (!res.second) {
+            diKVS *kvsOld = res.first->second;
+            delete kvs;
+            pthread_rwlock_rdlock(&kvsOld->kvsLock);
+            dataitemIdKVS = kvsOld->diIdKVS;
+            dataitemNameKVS = kvsOld->diNameKVS;
+            pthread_rwlock_unlock(&kvsOld->kvsLock);
             return META_NO_ERROR;
         }
     } else {
@@ -750,18 +748,10 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
         kvs->diNameKVS = dataitemNameKVS;
         kvs->diIdKVS = dataitemIdKVS;
         pthread_rwlock_init(&kvs->kvsLock, NULL);
-        pthread_rwlock_rdlock(&kvsMapLock);
-        auto kvsObj = metadataKvsMap->find(regionId);
-        if (kvsObj == metadataKvsMap->end()) {
-            pthread_rwlock_unlock(&kvsMapLock);
-            pthread_rwlock_wrlock(&kvsMapLock);
-            auto res = metadataKvsMap->insert({ regionId, kvs });
-            if (!res.second) {
-                delete kvs;
-            }
-            pthread_rwlock_unlock(&kvsMapLock);
-        } else {
-            pthread_rwlock_unlock(&kvsMapLock);
+        pthread_rwlock_wrlock(&kvsMapLock);
+        auto res = metadataKvsMap->insert({ regionId, kvs });
+        pthread_rwlock_unlock(&kvsMapLock);
+        if (!res.second) {
             delete kvs;
             message << "KVS pointers already exist in map";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
