@@ -270,7 +270,10 @@ class Fam_Metadata_Service_Direct::Impl_ {
                                      uint64_t heap_id = METADATA_HEAP_ID);
 
     int get_dataitem_KVS(uint64_t regionId, KeyValueStore *&dataitemIdKVS,
-                         KeyValueStore *&dataitemNameKVS);
+                         KeyValueStore *&dataitemNameKVS,
+                         pthread_rwlock_t **kvsLock);
+
+    void release_kvs_lock(pthread_rwlock_t *kvsLock);
 
     int insert_in_regionname_kvs(const std::string regionName,
                                  const std::string regionId);
@@ -403,9 +406,10 @@ KeyValueStore *Fam_Metadata_Service_Direct::Impl_::open_metadata_kvs(
 
 int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
     uint64_t regionId, KeyValueStore *&dataitemIdKVS,
-    KeyValueStore *&dataitemNameKVS) {
+    KeyValueStore *&dataitemNameKVS, pthread_rwlock_t **kvsLock) {
 
     int ret = META_NO_ERROR;
+    *kvsLock = nullptr;
     pthread_rwlock_rdlock(&kvsMapLock);
     auto kvsObj = metadataKvsMap->find(regionId);
     if (kvsObj == metadataKvsMap->end()) {
@@ -433,27 +437,33 @@ int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
 
         // Insert the KVS pointer into map
         diKVS *kvs = new diKVS();
+        diKVS *kvsDiscard = NULL;
         kvs->diNameKVS = dataitemNameKVS;
         kvs->diIdKVS = dataitemIdKVS;
         pthread_rwlock_init(&kvs->kvsLock, NULL);
         pthread_rwlock_wrlock(&kvsMapLock);
         auto res = metadataKvsMap->insert({ regionId, kvs });
-        pthread_rwlock_unlock(&kvsMapLock);
         if (!res.second) {
-            diKVS *kvsOld = res.first->second;
-            delete kvs;
-            pthread_rwlock_rdlock(&kvsOld->kvsLock);
-            dataitemIdKVS = kvsOld->diIdKVS;
-            dataitemNameKVS = kvsOld->diNameKVS;
-            pthread_rwlock_unlock(&kvsOld->kvsLock);
-            return META_NO_ERROR;
+            kvsDiscard = kvs;
+            kvs = res.first->second;
+            dataitemIdKVS = kvs->diIdKVS;
+            dataitemNameKVS = kvs->diNameKVS;
+        }
+        *kvsLock = &kvs->kvsLock;
+        pthread_rwlock_rdlock(&kvs->kvsLock);
+        pthread_rwlock_unlock(&kvsMapLock);
+
+        if (!kvsDiscard) {
+            delete kvsDiscard->diIdKVS;
+            delete kvsDiscard->diNameKVS;
+            delete kvsDiscard;
         }
     } else {
-        pthread_rwlock_rdlock(&(kvsObj->second)->kvsLock);
-        pthread_rwlock_unlock(&kvsMapLock);
         dataitemIdKVS = (kvsObj->second)->diIdKVS;
         dataitemNameKVS = (kvsObj->second)->diNameKVS;
-        pthread_rwlock_unlock(&(kvsObj->second)->kvsLock);
+        *kvsLock = &(kvsObj->second)->kvsLock;
+        pthread_rwlock_rdlock(&(kvsObj->second)->kvsLock);
+        pthread_rwlock_unlock(&kvsMapLock);
     }
 
     if ((dataitemIdKVS == nullptr) || (dataitemNameKVS == nullptr)) {
@@ -462,6 +472,11 @@ int Fam_Metadata_Service_Direct::Impl_::get_dataitem_KVS(
     }
 
     return ret;
+}
+
+void Fam_Metadata_Service_Direct::Impl_::release_kvs_lock(
+    pthread_rwlock_t *kvsLock) {
+    pthread_rwlock_unlock(kvsLock);
 }
 
 /**
@@ -484,7 +499,6 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_region(
     ret =
         regionIdKVS->Get(regionKey.c_str(), regionKey.size(), val_buf, val_len);
     if (ret == META_NO_ERROR) {
-
         memcpy((char *)&region, val_buf, sizeof(Fam_Region_Metadata));
         return true;
     } else if (ret == META_KEY_DOES_NOT_EXIST) {
@@ -750,13 +764,16 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
         pthread_rwlock_init(&kvs->kvsLock, NULL);
         pthread_rwlock_wrlock(&kvsMapLock);
         auto res = metadataKvsMap->insert({ regionId, kvs });
-        pthread_rwlock_unlock(&kvsMapLock);
         if (!res.second) {
+            pthread_rwlock_unlock(&kvsMapLock);
+            delete dataitemNameKVS;
+            delete dataitemIdKVS;
             delete kvs;
             message << "KVS pointers already exist in map";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
         }
+        pthread_rwlock_unlock(&kvsMapLock);
     } else if (ret == META_KEY_ALREADY_EXIST) {
         message << "Region already exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_EXIST,
@@ -890,20 +907,21 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     } else if (ret == META_NO_ERROR) {
-        pthread_rwlock_rdlock(&kvsMapLock);
+        pthread_rwlock_wrlock(&kvsMapLock);
         regionid = stoull(regionId);
         auto kvsObj = metadataKvsMap->find(regionid);
         if (kvsObj != metadataKvsMap->end()) {
-            pthread_rwlock_wrlock(&(kvsObj->second)->kvsLock);
-            pthread_rwlock_unlock(&kvsMapLock);
-            delete (kvsObj->second)->diIdKVS;
-            delete (kvsObj->second)->diNameKVS;
-            pthread_rwlock_wrlock(&kvsMapLock);
-            pthread_rwlock_unlock(&(kvsObj->second)->kvsLock);
-            delete kvsObj->second;
+            diKVS *kvs = kvsObj->second;
             metadataKvsMap->erase(kvsObj);
+            pthread_rwlock_unlock(&kvsMapLock);
+            pthread_rwlock_wrlock(&kvs->kvsLock);
+            delete kvs->diIdKVS;
+            delete kvs->diNameKVS;
+            pthread_rwlock_unlock(&kvs->kvsLock);
+            delete kvs;
+        } else {
+            pthread_rwlock_unlock(&kvsMapLock);
         }
-        pthread_rwlock_unlock(&kvsMapLock);
 
         if (metadata_find_region(regionName, regNode)) {
             destroy_dataitem_metadata_KVS(regionid, regNode);
@@ -957,20 +975,20 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_region(
 
     int ret;
     if (metadata_find_region(regionId, regNode)) {
-        pthread_rwlock_rdlock(&kvsMapLock);
-        KvsMap::iterator kvsObj;
-        kvsObj = metadataKvsMap->find(regionId);
+        pthread_rwlock_wrlock(&kvsMapLock);
+        auto kvsObj = metadataKvsMap->find(regionId);
         if (kvsObj != metadataKvsMap->end()) {
-            pthread_rwlock_wrlock(&(kvsObj->second)->kvsLock);
-            pthread_rwlock_unlock(&kvsMapLock);
-            delete (kvsObj->second)->diIdKVS;
-            delete (kvsObj->second)->diNameKVS;
-            pthread_rwlock_wrlock(&kvsMapLock);
-            pthread_rwlock_unlock(&(kvsObj->second)->kvsLock);
-            delete kvsObj->second;
+            diKVS *kvs = kvsObj->second;
             metadataKvsMap->erase(kvsObj);
+            pthread_rwlock_unlock(&kvsMapLock);
+            pthread_rwlock_wrlock(&kvs->kvsLock);
+            delete kvs->diIdKVS;
+            delete kvs->diNameKVS;
+            pthread_rwlock_unlock(&kvs->kvsLock);
+            delete kvs;
+        } else {
+            pthread_rwlock_unlock(&kvsMapLock);
         }
-        pthread_rwlock_unlock(&kvsMapLock);
 
         // Destroying heap incase heap is created by metadata service
         // which is used for dataitem metadata KVS
@@ -1041,9 +1059,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
                sizeof(Fam_DataItem_Metadata));
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret =
-            get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1063,6 +1083,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
                 dataitemKey.size(), val_buf, val_len);
 
             if (ret != META_NO_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemId, "FindOrCreate failed");
                 if (ret == META_KEY_ALREADY_EXIST) {
                     message << "Dataitem already exist";
@@ -1084,6 +1105,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
             sizeof(Fam_DataItem_Metadata), val_buf, val_len);
 
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemId, "FindOrCreate failed");
             if (ret == META_KEY_ALREADY_EXIST) {
                 message << "Dataitem already exist";
@@ -1107,6 +1129,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
                                 message.str().c_str());
             }
         }
+        release_kvs_lock(kvsLock);
     } else {
         DEBUG_STDOUT(regionName, "region not found");
         message << "Region does not exist";
@@ -1134,8 +1157,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
     Fam_Region_Metadata regNode;
     if (metadata_find_region(regionId, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1159,6 +1185,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
                 dataitemKey.size(), val_buf, val_len);
 
             if (ret != META_NO_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemName, "FindOrCreate failed");
                 if (ret == META_KEY_ALREADY_EXIST) {
                     message << "Dataitem already exist";
@@ -1178,6 +1205,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
             dataitemKey.c_str(), dataitemKey.size(), val_node,
             sizeof(Fam_DataItem_Metadata), val_buf, val_len);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemKey, "FindOrCreate failed.");
             if (ret == META_KEY_ALREADY_EXIST) {
                 message << "Dataitem already exist";
@@ -1201,6 +1229,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_dataitem(
                                 message.str().c_str());
             }
         }
+        release_kvs_lock(kvsLock);
     } else {
         DEBUG_STDOUT(regionId, "region not found");
         message << "Region does not exist";
@@ -1235,8 +1264,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
                sizeof(Fam_DataItem_Metadata));
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1248,6 +1280,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
                                  val_node, sizeof(Fam_DataItem_Metadata));
 
         if (ret == META_ERROR) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemId, "Put failed");
             message << "Failed to update dataitem metadata";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
@@ -1264,12 +1297,14 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
                                      dataitemKey.c_str(), dataitemKey.size());
 
             if (ret == META_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemId, "Put failed");
                 message << "Failed to insert dataitem name entry";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                                 message.str().c_str());
             }
         }
+        release_kvs_lock(kvsLock);
     } else {
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
@@ -1313,9 +1348,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret =
-            get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1327,6 +1364,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
                                  val_node, sizeof(Fam_DataItem_Metadata));
 
         if (ret == META_ERROR) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemId, "Put failed");
             message << "Failed to update dataitem metadata";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
@@ -1338,6 +1376,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
         if ((strlen(dataitemNode.name) == 0) && (strlen(dataitem->name) > 0)) {
 
             if (dataitemNameKVS == nullptr) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemId, "KVS creation failed");
                 message << "Dataitem name KVS does not exist";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
@@ -1350,12 +1389,14 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
                 dataitemNameKVS->Put(dataitemName.c_str(), dataitemName.size(),
                                      dataitemKey.c_str(), dataitemKey.size());
             if (ret == META_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemId, "Put failed");
                 message << "Failed to insert dataitem name entry";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                                 message.str().c_str());
             }
         }
+        release_kvs_lock(kvsLock);
     } else {
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
@@ -1389,8 +1430,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
                sizeof(Fam_DataItem_Metadata));
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1413,12 +1457,14 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
             ret = dataitemIdKVS->Put(dataitemKey.c_str(), dataitemKey.size(),
                                      val_node, sizeof(Fam_DataItem_Metadata));
             if (ret == META_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemName, "Put failed");
                 message << "Failed to update dtaitem metadata";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                                 message.str().c_str());
             }
         }
+        release_kvs_lock(kvsLock);
     } else {
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
@@ -1462,9 +1508,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret =
-            get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1486,12 +1534,14 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_modify_dataitem(
             ret = dataitemIdKVS->Put(dataitemKey.c_str(), dataitemKey.size(),
                                      val_node, sizeof(Fam_DataItem_Metadata));
             if (ret == META_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemName, "Put failed.");
                 message << "Failed to update dtaitem metadata";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                                 message.str().c_str());
             }
         }
+        release_kvs_lock(kvsLock);
     } else {
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
@@ -1526,9 +1576,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret =
-            get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1537,6 +1589,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
         std::string dataitemKey = std::to_string(dataitemId);
         ret = dataitemIdKVS->Del(dataitemKey.c_str(), dataitemKey.size());
         if (ret == META_ERROR) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemId, "Del failed.");
             message << "Failed to remove metadata from dataitem Id KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
@@ -1548,12 +1601,14 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
             ret =
                 dataitemNameKVS->Del(dataitemName.c_str(), dataitemName.size());
             if (ret == META_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemId, "Del failed.");
                 message << "Failed to remove dataitem name entry from KVS";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                                 message.str().c_str());
             }
         }
+        release_kvs_lock(kvsLock);
     } else {
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
@@ -1577,8 +1632,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     Fam_DataItem_Metadata dataitemNode;
     if (metadata_find_dataitem(dataitemId, regionId, dataitemNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1587,6 +1645,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
         std::string dataitemKey = std::to_string(dataitemId);
         ret = dataitemIdKVS->Del(dataitemKey.c_str(), dataitemKey.size());
         if (ret == META_ERROR) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemId, "Del failed.");
             message << "Failed to remove metadata from dataitem Id KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
@@ -1598,12 +1657,14 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
             ret =
                 dataitemNameKVS->Del(dataitemName.c_str(), dataitemName.size());
             if (ret == META_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemId, "Del failed.");
                 message << "Failed to remove dataitem name entry from KVS";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                                 message.str().c_str());
             }
         }
+        release_kvs_lock(kvsLock);
     } else {
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
@@ -1627,8 +1688,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
     Fam_DataItem_Metadata dataitemNode;
     if (metadata_find_dataitem(dataitemName, regionId, dataitemNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1648,6 +1712,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
             dataitemKey.assign(val_buf, val_len);
             ret = dataitemIdKVS->Del(dataitemKey.c_str(), dataitemKey.size());
             if (ret == META_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemName, "Del failed.");
                 message << "Failed to remove metadata from dataitem Id KVS";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
@@ -1657,11 +1722,13 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
 
         ret = dataitemNameKVS->Del(dataitemName.c_str(), dataitemName.size());
         if (ret == META_ERROR) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemName, "Del failed.");
             message << "Failed to remove dataitem name entry from KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
         }
+        release_kvs_lock(kvsLock);
     } else {
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
@@ -1696,9 +1763,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
         }
 
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret =
-            get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(stoull(regionId), dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1718,6 +1787,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
             dataitemKey.assign(val_buf, val_len);
             ret = dataitemIdKVS->Del(dataitemKey.c_str(), dataitemKey.size());
             if (ret == META_ERROR) {
+                release_kvs_lock(kvsLock);
                 DEBUG_STDERR(dataitemName, "Del failed.");
                 message << "Failed to remove metadata from dataitem Id KVS";
                 THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
@@ -1727,11 +1797,13 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_delete_dataitem(
 
         ret = dataitemNameKVS->Del(dataitemName.c_str(), dataitemName.size());
         if (ret == META_ERROR) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemName, "Del failed.");
             message << "Failed to remove dataitem name entry from KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
         }
+        release_kvs_lock(kvsLock);
     } else {
         message << "Dataitem does not exist";
         THROW_ERRNO_MSG(Metadata_Service_Exception, DATAITEM_NOT_FOUND,
@@ -1761,8 +1833,11 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
 
     if (metadata_find_region(regionId, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1774,6 +1849,7 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
 
         ret = dataitemIdKVS->Get(dataitemKey.c_str(), dataitemKey.size(),
                                  val_buf, val_len);
+        release_kvs_lock(kvsLock);
         if (ret == META_NO_ERROR) {
             memcpy((char *)&dataitem, (char const *)val_buf,
                    sizeof(Fam_DataItem_Metadata));
@@ -1816,9 +1892,11 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
 
     if (metadata_find_region(regionName, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret =
-            get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1830,6 +1908,7 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
 
         ret = dataitemIdKVS->Get(dataitemKey.c_str(), dataitemKey.size(),
                                  val_buf, val_len);
+        release_kvs_lock(kvsLock);
         if (ret == META_NO_ERROR) {
             memcpy((char *)&dataitem, (char const *)val_buf,
                    sizeof(Fam_DataItem_Metadata));
@@ -1869,8 +1948,11 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
 
     if (metadata_find_region(regionId, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1890,6 +1972,7 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
 
             ret = dataitemIdKVS->Get(dataitemKey.c_str(), dataitemKey.size(),
                                      val_buf, val_len);
+            release_kvs_lock(kvsLock);
             if (ret == META_NO_ERROR) {
                 memcpy((char *)&dataitem, (char const *)val_buf,
                        sizeof(Fam_DataItem_Metadata));
@@ -1903,9 +1986,11 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
                                 message.str().c_str());
             }
         } else if (ret == META_KEY_DOES_NOT_EXIST) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemId, "Get failed.");
             return false;
         } else {
+            release_kvs_lock(kvsLock);
             message << "Failed to find dataitem";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1940,9 +2025,11 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
 
     if (metadata_find_region(regionName, regNode)) {
         KeyValueStore *dataitemIdKVS, *dataitemNameKVS;
-        ret =
-            get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS);
+        pthread_rwlock_t *kvsLock;
+        ret = get_dataitem_KVS(regNode.regionId, dataitemIdKVS, dataitemNameKVS,
+                               &kvsLock);
         if (ret != META_NO_ERROR) {
+            release_kvs_lock(kvsLock);
             message << "Failed to get dataitem KVS";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());
@@ -1962,6 +2049,7 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
 
             ret = dataitemIdKVS->Get(dataitemKey.c_str(), dataitemKey.size(),
                                      val_buf, val_len);
+            release_kvs_lock(kvsLock);
             if (ret == META_NO_ERROR) {
                 memcpy((char *)&dataitem, (char const *)val_buf,
                        sizeof(Fam_DataItem_Metadata));
@@ -1975,9 +2063,11 @@ bool Fam_Metadata_Service_Direct::Impl_::metadata_find_dataitem(
                                 message.str().c_str());
             }
         } else if (ret == META_KEY_DOES_NOT_EXIST) {
+            release_kvs_lock(kvsLock);
             DEBUG_STDERR(dataitemId, "Get failed.");
             return false;
         } else {
+            release_kvs_lock(kvsLock);
             message << "Failed to find dataitem";
             THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                             message.str().c_str());

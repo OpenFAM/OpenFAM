@@ -89,7 +89,8 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
     try {
         config_file_path =
             find_config_file(strdup("fam_client_interface_config.yaml"));
-    } catch (Fam_InvalidOption_Exception &e) {
+    }
+    catch (Fam_InvalidOption_Exception &e) {
         // If the config_file is not present, then ignore the exception.
         // All the default parameters will be obtained from validate_cis_options
         // function.
@@ -111,7 +112,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
     memoryServerCount = 0;
     memServerInfoSize = 0;
     memServerInfoBuffer = NULL;
-    memServerInfoV = new std::vector<std::tuple<uint64_t, size_t, void *>>();
+    memServerInfoV = new std::vector<std::tuple<uint64_t, size_t, void *> >();
     memoryServers = new memoryServerMap();
     metadataServers = new metadataServerMap();
     std::string delimiter1 = ",";
@@ -127,7 +128,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
     if (isSharedMemory) {
         Fam_Memory_Service *memoryService = new Fam_Memory_Service_Direct(
             cisName, NULL, NULL, NULL, isSharedMemory);
-        memoryServers->insert({0, memoryService});
+        memoryServers->insert({ 0, memoryService });
         memsrv_id_list.push_back(0);
     } else if (strcmp(config_options["memsrv_interface_type"].c_str(),
                       FAM_OPTIONS_RPC_STR) == 0) {
@@ -138,7 +139,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
             std::pair<std::string, uint64_t> service = obj->second;
             Fam_Memory_Service *memoryService = new Fam_Memory_Service_Client(
                 (service.first).c_str(), service.second);
-            memoryServers->insert({obj->first, memoryService});
+            memoryServers->insert({ obj->first, memoryService });
             memsrv_id_list.push_back(obj->first);
 
             size_t addrSize = get_addr_size(obj->first);
@@ -155,7 +156,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
         // file.
         Fam_Memory_Service *memoryService =
             new Fam_Memory_Service_Direct(cisName, NULL, NULL, NULL);
-        memoryServers->insert({0, memoryService});
+        memoryServers->insert({ 0, memoryService });
         memsrv_id_list.push_back(0);
 
         // Note: Need to perform this only for memory server model.
@@ -197,7 +198,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
     if (isSharedMemory) {
         Fam_Metadata_Service *metadataService =
             new Fam_Metadata_Service_Direct();
-        metadataServers->insert({0, metadataService});
+        metadataServers->insert({ 0, metadataService });
         memoryServerCount = memoryServers->size();
         // TODO: This code needs to be revisited. Currently memoryserverCount
         // will be updated to all metadata servers.
@@ -213,7 +214,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
             Fam_Metadata_Service *metadataService =
                 new Fam_Metadata_Service_Client((service.first).c_str(),
                                                 service.second);
-            metadataServers->insert({obj->first, metadataService});
+            metadataServers->insert({ obj->first, metadataService });
             memoryServerCount = memoryServers->size();
             // TODO: This code needs to be revisited. Currently
             // memoryserverCount will be updated to all metadata servers.
@@ -224,7 +225,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
                       FAM_OPTIONS_DIRECT_STR) == 0) {
         Fam_Metadata_Service *metadataService =
             new Fam_Metadata_Service_Direct();
-        metadataServers->insert({0, metadataService});
+        metadataServers->insert({ 0, metadataService });
         memoryServerCount = memoryServers->size();
         // TODO: This code needs to be revisited. Currently memoryserverCount
         // will be updated to all metadata servers.
@@ -236,6 +237,11 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
                    "option:metadata_interface_type.";
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
+	//TODO:Currently assuming the max key length is uniform accross the multiple metadata server
+	//we read metadataMaxKeyLen from only first metadata server. In future it needs to be revised 
+	//if max key length is not uniform accross multiple metadata servers
+    Fam_Metadata_Service *firstMetaServer = metadataServers->begin()->second;
+    metadataMaxKeyLen = firstMetaServer->metadata_maxkeylen();
 }
 
 Fam_CIS_Direct::~Fam_CIS_Direct() {
@@ -323,7 +329,7 @@ inline int Fam_CIS_Direct::create_region_failure_cleanup(
     std::vector<int> create_region_success_list,
     std::vector<Fam_Memory_Service *> memoryServiceList, uint64_t regionId) {
 
-    std::list<std::shared_future<void>> destroyList;
+    std::list<std::shared_future<void> > destroyList;
     int destroy_failed = 0;
     for (int n : create_region_success_list) {
         Fam_Memory_Service *memoryService = memoryServiceList[n];
@@ -336,7 +342,8 @@ inline int Fam_CIS_Direct::create_region_failure_cleanup(
         // Wait for destroy region in other memory servers to complete.
         try {
             result.get();
-        } catch (...) {
+        }
+        catch (...) {
             destroy_failed++;
         }
     }
@@ -369,7 +376,8 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     try {
         metadataService->metadata_validate_and_create_region(
             name, nbytes, &regionId, &memory_server_list, user_policy);
-    } catch (...) {
+    }
+    catch (...) {
         throw;
     }
     // Code for spanning region across multiple memory servers.
@@ -384,7 +392,7 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     }
 
     // Invoke each memory service asynchronously.
-    std::list<std::shared_future<void>> resultList;
+    std::list<std::shared_future<void> > resultList;
     for (auto memsrv : memoryServiceList) {
         Fam_Memory_Service *memoryService = memsrv;
         size_t size = nbytes / used_memsrv_cnt;
@@ -409,10 +417,12 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
         try {
             result.get();
             create_region_success_list.push_back(id++);
-        } catch (Fam_Exception &e) {
+        }
+        catch (Fam_Exception &e) {
             create_region_failed_list.push_back(id++);
             ex = e;
-        } catch (...) {
+        }
+        catch (...) {
             create_region_failed_list.push_back(id++);
         }
     }
@@ -435,7 +445,7 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     }
     // Register the region into metadata service
     region.regionId = regionId;
-    strncpy(region.name, name.c_str(), metadataService->metadata_maxkeylen());
+    strncpy(region.name, name.c_str(), metadataMaxKeyLen);
     region.offset = INVALID_OFFSET;
     region.perm = permission;
     region.uid = uid;
@@ -446,7 +456,8 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
            used_memsrv_cnt * sizeof(uint64_t));
     try {
         metadataService->metadata_insert_region(regionId, name, &region);
-    } catch (...) {
+    }
+    catch (...) {
         int ret = create_region_failure_cleanup(create_region_success_list,
                                                 memoryServiceList, regionId);
         if (ret == 0) {
@@ -479,7 +490,7 @@ void Fam_CIS_Direct::destroy_region(uint64_t regionId, uint64_t memoryServerId,
          ++it) {
         memoryServiceList.push_back(get_memory_service(*it));
     }
-    std::list<std::shared_future<void>> resultList;
+    std::list<std::shared_future<void> > resultList;
     for (auto memsrv : memoryServiceList) {
         Fam_Memory_Service *memoryService = memsrv;
         std::future<void> result(std::async(
@@ -493,7 +504,8 @@ void Fam_CIS_Direct::destroy_region(uint64_t regionId, uint64_t memoryServerId,
         for (auto result : resultList) {
             result.get();
         }
-    } catch (...) {
+    }
+    catch (...) {
         throw;
     }
 
@@ -517,7 +529,8 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
     try {
         metadataService->metadata_find_region_and_check_permissions(
             META_REGION_ITEM_WRITE, regionId, uid, gid, region);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Region resize not permitted";
             THROW_ERRNO_MSG(CIS_Exception, REGION_RESIZE_NOT_PERMITTED,
@@ -526,7 +539,7 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
         throw;
     }
     used_memsrv_cnt = region.used_memsrv_cnt;
-    std::list<std::shared_future<void>> resultList;
+    std::list<std::shared_future<void> > resultList;
     size_t bytes_per_server = nbytes / used_memsrv_cnt;
     size_t aligned_size = align_to_address(
         bytes_per_server, 64); // align the size to a 64-bit boundary.
@@ -548,7 +561,8 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
         for (auto result : resultList) {
             result.get();
         }
-    } catch (...) {
+    }
+    catch (...) {
         throw;
     }
 
@@ -585,7 +599,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     bool rwFlag, allocateSuccess = true;
     try {
         info = memoryService->allocate(regionId, nbytes);
-    } catch (...) {
+    }
+    catch (...) {
         std::list<int> memserverList =
             metadataService->get_memory_server_list(regionId);
         allocateSuccess = false;
@@ -596,7 +611,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
             try {
                 memoryService = get_memory_service((uint64_t)item);
                 info = memoryService->allocate(regionId, nbytes);
-            } catch (...) {
+            }
+            catch (...) {
                 continue;
             }
             allocateSuccess = true;
@@ -614,7 +630,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     uint64_t dataitemId = get_dataitem_id(info.offset, id);
 
     dataitem.regionId = regionId;
-    strncpy(dataitem.name, name.c_str(), metadataService->metadata_maxkeylen());
+    strncpy(dataitem.name, name.c_str(), metadataMaxKeyLen);
     dataitem.offset = info.offset;
     dataitem.perm = permission;
     dataitem.gid = gid;
@@ -782,8 +798,8 @@ bool Fam_CIS_Direct::check_dataitem_permission(Fam_DataItem_Metadata dataitem,
                                                         gid));
 }
 
-Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
-                                                   uint32_t uid, uint32_t gid) {
+Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name, uint32_t uid,
+                                                   uint32_t gid) {
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
@@ -796,7 +812,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     try {
         metadataService->metadata_find_region_and_check_permissions(
             META_REGION_ITEM_READ_ALLOW_OWNER, name, uid, gid, region);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -809,8 +826,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name,
     info.offset = region.offset;
     info.size = region.size;
     info.perm = region.perm;
-    strncpy(info.name, region.name, metadataService->metadata_maxkeylen());
-    info.maxNameLen = metadataService->metadata_maxkeylen();
+    strncpy(info.name, region.name, metadataMaxKeyLen);
+    info.maxNameLen = metadataMaxKeyLen;
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup_region);
     return info;
 }
@@ -829,7 +846,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_READ_ALLOW_OWNER, itemName, regionName, uid, gid,
             dataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the dataitem";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -842,9 +860,9 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     info.offset = dataitem.offset;
     info.size = dataitem.size;
     info.perm = dataitem.perm;
-    strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
+    strncpy(info.name, dataitem.name, metadataMaxKeyLen);
     info.memoryServerId = dataitem.memoryServerId;
-    info.maxNameLen = metadataService->metadata_maxkeylen();
+    info.maxNameLen = metadataMaxKeyLen;
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup);
     return info;
 }
@@ -864,7 +882,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     try {
         metadataService->metadata_find_region_and_check_permissions(
             META_REGION_ITEM_READ_ALLOW_OWNER, regionId, uid, gid, region);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -874,8 +893,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     }
     info.size = region.size;
     info.perm = region.perm;
-    strncpy(info.name, region.name, metadataService->metadata_maxkeylen());
-    info.maxNameLen = metadataService->metadata_maxkeylen();
+    strncpy(info.name, region.name, metadataMaxKeyLen);
+    info.maxNameLen = metadataMaxKeyLen;
     CIS_DIRECT_PROFILE_END_OPS(cis_check_permission_get_region_info);
     return info;
 }
@@ -920,8 +939,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
     info.offset = dataitem.offset;
     info.size = dataitem.size;
     info.perm = dataitem.perm;
-    strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
-    info.maxNameLen = metadataService->metadata_maxkeylen();
+    strncpy(info.name, dataitem.name, metadataMaxKeyLen);
+    info.maxNameLen = metadataMaxKeyLen;
     info.key = key;
     info.base = get_local_pointer(regionId, offset, memoryServerId);
     info.memoryServerId = dataitem.memoryServerId;
@@ -948,7 +967,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_READ_ALLOW_OWNER, dataitemId, regionId, uid, gid,
             dataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -959,8 +979,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
 
     info.size = dataitem.size;
     info.perm = dataitem.perm;
-    strncpy(info.name, dataitem.name, metadataService->metadata_maxkeylen());
-    info.maxNameLen = metadataService->metadata_maxkeylen();
+    strncpy(info.name, dataitem.name, metadataMaxKeyLen);
+    info.maxNameLen = metadataMaxKeyLen;
     CIS_DIRECT_PROFILE_END_OPS(cis_get_stat_info);
     return info;
 }
@@ -1035,7 +1055,8 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_READ, srcDataitemId, srcRegionId, uid, gid,
             srcDataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Read operation is not permitted on source dataitem";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -1048,7 +1069,8 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_WRITE, destDataitemId, destRegionId, uid, gid,
             destDataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message
                 << "Write operation is not permitted on destination dataitem";
@@ -1083,7 +1105,7 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         tag->srcAddrLen = srcAddrLen;
         tag->srcMemserverId = srcMemoryServerId;
         tag->destMemserverId = destMemoryServerId;
-        Fam_Ops_Info opsInfo = {COPY, NULL, NULL, 0, 0, 0, 0, 0, tag};
+        Fam_Ops_Info opsInfo = { COPY, NULL, NULL, 0, 0, 0, 0, 0, tag };
         asyncQHandler->initiate_operation(opsInfo);
         waitObj->tag = tag;
     } else {
@@ -1171,7 +1193,8 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
         try {
             options["memsrv_interface_type"] = (char *)strdup(
                 (info->get_key_value("memsrv_interface_type")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        }
+        catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["memsrv_interface_type"] = (char *)strdup("rpc");
         }
@@ -1179,7 +1202,8 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
         try {
             options["metadata_interface_type"] = (char *)strdup(
                 (info->get_key_value("metadata_interface_type")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        }
+        catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["metadata_interface_type"] = (char *)strdup("rpc");
         }
@@ -1192,7 +1216,8 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
                 memsrvList << item << ",";
 
             options["memsrv_list"] = (char *)strdup(memsrvList.str().c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        }
+        catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["memsrv_list"] = (char *)strdup("0:127.0.0.1:8787");
         }
@@ -1207,7 +1232,8 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
 
             options["metadata_list"] =
                 (char *)strdup(metasrvList.str().c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        }
+        catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["metadata_list"] = (char *)strdup("0:127.0.0.1:8787");
         }
@@ -1234,7 +1260,8 @@ int Fam_CIS_Direct::get_atomic(uint64_t regionId, uint64_t srcOffset,
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_READ, dataitemId, regionId, uid, gid, dataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -1275,7 +1302,8 @@ int Fam_CIS_Direct::put_atomic(uint64_t regionId, uint64_t srcOffset,
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -1315,7 +1343,8 @@ int Fam_CIS_Direct::scatter_strided_atomic(
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -1353,7 +1382,8 @@ int Fam_CIS_Direct::gather_strided_atomic(
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -1389,7 +1419,8 @@ int Fam_CIS_Direct::scatter_indexed_atomic(
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
@@ -1425,7 +1456,8 @@ int Fam_CIS_Direct::gather_indexed_atomic(
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_WRITE, dataitemId, regionId, uid, gid, dataitem);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         if (e.fam_error() == NO_PERMISSION) {
             message << "Not permitted to access the region";
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
