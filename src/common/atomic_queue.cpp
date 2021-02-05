@@ -51,6 +51,8 @@ pthread_cond_t empty[MAX_ATOMIC_THREADS] = {PTHREAD_COND_INITIALIZER};
 pthread_mutex_t pushQmutex[MAX_ATOMIC_THREADS] = {PTHREAD_MUTEX_INITIALIZER};
 pthread_t atid[MAX_ATOMIC_THREADS];
 void *atomicRegionIdRoot;
+std::map<fi_addr_t, fi_addr_t> fiAddrMap;
+pthread_rwlock_t fiAddrLock;
 
 /* Create the queues, called by the memory server */
 int atomicQueue::create(Memserver_Allocator *in_allocator,
@@ -507,22 +509,30 @@ void *process_queue(void *arg) {
         remoteAddr = (char *)calloc(1, msgPointer->nodeAddrSize);
         memcpy(remoteAddr, msgPointer->nodeAddr, msgPointer->nodeAddrSize);
         clientAddr = *(fi_addr_t *)remoteAddr;
+        pthread_rwlock_rdlock(&fiAddrLock);
         it = fiAddrMap.find(clientAddr);
+        pthread_rwlock_unlock(&fiAddrLock);
         if (it == fiAddrMap.end()) {
-            try {
+           pthread_rwlock_wrlock(&fiAddrLock);
+           it = fiAddrMap.find(clientAddr);
+            if (it == fiAddrMap.end()) {
                 std::vector<fi_addr_t> fiAddrV;
-                ret = fabric_insert_av(remoteAddr, famOpsLibfabricQ->get_av(),
-                                       &fiAddrV);
+                if (fabric_insert_av(remoteAddr, famOpsLibfabricQ->get_av(),
+                        &fiAddrV) == -1) {
+                        ret = AVINSERTERROR;
+                        cout << "AV insert error, Remote Address " << remoteAddr
+                             << endl;
+                        ret = atomicQ[lcTInfo->qId].pop(&item);
+                        pthread_rwlock_unlock(&fiAddrLock);
+                        continue;
+                }
                 fiAddr = fiAddrV[0];
-                fiAddrMap.insert(
-                    it, std::pair<fi_addr_t, fi_addr_t>(clientAddr, fiAddr));
-            } catch (...) {
-                // If error pop the item and continue;
-                ret = AVINSERTERROR;
-                cout << "AV insert error, Remore Address " << remoteAddr
-                     << endl;
-                ret = atomicQ[lcTInfo->qId].pop(&item);
-                continue;
+                fiAddrMap.insert(it, std::pair<fi_addr_t, fi_addr_t>(clientAddr,
+                              fiAddr));
+                pthread_rwlock_unlock(&fiAddrLock);
+            } else {
+                fiAddr = it->second;
+                pthread_rwlock_unlock(&fiAddrLock);
             }
         } else
             fiAddr = it->second;
