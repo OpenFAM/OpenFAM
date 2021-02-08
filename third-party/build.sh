@@ -235,7 +235,7 @@ cd $CURRENT_DIR
 #radixtree is required to build fammetadata library.
 
 cd radixtree; mkdir build; cd build
-cmake .. -DFAME=OFF; make
+cmake .. -DFAME=OFF; make radixtree
 
 if [[ $? > 0 ]]
 then

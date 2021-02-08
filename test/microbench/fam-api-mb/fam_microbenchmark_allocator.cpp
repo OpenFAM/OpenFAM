@@ -404,7 +404,7 @@ TEST(FamLookup, FamLookupDataItem) {
     const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
     Fam_Descriptor *item1;
     EXPECT_NO_THROW(item1 =
-                        my_fam->fam_lookup(testRegionLocal, testRegionLocal));
+                        my_fam->fam_lookup(firstItemLocal, testRegionLocal));
     EXPECT_NE((void *)NULL, item1);
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     RESET_PROFILE();
