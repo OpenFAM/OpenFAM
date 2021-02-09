@@ -320,7 +320,8 @@ TEST(FamChangePermissions, DataItemChangePermission) {
     const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
     try {
         descLocal = my_fam->fam_lookup_region(testRegionLocal);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
                             testRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
     }
@@ -384,7 +385,8 @@ TEST(FamLookup, FamLookupRegion) {
         sprintf(regionInfo, "%s_%d", testRegionLocal, i);
         try {
             desc2 = my_fam->fam_lookup_region(regionInfo);
-        } catch (Fam_Exception &e) {
+        }
+        catch (Fam_Exception &e) {
             EXPECT_NO_THROW(desc2 = my_fam->fam_create_region(
                                 regionInfo, BIG_REGION_SIZE, 0777, RAID1));
         }
@@ -402,7 +404,7 @@ TEST(FamLookup, FamLookupDataItem) {
     const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
     Fam_Descriptor *item1;
     EXPECT_NO_THROW(item1 =
-                        my_fam->fam_lookup(testRegionLocal, testRegionLocal));
+                        my_fam->fam_lookup(firstItemLocal, testRegionLocal));
     EXPECT_NE((void *)NULL, item1);
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     RESET_PROFILE();
@@ -562,13 +564,12 @@ int main(int argc, char **argv) {
     if (strcmp(openFamModel, "memory_server") != 0) {
         EXPECT_NO_THROW(my_fam->fam_finalize("default"));
         std::cout << "Test case valid only in memory server model, "
-                     "skipping with status : "
-                  << TEST_SKIP_STATUS << std::endl;
+                     "skipping with status : " << TEST_SKIP_STATUS << std::endl;
         return TEST_SKIP_STATUS;
     }
     char *cisServer = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
-    int *rpcPort = (int *)my_fam->fam_get_option(strdup("GRPC_PORT"));
-    EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, *rpcPort));
+    char *rpcPort = (char *)my_fam->fam_get_option(strdup("GRPC_PORT"));
+    EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, atoi(rpcPort)));
 #endif
 
     EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));

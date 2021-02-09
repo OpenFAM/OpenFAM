@@ -71,5 +71,10 @@ cd $CURRENT_DIR
 echo "Downloading NVMM source"
 git clone https://github.com/HewlettPackard/gull.git nvmm
 
+#Radixtree
+echo "Downloading radixtree source"
+git clone https://github.com/HewlettPackard/meadowlark.git radixtree
+
 cd $CURRENT_DIR
 echo "Done..............."
+

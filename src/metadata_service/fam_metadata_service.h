@@ -52,7 +52,7 @@
 #include "nvmm/memory_manager.h"
 #define MAX_MEMORY_SERVERS_CNT 256
 
-using namespace famradixtree;
+using namespace radixtree;
 using namespace nvmm;
 using namespace std;
 
@@ -80,6 +80,7 @@ namespace metadata {
 typedef struct {
     KeyValueStore *diIdKVS;
     KeyValueStore *diNameKVS;
+    pthread_rwlock_t kvsLock;
 } diKVS;
 
 using KvsMap = std::map<uint64_t, diKVS *>;

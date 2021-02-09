@@ -181,14 +181,16 @@ class Fam_CIS_Direct : public Fam_CIS {
     configFileParams file_options;
     uint64_t memoryServerCount;
     uint64_t memServerInfoSize;
-    std::vector<std::tuple<uint64_t, size_t, void *>> *memServerInfoV;
+    std::vector<std::tuple<uint64_t, size_t, void *> > *memServerInfoV;
     void *memServerInfoBuffer;
     bool useAsyncCopy;
+    size_t metadataMaxKeyLen;
     void *get_local_pointer(uint64_t regionId, uint64_t offset,
                             uint64_t memoryServerId);
 
     uint64_t generate_memory_server_id(const char *name) {
-        std::uint64_t hashVal = std::hash<std::string>{}(name);
+        std::uint64_t hashVal = std::hash<std::string> {}
+        (name);
         return hashVal % memoryServerCount;
     }
     int create_region_failure_cleanup(
