@@ -116,6 +116,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
 # library directories
 #
 link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib) # third-party libraries
+link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib64) # third-party libraries
 
 #
 # default system include and link directories
@@ -193,6 +194,13 @@ add_subdirectory(examples/api)
 #
 # find src include -regex '.*\.\(c\|cpp\|h\)$' -print | xargs clang-format -i -style="{BasedOnStyle: llvm, IndentWidth: 4}"
 #
+file(READ ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt.in CONTENTS)
+file(WRITE ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "")
+file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${CONTENTS}")
+file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/\n")
+file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/test/config_files/multi-mem/\n")
+file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/\n")
+
 install (FILES "${PROJECT_SOURCE_DIR}/test/setup.sh" PERMISSIONS OWNER_READ OWNER_WRITE
         OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         DESTINATION ${PROJECT_BINARY_DIR})

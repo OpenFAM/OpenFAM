@@ -92,4 +92,18 @@ then
         echo "OpenFAM test with shared memory configuration failed. exit..."
         exit 1
 fi
+
+sleep 5 
+
+echo "==========================================================="
+echo "Test OpenFAM with multiple memory servers in all rpc configuration"
+echo "==========================================================="
+python3 $SCRIPT_DIR/run_test.py $LAUNCHER @$SCRIPT_DIR/multi-mem-test-arg.txt
+
+if [[ $? > 0 ]]
+then
+        echo "OpenFAM test with multiple memory servers in all rpc configuration failed. exit..."
+        exit 1
+fi
+
 cd $CURRENTDIR
