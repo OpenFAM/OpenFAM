@@ -65,15 +65,19 @@ typedef struct {
 
     uint64_t memServerId;
 
-    std::unique_ptr<::grpc::ClientAsyncResponseReader<Fam_Copy_Response>>
-        responseReader;
+    std::unique_ptr< ::grpc::ClientAsyncResponseReader<Fam_Copy_Response> >
+    responseReader;
 
     Fam_Copy_Tag *tag;
 } Fam_Copy_Wait_Object;
 
 class Fam_CIS {
   public:
-    virtual ~Fam_CIS(){};
+    virtual ~Fam_CIS() {};
+
+    virtual void reset_profile() = 0;
+
+    virtual void dump_profile() = 0;
 
     virtual uint64_t get_num_memory_servers() = 0;
     /**
@@ -181,8 +185,8 @@ class Fam_CIS {
      * @param gid - gid of user
      * @return - Fam_Region_Item_Info
      **/
-    virtual Fam_Region_Item_Info lookup_region(string name,
-                                               uint32_t uid, uint32_t gid) = 0;
+    virtual Fam_Region_Item_Info lookup_region(string name, uint32_t uid,
+                                               uint32_t gid) = 0;
 
     /**
      * look for a dataiem with given name

@@ -106,7 +106,7 @@ Fam_CIS_Server::signal_termination(::grpc::ServerContext *context,
 
     MEMSERVER_PROFILE_INIT(CIS_SERVER)
     MEMSERVER_PROFILE_START_TIME(CIS_SERVER)
-    famCIS->reset_profile(request->memserver_id());
+    famCIS->reset_profile();
     return ::grpc::Status::OK;
 }
 
@@ -114,19 +114,20 @@ Fam_CIS_Server::signal_termination(::grpc::ServerContext *context,
                                                 const ::Fam_Request *request,
                                                 ::Fam_Response *response) {
     CIS_SERVER_PROFILE_DUMP();
-    famCIS->dump_profile(request->memserver_id());
+    famCIS->dump_profile();
     return ::grpc::Status::OK;
 }
 
 ::grpc::Status
 Fam_CIS_Server::get_num_memory_servers(::grpc::ServerContext *context,
-                                      const ::Fam_Request *request,
-                                      ::Fam_Response *response) {
+                                       const ::Fam_Request *request,
+                                       ::Fam_Response *response) {
     CIS_SERVER_PROFILE_START_OPS()
     uint64_t numMemoryServer;
     try {
         numMemoryServer = famCIS->get_num_memory_servers();
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -149,8 +150,8 @@ Fam_CIS_Server::create_region(::grpc::ServerContext *context,
                                      (mode_t)request->perm(),
                                      static_cast<Fam_Redundancy_Level>(0),
                                      request->uid(), request->gid());
-
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -173,7 +174,8 @@ Fam_CIS_Server::destroy_region(::grpc::ServerContext *context,
     try {
         famCIS->destroy_region(request->regionid(), request->memserver_id(),
                                request->uid(), request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -194,7 +196,8 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
         famCIS->resize_region(request->regionid(), request->size(),
                               request->memserver_id(), request->uid(),
                               request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -216,7 +219,8 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
                                 (mode_t)request->perm(), request->regionid(),
                                 request->memserver_id(), request->uid(),
                                 request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -242,7 +246,8 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
         famCIS->deallocate(request->regionid(), request->offset(),
                            request->memserver_id(), request->uid(),
                            request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -263,7 +268,8 @@ Fam_CIS_Server::change_region_permission(::grpc::ServerContext *context,
         famCIS->change_region_permission(
             request->regionid(), (mode_t)request->perm(),
             request->memserver_id(), request->uid(), request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -282,7 +288,8 @@ Fam_CIS_Server::change_region_permission(::grpc::ServerContext *context,
         famCIS->change_dataitem_permission(
             request->regionid(), request->offset(), (mode_t)request->perm(),
             request->memserver_id(), request->uid(), request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -303,7 +310,8 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     try {
         info = famCIS->lookup_region(request->name(), request->uid(),
                                      request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -330,7 +338,8 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     try {
         info = famCIS->lookup(request->name(), request->regionname(),
                               request->uid(), request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -359,7 +368,8 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
         info = famCIS->check_permission_get_region_info(
             request->regionid(), request->memserver_id(), request->uid(),
             request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -384,7 +394,8 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
         info = famCIS->check_permission_get_item_info(
             request->regionid(), request->offset(), request->memserver_id(),
             request->uid(), request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -415,7 +426,8 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
         info = famCIS->get_stat_info(request->regionid(), request->offset(),
                                      request->memserver_id(), request->uid(),
                                      request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -444,7 +456,8 @@ Fam_CIS_Server::acquire_CAS_lock(::grpc::ServerContext *context,
     CIS_SERVER_PROFILE_START_OPS()
     try {
         famCIS->acquire_CAS_lock(request->offset(), request->memserver_id());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -461,7 +474,8 @@ Fam_CIS_Server::release_CAS_lock(::grpc::ServerContext *context,
     CIS_SERVER_PROFILE_START_OPS()
     try {
         famCIS->release_CAS_lock(request->offset(), request->memserver_id());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -479,7 +493,8 @@ Fam_CIS_Server::get_addr_size(::grpc::ServerContext *context,
     size_t addrSize;
     try {
         addrSize = famCIS->get_addr_size(request->memserver_id());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -501,7 +516,8 @@ Fam_CIS_Server::get_addr_size(::grpc::ServerContext *context,
         addrSize = famCIS->get_addr_size(request->memserver_id());
         addr = calloc(1, addrSize);
         famCIS->get_addr(addr, request->memserver_id());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -538,7 +554,8 @@ Fam_CIS_Server::get_memserverinfo_size(::grpc::ServerContext *context,
     size_t memServerInfoSize;
     try {
         memServerInfoSize = famCIS->get_memserverinfo_size();
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -561,7 +578,8 @@ Fam_CIS_Server::get_memserverinfo(::grpc::ServerContext *context,
         memServerInfoSize = famCIS->get_memserverinfo_size();
         memServerInfoBuffer = calloc(1, memServerInfoSize);
         famCIS->get_memserverinfo(memServerInfoBuffer);
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -587,7 +605,8 @@ Fam_CIS_Server::get_atomic(::grpc::ServerContext *context,
                            request->key(), request->nodeaddr().c_str(),
                            request->nodeaddrsize(), request->memserver_id(),
                            request->uid(), request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -611,7 +630,8 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
             request->nbytes(), request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->data().c_str(),
             request->memserver_id(), request->uid(), request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -636,7 +656,8 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
             request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -661,7 +682,8 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
             request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -686,7 +708,8 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
             request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
@@ -711,7 +734,8 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
             request->key(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
-    } catch (Fam_Exception &e) {
+    }
+    catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;

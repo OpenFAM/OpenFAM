@@ -4,12 +4,47 @@ BUILD_DIR=$CURRENTDIR/build/
 SCRIPT_DIR=$CURRENTDIR/scripts
 MAKE_CMD="make -j"
 
-if [[ $# -eq 0 ]]; then
-	LAUNCHER=""
-else
-	LAUNCHER="--launcher $1"
-fi
 
+print_help() {
+    tput bold
+    echo "SYNOPSIS :"
+    tput reset
+    echo ""
+    echo "./build_and_test.sh <options>"
+	echo ""
+    tput bold
+    echo "OPTIONS :"
+    tput reset
+	echo ""
+	echo "--launcher		: Launcher to be used to launch services and tests"
+	echo ""
+	echo "--run-multi-mem	: Enable region spanning and multiple memory server tests"
+	echo ""
+    exit
+}
+
+
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            print_help
+            ;;
+		--launcher=?*)
+			LAUNCHER="--launcher ${1#*=}"
+			;;
+		--launcher=)
+			echo 'ERROR: "--launcher" requires a non-empty option argument.'
+			;;
+		--run-multi-mem)
+			run_multi_mem_test=true
+			;;
+		*)
+            break	
+	esac
+	
+	shift
+done
+		
 #creating build directory if not present
 if [ ! -d "$BUILD_DIR" ]; then
   echo "Creating $BUILD_DIR"
@@ -93,6 +128,8 @@ then
         exit 1
 fi
 
+if [ "$run_multi_mem_test" == "true" ]
+then
 sleep 5 
 
 echo "==========================================================="
@@ -105,5 +142,5 @@ then
         echo "OpenFAM test with multiple memory servers in all rpc configuration failed. exit..."
         exit 1
 fi
-
+fi
 cd $CURRENTDIR

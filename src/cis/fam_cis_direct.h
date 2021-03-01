@@ -55,15 +55,15 @@ class Fam_CIS_Direct : public Fam_CIS {
 
     ~Fam_CIS_Direct();
 
+    void reset_profile();
+
+    void dump_profile();
+
     Fam_Memory_Service *get_memory_service(uint64_t memoryServerId);
 
     Fam_Metadata_Service *get_metadata_service(uint64_t metadataServerId);
 
     uint64_t get_num_memory_servers();
-
-    void reset_profile(uint64_t memoryServerId);
-
-    void dump_profile(uint64_t memoryServerId);
 
     Fam_Region_Item_Info create_region(string name, size_t nbytes,
                                        mode_t permission,

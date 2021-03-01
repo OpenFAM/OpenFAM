@@ -116,7 +116,6 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
 # library directories
 #
 link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib) # third-party libraries
-link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib64) # third-party libraries
 
 #
 # default system include and link directories
@@ -191,9 +190,7 @@ add_subdirectory(test/microbench)
 add_subdirectory(test/apps)
 add_subdirectory(test/permission-test)
 add_subdirectory(examples/api)
-#
-# find src include -regex '.*\.\(c\|cpp\|h\)$' -print | xargs clang-format -i -style="{BasedOnStyle: llvm, IndentWidth: 4}"
-#
+
 file(READ ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt.in CONTENTS)
 file(WRITE ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "")
 file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${CONTENTS}")
@@ -209,3 +206,6 @@ install (FILES "${PROJECT_SOURCE_DIR}/test/unit-test/config/sample_config" PERMI
         GROUP_READ WORLD_READ
         DESTINATION ${PROJECT_BINARY_DIR}/test/unit-test/config/)
 
+#
+# find src include -regex '.*\.\(c\|cpp\|h\)$' -print | xargs clang-format -i -style="{BasedOnStyle: llvm, IndentWidth: 4}"
+#

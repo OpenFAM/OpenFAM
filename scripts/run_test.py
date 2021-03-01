@@ -268,7 +268,7 @@ else:
         + args.pehosts
         + " --mpi=pmix_v2"
     )
-# Check if user has provided any service interface as "rpc" when openfam model is shared_memeoyr
+# Check if user has provided any service interface as "rpc" when openfam model is shared_memory
 if pe_config_doc["openfam_model"] == "shared_memory":
     if "rpc" in [
         str(pe_config_doc["client_interface_type"]),

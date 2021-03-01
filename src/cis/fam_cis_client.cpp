@@ -44,19 +44,19 @@ Fam_CIS_Client::Fam_CIS_Client(const char *name, uint64_t port) {
     if (!stub) {
         message << "Fam Grpc Initialialization failed: stub is null";
         throw CIS_Exception(FAM_ERR_RPC, message.str().c_str());
-        }
+    }
 
-        Fam_Request req;
-        Fam_Response res;
+    Fam_Request req;
+    Fam_Response res;
 
-        ::grpc::ClientContext ctx;
-        /** sending a start signal to server **/
-        ::grpc::Status status = stub->signal_start(&ctx, req, &res);
-        if (!status.ok()) {
-            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
-        }
+    ::grpc::ClientContext ctx;
+    /** sending a start signal to server **/
+    ::grpc::Status status = stub->signal_start(&ctx, req, &res);
+    if (!status.ok()) {
+        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+    }
 
-        cq = new ::grpc::CompletionQueue();
+    cq = new ::grpc::CompletionQueue();
 }
 
 Fam_CIS_Client::~Fam_CIS_Client() {
@@ -68,27 +68,23 @@ Fam_CIS_Client::~Fam_CIS_Client() {
     stub->signal_termination(&ctx, req, &res);
 }
 
-void Fam_CIS_Client::reset_profile(uint64_t memoryServerId) {
+void Fam_CIS_Client::reset_profile() {
 #ifdef MEMSERVER_PROFILE
     Fam_Request req;
     Fam_Response res;
 
     ::grpc::ClientContext ctx;
-
-    req.set_memserver_id(memoryServerId);
 
     ::grpc::Status status = stub->reset_profile(&ctx, req, &res);
 #endif
 }
 
-void Fam_CIS_Client::generate_profile(uint64_t memoryServerId) {
+void Fam_CIS_Client::dump_profile() {
 #ifdef MEMSERVER_PROFILE
     Fam_Request req;
     Fam_Response res;
 
     ::grpc::ClientContext ctx;
-
-    req.set_memserver_id(memoryServerId);
 
     ::grpc::Status status = stub->generate_profile(&ctx, req, &res);
 #endif
@@ -249,8 +245,8 @@ void Fam_CIS_Client::change_dataitem_permission(uint64_t regionId,
     STATUS_CHECK(CIS_Exception)
 }
 
-Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name,
-                                                   uint32_t uid, uint32_t gid) {
+Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name, uint32_t uid,
+                                                   uint32_t gid) {
     Fam_Region_Request req;
     Fam_Region_Response res;
     ::grpc::ClientContext ctx;
