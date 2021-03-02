@@ -467,6 +467,7 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
 
 void Fam_Memory_Service_Direct::init_atomic_queue() {
     allocator->create_ATL_root(memoryPerThread * numAtomicThreads);
+    pthread_rwlock_init(&fiAddrLock, NULL);
     for (int i = 0; i < numAtomicThreads; i++) {
         int ret = atomicQ[i].create(allocator, i);
         if (ret) {

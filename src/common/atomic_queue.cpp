@@ -471,7 +471,6 @@ void *process_queue(void *arg) {
     Memserver_Allocator *allocator = lcTInfo->allocator;
     fi_addr_t fiAddr = 0, clientAddr;
     char *remoteAddr;
-    std::map<fi_addr_t, fi_addr_t> fiAddrMap;
     std::map<fi_addr_t, fi_addr_t>::iterator it;
 
     // Recover the incomplete writes if any
