@@ -157,6 +157,13 @@ my_parser.add_argument(
     "--regionspanningsize", action="store", type=str, help="Region spanning size"
 )
 
+my_parser.add_argument(
+	"--runtests",
+	default=False,
+	action="store_true",
+	help="Run regression and unit tests"
+)
+
 args = my_parser.parse_args()
 
 # Open all config file templates
@@ -228,6 +235,7 @@ if args.regionspanningsize is not None:
     memservice_config_doc["region_span_size_per_memoryserver"] = (
         args.regionspanningsize
     )
+
 cmd = "mkdir -p " + args.outpath + "/config"
 os.system(cmd)
 
@@ -546,19 +554,19 @@ def terminate_services():
         os.system(cmd)
     time.sleep(5)  # sufficient time to terminate the services
 
-
-# Run regression and unit tests
-cmd = "cd " + args.buildpath + "; " + env_cmd + " make reg-test"
-result = os.system(cmd)
-if (result >> 8) != 0:
-    print("\033[1;31;40mERROR: Regression test failed \033[0;37;40m")
-    terminate_services()
-    sys.exit(1)
-cmd = "cd " + args.buildpath + "; " + env_cmd + " make unit-test"
-result = os.system(cmd)
-if (result >> 8) != 0:
-    print("\033[1;31;40mERROR: Unit test failed \033[0;37;40m")
-    terminate_services()
-    sys.exit(1)
-terminate_services()
+if args.runtests:
+	# Run regression and unit tests
+	cmd = "cd " + args.buildpath + "; " + env_cmd + " make reg-test"
+	result = os.system(cmd)
+	if (result >> 8) != 0:
+		print("\033[1;31;40mERROR: Regression test failed \033[0;37;40m")
+		terminate_services()
+		sys.exit(1)
+	cmd = "cd " + args.buildpath + "; " + env_cmd + " make unit-test"
+	result = os.system(cmd)
+	if (result >> 8) != 0:
+		print("\033[1;31;40mERROR: Unit test failed \033[0;37;40m")
+		terminate_services()
+		sys.exit(1)
+	terminate_services()
 

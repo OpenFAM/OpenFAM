@@ -123,7 +123,7 @@ files = [f for f in glob.glob(path + "/*.log" )]
 # Create and Open CSV file
 with open(outfile, "w") as outf:
     writer = csv.writer(outf,dialect='excel')
-    writer.writerow(['Level 1', 'Level 2', 'Level 3', 'Level 4', 'total PEs', 'Count','Size', 'PE ID','Iteration','Total Pct','Total time(ns)','Avg time/call(ns)'])
+    writer.writerow(['Level 1', 'Level 2', 'Level 3', 'Level 4', 'total PEs', 'num memeory servers', 'Count','Size', 'PE ID','Iteration','Total Pct','Total time(ns)','Avg time/call(ns)'])
 
     for f in files:
         fname = f.split('/')[-1]
@@ -131,27 +131,29 @@ with open(outfile, "w") as outf:
         prefix = list()
         tmp_apis = list()
         #API
-        if(fparam[4].split('.')[0] == "PBUD" or fparam[4].split('.')[0] == "GBUD"):
+        if(fparam[3] == "PBUD" or fparam[3] == "GBUD"):
             continue
-        test_type = fam_api_map[fparam[4].split('.')[0]][0]
-        fam_apis = fam_api_map[fparam[4].split('.')[0]]
-        fabric_apis = fi_api_map[fparam[4].split('.')[0]]
+        test_type = fam_api_map[fparam[3]][0]
+        fam_apis = fam_api_map[fparam[3]]
+        fabric_apis = fi_api_map[fparam[3]]
         #PE
         total_pes = int(fparam[0].split('PE')[0])
+        num_memory_server = fparam[4].split('.')[0]
         prefix.append(str(total_pes))
+        prefix.append(str(num_memory_server))
 
-        if (fparam[4].split('.')[0] == "ALLF"):
+        if (fparam[3] == "ALLF"):
             #Count
             prefix.append(str(fam_apis[10]))
             #Size
-            prefix.append(str(int(int(fparam[3])/fam_apis[11])))
+            prefix.append(str(int(int(fparam[1])/fam_apis[11])))
             tmp_apis = fam_apis[:10]
             tmp_fi_apis = fabric_apis[:3]
         else:
             #Count
             prefix.append(str(fam_apis[-2]))
             #Size
-            prefix.append(str(int(int(fparam[3])/fam_apis[-1])))
+            prefix.append(str(int(int(fparam[1])/fam_apis[-1])))
             if(isNumber(fam_apis[1])):
                 tmp_apis = fam_apis[:1]
             else:
@@ -187,32 +189,32 @@ with open(outfile, "w") as outf:
             pe = api_pe[lines[i][0]]
             api_pe[lines[i][0]] = api_pe[lines[i][0]] + 1
             lines[i].insert(0,"PE" +str(pe))
-            if any(fparam[4].split('.')[0] == word for word in nonblocking):
+            if any(fparam[3] == word for word in nonblocking):
                 if any(lines[i][1] == word for word in loop):
                     if(lines[i][1] == 'fi_cq_readerr'):
-                        lines[i].insert(1,fi_api_map[fparam[4].split('.')[0]][-1])
-                        lines[i].insert(2,fi_api_map[fparam[4].split('.')[0]][-2])
+                        lines[i].insert(1,fi_api_map[fparam[3]][-1])
+                        lines[i].insert(2,fi_api_map[fparam[3]][-2])
                         lines[i][-1] = str(int(int(lines[i][-2])/int(iteration)))
                     else :
-                        lines[i].insert(1,fi_api_map[fparam[4].split('.')[0]][-1])
+                        lines[i].insert(1,fi_api_map[fparam[3]][-1])
                         lines[i].insert(3,"NA")
                         lines[i][-1] = str(int(int(lines[i][-2])/int(iteration)))
                 else:
                     if ((lines[i][1] == 'fi_cntr_read') or (lines[i][1] == 'fi_cntr_readerr')):
-                        lines[i].insert(1,fam_api_map[fparam[4].split('.')[0]][1])
+                        lines[i].insert(1,fam_api_map[fparam[3]][1])
                         lines[i][-1] = str(int(int(lines[i][-2])/int(iteration)))
                     else:
                         lines[i].insert(2,"NA")
                     lines[i].insert(3,"NA")
             else :
                     if((lines[i][1] == 'fi_cq_read') or (lines[i][1] == 'fi_cq_readerr')):
-                        lines[i].insert(1,fi_api_map[fparam[4].split('.')[0]][2])
+                        lines[i].insert(1,fi_api_map[fparam[3]][2])
                         lines[i][-1] = str(int(int(lines[i][-2])/int(iteration)))
                     elif((lines[i][1] == 'fi_cntr_read') or (lines[i][1] == 'fi_cntr_readerr')):
-                        lines[i].insert(1,fam_api_map[fparam[4].split('.')[0]][1])
+                        lines[i].insert(1,fam_api_map[fparam[3]][1])
                         lines[i][-1] = str(int(int(lines[i][-2])/int(iteration)))
                     elif ((lines[i][1] == 'fabric_completion_wait') or (lines[i][1] == 'fabric_completion_wait_multictx')):
-                        lines[i].insert(1,fi_api_map[fparam[4].split('.')[0]][2])
+                        lines[i].insert(1,fi_api_map[fparam[3]][2])
                         lines[i][2] = str("NA")
                     else :
                         if(lines[i][1] == 'fi_readmsg' or lines[i][1] == 'fi_writemsg'):

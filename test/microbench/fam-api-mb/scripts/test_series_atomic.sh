@@ -30,18 +30,27 @@
 #
 
 
-if [ $# -lt 1 ]
+if [ $# -lt 3 ]
 then
 echo "Error: Base dir or allocator type not specified."
-echo "usage: ./test_series_atomic.sh <base_dir> <Allocator, RPC/NVMM>"
+echo "usage: ./test_series_atomic.sh <base_dir> <model, memory_server/shared_memory> <arg_file>"
 exit 1
 fi
 
-#Running tests on memoryserver
-#Note : For running this test on cluster environment                           \
-#run_atomic_mb_MEMSERVER.sh to run_atomic_mb_CLUSTER.sh
+root_dir=$1
+model=$2
+arg_file=$3
+
+python3 $1/scripts/run_test.py @${arg_file}
+sleep 20
+wait
+#Running tests for different PEs
 for i in 1 2 4 8 16 32 64
 do
-./run_atomic_mb_MEMSERVER.sh $i 1 8 $1 $2
+./run_atomic_mb.sh $i 8 ${root_dir} ${model} ${arg_file}
 wait
 done
+pkill memory_server; pkill metadata_server; pkill cis_server
+rm -rf /dev/shm/$USER/
+rm -rf /dev/shm/mem*
+sleep 20

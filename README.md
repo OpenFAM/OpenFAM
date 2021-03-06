@@ -24,14 +24,20 @@ $ cd $OpenFAM
 
 4. Build and Test with the script.
    (Note that this script will build OpenFAM under build directory and run unit tests and regression tests.
-   script takes one argument which specify launcher for tests, argument can take 2 values mpi or slurm)
+   script takes two arguments which specify launcher for tests, argument can take 2 values mpi or slurm
+   1. --launcher        :   Launcher to be used to launch services and tests (mpi/slurm)
+   2. --run-multi-mem   :   Enable region spanning and multiple memory server tests )
    For mpi :
  ```
- $ ./build_and_run.sh mpi
+ $ ./build_and_mpi.sh --launcher mpi
  ```
    For slurm :
  ```
- $ ./build_and_run.sh slurm
+ $ ./build_and_run.sh --launcher slurm
+ ```
+   Multiple memory test :
+ ```
+ $ ./build_and_run.sh --run-multi-mem
  ```
 
 5. (Optional) Build and Test manually.

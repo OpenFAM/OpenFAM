@@ -4,26 +4,28 @@
 
  $ cd scripts
 
- $ ./test_series_datapath.sh base_dir
- ('base_dir' is path till OpenFAM root dir, eg. /home/OpenFAM)
+ $ ./test_series_datapath.sh <base_dir> <model> <arg_file> 
+ ('<base_dir>' is path till OpenFAM root dir, eg. /home/OpenFAM
+  '<model>' is OpenFAM model either memory_server or shared memory
+  '<arg_file>' argument file to be used to start services)
 
- (Note: Log files will be created under {base_dir}/mb_logs/data_path)
+ (Note: Log files will be created under {<base_dir>}/mb_logs/data_path)
 
 ## Run tests for atomic APIs
 
  $ cd scripts
 
- $ ./test_series_atomic.sh base_dir
+ $ ./test_series_atomic.sh <base_dir> <model> <arg_file>
 
- (Note: Log files will be created under {base_dir}/mb_logs/atomic)
+ (Note: Log files will be created under {<base_dir>}/mb_logs/atomic)
 
 ## Run tests for allocator APIs
 
  $ cd scripts
 
- $ ./test_series_allocator.sh base_dir
+ $ ./test_series_allocator.sh <base_dir> <model> <arg_file>
 
- (Note: Log files will be created under {base_dir}/mb_logs/allocator)
+ (Note: Log files will be created under {<base_dir>}/mb_logs/allocator)
 
 ## Creating CSV file from test logs
 
