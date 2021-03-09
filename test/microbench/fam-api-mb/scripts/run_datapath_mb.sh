@@ -41,8 +41,8 @@ else
 fi
 
 arg_file=$6
-tmp="$(cut -d'.' -f1 <<< $arg_file)"
-num_memserv="$(cut -d'_' -f2 <<< $tmp)"
+
+num_memserv=$(($(cat ${arg_file} | grep "memserverlist" | cut -d'=' -f2 | grep -o "," | wc -l) + 1))
 
 launcher="${base_dir}/third-party/build/bin/mpirun -n $1"
 #uncomment the following line incase of slurm is used as launcher

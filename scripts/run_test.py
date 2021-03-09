@@ -34,7 +34,7 @@ my_parser.add_argument(
     "--launcher",
     action="store",
     type=str,
-    help="Launcher to be used to launch preocesses(mpi/slurm)",
+    help="Launcher to be used to launch processes(mpi/slurm)",
     choices=["mpi", "slurm"],
 )
 
@@ -58,7 +58,8 @@ my_parser.add_argument(
     "--provider",
     action="store",
     type=str,
-    help="Libafbric provider to be used for datapath operations",
+    help="Libfabric provider to be used for datapath operations",
+    choices=["sockets", "psm2", "verbs;ofi_rxm"],
 )
 
 my_parser.add_argument(

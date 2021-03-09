@@ -66,7 +66,9 @@ wait
 ./run_datapath_mb.sh $i 4194304 100  ${root_dir} ${model} ${arg_file}
 done
 pkill memory_server; pkill metadata_server; pkill cis_server
-rm -rf /dev/shm/$USER/
-rm -rf /dev/shm/mem*
+rm -rf /dev/shm/$USER/; rm -rf /dev/shm/mem*
+#Use the following commands to cleanup and kill services in case of cluster environment which uses slurm as workload manager
+#srun -N 1 --nodelist=<your node-list> rm -rf /dev/shm/`whoami`; srun -N 1 --nodelist=<your node-list> rm -rf /dev/shm/mem*
+#scancel --quiet -n metadata_server > /dev/null 2>&1; scancel --quiet -n memory_server > /dev/null 2>&1; scancel --quiet -n cis_server > /dev/null 2>&1
 sleep 20
 

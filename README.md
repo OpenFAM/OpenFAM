@@ -29,15 +29,15 @@ $ cd $OpenFAM
    2. --run-multi-mem   :   Enable region spanning and multiple memory server tests )
    For mpi :
  ```
- $ ./build_and_mpi.sh --launcher mpi
+ $ ./build_and_test.sh --launcher mpi
  ```
    For slurm :
  ```
- $ ./build_and_run.sh --launcher slurm
+ $ ./build_and_test.sh --launcher slurm
  ```
    Multiple memory test :
  ```
- $ ./build_and_run.sh --run-multi-mem
+ $ ./build_and_test.sh --run-multi-mem
  ```
 
 5. (Optional) Build and Test manually.
