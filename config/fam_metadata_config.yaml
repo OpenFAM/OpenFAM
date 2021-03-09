@@ -18,7 +18,10 @@ metadata_path: /dev/shm/
 # where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
 # portno is port to be used by OpenFAM for communication between Metadata Manager and
 # Client Interface Service.
-rpc_interface: 127.0.0.1:8788
+# This field is reserved for future use. Please use the command line options to pass the
+# RPC interface, while starting up the metadata_server.
+#
+#rpc_interface: 127.0.0.1:8788
 
 # Flag to enable or disable region spanning. By default, it is set to true.
 enable_region_spanning: true

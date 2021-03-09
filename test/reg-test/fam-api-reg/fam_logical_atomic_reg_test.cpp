@@ -384,7 +384,7 @@ TEST(FamLogicalAtomics, NonfetchLogicalUInt64) {
     }
     free((void *)dataItem);
 }
-
+#ifdef ENABLE_KNOWN_ISSUES
 // Test case 5 - Negative test cases with invalid permissions
 TEST(FamLogicalAtomics, NonfetchLogicalNegativePerm) {
     Fam_Descriptor *item;
@@ -489,6 +489,7 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativePerm) {
     }
     free((void *)dataItem);
 }
+#endif
 
 // Test case 6 - Negative test cases for with invalid permissions
 TEST(FamLogicalAtomics, FetchLogicalNegativePerm) {
@@ -571,7 +572,7 @@ TEST(FamLogicalAtomics, FetchLogicalNegativePerm) {
     }
     free((void *)dataItem);
 }
-
+#ifdef ENABLE_KNOWN_ISSUES
 // Test case 7 - Negative test cases with invalid offset
 TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
     Fam_Descriptor *item;
@@ -676,6 +677,7 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
     }
     free((void *)dataItem);
 }
+#endif
 
 // Test case 8 - Negative test cases with invalid offset
 TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {

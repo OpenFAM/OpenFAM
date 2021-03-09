@@ -151,6 +151,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     void fence(Fam_Region_Descriptor *descriptor = NULL);
 
     void quiet(Fam_Region_Descriptor *descriptor = NULL);
+    void check_progress(Fam_Region_Descriptor *descriptor = NULL);
 
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, int64_t value);

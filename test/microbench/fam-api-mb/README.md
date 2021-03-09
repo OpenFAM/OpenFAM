@@ -42,3 +42,9 @@
  $ ./extract_allocator_profiling.py log_dir csv_file
 
  ('log_dir' is a path to directory where log files are stored and 'csv_file' is the name of the CSV file to be created)
+
+## With microbenchmark tests, please use fam_reset_profile, if any warmup calls are being made.
+## fam_reset_profile is a method defined in fam.cpp, which is used to ensure the warmup calls are not considered 
+## while collecting profiling data. 
+## In addition, to be able to use fam_reset_profile, we need to add this method in include/fam/fam.h.
+

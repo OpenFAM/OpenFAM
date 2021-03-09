@@ -361,7 +361,9 @@ class fam::Impl_ {
     void clean_fam_options();
     int validate_item(Fam_Descriptor *descriptor);
     configFileParams get_info_from_config_file(std::string filename);
-
+#ifdef FAM_PROFILE
+    void fam_reset_profile();
+#endif
   private:
     uid_t uid;
     gid_t gid;
@@ -571,6 +573,13 @@ class fam::Impl_ {
 #define FAM_PROFILE_END_OPS(apiIdx)
 #endif
 };
+
+#ifdef FAM_PROFILE
+void fam::Impl_::fam_reset_profile() {
+    FAM_PROFILE_INIT();
+    FAM_PROFILE_START_TIME();
+}
+#endif
 
 /**
  * fam() - constructor for fam class
@@ -5147,6 +5156,15 @@ void fam::fam_quiet() {
     pimpl_->fam_quiet();
     RETURN_WITH_FAM_EXCEPTION
 }
+
+
+#ifdef FAM_PROFILE
+void fam::fam_reset_profile() {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_reset_profile();
+    RETURN_WITH_FAM_EXCEPTION
+}
+#endif
 
 /**
  * fam() - constructor for fam class

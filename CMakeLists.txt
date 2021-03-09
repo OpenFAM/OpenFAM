@@ -150,6 +150,7 @@ ENDIF()
 set( TEST_ENABLE_KNOWN_ISSUES "no" )
 if (ENABLE_KNOWN_ISSUES)
         set( TEST_ENABLE_KNOWN_ISSUES "yes" )
+        add_definitions(-DENABLE_KNOWN_ISSUES)
 endif()
 
 if (USE_FAM_PERSIST)

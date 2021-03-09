@@ -705,6 +705,10 @@ class Fam_Ops {
     virtual void quiet(Fam_Region_Descriptor *descriptor = NULL) = 0;
 
     /**
+     * check_progress thread is used by memory server to keep the I/Os going on.
+     */
+    virtual void check_progress(Fam_Region_Descriptor *descriptor = NULL) = 0;
+    /**
      * fam() - constructor for fam class
      */
     Fam_Ops(){};
