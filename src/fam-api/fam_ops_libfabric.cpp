@@ -36,6 +36,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <future>
 
 #include "common/fam_internal.h"
 #include "common/fam_libfabric.h"
@@ -631,10 +632,45 @@ void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {
     }
 }
 
+void Fam_Ops_Libfabric::check_progress(Fam_Region_Descriptor *descriptor) {
+    if (famContextModel == FAM_CONTEXT_DEFAULT) {
+
+        for (auto context : *defContexts) {
+            Fam_Context *famCtx = context.second;
+            uint64_t success = fi_cntr_read(famCtx->get_txCntr());
+            success += fi_cntr_read(famCtx->get_rxCntr());
+        }
+    }
+    return;
+}
+
 void Fam_Ops_Libfabric::quiet_context(Fam_Context *context = NULL) {
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-        for (auto context : *defContexts)
-            fabric_quiet(context.second);
+        std::list<std::shared_future<void>> resultList;
+        int err = 0;
+        std::string errmsg;
+        int exception_caught = 0;
+
+        for (auto context : *defContexts) {
+            std::future<void> result =
+                (std::async(std::launch::async, fabric_quiet, context.second));
+            resultList.push_back(result.share());
+        }
+        for (auto result : resultList) {
+
+            try {
+                result.get();
+            } catch (Fam_Exception &e) {
+                err = e.fam_error();
+                errmsg = e.fam_error_msg();
+                exception_caught = 1;
+            }
+        }
+
+        if (exception_caught == 1) {
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, get_fam_error(err), errmsg);
+        }
+
     } else if (famContextModel == FAM_CONTEXT_REGION) {
         fabric_quiet(context);
     }

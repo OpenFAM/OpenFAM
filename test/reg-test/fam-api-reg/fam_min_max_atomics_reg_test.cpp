@@ -890,6 +890,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockPerm) {
     }
     free((void *)dataItem);
 }
+#ifdef ENABLE_KNOWN_ISSUES
 
 // Test case 14 - Min Max Negative test case with invalid permissions
 TEST(FamMinMaxAtomics, MinMaxNegativeNonblockPerm) {
@@ -1203,7 +1204,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
     }
     free((void *)dataItem);
 }
-
+#endif
 // Test case 13 - Min Max Negative test case with invalid offset
 TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
     Fam_Descriptor *item;

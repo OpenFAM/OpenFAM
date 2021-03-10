@@ -2431,8 +2431,14 @@ Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_allocate_dataitem(
                             message.str().c_str());
         }
     }
-    uint64_t id = rand() % region.used_memsrv_cnt;
-    *memoryServerId = region.memServerIds[id];
+    uint64_t id =  0;
+    if (!dataitemName.empty()) {
+	id = (std::hash<std::string>{}(dataitemName) % region.used_memsrv_cnt);
+    } else {
+	id = rand() % region.used_memsrv_cnt;
+    }
+	*memoryServerId = region.memServerIds[id];
+
 }
 
 void
