@@ -80,7 +80,7 @@ void Fam_Memory_Registration_Libfabric::progress_thread() {
     if (libfabricProgressMode == FI_PROGRESS_MANUAL) {
         while (1) {
             if (!haltProgress)
-                famOps->quiet();
+                famOps->check_progress();
             else
                 break;
         }

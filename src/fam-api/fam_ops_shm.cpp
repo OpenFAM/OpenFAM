@@ -532,6 +532,11 @@ void Fam_Ops_SHM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
     return;
 }
 
+void Fam_Ops_SHM::check_progress(Fam_Region_Descriptor *descriptor) {
+
+       return;
+}
+
 void Fam_Ops_SHM::quiet_context(Fam_Context *famCtx) {
 
     // Take Fam_Context write lock
