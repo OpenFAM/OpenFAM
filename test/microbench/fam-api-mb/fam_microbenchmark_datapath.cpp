@@ -35,6 +35,7 @@
 #include <string.h>
 
 #include "cis/fam_cis_client.h"
+#include "cis/fam_cis_direct.h"
 #include "common/fam_libfabric.h"
 #include <fam/fam.h>
 
@@ -47,7 +48,7 @@ using namespace openfam;
 
 int NUM_ITERATIONS;
 int *myPE;
-Fam_CIS_Client *cis;
+Fam_CIS *cis;
 fam *my_fam;
 Fam_Options fam_opts;
 Fam_Descriptor *item;
@@ -60,14 +61,14 @@ uint64_t gDataSize = 256;
 #ifdef MEMSERVER_PROFILE
 #define RESET_PROFILE()                                                        \
     {                                                                          \
-        cis->reset_profile(0);                                                 \
+        cis->reset_profile();                                                  \
         my_fam->fam_barrier_all();                                             \
     }
 
 #define GENERATE_PROFILE()                                                     \
     {                                                                          \
         if (*myPE == 0)                                                        \
-            cis->generate_profile(0);                                          \
+            cis->dump_profile();                                               \
         my_fam->fam_barrier_all();                                             \
     }
 #else
@@ -313,13 +314,18 @@ int main(int argc, char **argv) {
     if (strcmp(openFamModel, "memory_server") != 0) {
         EXPECT_NO_THROW(my_fam->fam_finalize("default"));
         std::cout << "Test case valid only in memory server model, "
-                     "skipping with status : "
-                  << TEST_SKIP_STATUS << std::endl;
+                     "skipping with status : " << TEST_SKIP_STATUS << std::endl;
         return TEST_SKIP_STATUS;
     }
     char *cisServer = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
-    int *rpcPort = (int *)my_fam->fam_get_option(strdup("GRPC_PORT"));
-    EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, *rpcPort));
+    char *rpcPort = (char *)my_fam->fam_get_option(strdup("GRPC_PORT"));
+    char *cisInterface =
+        (char *)my_fam->fam_get_option(strdup("CIS_INTERFACE_TYPE"));
+    if (strcmp(cisInterface, "rpc") != 0) {
+        EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, atoi(rpcPort)));
+    } else {
+        EXPECT_NO_THROW(cis = new Fam_CIS_Direct(NULL, true, false));
+    }
 #endif
 
     const char *dataItem = get_uniq_str("firstGlobal", my_fam);
@@ -345,7 +351,7 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
 #ifdef MEMSERVER_PROFILE
-    EXPECT_NO_THROW(cis->reset_profile(0));
+    EXPECT_NO_THROW(cis->reset_profile());
     EXPECT_NO_THROW(fabric_reset_profile());
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
 #endif

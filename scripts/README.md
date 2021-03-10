@@ -15,6 +15,8 @@ usage: run_test.py [-h] [-n N] [--pehosts PEHOSTS] [--launcher {mpi,slurm}]
                    [--libfabricport LIBFABRICPORT] [--metapath METAPATH]
                    [--fampath FAMPATH] [--atlthreads ATLTHREADS]
                    [--atlqsize ATLQSIZE] [--atldatasize ATLDATASIZE]
+                   [--disableregionspanning]
+                   [--regionspanningsize REGIONSPANNINGSIZE] [--runtests]
                    rootpath outpath buildpath
 ```
 positional arguments:
@@ -49,7 +51,10 @@ optional arguments:
 |    --fampath FAMPATH     				 	|  path where data is stored 	|
 |    --atlthreads ATLTHREADS				|  Atomic library threads count 	|
 |    --atlqsize ATLQSIZE   				 	|  ATL queue size 	|
-|     --atldatasize ATLDATASIZE				|  ATL data size per thread(MiB) |
+|    --atldatasize ATLDATASIZE				|  ATL data size per thread(MiB) |
+|    --disableregionspanning                |  Disable region spanning  |
+|    --regionspanningsize REGIONSPANNINGSIZE|  Region spanning size  |
+|    --runtests                             |  Run regression and unit tests  |
 
 
   Note : arguments can also be passed via argument file, for example

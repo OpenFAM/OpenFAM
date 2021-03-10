@@ -237,9 +237,11 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
                    "option:metadata_interface_type.";
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
-	//TODO:Currently assuming the max key length is uniform accross the multiple metadata server
-	//we read metadataMaxKeyLen from only first metadata server. In future it needs to be revised 
-	//if max key length is not uniform accross multiple metadata servers
+    // TODO:Currently assuming the max key length is uniform accross the
+    // multiple metadata server
+    // we read metadataMaxKeyLen from only first metadata server. In future it
+    // needs to be revised
+    // if max key length is not uniform accross multiple metadata servers
     Fam_Metadata_Service *firstMetaServer = metadataServers->begin()->second;
     metadataMaxKeyLen = firstMetaServer->metadata_maxkeylen();
 }
@@ -302,26 +304,33 @@ uint64_t Fam_CIS_Direct::get_num_memory_servers() {
     return memoryServerCount;
 }
 
-void Fam_CIS_Direct::reset_profile(uint64_t memoryServerId) {
+void Fam_CIS_Direct::reset_profile() {
 
     MEMSERVER_PROFILE_INIT(CIS_DIRECT)
     MEMSERVER_PROFILE_START_TIME(CIS_DIRECT)
     uint64_t metadataServiceId = 0;
-    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+
+    for (auto obj = memoryServers->begin(); obj != memoryServers->end();
+         ++obj) {
+        obj->second->reset_profile();
+    }
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
-    memoryService->reset_profile();
     metadataService->reset_profile();
     return;
 }
 
-void Fam_CIS_Direct::dump_profile(uint64_t memoryServerId) {
+void Fam_CIS_Direct::dump_profile() {
     CIS_DIRECT_PROFILE_DUMP();
     uint64_t metadataServiceId = 0;
-    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+
+    for (auto obj = memoryServers->begin(); obj != memoryServers->end();
+         ++obj) {
+        obj->second->dump_profile();
+    }
+
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
-    memoryService->dump_profile();
     metadataService->dump_profile();
 }
 

@@ -36,6 +36,7 @@
 #include <fam/fam.h>
 
 #include "cis/fam_cis_client.h"
+#include "cis/fam_cis_direct.h"
 #include "common/fam_test_config.h"
 #define BIG_REGION_SIZE 21474836480
 #define BLOCK_SIZE 1048576
@@ -48,21 +49,21 @@ using namespace openfam;
 
 int *myPE;
 int NUM_MM_ITERATIONS;
-Fam_CIS_Client *cis;
+Fam_CIS *cis;
 fam *my_fam;
 Fam_Options fam_opts;
 
 #ifdef MEMSERVER_PROFILE
 #define RESET_PROFILE()                                                        \
     {                                                                          \
-        cis->reset_profile(0);                                                 \
+        cis->reset_profile();                                                  \
         my_fam->fam_barrier_all();                                             \
     }
 
 #define GENERATE_PROFILE()                                                     \
     {                                                                          \
         if (*myPE == 0)                                                        \
-            cis->generate_profile(0);                                          \
+            cis->dump_profile();                                               \
         my_fam->fam_barrier_all();                                             \
     }
 #else
@@ -569,7 +570,14 @@ int main(int argc, char **argv) {
     }
     char *cisServer = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
     char *rpcPort = (char *)my_fam->fam_get_option(strdup("GRPC_PORT"));
-    EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, atoi(rpcPort)));
+    char *cisInterface =
+        (char *)my_fam->fam_get_option(strdup("CIS_INTERFACE_TYPE"));
+    if (strcmp(cisInterface, "rpc") == 0) {
+        EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, atoi(rpcPort)));
+    } else {
+        EXPECT_NO_THROW(cis = new Fam_CIS_Direct(NULL, true, false));
+    }
+
 #endif
 
     EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));

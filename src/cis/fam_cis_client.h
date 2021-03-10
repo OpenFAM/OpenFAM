@@ -54,7 +54,6 @@ using namespace std;
 
 namespace openfam {
 
-
 using service = std::unique_ptr<Fam_CIS_Rpc::Stub>;
 typedef struct {
     service stub;
@@ -71,9 +70,9 @@ class Fam_CIS_Client : public Fam_CIS {
 
     ~Fam_CIS_Client();
 
-    void reset_profile(uint64_t memoryServerId);
+    void reset_profile();
 
-    void generate_profile(uint64_t memoryServerId);
+    void dump_profile();
 
     uint64_t get_num_memory_servers();
 

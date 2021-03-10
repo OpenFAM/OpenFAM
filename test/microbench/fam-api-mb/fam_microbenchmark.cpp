@@ -36,6 +36,7 @@
 #include <fam/fam.h>
 
 #include "cis/fam_cis_client.h"
+#include "cis/fam_cis_direct.h"
 #include "common/fam_test_config.h"
 #define NUM_ITERATIONS 100
 #define BIG_REGION_SIZE 21474836480
@@ -50,7 +51,7 @@ using namespace openfam;
 int *myPE;
 int NUM_MM_ITERATIONS;
 int DATA_ITEM_SIZE;
-Fam_CIS_Client *cis;
+Fam_CIS *cis;
 fam *my_fam;
 Fam_Options fam_opts;
 Fam_Descriptor *item;
@@ -61,14 +62,14 @@ size_t test_item_size;
 #ifdef MEMSERVER_PROFILE
 #define RESET_PROFILE()                                                        \
     {                                                                          \
-        cis->reset_profile(0);                                                 \
+        cis->reset_profile();                                                  \
         my_fam->fam_barrier_all();                                             \
     }
 
 #define GENERATE_PROFILE()                                                     \
     {                                                                          \
         if (*myPE == 0)                                                        \
-            cis->generate_profile(0);                                          \
+            cis->dump_profile();                                               \
         my_fam->fam_barrier_all();                                             \
     }
 #else
@@ -426,7 +427,7 @@ TEST(FamScatter, BlockingScatterGatherIndex) {
     for (int j = 0; j < NUM_ITERATIONS; j++) {
 
         int newLocal[NUM_ITERATIONS];
-        uint64_t indexes[] = {0, 7, 3, 5, 8};
+        uint64_t indexes[] = { 0, 7, 3, 5, 8 };
         for (int e = 0; e < NUM_ITERATIONS; e++) {
             newLocal[e] = NUM_ITERATIONS - e;
         }
@@ -456,7 +457,7 @@ TEST(FamScatter, BlockingScatterGatherStride) {
 // Test case -  Non-Blocking scatter and gather (Index) test.
 TEST(FamScatter, NonBlockingScatterGatherIndex) {
 
-    uint64_t indexes[] = {0, 7, 3, 5, 8};
+    uint64_t indexes[] = { 0, 7, 3, 5, 8 };
 
     for (int j = 0; j < NUM_ITERATIONS; j++) {
 
@@ -2505,13 +2506,18 @@ int main(int argc, char **argv) {
     if (strcmp(openFamModel, "memory_server") != 0) {
         EXPECT_NO_THROW(my_fam->fam_finalize("default"));
         std::cout << "Test case valid only in memory server model, "
-                     "skipping with status : "
-                  << TEST_SKIP_STATUS << std::endl;
+                     "skipping with status : " << TEST_SKIP_STATUS << std::endl;
         return TEST_SKIP_STATUS;
     }
     char *cisServer = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
-    int *rpcPort = (int *)my_fam->fam_get_option(strdup("GRPC_PORT"));
-    EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, *rpcPort));
+    char *rpcPort = (char *)my_fam->fam_get_option(strdup("GRPC_PORT"));
+    char *cisInterface =
+        (char *)my_fam->fam_get_option(strdup("CIS_INTERFACE_TYPE"));
+    if (strcmp(cisInterface, "rpc") == 0) {
+        EXPECT_NO_THROW(cis = new Fam_CIS_Client(cisServer, atoi(rpcPort)));
+    } else {
+        EXPECT_NO_THROW(cis = new Fam_CIS_Direct(NULL, true, false));
+    }
 #endif
 
     EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));

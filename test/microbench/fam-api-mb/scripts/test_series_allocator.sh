@@ -31,17 +31,25 @@
 
 
 
-if [ $# -lt 2 ]
+if [ $# -lt 3 ]
 then
 echo "Error: Base dir or allocator type not specified."
-echo "usage: ./test_series_datapath.sh <base_dir> <Allocator, RPC/NVMM>"
+echo "usage: ./test_series_datapath.sh <base_dir> <model, memory_server/shared_memory> <arg_file>"
 exit 1
 fi
 
+root_dir=$1
+model=$2
+arg_file=$3
+
 #Running tests on memoryserver
-#Note : For running this test on cluster environment                           \
-#run_allocator_mb_MEMSERVER.sh to run_allocator_mb_CLUSTER.sh
-for i in 1 2 4 8 16 32 64 
+for i in 1 2 4 8 
 do
-./run_allocator_mb_MEMSERVER.sh $i 10 ${1} ${2}
+./run_allocator_mb.sh $i 100 ${root_dir} ${model} 4194304 1048576 ${arg_file}
+./run_allocator_mb.sh $i 100 ${root_dir} ${model} 8388608 2097152 ${arg_file}
+./run_allocator_mb.sh $i 100 ${root_dir} ${model} 16777216 4194304 ${arg_file}
+./run_allocator_mb.sh $i 100 ${root_dir} ${model} 33554432 8388608 ${arg_file}
+./run_allocator_mb.sh $i 100 ${root_dir} ${model} 67108864 16777216 ${arg_file}
+./run_allocator_mb.sh $i 100 ${root_dir} ${model} 134217728 33554432 ${arg_file}
+./run_allocator_mb.sh $i 100 ${root_dir} ${model} 268435456 67108864 ${arg_file}
 done
