@@ -87,27 +87,34 @@ files = [f for f in glob.glob(path + "/*.log" )]
 # Create and OpenCSV file
 with open(outfile, "w") as outf:
     writer = csv.writer(outf,dialect='excel')
-    writer.writerow(['Region type','OpenFAM API', 'Memserver Level 1', 'Memserver Level 2', 'total PEs', 'PE ID','Iteration','Total Pct','Total time(ns)','Avg time/call(ns)'])
+    writer.writerow(['Region type','OpenFAM API', 'Memserver Level 1', 'Memserver Level 2', 'total PEs', 'Size', 'test type', 'num memory server', 'PE ID','Iteration','Total Pct','Total time(ns)','Avg time/call(ns)'])
     for f in files:
-        print(f)
+        #print(f)
         fname = f.split('/')[-1]
-        print(fname)
+        #print(fname)
         fparam = fname.split('_')
-        test_type = fparam[2].split('.')[0]
+        test_type = fparam[3]
         if(test_type == "ASR" or test_type == "DISR" or test_type == "LDSR") :
             region = "SINGLE"
         else:
             region = "PER PE"
-        test_type = fam_client_api_map[fparam[2].split('.')[0]][0][0]
-        if (fparam[1] == "MEMSERVER"):
-            fam_apis = fam_memserver_api_map[fparam[2].split('.')[0]]
+        test_type = fam_client_api_map[fparam[3]][0][0]
+        if (fparam[2] == "MEMSERVER"):
+            fam_apis = fam_memserver_api_map[fparam[3]]
         else:
-            fam_apis = fam_client_api_map[fparam[2].split('.')[0]]
+            fam_apis = fam_client_api_map[fparam[3]]
 
+        #num_memserv=fparam[4].split('.')[0].split('args')[1]
+        num_memserv=fparam[4].split('.')[0]
+        #print(num_memserv)
         prefix = list()
         #PE
         total_pes = int(fparam[0].split('PE')[0])
+        operation_size = int(fparam[1])
         prefix.append(str(total_pes))
+        prefix.append(str(operation_size))
+        prefix.append(fparam[3])
+        prefix.append(num_memserv)
         lines = list()
         # Loop through all lines and extract required functions
         for line in open(f):
@@ -124,13 +131,13 @@ with open(outfile, "w") as outf:
         time_idx = len(lines[0])-1
         api_pe = dict()
 
-        if (fparam[1] == "CLIENT"):
+        if (fparam[2] == "CLIENT"):
             for api in fam_apis:
                 api_pe[api] = 0
 
         i = 0
         while i < total_lines:
-            if (fparam[1] == "CLIENT"):
+            if (fparam[2] == "CLIENT"):
                 pe = api_pe[lines[i][0]]
                 api_pe[lines[i][0]] = api_pe[lines[i][0]] + 1
                 lines[i].insert(0,"PE" +str(pe))
@@ -138,15 +145,15 @@ with open(outfile, "w") as outf:
                 lines[i].insert(3,"NA")
             else:
                 lines[i].insert(0,"MEMSERVER")
-                if(fparam[2].split('.')[0] == "CP"):
-                            lines[i].insert(1, fam_client_api_map[fparam[2].split('.')[0]][0])
+                if(fparam[3] == "CP"):
+                            lines[i].insert(1, fam_client_api_map[fparam[3]][0])
                             lines[i].insert(3, "NA")
                 else :
                      if(lines[i][1] == fam_apis[0]):
-                        lines[i].insert(1, fam_client_api_map[fparam[2].split('.')[0]][0])
+                        lines[i].insert(1, fam_client_api_map[fparam[3]][0])
                         lines[i].insert(3, "NA")
                      else:
-                        lines[i].insert(1, fam_client_api_map[fparam[2].split('.')[0]][0])
+                        lines[i].insert(1, fam_client_api_map[fparam[3]][0])
                         lines[i].insert(2, fam_apis[0])
 
             i = i+1

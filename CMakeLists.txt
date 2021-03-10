@@ -191,9 +191,21 @@ add_subdirectory(test/microbench)
 add_subdirectory(test/apps)
 add_subdirectory(test/permission-test)
 add_subdirectory(examples/api)
-#
-# find src include -regex '.*\.\(c\|cpp\|h\)$' -print | xargs clang-format -i -style="{BasedOnStyle: llvm, IndentWidth: 4}"
-#
+
+file(READ ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt.in CONTENTS)
+file(WRITE ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "")
+file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${CONTENTS}")
+file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/\n")
+file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/test/config_files/multi-mem/\n")
+file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/\n")
+
+file(READ ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt.in CONTENTS)
+file(WRITE ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "")
+file(APPEND ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "${CONTENTS}")
+file(APPEND ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/\n")
+file(APPEND ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/test/config_files/single-mem/\n")
+file(APPEND ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/\n")
+
 install (FILES "${PROJECT_SOURCE_DIR}/test/setup.sh" PERMISSIONS OWNER_READ OWNER_WRITE
         OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         DESTINATION ${PROJECT_BINARY_DIR})
@@ -202,3 +214,6 @@ install (FILES "${PROJECT_SOURCE_DIR}/test/unit-test/config/sample_config" PERMI
         GROUP_READ WORLD_READ
         DESTINATION ${PROJECT_BINARY_DIR}/test/unit-test/config/)
 
+#
+# find src include -regex '.*\.\(c\|cpp\|h\)$' -print | xargs clang-format -i -style="{BasedOnStyle: llvm, IndentWidth: 4}"
+#
