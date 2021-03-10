@@ -22,7 +22,8 @@ my_parser.add_argument(
     help="path where generated output config files to be stored",
 )
 
-my_parser.add_argument("buildpath", action="store", type=str, help="OpenFAM build path")
+my_parser.add_argument("buildpath", action="store",
+                       type=str, help="OpenFAM build path")
 
 my_parser.add_argument("-n", action="store", type=int, help="Number of PEs")
 
@@ -141,7 +142,8 @@ my_parser.add_argument(
     "--atlthreads", action="store", type=str, help="Atomic library threads count"
 )
 
-my_parser.add_argument("--atlqsize", action="store", type=str, help="ATL queue size")
+my_parser.add_argument("--atlqsize", action="store",
+                       type=str, help="ATL queue size")
 
 my_parser.add_argument(
     "--atldatasize", action="store", type=str, help="TL data size per thread(MiB)"
@@ -159,21 +161,23 @@ my_parser.add_argument(
 )
 
 my_parser.add_argument(
-	"--runtests",
-	default=False,
-	action="store_true",
-	help="Run regression and unit tests"
+    "--runtests",
+    default=False,
+    action="store_true",
+    help="Run regression and unit tests"
 )
 
 args = my_parser.parse_args()
 
 # Open all config file templates
 with open(args.rootpath + "/config/fam_pe_config.yaml") as pe_config_infile:
-    pe_config_doc = ruamel.yaml.load(pe_config_infile, ruamel.yaml.RoundTripLoader)
+    pe_config_doc = ruamel.yaml.load(
+        pe_config_infile, ruamel.yaml.RoundTripLoader)
 with open(
     args.rootpath + "/config/fam_client_interface_config.yaml"
 ) as cis_config_infile:
-    cis_config_doc = ruamel.yaml.load(cis_config_infile, ruamel.yaml.RoundTripLoader)
+    cis_config_doc = ruamel.yaml.load(
+        cis_config_infile, ruamel.yaml.RoundTripLoader)
 with open(
     args.rootpath + "/config/fam_memoryserver_config.yaml"
 ) as memservice_config_infile:
@@ -242,7 +246,8 @@ os.system(cmd)
 
 # set environment variable for test command and options
 if args.launcher is None or args.launcher == "mpi":
-    os.environ["OPENFAM_TEST_COMMAND"] = args.rootpath + "/third-party/build/bin/mpirun"
+    os.environ["OPENFAM_TEST_COMMAND"] = args.rootpath + \
+        "/third-party/build/bin/mpirun"
     if args.pehosts is not None:
         if len(args.pehosts.split(",")) < npe:
             pe_per_host = npe
@@ -503,45 +508,41 @@ if (
 time.sleep(5)
 
 # Terminate all services
+
+
 def terminate_services():
     if (
         pe_config_doc["openfam_model"] == "memory_server"
         and cis_config_doc["memsrv_interface_type"] == "rpc"
     ):
-        for server in cis_config_doc["memsrv_list"]:
-            memory_server_addr = server.split(":")[1]
-            memory_server_rpc_port = server.split(":")[2]
-            if args.launcher == "mpi":
+        if args.launcher == "mpi":
+            for server in cis_config_doc["memsrv_list"]:
+                memory_server_addr = server.split(":")[1]
+                memory_server_rpc_port = server.split(":")[2]
                 cmd = ssh_cmd + memory_server_addr + " \"sh -c 'pkill memory_server'\""
-            elif args.launcher == "slurm":
-                cmd = (
-                    srun_cmd + memory_server_addr + " --mpi=pmix_v2 pkill memory_server"
-                )
-            else:
-                cmd = "pkill memory_server"
-            os.system(cmd)
+        elif args.launcher == "slurm":
+            cmd = "scancel --quiet -n memory_server > /dev/null 2>&1"
+        else:
+            cmd = "pkill memory_server"
+        os.system(cmd)
     if (
         pe_config_doc["openfam_model"] == "memory_server"
         and cis_config_doc["metadata_interface_type"] == "rpc"
     ):
-        for server in cis_config_doc["metadata_list"]:
-            metadata_server_addr = server.split(":")[1]
-            metadata_server_rpc_port = server.split(":")[2]
-            if args.launcher == "mpi":
+        if args.launcher == "mpi":
+            for server in cis_config_doc["metadata_list"]:
+                metadata_server_addr = server.split(":")[1]
+                metadata_server_rpc_port = server.split(":")[2]
                 cmd = (
                     ssh_cmd
                     + metadata_server_addr
                     + " \"sh -c 'pkill metadata_server'\""
                 )
-            elif args.launcher == "slurm":
-                cmd = (
-                    srun_cmd
-                    + metadata_server_addr
-                    + " --mpi=pmix_v2 pkill metadata_server"
-                )
-            else:
-                cmd = "pkill metadata_server"
-            os.system(cmd)
+        elif args.launcher == "slurm":
+            cmd = "scancel --quiet -n metadata_server > /dev/null 2>&1"
+        else:
+            cmd = "pkill metadata_server"
+        os.system(cmd)
     if (
         pe_config_doc["openfam_model"] == "memory_server"
         and pe_config_doc["client_interface_type"] == "rpc"
@@ -549,25 +550,25 @@ def terminate_services():
         if args.launcher == "mpi":
             cmd = ssh_cmd + cis_addr + " \"sh -c 'pkill cis_server'\""
         elif args.launcher == "slurm":
-            cmd = srun_cmd + cis_addr + " --mpi=pmix_v2 pkill cis_server"
+            cmd = "scancel --quiet -n cis_server > /dev/null 2>&1"
         else:
             cmd = "pkill cis_server"
         os.system(cmd)
     time.sleep(5)  # sufficient time to terminate the services
 
 if args.runtests:
-	# Run regression and unit tests
-	cmd = "cd " + args.buildpath + "; " + env_cmd + " make reg-test"
-	result = os.system(cmd)
-	if (result >> 8) != 0:
-		print("\033[1;31;40mERROR: Regression test failed \033[0;37;40m")
-		terminate_services()
-		sys.exit(1)
-	cmd = "cd " + args.buildpath + "; " + env_cmd + " make unit-test"
-	result = os.system(cmd)
-	if (result >> 8) != 0:
-		print("\033[1;31;40mERROR: Unit test failed \033[0;37;40m")
-		terminate_services()
-		sys.exit(1)
-	terminate_services()
+    # Run regression and unit tests
+    cmd = "cd " + args.buildpath + "; " + env_cmd + " make reg-test"
+    result = os.system(cmd)
+    if (result >> 8) != 0:
+        print("\033[1;31;40mERROR: Regression test failed \033[0;37;40m")
+        terminate_services()
+        sys.exit(1)
+    cmd = "cd " + args.buildpath + "; " + env_cmd + " make unit-test"
+    result = os.system(cmd)
+    if (result >> 8) != 0:
+        print("\033[1;31;40mERROR: Unit test failed \033[0;37;40m")
+        terminate_services()
+        sys.exit(1)
+    terminate_services()
 

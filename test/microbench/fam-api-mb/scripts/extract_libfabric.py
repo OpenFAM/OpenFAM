@@ -123,7 +123,7 @@ files = [f for f in glob.glob(path + "/*.log" )]
 # Create and Open CSV file
 with open(outfile, "w") as outf:
     writer = csv.writer(outf,dialect='excel')
-    writer.writerow(['Level 1', 'Level 2', 'Level 3', 'Level 4', 'total PEs', 'num memeory servers', 'Count','Size', 'PE ID','Iteration','Total Pct','Total time(ns)','Avg time/call(ns)'])
+    writer.writerow(['Level 1', 'Level 2', 'Level 3', 'Level 4', 'total PEs', 'num memory servers', 'Count','Size', 'PE ID','Iteration','Total Pct','Total time(ns)','Avg time/call(ns)'])
 
     for f in files:
         fname = f.split('/')[-1]
