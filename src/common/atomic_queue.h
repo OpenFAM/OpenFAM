@@ -139,6 +139,7 @@ extern tInfo atomicTInfo[MAX_ATOMIC_THREADS];
 extern Fam_Ops_Libfabric *famOpsLibfabricQ;
 void *process_queue(void *);
 extern void *atomicRegionIdRoot;
+extern pthread_rwlock_t fiAddrLock;
 
 enum ATLError {
     ATOMIC_QUEUE_EMPTY = 100,
