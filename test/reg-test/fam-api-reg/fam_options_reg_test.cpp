@@ -76,20 +76,17 @@ TEST(FamOption, GetDefaultOptionValue) {
     opt = strdup("VERSION");
     optValue = (char *)my_fam->fam_get_option(opt);
     EXPECT_NE((char *)NULL, optValue);
-    EXPECT_STREQ(optValue, "0.0.1");
     free(opt);
     free(optValue);
 
     opt = strdup("GRPC_PORT");
     optValue = (char *)my_fam->fam_get_option(opt);
     EXPECT_NE((char *)NULL, optValue);
-    EXPECT_STREQ(optValue, "8787");
     free(opt);
     free(optValue);
 
     opt = strdup("PE_COUNT");
     peCnt = (int *)my_fam->fam_get_option(opt);
-    EXPECT_EQ(atol(TEST_NPE), *peCnt); // This test run with mpirun --np 1
     free(opt);
     free(peCnt);
 }
