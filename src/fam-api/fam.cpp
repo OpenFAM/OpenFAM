@@ -50,6 +50,10 @@
 #include "fam_counters.h"
 #endif
 
+#ifndef OPENFAM_VERSION
+#define OPENFAM_VERSION "0.0.0"
+#endif
+
 // Add this wrapper try catch block to return only Fam_Exception object
 // instead of derived exception class objects, to maintain uniformity in
 // exception handling by the application.
@@ -614,7 +618,7 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     //
     optValueMap = new std::map<std::string, const void *>();
 
-    optValueMap->insert({supportedOptionList[VERSION], strdup("0.0.1")});
+    optValueMap->insert({supportedOptionList[VERSION], strdup(OPENFAM_VERSION)});
 
     // Look for options information from config file.
     std::string config_file_path;
