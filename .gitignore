@@ -24,3 +24,5 @@ src/memory_service/fam_memory_service_rpc.grpc.pb.h
 src/memory_service/fam_memory_service_rpc.pb.h
 src/metadata_service/fam_metadata_rpc.grpc.pb.h
 src/metadata_service/fam_metadata_rpc.pb.h
+scripts/multi-mem-test-arg.txt
+test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt
