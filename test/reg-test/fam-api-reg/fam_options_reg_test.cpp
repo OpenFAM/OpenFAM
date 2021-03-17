@@ -45,6 +45,10 @@ using namespace openfam;
 fam *my_fam;
 Fam_Options fam_opts;
 
+#ifndef OPENFAM_VERSION
+#define OPENFAM_VERSION "0.0.0"
+#endif
+
 // Test case1 - Get Defualt option list
 TEST(FamOption, GetDefaultOptionList) {
     const char **optList;
@@ -76,6 +80,7 @@ TEST(FamOption, GetDefaultOptionValue) {
     opt = strdup("VERSION");
     optValue = (char *)my_fam->fam_get_option(opt);
     EXPECT_NE((char *)NULL, optValue);
+    EXPECT_STREQ(optValue, OPENFAM_VERSION);
     free(opt);
     free(optValue);
 
