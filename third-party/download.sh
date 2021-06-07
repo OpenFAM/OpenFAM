@@ -70,8 +70,12 @@ rm -fr googletest_v1_10_x
 cd $CURRENT_DIR
 echo "Downloading NVMM source"
 git clone https://github.com/HewlettPackard/gull.git nvmm
+cd nvmm
+git fetch --all --tags --prune
+git checkout tags/v0.1 -b openfam
 
 #Radixtree
+cd $CURRENT_DIR
 echo "Downloading radixtree source"
 git clone https://github.com/HewlettPackard/meadowlark.git radixtree
 
