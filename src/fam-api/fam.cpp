@@ -1,6 +1,6 @@
 /*
  * fam.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -846,8 +846,13 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
 
     if (options && options->runtime)
         famOptions.runtime = strdup(options->runtime);
-    else
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("runtime") > 0)
+        famOptions.runtime =
+            strdup(config_file_fam_options["runtime"].c_str());
+    else 
         famOptions.runtime = strdup("PMIX");
+    
     if ((strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMI2_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMIX_STR) != 0)) {
