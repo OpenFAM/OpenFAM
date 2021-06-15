@@ -3,6 +3,13 @@ OpenFAM Release Notes
 ---------------------
 
 This file contains user visible OpenFAM changes
+
+v2.0.1
+------
+ - Fam Option "runtime" was not being fetched from config file. It was using 
+   the default value of PMIX.
+ - Third party scripts has been modified to use NVMM v0.1. Previously it was 
+   using NVMM master branch.
  
 v2.0.0
 ------
