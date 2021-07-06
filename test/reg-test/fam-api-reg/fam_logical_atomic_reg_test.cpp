@@ -762,6 +762,28 @@ TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
     free((void *)dataItem);
 }
 
+// Test case 8 - Negative test cases with invalid descriptor
+TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidDescriptor) {
+
+    // uint32 operations
+    EXPECT_THROW(my_fam->fam_set(NULL, 0, uint32_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_and(NULL, 0, uint32_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_or(NULL, 0, uint32_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_xor(NULL, 0, uint32_t(0)), Fam_Exception);
+
+    // uint32 operations
+    EXPECT_THROW(my_fam->fam_set(NULL, 0, uint64_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_and(NULL, 0, uint64_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_or(NULL, 0, uint64_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_xor(NULL, 0, uint64_t(0)), Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

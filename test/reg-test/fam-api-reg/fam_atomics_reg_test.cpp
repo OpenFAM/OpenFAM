@@ -245,6 +245,18 @@ TEST(FamGeneriAtomics, SubInt32NonBlock) {
 #undef NT
 }
 
+// Test case 3 - SubInt32NonBlock
+TEST(FamFetchInt, FamFetchIntInvalidDesc) {
+    Fam_Descriptor *item = NULL;
+    EXPECT_THROW(my_fam->fam_fetch_int32(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_int64(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_int128(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_uint32(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_uint64(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_float(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_double(item, 0), Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

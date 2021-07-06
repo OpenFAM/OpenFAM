@@ -345,6 +345,20 @@ TEST(FamCompareSwapNegativeCaseInt128, CompareSwapNegativeCaseInt128Success) {
     free((void *)firstItem);
 }
 
+TEST(FamCompareSwapNegative, CompareSwapNegativeInvalidDescriptor) {
+    Fam_Descriptor *item = NULL;
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (int32_t)0, (int32_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (int64_t)0, (int64_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (uint32_t)0, (uint32_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (uint64_t)0, (uint64_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (int128_t)0, (int128_t)0),
+                 Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

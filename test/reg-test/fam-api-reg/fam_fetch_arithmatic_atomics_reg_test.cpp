@@ -367,6 +367,28 @@ TEST(FamArithAtomiciDouble, ArithAtomicDoubleSuccess) {
     free((void *)firstItem);
 }
 
+TEST(FamArithAtomic, ArithAtomicInvalidDescriptor) {
+    Fam_Descriptor *item = NULL;
+
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (int32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (int64_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (uint32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (uint64_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (float)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (double)0), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (int32_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (int64_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (uint32_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (uint64_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (float)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (double)0), Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

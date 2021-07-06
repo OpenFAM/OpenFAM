@@ -144,6 +144,19 @@ TEST(FamNonfetchLogicalAtomicUint64, NonfetchLogicalAtomicUint64Success) {
     free((void *)firstItem);
 }
 
+TEST(FamNonfetchLogicalAtomicU, NonfetchLogicalAtomicInvalidDescriptor) {
+    Fam_Descriptor *item = NULL;
+
+    EXPECT_THROW(my_fam->fam_and(item, 0, (uint32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_or(item, 0, (uint32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_xor(item, 0, (uint32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_and(item, 0, (uint64_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_or(item, 0, (uint64_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_xor(item, 0, (uint64_t)0), Fam_Exception);
+
+    delete item;
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);
