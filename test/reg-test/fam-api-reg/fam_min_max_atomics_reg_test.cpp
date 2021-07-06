@@ -1335,6 +1335,38 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
     free((void *)dataItem);
 }
 
+// Test case 16 - Min Max Negative test case with invalid descriptor
+TEST(FamMinMaxAtomics, MinMaxNegativeInvalidDescriptor) {
+    Fam_Descriptor *item = NULL;
+
+    EXPECT_THROW(my_fam->fam_min(item, 0, uint32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, uint32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, uint64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, uint64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, int32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, int32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, int64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, int64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, float(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, float(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, uint32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, uint32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, uint64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, uint64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, int32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, int32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, int64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, int64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, float(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, float(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, double(0)), Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

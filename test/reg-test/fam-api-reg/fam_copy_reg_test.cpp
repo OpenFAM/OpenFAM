@@ -357,6 +357,14 @@ TEST(FamCopy, CopyWithinSameRegionSuccess) {
     free((void *)destItemName);
 }
 
+// Test case 6 - (Negative test case) Invalid descriptor
+TEST(FamCopy, CopyInvalidDescriptor) {
+
+    EXPECT_THROW(my_fam->fam_copy(NULL, 0, NULL, 0, 10), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_copy_wait(NULL), Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

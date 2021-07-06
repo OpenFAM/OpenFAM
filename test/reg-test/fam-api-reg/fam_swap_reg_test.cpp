@@ -242,6 +242,17 @@ TEST(FamSwapDouble, SwapDoubleSuccess) {
     free((void *)firstItem);
 }
 
+TEST(FamSwapNegative, SwapInvalidDescriptor) {
+    Fam_Descriptor *item = NULL;
+    EXPECT_THROW(my_fam->fam_swap(item, 0, (int32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_swap(item, 0, (int64_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_swap(item, 0, (uint32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_swap(item, 0, (uint64_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_swap(item, 0, (float)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_swap(item, 0, (double)0), Fam_Exception);
+    delete item;
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);
