@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -38,7 +38,7 @@ elseif(${TEST_RUNTIME} STREQUAL "PMIX")
 	add_fam_test(fam_runtime_pmix_reg_test)
 	add_fam_test(fam_runtime_pmix_abort_reg_test)
 endif()
-add_fam_test(fam_scatter_gather_index_user_desc_reg_test)
+add_fam_test(fam_backup_restore)
 add_fam_test(fam_scatter_gather_stride_user_desc_reg_test)
 add_fam_test(fam_put_get_user_desc_reg_test)
 add_fam_test(fam_scatter_gather_index_blocking_reg_test)

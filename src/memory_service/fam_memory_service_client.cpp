@@ -279,6 +279,56 @@ void Fam_Memory_Service_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_copy);
 }
 
+void Fam_Memory_Service_Client::backup(uint64_t srcRegionId,
+                                       const char *srcAddr, uint32_t srcAddrLen,
+                                       uint64_t srcOffset, uint64_t srcKey,
+                                       uint64_t srcMemoryServerId,
+                                       string outputFile, uint64_t size) {
+    Fam_Memory_Backup_Restore_Request req;
+    Fam_Memory_Backup_Restore_Response res;
+    ::grpc::ClientContext ctx;
+
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_region_id(srcRegionId);
+    req.set_offset(srcOffset);
+    req.set_key(srcKey);
+    req.set_addr(srcAddr, srcAddrLen);
+    req.set_addr_len(srcAddrLen);
+    req.set_memserver_id(srcMemoryServerId);
+    req.set_filename(outputFile);
+    req.set_size(size);
+
+    ::grpc::Status status = stub->backup(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_backup);
+}
+void Fam_Memory_Service_Client::restore(uint64_t destRegionId,
+                                        const char *destAddr,
+                                        uint32_t destAddrLen,
+                                        uint64_t destOffset, uint64_t destKey,
+                                        uint64_t destMemoryServerId,
+                                        string inputFile, uint64_t size) {
+    Fam_Memory_Backup_Restore_Request req;
+    Fam_Memory_Backup_Restore_Response res;
+    ::grpc::ClientContext ctx;
+
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_region_id(destRegionId);
+    req.set_offset(destOffset);
+    req.set_key(destKey);
+    req.set_addr(destAddr, destAddrLen);
+    req.set_addr_len(destAddrLen);
+    req.set_memserver_id(destMemoryServerId);
+    req.set_filename(inputFile);
+    req.set_size(size);
+
+    ::grpc::Status status = stub->restore(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_restore);
+}
+
 void Fam_Memory_Service_Client::acquire_CAS_lock(uint64_t offset) {
     Fam_Memory_Service_Request req;
     Fam_Memory_Service_Response res;

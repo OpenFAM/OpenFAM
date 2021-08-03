@@ -46,6 +46,8 @@ service Fam_Memory_Service_Rpc {
         returns (Fam_Memory_Service_Response) {}
 
     rpc copy(Fam_Memory_Copy_Request) returns (Fam_Memory_Copy_Response) {}
+    rpc backup(Fam_Memory_Backup_Restore_Request) returns (Fam_Memory_Backup_Restore_Response) {}
+    rpc restore(Fam_Memory_Backup_Restore_Request) returns (Fam_Memory_Backup_Restore_Response) {}
 
     rpc acquire_CAS_lock(Fam_Memory_Service_Request)
         returns (Fam_Memory_Service_Response) {}
@@ -144,6 +146,22 @@ message Fam_Memory_Copy_Request {
 }
 
 message Fam_Memory_Copy_Response {
+    int32 errorcode = 1;
+    string errormsg = 2;
+}
+
+message Fam_Memory_Backup_Restore_Request {
+    uint64 region_id = 1;
+    uint64 offset = 2;
+    uint64 key = 3;
+    bytes  addr = 4;
+    uint32 addr_len = 5;
+    uint64 memserver_id = 6;
+    string filename = 7;
+    uint64 size = 8;
+}
+
+message Fam_Memory_Backup_Restore_Response {
     int32 errorcode = 1;
     string errormsg = 2;
 }

@@ -486,6 +486,53 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
     }
 }
 
+void Fam_CIS_Client::backup(uint64_t srcRegionId, const char *srcAddr,
+                            uint32_t srcAddrLen, uint64_t srcOffset,
+                            uint64_t srcKey, uint64_t srcMemoryServerId,
+                            string outputFile, uint32_t uid, uint32_t gid,
+                            uint64_t size) {
+
+    Fam_Backup_Restore_Request req;
+    Fam_Backup_Restore_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_regionid(srcRegionId);
+    req.set_addr(srcAddr, srcAddrLen);
+    req.set_addrlen(srcAddrLen);
+    req.set_offset(srcOffset);
+    req.set_key(srcKey);
+    req.set_memserver_id(srcMemoryServerId);
+    req.set_filename(outputFile);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    req.set_size(size);
+    ::grpc::Status status = stub->backup(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+}
+void Fam_CIS_Client::restore(uint64_t destRegionId, const char *destAddr,
+                             uint32_t destAddrLen, uint64_t destOffset,
+                             uint64_t destKey, uint64_t destMemoryServerId,
+                             string inputFile, uint32_t uid, uint32_t gid,
+                             uint64_t size) {
+
+    Fam_Backup_Restore_Request req;
+    Fam_Backup_Restore_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_regionid(destRegionId);
+    req.set_memserver_id(destMemoryServerId);
+    req.set_key(destKey);
+    req.set_addr(destAddr, destAddrLen);
+    req.set_addrlen(destAddrLen);
+    req.set_offset(destOffset);
+    req.set_filename(inputFile);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    req.set_size(size);
+    ::grpc::Status status = stub->restore(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+}
+
 void *Fam_CIS_Client::fam_map(uint64_t regionId, uint64_t offset,
                               uint64_t memoryServerId, uint32_t uid,
                               uint32_t gid) {

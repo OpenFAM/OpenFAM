@@ -355,6 +355,27 @@ void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_copy);
 }
 
+void Fam_Memory_Service_Direct::backup(uint64_t srcRegionId,
+                                       const char *srcAddr, uint32_t srcAddrLen,
+                                       uint64_t srcOffset, uint64_t srcKey,
+                                       uint64_t srcMemoryServerId,
+                                       string outputFile, uint64_t size) {
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    allocator->backup(srcRegionId, srcOffset, outputFile, size);
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_backup);
+}
+
+void Fam_Memory_Service_Direct::restore(uint64_t destRegionId,
+                                        const char *destAddr,
+                                        uint32_t destAddrLen,
+                                        uint64_t destOffset, uint64_t destKey,
+                                        uint64_t destMemoryServerId,
+                                        string inputFile, uint64_t size) {
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    allocator->restore(destRegionId, destOffset, inputFile, size);
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_restore);
+}
+
 size_t Fam_Memory_Service_Direct::get_addr_size() {
     size_t addrSize;
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()

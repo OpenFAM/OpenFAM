@@ -32,6 +32,7 @@
 #include <boost/atomic.hpp>
 #include <chrono>
 #include <iomanip>
+#include <libgen.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -469,6 +470,98 @@ void Memserver_Allocator::copy(uint64_t srcRegionId, uint64_t srcOffset,
     fam_memcpy(dest, src, size);
 }
 
+void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
+                                 string outputFile, uint64_t size) {
+
+    void *src = get_local_pointer(srcRegionId, srcOffset);
+    int fileid = open((char *)outputFile.c_str(), O_RDWR | O_CREAT, 0777);
+    if (fileid == -1) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "backup file creation failed.");
+    }
+    long pgsz = sysconf(_SC_PAGESIZE);
+    unsigned long page_size = (((size + 64) + (pgsz - 1)) / pgsz) * pgsz;
+    lseek(fileid, page_size - 1, SEEK_SET);
+    write(fileid, "", 1);
+    char *destaddr;
+    destaddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
+                            fileid, 0);
+
+    if (destaddr == MAP_FAILED) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "mmap of file failed.");
+    }
+
+    char *dataitem_info = (char *)malloc(64);
+    char *dataitem_name = NULL;
+    char *region_name = NULL;
+    char *version = NULL;
+    char *name = (char *)basename((char *)outputFile.c_str());
+    char *token = strtok(name, ".");
+    int tokencnt = 0;
+    while (token != NULL) {
+        // printf("%s\n", token);
+        tokencnt++;
+        switch (tokencnt) {
+
+        case 1:
+            region_name = token;
+            break;
+        case 2:
+            dataitem_name = token;
+            break;
+        case 3:
+            version = token;
+            break;
+        }
+        token = strtok(NULL, ".");
+    }
+    snprintf(dataitem_info, 64,
+             "dataitem_name: %s\nregion_name: %s\nregion_id: %lu\nsize: "
+             "%ld\nversion: %s\n",
+             dataitem_name, region_name, srcRegionId, page_size, version);
+    memcpy(destaddr, dataitem_info, 64);
+    memcpy(destaddr + 64, src, page_size - 64);
+    msync(destaddr, page_size, MS_SYNC);
+    munmap(destaddr, page_size);
+    close(fileid);
+    free(dataitem_info);
+}
+
+void Memserver_Allocator::restore(uint64_t destRegionId, uint64_t destOffset,
+                                  string inputFile, uint64_t size) {
+    void *dest = get_local_pointer(destRegionId, destOffset);
+    struct stat info;
+    int exist = stat(inputFile.c_str(), &info);
+    if (exist == -1) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "InputFile doesnt exist.");
+    }
+    //    size = info.st_size;
+    int fileid = open((char *)inputFile.c_str(), O_RDWR | O_CREAT, 0777);
+    if (fileid == -1) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "Opening of input file failed.");
+    }
+    long pgsz = sysconf(_SC_PAGESIZE);
+    unsigned long page_size = ((size + (pgsz - 1)) / pgsz) * pgsz;
+    lseek(fileid, page_size - 1, SEEK_SET);
+    char *srcaddr;
+    srcaddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
+                           fileid, 0);
+
+    if (srcaddr == MAP_FAILED) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "mmap of input file failed.");
+    }
+
+    char *dataitem_info = (char *)malloc(64);
+    memcpy(dataitem_info, srcaddr, 64);
+    memcpy(dest, srcaddr + 64, page_size - 4032);
+    munmap(srcaddr, page_size);
+    close(fileid);
+    free(dataitem_info);
+}
 void *Memserver_Allocator::get_local_pointer(uint64_t regionId,
                                              uint64_t offset) {
     ostringstream message;

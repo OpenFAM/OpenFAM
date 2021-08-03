@@ -1,6 +1,6 @@
 /*
  * fam_ops_libfabric.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -584,6 +584,48 @@ void *Fam_Ops_Libfabric::copy(Fam_Descriptor *src, uint64_t srcOffset,
 
 void Fam_Ops_Libfabric::wait_for_copy(void *waitObj) {
     return famAllocator->wait_for_copy(waitObj);
+}
+
+void Fam_Ops_Libfabric::backup(Fam_Descriptor *descriptor, char *outputFile) {
+
+    struct stat info;
+    int exist = stat(outputFile, &info);
+    if (exist == 0) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "Mentioned backup file already exists.");
+    }
+    std::pair<void *, size_t> srcMemSrv;
+    auto obj = memServerAddrs->find(descriptor->get_memserver_id());
+    if (obj == memServerAddrs->end())
+        THROW_ERR_MSG(Fam_Datapath_Exception, "memserver not found");
+    else
+        srcMemSrv = obj->second;
+
+    famAllocator->backup(descriptor, (const char *)srcMemSrv.first,
+                         (uint32_t)srcMemSrv.second, outputFile);
+}
+
+void Fam_Ops_Libfabric::restore(char *inputFile, Fam_Descriptor *dest) {
+
+    struct stat info;
+    int exist = stat(inputFile, &info);
+    if (exist == -1) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "InputFile doesnt exist.");
+    }
+    if ((unsigned)(info.st_size - 4096) > (unsigned)dest->get_size()) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "InputFile size is greater than size of data item.");
+    }
+    std::pair<void *, size_t> srcMemSrv;
+    auto obj = memServerAddrs->find(dest->get_memserver_id());
+    if (obj == memServerAddrs->end())
+        THROW_ERR_MSG(Fam_Datapath_Exception, "memserver not found");
+    else
+        srcMemSrv = obj->second;
+
+    famAllocator->restore(dest, (const char *)srcMemSrv.first,
+                          (uint32_t)srcMemSrv.second, inputFile, info.st_size);
 }
 
 void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {

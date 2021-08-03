@@ -55,6 +55,8 @@ service Fam_CIS_Rpc {
     rpc get_stat_info(Fam_Dataitem_Request) returns (Fam_Dataitem_Response) {}
 
     rpc copy(Fam_Copy_Request) returns (Fam_Copy_Response) {}
+    rpc backup(Fam_Backup_Restore_Request) returns (Fam_Backup_Restore_Response) {}
+    rpc restore(Fam_Backup_Restore_Request) returns (Fam_Backup_Restore_Response) {}
 
     rpc acquire_CAS_lock(Fam_Dataitem_Request) returns (Fam_Dataitem_Response) {
     }
@@ -226,6 +228,24 @@ message Fam_Copy_Request {
 }
 
 message Fam_Copy_Response {
+    int32 errorcode = 1;
+    string errormsg = 2;
+}
+
+message Fam_Backup_Restore_Request {
+    uint64 regionid = 1;
+    bytes addr = 2;
+    uint32 addrlen = 3;
+    uint64 offset = 4;
+    uint64 key = 5;
+    uint64 memserver_id = 6;
+    string filename = 7;
+    uint32 uid = 8;
+    uint32 gid = 9;
+    uint64 size = 10;
+}
+
+message Fam_Backup_Restore_Response {
     int32 errorcode = 1;
     string errormsg = 2;
 }

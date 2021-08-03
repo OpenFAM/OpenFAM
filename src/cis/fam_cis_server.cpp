@@ -1,6 +1,6 @@
 /*
  * fam_cis_server.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -454,6 +454,49 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
 ::grpc::Status Fam_CIS_Server::copy(::grpc::ServerContext *context,
                                     const ::Fam_Copy_Request *request,
                                     ::Fam_Copy_Response *response) {
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::backup(::grpc::ServerContext *context,
+                       const ::Fam_Backup_Restore_Request *request,
+                       ::Fam_Backup_Restore_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    try {
+
+        famCIS->backup(request->regionid(), request->addr().c_str(),
+                       request->addrlen(), request->offset(), request->key(),
+                       request->memserver_id(), request->filename(),
+                       request->uid(), request->gid(), request->size());
+    }
+
+    catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    CIS_SERVER_PROFILE_END_OPS(backup);
+
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::restore(::grpc::ServerContext *context,
+                        const ::Fam_Backup_Restore_Request *request,
+                        ::Fam_Backup_Restore_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    try {
+        famCIS->restore(request->regionid(), request->addr().c_str(),
+                        request->addrlen(), request->offset(), request->key(),
+                        request->memserver_id(), request->filename(),
+                        request->uid(), request->gid(), request->size());
+
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    CIS_SERVER_PROFILE_END_OPS(restore);
     return ::grpc::Status::OK;
 }
 

@@ -271,7 +271,16 @@ class Fam_CIS {
      * @param waitObj - wait object
      **/
     virtual void wait_for_copy(void *waitObj) = 0;
-
+    virtual void backup(uint64_t srcRegionId, const char *srcAddr,
+                        uint32_t srcAddrLen, uint64_t srcOffset,
+                        uint64_t srcKey, uint64_t srcMemoryServerId,
+                        string outputFile, uint32_t uid, uint32_t gid,
+                        uint64_t size) = 0;
+    virtual void restore(uint64_t destRegionId, const char *destAddr,
+                         uint32_t destAddrLen, uint64_t destOffset,
+                         uint64_t destKey, uint64_t destMemoryServerId,
+                         string inputFile, uint32_t uid, uint32_t gid,
+                         uint64_t size) = 0;
     /**
      * Map a data item in FAM to the local virtual address space, and return its
      * pointer.

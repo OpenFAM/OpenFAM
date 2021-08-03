@@ -1,6 +1,6 @@
 /*
  * fam_ops_shm.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -632,6 +632,93 @@ void *Fam_Ops_SHM::copy(Fam_Descriptor *src, uint64_t srcOffset,
 
 void Fam_Ops_SHM::wait_for_copy(void *waitObj) {
     asyncQHandler->wait_for_copy(waitObj);
+}
+
+void Fam_Ops_SHM::backup(Fam_Descriptor *descriptor, char *outputFile) {
+
+    struct stat info;
+    int exist = stat(outputFile, &info);
+    if (exist == 0) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "Mentioned backup file already exists.");
+    }
+    void *base = descriptor->get_base_address();
+    uint64_t size = descriptor->get_size();
+    // uint64_t key = descriptor->get_key();
+
+    int fileid = open((char *)outputFile, O_RDWR | O_CREAT, 0777);
+    if (fileid == -1) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "backup file creation failed.");
+    }
+    long pgsz = sysconf(_SC_PAGESIZE);
+    unsigned long page_size = ((size + (pgsz - 1)) / pgsz) * pgsz;
+    lseek(fileid, page_size - 1, SEEK_SET);
+    write(fileid, "", 1);
+    char *destaddr;
+    destaddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
+                            fileid, 0);
+
+    if (destaddr == MAP_FAILED) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "mmap of file failed.");
+    }
+
+    void *src = (void *)((uint64_t)base);
+
+    char *dataitem_info = (char *)malloc(64);
+
+    snprintf(dataitem_info, 64,
+             "name: %s\nmemory_server_id: %lu\npermission: 0%o\nsize: %lu\n",
+             descriptor->get_name(), descriptor->get_memserver_id(),
+             descriptor->get_perm(), size);
+    memcpy(destaddr, dataitem_info, 64);
+    memcpy(destaddr + 64, src, page_size - 64);
+    msync(destaddr, page_size, MS_SYNC);
+    munmap(destaddr, page_size);
+    close(fileid);
+    free(dataitem_info);
+}
+
+void Fam_Ops_SHM::restore(char *inputFile, Fam_Descriptor *dest) {
+
+    struct stat info;
+    int exist = stat(inputFile, &info);
+    if (exist == -1) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "InputFile doesnt exist.");
+    }
+    void *base = dest->get_base_address();
+    uint64_t size = dest->get_size();
+    // uint64_t key = dest->get_key();
+
+    int fileid = open((char *)inputFile, O_RDWR | O_CREAT, 0777);
+    if (fileid == -1) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "backup file creation failed.");
+    }
+    long pgsz = sysconf(_SC_PAGESIZE);
+    unsigned long page_size = ((size + (pgsz - 1)) / pgsz) * pgsz;
+    lseek(fileid, page_size - 1, SEEK_SET);
+    write(fileid, "", 1);
+    char *srcaddr;
+    srcaddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
+                           fileid, 0);
+
+    if (srcaddr == MAP_FAILED) {
+        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "mmap of file failed.");
+    }
+
+    void *destination = (void *)((uint64_t)base);
+
+    char *dataitem_info = (char *)malloc(64);
+
+    memcpy(destination, srcaddr, page_size);
+    msync(srcaddr, page_size, MS_SYNC);
+    munmap(srcaddr, page_size);
+    close(fileid);
+    free(dataitem_info);
 }
 
 void Fam_Ops_SHM::fence(Fam_Region_Descriptor *descriptor)

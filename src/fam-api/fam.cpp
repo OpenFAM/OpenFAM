@@ -31,6 +31,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "allocator/fam_allocator_client.h"
@@ -209,6 +211,8 @@ class fam::Impl_ {
                    Fam_Descriptor *dest, uint64_t destOffset, uint64_t nbytes);
 
     void fam_copy_wait(void *waitObj);
+    void fam_backup(Fam_Descriptor *src, char *outputFile);
+    void fam_restore(char *inputFile, Fam_Descriptor *dest);
 
     void fam_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
     void fam_set(Fam_Descriptor *descriptor, uint64_t offset, int64_t value);
@@ -1848,6 +1852,25 @@ void fam::Impl_::fam_copy_wait(void *waitObj) {
     famOps->wait_for_copy(waitObj);
     FAM_PROFILE_END_ALLOCATOR(fam_copy_wait);
     return;
+}
+
+void fam::Impl_::fam_backup(Fam_Descriptor *src, char *outputFile) {
+    struct stat sb;
+    if (stat(outputFile, &sb) == 0) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "outputFile already exists");
+    }
+    validate_item(src);
+    famOps->backup(src, outputFile);
+}
+
+void fam::Impl_::fam_restore(char *inputFile, Fam_Descriptor *dest) {
+
+    struct stat sb;
+    if (stat(inputFile, &sb) == -1) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "inputFile doesnot exists");
+    }
+    validate_item(dest);
+    famOps->restore(inputFile, dest);
 }
 
 // ATOMICS Group
@@ -4409,6 +4432,18 @@ void *fam::fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
 void fam::fam_copy_wait(void *waitObj) {
     TRY_CATCH_BEGIN
     pimpl_->fam_copy_wait(waitObj);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void fam::fam_backup(Fam_Descriptor *src, char *outputFile) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_backup(src, outputFile);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void fam::fam_restore(char *inputFile, Fam_Descriptor *dest) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_restore(inputFile, dest);
     RETURN_WITH_FAM_EXCEPTION
 }
 

@@ -1,9 +1,9 @@
 /*
  * fam.h
- * Copyright (c) 2017, 2018, 2020 Hewlett Packard Enterprise Development, LP.
- * All rights reserved. Redistribution and use in source and binary forms, with
- * or without modification, are permitted provided that the following conditions
- * are met:
+ * Copyright (c) 2017, 2018, 2020, 2021 Hewlett Packard Enterprise Development,
+ * LP. All rights reserved. Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided that the following
+ * conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -740,6 +740,12 @@ class fam {
      * @return - none
      */
     void fam_copy_wait(void *waitObj);
+
+    // Backup data item to a specific file
+    void fam_backup(Fam_Descriptor *src, char *outputFile);
+    // Restore data item  info from  a specific file to descriptor.
+    void fam_restore(char *inputFile, Fam_Descriptor *dest);
+
     // ATOMICS Group
 
     // NON fetching routines

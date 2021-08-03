@@ -1,8 +1,9 @@
 /*
  * fam_cis_direct.cpp
- * Copyright (c) 2020-21 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -1140,6 +1141,77 @@ void Fam_CIS_Direct::wait_for_copy(void *waitObj) {
     Fam_Copy_Wait_Object *obj = (Fam_Copy_Wait_Object *)waitObj;
     asyncQHandler->wait_for_copy((void *)(obj->tag));
     CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_copy);
+}
+
+void Fam_CIS_Direct::backup(uint64_t srcRegionId, const char *srcAddr,
+                            uint32_t srcAddrLen, uint64_t srcOffset,
+                            uint64_t srcKey, uint64_t srcMemoryServerId,
+                            string outputFile, uint32_t uid, uint32_t gid,
+                            uint64_t size) {
+    ostringstream message;
+    message << "Error While backing from dataitem : ";
+    Fam_DataItem_Metadata srcDataitem;
+    CIS_DIRECT_PROFILE_START_OPS()
+    uint64_t metadataServiceId = 0;
+    Fam_Memory_Service *memoryService = get_memory_service(srcMemoryServerId);
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(metadataServiceId);
+
+    // Permission check, data item out of bound check, already done on the
+    // client side. This looks redundant, can be removed later.
+    uint64_t srcDataitemId = get_dataitem_id(srcOffset, srcMemoryServerId);
+
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_READ, srcDataitemId, srcRegionId, uid, gid,
+            srcDataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Read operation is not permitted on source dataitem";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
+    }
+    memoryService->backup(srcRegionId, srcAddr, srcAddrLen, srcOffset, srcKey,
+                          srcMemoryServerId, outputFile, size);
+}
+
+void Fam_CIS_Direct::restore(uint64_t destRegionId, const char *destAddr,
+                             uint32_t destAddrLen, uint64_t destOffset,
+                             uint64_t destKey, uint64_t destMemoryServerId,
+                             string inputFile, uint32_t uid, uint32_t gid,
+                             uint64_t size) {
+    ostringstream message;
+    message << "Error While restoring dataitem : ";
+    Fam_DataItem_Metadata destDataitem;
+    // Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
+    CIS_DIRECT_PROFILE_START_OPS()
+    uint64_t metadataServiceId = 0;
+    Fam_Memory_Service *memoryService = get_memory_service(destMemoryServerId);
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(metadataServiceId);
+
+    // Permission check, data item out of bound check, already done on the
+    // client side. This looks redundant, can be removed later.
+    uint64_t destDataitemId = get_dataitem_id(destOffset, destMemoryServerId);
+
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_READ, destDataitemId, destRegionId, uid, gid,
+            destDataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Read operation is not permitted on source dataitem";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
+    }
+    memoryService->restore(destRegionId, destAddr, destAddrLen, destOffset,
+                           destKey, destMemoryServerId, inputFile, size);
 }
 
 void Fam_CIS_Direct::acquire_CAS_lock(uint64_t offset,
