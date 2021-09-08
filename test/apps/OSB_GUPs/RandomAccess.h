@@ -28,7 +28,7 @@ typedef long long s64Int;
 static double RTSEC() {
     struct timeval tp;
     gettimeofday(&tp, NULL);
-    return tp.tv_sec + tp.tv_usec / (double)1.0e6;
+    return (double)tp.tv_sec + (double)tp.tv_usec / (double)1.0e6;
 }
 
 extern s64Int starts(u64Int);

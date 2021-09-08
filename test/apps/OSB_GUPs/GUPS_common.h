@@ -30,14 +30,16 @@ Fam_Region_Descriptor *GUPS_fam_initialize(void) {
     int *val;
     // FAM initialize
     my_fam = new fam();
-    init_fam_options(&fam_opts);
+    //init_fam_options(&fam_opts);
     memset((void *)&fam_opts, 0, sizeof(Fam_Options));
-    fam_opts.allocator = strdup("NVMM");
+    //fam_opts.allocator = strdup("NVMM");
+    fam_opts.openFamModel = strdup("shared_memory");
+    fam_opts.runtime = strdup("NONE");
 
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
-        fam_stream << "fam initialization failed:" << e.fam_error_msg() << endl;
+        fam_stream << "fam initialization failed 1:" << e.fam_error_msg() << endl;
         exit(1);
     }
 
@@ -66,15 +68,17 @@ Fam_Region_Descriptor *GUPS_fam_initialize(size_t size) {
     // FAM initialize
     my_fam = new fam();
     memset((void *)&fam_opts, 0, sizeof(Fam_Options));
+    fam_opts.runtime = strdup("NONE");
 
     try {
         my_fam->fam_initialize("default", &fam_opts);
     } catch (Fam_Exception &e) {
-        cout << "fam initialization failed:" << e.fam_error_msg() << endl;
+        cout << "fam initialization failed 2:" << e.fam_error_msg() << endl;
         exit(1);
     }
 
-    fam_opts.allocator = strdup("NVMM");
+    //fam_opts.allocator = strdup("NVMM");
+    fam_opts.openFamModel = strdup("shared_memory");
 
     int *val;
     val = (int *)my_fam->fam_get_option(strdup("PE_ID"));
@@ -98,7 +102,7 @@ Fam_Region_Descriptor *GUPS_fam_initialize(size_t size) {
     try {
         region = my_fam->fam_create_region(REGION_NAME, size, 0777, NONE);
     } catch (Fam_Exception &e) {
-        cout << "fam initialization failed:" << e.fam_error_msg() << endl;
+        cout << "fam initialization failed 3:" << e.fam_error_msg() << endl;
         exit(1);
     }
     return region;

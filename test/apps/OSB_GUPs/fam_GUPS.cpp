@@ -48,7 +48,6 @@
 #include <fstream>
 #include <iostream>
 #include <math.h>
-#include <mpp/shmem.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/times.h>
@@ -58,19 +57,18 @@ using namespace std::chrono;
 using namespace std;
 using namespace openfam;
 
-#define MAXTHREADS 256
-char *GUPSTable = "GUPSTable";
-char *sAbortVariable = "SABORTVARIABLE";
-char *rAbortVariable = "RABORTVARIABLE";
-char *GUPsVariable = "GUPSVARIABLE";
-char *temp_GUPsVariable = "TEMP_GUPSVARIABLE";
-char *GlbNumErrorsVariable = "GLBNUMERRORSVARIABLE";
-char *NumErrorsVariable = "NUMERRORSVARIABLE";
-char *HPCC_TableVariable = "HPCCTABLEVARIABLE";
-char *countVariable = "COUNTVARIABLE";
-char *ranVariable = "RANVARIABLE";
-char *updatesVariable = "UPDATESVARIABLE";
-char *all_updatesVariable = "ALLUPDATEVARIABLE";
+const char *GUPSTable = "GUPSTable";
+const char *sAbortVariable = "SABORTVARIABLE";
+const char *rAbortVariable = "RABORTVARIABLE";
+const char *GUPsVariable = "GUPSVARIABLE";
+const char *temp_GUPsVariable = "TEMP_GUPSVARIABLE";
+const char *GlbNumErrorsVariable = "GLBNUMERRORSVARIABLE";
+const char *NumErrorsVariable = "NUMERRORSVARIABLE";
+const char *HPCC_TableVariable = "HPCCTABLEVARIABLE";
+const char *countVariable = "COUNTVARIABLE";
+const char *ranVariable = "RANVARIABLE";
+const char *updatesVariable = "UPDATESVARIABLE";
+const char *all_updatesVariable = "ALLUPDATEVARIABLE";
 
 u64Int srcBuf[] = {0xb1ffd1da};
 u64Int targetBuf[sizeof(srcBuf) / sizeof(u64Int)];
@@ -79,21 +77,16 @@ u64Int targetBuf[sizeof(srcBuf) / sizeof(u64Int)];
 u64Int *HPCC_Table;
 
 int main(int argc, char **argv) {
-    int debug = 0;
-
     s64Int i;
-    int NumProcs, logNumProcs, MyProc;
+    int NumProcs = 0, logNumProcs = 0, MyProc = 0;
     u64Int GlobalStartMyProc;
-    u64Int Top;               /* Number of table entries in top of Table */
     s64Int LocalTableSize;    /* Local table width */
     u64Int MinLocalTableSize; /* Integer ratio TableSize/NumProcs */
     u64Int logTableSize, TableSize;
 
-    double CPUTime;  /* CPU  time to update table */
     double RealTime; /* Real time to update table */
     double TotalMem;
-    int PowerofTwo;
-    double timeBound = -1;     /* OPTIONAL time bound for execution time */
+    int PowerofTwo = 0;
     u64Int NumUpdates_Default; /* Number of updates to table (suggested: 4x
                                   number of table entries) */
     u64Int
@@ -105,25 +98,16 @@ int main(int argc, char **argv) {
     s64Int GlbNumUpdates; /* for reduction */
 #endif
 
-    int j, k;
-    int logTableLocal, ipartner, iterate, niterate;
-    int ndata, nkeep, nsend, nrecv, index, nlocalm1;
-    int numthrds;
-    u64Int datum, procmask;
-    u64Int *data, *send;
-    void *tstatus;
-    int remote_proc, offset;
-    u64Int *tb;
-    s64Int remotecount;
-    int thisPeId;
-    int numNodes;
-    int count2;
+    int j;
+    int logTableLocal, iterate, niterate;
+    int remote_proc;
     int operation_mode;
     operation_mode = atoi(argv[3]); // 0->LoadStore  1->PutGet
 
     Fam_Region_Descriptor *region = NULL;
     TotalMem = 1024; // 262144; /* max single node memory */
-    NumProcs = atoi(argv[2]);
+    TotalMem = 262144; /* max single node memory */
+    NumProcs = atoi(argv[2]); // #PEs in the Run mode
     TotalMem *= NumProcs; /* max memory in NumProcs nodes */
 
     TotalMem /= sizeof(u64Int);
@@ -140,42 +124,43 @@ int main(int argc, char **argv) {
          << " LocalTableSize: " << LocalTableSize
          << "W   OneWord(sizeof(u64Int)): " << sizeof(u64Int) << "B\n";
 
+    // Initialize or run (0: Initialize the memory region; 1: Run mode)
     if (atoi(argv[1]) == 0) {
         auto start = high_resolution_clock::now();
         region = GUPS_fam_initialize((u64Int)(
             TotalMem * 1.5 * sizeof(u64Int))); // Initialize the FAM region
         try {
-            Fam_Descriptor *gupsTable = my_fam->fam_allocate(
+            /*Fam_Descriptor *gupsTable = */my_fam->fam_allocate(
                 GUPSTable, (u64Int)(TotalMem * sizeof(u64Int)), 0777,
                 region); // Allocate GUPSTable in the FAM region
-            Fam_Descriptor *sAbort =
+            /*Fam_Descriptor *sAbort =*/
                 my_fam->fam_allocate(sAbortVariable, sizeof(int), 0777, region);
-            Fam_Descriptor *rAbort =
+            /*Fam_Descriptor *rAbort =*/
                 my_fam->fam_allocate(rAbortVariable, sizeof(int), 0777, region);
 
-            Fam_Descriptor *GUPs = my_fam->fam_allocate(
+            /*Fam_Descriptor *GUPs = */my_fam->fam_allocate(
                 GUPsVariable, sizeof(double), 0777, region);
-            Fam_Descriptor *temp_GUPs = my_fam->fam_allocate(
+            /*Fam_Descriptor *temp_GUPs = */my_fam->fam_allocate(
                 temp_GUPsVariable, sizeof(double), 0777, region);
-            Fam_Descriptor *GlbNumErrors = my_fam->fam_allocate(
+            /*Fam_Descriptor *GlbNumErrors = */my_fam->fam_allocate(
                 GlbNumErrorsVariable, sizeof(s64Int), 0777, region);
-            Fam_Descriptor *NumErrors = my_fam->fam_allocate(
+            /*Fam_Descriptor *NumErrors = */my_fam->fam_allocate(
                 NumErrorsVariable, sizeof(s64Int), 0777, region);
 
-            Fam_Descriptor *HPCC_Table = my_fam->fam_allocate(
+            /*Fam_Descriptor *HPCC_Table = */my_fam->fam_allocate(
                 HPCC_TableVariable, LocalTableSize * sizeof(u64Int), 0777,
                 region);
-            Fam_Descriptor *count = my_fam->fam_allocate(
+            /*Fam_Descriptor *count = */my_fam->fam_allocate(
                 countVariable, sizeof(s64Int), 0777, region);
-            Fam_Descriptor *ran =
+            /*Fam_Descriptor *ran =*/
                 my_fam->fam_allocate(ranVariable, sizeof(s64Int), 0777, region);
-            Fam_Descriptor *updates = my_fam->fam_allocate(
+            /*Fam_Descriptor *updates = */my_fam->fam_allocate(
                 updatesVariable, sizeof(s64Int) * NumProcs, 0777, region);
-            Fam_Descriptor *all_updates =
+            /*Fam_Descriptor *all_updates =*/
                 my_fam->fam_allocate(all_updatesVariable, sizeof(s64Int), 0777,
                                      region); /*: An array to collect sum*/
 
-            printf("Successully allocated a  integer elements\n");
+            printf("Successully allocated integer elements\n");
         } catch (Fam_Exception &e) {
             printf("fam API failed: %d: %s\n", e.fam_error(),
                    e.fam_error_msg());
@@ -185,7 +170,7 @@ int main(int argc, char **argv) {
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<microseconds>(stop - start);
 
-        printf("Check_1: %d\n", TotalMem);
+        printf("Check_1: %f\n", TotalMem);
     } else {
         region = GUPS_fam_initialize(); // Look up the region in the metadata
                                         // service.
@@ -217,18 +202,18 @@ int main(int argc, char **argv) {
         NumUpdates_Default = 4 * TableSize;
         ProcNumUpdates = 4 * LocalTableSize;
         NumUpdates = NumUpdates_Default;
-        u64Int *gupsTable;
-        int *sAbort;
-        int *rAbort;
-        double *gUPs;
-        double *temp_GUPs;
-        s64Int *glbNumErrors;
-        s64Int *numErrors;
-        u64Int *hPCC_Table;
-        s64Int *count;
-        s64Int *ran;
-        s64Int *updates;
-        s64Int *all_updates;
+        u64Int *gupsTable = NULL;
+        int *sAbort = NULL;
+        int *rAbort = NULL;
+        double *gUPs = NULL;
+        double *temp_GUPs = NULL;
+        s64Int *glbNumErrors = NULL;
+        s64Int *numErrors = NULL;
+        u64Int *hPCC_Table = NULL;
+        s64Int *count = NULL;
+        s64Int *ran = NULL;
+        s64Int *updates = NULL;
+        s64Int *all_updates = NULL;
         // Map all defined data items in the FAM to the process virtual address
         // space.
         gupsTable = (u64Int *)my_fam->fam_map(GupsTable);
@@ -267,7 +252,7 @@ int main(int argc, char **argv) {
                        logTableSize, NumProcs, LocalTableSize);
             }
             printf("Default number of updates (RECOMMENDED) = " FSTR64
-                   "\tand actually done = %d\n",
+                   "\tand actually done = %lld\n",
                    NumUpdates_Default, ProcNumUpdates * NumProcs);
         }
 
@@ -310,9 +295,8 @@ int main(int argc, char **argv) {
         }
 
         *ran = starts(4 * GlobalStartMyProc);
-        niterate = ProcNumUpdates;
-        logTableLocal = logTableSize - logNumProcs;
-        nlocalm1 = LocalTableSize - 1;
+        niterate = (int)ProcNumUpdates;
+        logTableLocal = (int)(logTableSize - logNumProcs);
 
         if (operation_mode == 0) {
             for (j = 0; j < numNodes; j++) {
@@ -327,17 +311,17 @@ int main(int argc, char **argv) {
 
         for (iterate = 0; iterate < niterate; iterate++) {
             *ran = (*ran << 1) ^ ((s64Int)*ran < ZERO64B ? POLY : ZERO64B);
-            remote_proc = (*ran >> logTableLocal) & (numNodes - 1);
+            remote_proc = (int)((*ran >> logTableLocal) & (numNodes - 1));
 
             // Forces updates to remote PE only
             if (remote_proc == MyProc)
                 remote_proc = (remote_proc + 1) / numNodes;
 
             int offset =
-                sizeof(u64Int) * LocalTableSize *
-                remote_proc; // Determine the corresponding offset for the PE
+                (int)(sizeof(u64Int) * LocalTableSize *
+                remote_proc); // Determine the corresponding offset for the PE
             int wordIndex =
-                *ran & (LocalTableSize - 1); // Determine the word index
+                (int)(*ran & (LocalTableSize - 1)); // Determine the word index
 
             if (operation_mode == 0)
                 remote_val =
@@ -379,7 +363,7 @@ int main(int argc, char **argv) {
         RealTime += RTSEC();
 
         if (MyProc == 0) {
-            *gUPs = 1e-9 * NumUpdates / RealTime;
+            *gUPs = 1e-9 * (double)NumUpdates / RealTime;
             printf("Real time used = %.6f seconds\n", RealTime);
             printf("%.9f Billion(10^9) Updates    per second [GUP/s]\n", *gUPs);
             printf("%.9f Billion(10^9) Updates/PE per second [GUP/s]\n",
@@ -396,7 +380,7 @@ int main(int argc, char **argv) {
             int cpu = sched_getcpu();
 
             if (MyProc == 0) {
-                printf("PE%d CPU%d  updates:%d\n", MyProc, cpu, all_updates[0]);
+                printf("PE%d CPU%d  updates:%lld\n", MyProc, cpu, all_updates[0]);
 
                 if (ProcNumUpdates * NumProcs ==
                     all_updates[0]) { // Check the number of updates by PEs with
@@ -443,8 +427,8 @@ s64Int starts(u64Int n) {
     u64Int m2[64];
     u64Int temp, ran;
 
-    while (n < 0)
-        n += PERIOD;
+    //while (n < 0)
+    //    n += PERIOD;
     while (n > PERIOD)
         n -= PERIOD;
     if (n == 0)
