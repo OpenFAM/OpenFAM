@@ -742,9 +742,12 @@ class fam {
     void fam_copy_wait(void *waitObj);
 
     // Backup data item to a specific file
-    void fam_backup(Fam_Descriptor *src, char *outputFile);
+    void *fam_backup(Fam_Descriptor *src, char *outputFile);
     // Restore data item  info from  a specific file to descriptor.
-    void fam_restore(char *inputFile, Fam_Descriptor *dest);
+    void *fam_restore(char *inputFile, Fam_Descriptor *dest);
+
+    void fam_backup_wait(void *waitObj);
+    void fam_restore_wait(void *waitObj);
 
     // ATOMICS Group
 

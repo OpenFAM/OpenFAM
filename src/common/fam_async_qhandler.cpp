@@ -179,6 +179,28 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         return;
     }
 
+    void wait_for_backup(void *waitObj) {
+        Fam_Backup_Tag *tag = static_cast<Fam_Backup_Tag *>(waitObj);
+        {
+            AQUIRE_MUTEX(backupMtx);
+            while (!tag->backupDone.load(boost::memory_order_seq_cst)) {
+                backupCond.wait(lk);
+            }
+        }
+        return;
+    }
+
+    void wait_for_restore(void *waitObj) {
+        Fam_Restore_Tag *tag = static_cast<Fam_Restore_Tag *>(waitObj);
+        {
+            AQUIRE_MUTEX(restoreMtx);
+            while (!tag->restoreDone.load(boost::memory_order_seq_cst)) {
+                restoreCond.wait(lk);
+            }
+        }
+        return;
+    }
+
     void decode_and_execute(Fam_Ops_Info opsInfo) {
         switch (opsInfo.opsType) {
         case WRITE: {
@@ -195,13 +217,24 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         }
         case COPY: {
             copy_handler(opsInfo.src, opsInfo.dest, opsInfo.nbytes,
-                         opsInfo.tag);
+                         (Fam_Copy_Tag *)opsInfo.tag);
             break;
         }
+	case BACKUP: {
+	    backup_handler(opsInfo.src, opsInfo.dest, opsInfo.nbytes,
+                         (Fam_Backup_Tag *)opsInfo.tag);
+	    break;
+	}
+	case RESTORE: {
+	    restore_handler(opsInfo.src, opsInfo.dest, opsInfo.nbytes,
+                         (Fam_Restore_Tag *)opsInfo.tag);
+	    break;
+	}
         default: {
             THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_INVALIDOP,
                             "invalid operation request");
         }
+	
         }
         return;
     }
@@ -292,16 +325,94 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         return;
     }
 
+    void backup_handler(void *src, void *dest, uint64_t nbytes,
+                      Fam_Backup_Tag *tag) {
+        if (tag->memoryService)
+            tag->memoryService->backup(
+                tag->srcRegionId, tag->srcAddr, tag->srcAddrLen, 
+		tag->srcOffset, tag->srcKey, tag->srcMemserverId, tag->outputFile, tag->size);
+        else {
+	    long pgsz = sysconf(_SC_PAGESIZE);
+	    unsigned long page_size = ((nbytes + (pgsz - 1)) / pgsz) * pgsz;
+	    int fileid = open((char *)dest, O_RDWR | O_CREAT, 0777);
+	    if (fileid == -1) {
+        	THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "backup file creation failed.");
+	    }
+	    lseek(fileid, page_size - 1, SEEK_SET);
+	    write(fileid, "", 1);
+	    char * destAddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
+				    fileid, 0);
+
+	    if (destAddr == MAP_FAILED) {
+		THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+				"mmap of file failed.");
+	    }
+ 
+            memcpy(destAddr, src, nbytes);
+            openfam_persist(destAddr, nbytes);
+            msync(destAddr, page_size, MS_SYNC);
+            munmap(destAddr, page_size);
+            close(fileid);
+
+        }
+        {
+            AQUIRE_MUTEX(backupMtx)
+            tag->backupDone.store(true, boost::memory_order_seq_cst);
+        }
+        backupCond.notify_one();
+        return;
+    }
+
+    void restore_handler(void *src, void *dest, uint64_t nbytes,
+                      Fam_Restore_Tag *tag) {
+        if (tag->memoryService)
+            tag->memoryService->restore(
+                tag->destRegionId, tag->destAddr, tag->destAddrLen,
+		tag->destOffset, tag->destKey,  tag->destMemserverId,
+		tag->inputFile, tag->size);
+        else {
+	    int fileid = open((char *)src, O_RDWR | O_CREAT, 0777);
+	    if (fileid == -1) {
+        	THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+                        "restore file creation failed.");
+	    }
+	    long pgsz = sysconf(_SC_PAGESIZE);
+	    unsigned long page_size = ((nbytes + (pgsz - 1)) / pgsz) * pgsz;
+	    lseek(fileid, page_size - 1, SEEK_SET);
+	    write(fileid, "", 1);
+	    char *srcAddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
+				    fileid, 0);
+
+	    if (srcAddr == MAP_FAILED) {
+		THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
+				"mmap of file failed.");
+	    }
+            memcpy(dest, srcAddr, nbytes);
+            openfam_persist(dest, nbytes);
+            msync(srcAddr, page_size, MS_SYNC);
+            munmap(srcAddr, page_size);
+            close(fileid);
+        }
+        {
+            AQUIRE_MUTEX(restoreMtx)
+            tag->restoreDone.store(true, boost::memory_order_seq_cst);
+        }
+        restoreCond.notify_one();
+
+        return;
+    }
+
   private:
     boost::lockfree::queue<Fam_Ops_Info> *queue;
     boost::lockfree::queue<Fam_Async_Err *> *readCQ, *writeCQ;
     boost::thread_group consumerThreads;
 #ifdef USE_BOOST_FIBER
-    boost::fibers::condition_variable readCond, writeCond, copyCond, queueCond;
-    boost::fibers::mutex readMtx, writeMtx, copyMtx, queueMtx;
+    boost::fibers::condition_variable readCond, writeCond, copyCond, queueCond, backupCond, restoreCond;
+    boost::fibers::mutex readMtx, writeMtx, copyMtx, queueMtx, backupMtx, restoreMtx;
 #else
-    std::condition_variable readCond, writeCond, copyCond, queueCond;
-    std::mutex readMtx, writeMtx, copyMtx, queueMtx;
+    std::condition_variable readCond, writeCond, copyCond, queueCond, backupCond, restoreCond;
+    std::mutex readMtx, writeMtx, copyMtx, queueMtx, backupMtx, restoreMtx;
 #endif
     boost::atomic_uint64_t readCtr, writeCtr, readErrCtr, writeErrCtr,
         qwriteCtr, qreadCtr;
@@ -349,6 +460,14 @@ void Fam_Async_QHandler::wait_for_copy(void *waitObj) {
     fAsyncQHandler_->wait_for_copy(waitObj);
 }
 
+void Fam_Async_QHandler::wait_for_backup(void *waitObj) {
+    fAsyncQHandler_->wait_for_backup(waitObj);
+}
+
+void Fam_Async_QHandler::wait_for_restore(void *waitObj) {
+    fAsyncQHandler_->wait_for_restore(waitObj);
+}
+
 void Fam_Async_QHandler::decode_and_execute(Fam_Ops_Info opsInfo) {
     fAsyncQHandler_->decode_and_execute(opsInfo);
 }
@@ -372,4 +491,15 @@ void Fam_Async_QHandler::copy_handler(void *src, void *dest, uint64_t nbytes,
     fAsyncQHandler_->copy_handler(src, dest, nbytes, tag);
 }
 
+/*
+void Fam_Async_QHandler::backup_handler(void *src, void *dest, uint64_t nbytes,
+                                      Fam_Backup_Tag *tag) {
+    fAsyncQHandler_->backup_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::restore_handler(void *src, void *dest, uint64_t nbytes,
+                                      Fam_Restore_Tag *tag) {
+    fAsyncQHandler_->restore_handler(src, dest, nbytes, tag);
+}
+*/
 } // namespace openfam

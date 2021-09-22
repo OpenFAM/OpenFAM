@@ -77,10 +77,12 @@ class Fam_Allocator_Client {
                uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
-    void backup(Fam_Descriptor *descriptor, const char *srcAddr,
-                uint32_t srcAddrLen, char *outputFile);
-    void restore(Fam_Descriptor *dest, const char *srcAddr, uint32_t srcAddrLen,
-                 char *inputFile, uint64_t size);
+    void *backup(Fam_Descriptor *descriptor, const char *srcAddr,
+                 uint32_t srcAddrLen, char *outputFile);
+    void *restore(Fam_Descriptor *dest, const char *srcAddr,
+                  uint32_t srcAddrLen, char *inputFile, uint64_t size);
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
 
     /**
      * fam_map - Map a data item in FAM to the process address space.

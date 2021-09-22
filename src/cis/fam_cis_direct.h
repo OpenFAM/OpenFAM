@@ -118,14 +118,17 @@ class Fam_CIS_Direct : public Fam_CIS {
                uint32_t uid, uint32_t gid);
 
     void wait_for_copy(void *waitObj);
-    void backup(uint64_t srcRegionId, const char *srcAddr, uint32_t srcAddrLen,
-                uint64_t srcOffset, uint64_t srcKey, uint64_t srcMemoryServerId,
-                string outputFile, uint32_t uid, uint32_t gid, uint64_t size);
-    void restore(uint64_t destRegionId, const char *destAddr,
-                 uint32_t destAddrLen, uint64_t destOffset, uint64_t destKey,
-                 uint64_t destMemoryServerId, string inputFile, uint32_t uid,
+    void *backup(uint64_t srcRegionId, const char *srcAddr, uint32_t srcAddrLen,
+                 uint64_t srcOffset, uint64_t srcKey,
+                 uint64_t srcMemoryServerId, string outputFile, uint32_t uid,
                  uint32_t gid, uint64_t size);
+    void *restore(uint64_t destRegionId, const char *destAddr,
+                  uint32_t destAddrLen, uint64_t destOffset, uint64_t destKey,
+                  uint64_t destMemoryServerId, string inputFile, uint32_t uid,
+                  uint32_t gid, uint64_t size);
 
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
     void *fam_map(uint64_t regionId, uint64_t offset, uint64_t memoryServerId,
                   uint32_t uid, uint32_t gid);
     void fam_unmap(void *local, uint64_t regionId, uint64_t offset,

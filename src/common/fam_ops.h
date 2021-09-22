@@ -313,8 +313,10 @@ class Fam_Ops {
                        uint64_t nbytes) = 0;
 
     virtual void wait_for_copy(void *waitObj) = 0;
-    virtual void backup(Fam_Descriptor *desc, char *Backup_Name) = 0;
-    virtual void restore(char *inputFile, Fam_Descriptor *dest) = 0;
+    virtual void *backup(Fam_Descriptor *desc, char *Backup_Name) = 0;
+    virtual void *restore(char *inputFile, Fam_Descriptor *dest) = 0;
+    virtual void wait_for_backup(void *waitObj) = 0;
+    virtual void wait_for_restore(void *waitObj) = 0;
 
     // ATOMICS Group
 

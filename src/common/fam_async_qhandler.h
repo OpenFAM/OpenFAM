@@ -46,7 +46,13 @@ using namespace std;
 
 namespace openfam {
 
-typedef enum { WRITE = 0, READ, COPY } Fam_Ops_Type;
+typedef enum {
+    WRITE = 0,
+    READ,
+    COPY,
+    BACKUP,
+    RESTORE
+} Fam_Ops_Type;
 
 typedef struct {
     boost::atomic<bool> copyDone;
@@ -66,6 +72,32 @@ typedef struct {
 } Fam_Copy_Tag;
 
 typedef struct {
+    boost::atomic<bool> backupDone;
+    Fam_Memory_Service *memoryService;
+    char *srcAddr;
+    uint64_t srcRegionId;
+    uint64_t srcOffset;
+    uint64_t size;
+    uint64_t srcKey;
+    char *outputFile;
+    uint32_t srcAddrLen;
+    uint64_t srcMemserverId;
+} Fam_Backup_Tag;
+
+typedef struct {
+    boost::atomic<bool> restoreDone;
+    Fam_Memory_Service *memoryService;
+    uint64_t size;
+    uint64_t destKey;
+    char *inputFile;
+    char *destAddr;
+    uint32_t destAddrLen;
+    uint64_t destMemserverId;
+    uint64_t destOffset;
+    uint64_t destRegionId;
+} Fam_Restore_Tag;
+
+typedef struct {
     Fam_Ops_Type opsType;
     void *src;
     void *dest;
@@ -74,7 +106,7 @@ typedef struct {
     uint64_t upperBound;
     uint64_t key;
     uint64_t itemSize;
-    Fam_Copy_Tag *tag;
+    void *tag;
 } Fam_Ops_Info;
 
 class Fam_Async_Err {
@@ -105,6 +137,8 @@ class Fam_Async_QHandler {
     uint64_t write_progress(Fam_Context *famCtx);
     uint64_t read_progress(Fam_Context *famCtx);
     void wait_for_copy(void *waitObj);
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
     void decode_and_execute(Fam_Ops_Info opsInfo);
     void write_handler(void *src, void *dest, uint64_t nbytes, uint64_t offset,
                        uint64_t upperBound, uint64_t key, uint64_t itemSize);
@@ -112,6 +146,10 @@ class Fam_Async_QHandler {
                       uint64_t upperBound, uint64_t key, uint64_t itemSize);
     void copy_handler(void *src, void *dest, uint64_t nbytes,
                       Fam_Copy_Tag *tag);
+    void backup_handler(void *src, void *dest, uint64_t nbytes,
+                        Fam_Backup_Tag *tag);
+    void restore_handler(void *src, void *dest, uint64_t nbytes,
+                         Fam_Restore_Tag *tag);
 
   private:
     class FamAsyncQHandlerImpl_;

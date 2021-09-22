@@ -1143,7 +1143,7 @@ void Fam_CIS_Direct::wait_for_copy(void *waitObj) {
     CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_copy);
 }
 
-void Fam_CIS_Direct::backup(uint64_t srcRegionId, const char *srcAddr,
+void *Fam_CIS_Direct::backup(uint64_t srcRegionId, const char *srcAddr,
                             uint32_t srcAddrLen, uint64_t srcOffset,
                             uint64_t srcKey, uint64_t srcMemoryServerId,
                             string outputFile, uint32_t uid, uint32_t gid,
@@ -1154,6 +1154,7 @@ void Fam_CIS_Direct::backup(uint64_t srcRegionId, const char *srcAddr,
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
     Fam_Memory_Service *memoryService = get_memory_service(srcMemoryServerId);
+    Fam_Backup_Wait_Object *waitObj = new Fam_Backup_Wait_Object();
 
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
@@ -1174,11 +1175,32 @@ void Fam_CIS_Direct::backup(uint64_t srcRegionId, const char *srcAddr,
         }
         throw;
     }
-    memoryService->backup(srcRegionId, srcAddr, srcAddrLen, srcOffset, srcKey,
+    if (useAsyncCopy) {
+        Fam_Backup_Tag *tag = new Fam_Backup_Tag();
+        tag->backupDone.store(false, boost::memory_order_seq_cst);
+        tag->memoryService = memoryService;
+        tag->srcRegionId = srcRegionId;
+        tag->srcOffset = srcOffset ;
+        tag->size = size;
+        tag->srcKey = srcKey;
+        tag->srcAddr = (char *)calloc(1, srcAddrLen);
+        memcpy(tag->srcAddr, srcAddr, srcAddrLen);
+        tag->srcAddrLen = srcAddrLen;
+        tag->srcMemserverId = srcMemoryServerId;
+        tag->outputFile = (char *) outputFile.c_str();
+        Fam_Ops_Info opsInfo = { BACKUP, NULL, NULL, 0, 0, 0, 0, 0, tag };
+        asyncQHandler->initiate_operation(opsInfo);
+        waitObj->tag = tag;
+    } else {
+	    memoryService->backup(srcRegionId, srcAddr, srcAddrLen, srcOffset, srcKey,
                           srcMemoryServerId, outputFile, size);
+    }
+    CIS_DIRECT_PROFILE_END_OPS(cis_backup);
+    return (void *)waitObj;
+
 }
 
-void Fam_CIS_Direct::restore(uint64_t destRegionId, const char *destAddr,
+void *Fam_CIS_Direct::restore(uint64_t destRegionId, const char *destAddr,
                              uint32_t destAddrLen, uint64_t destOffset,
                              uint64_t destKey, uint64_t destMemoryServerId,
                              string inputFile, uint32_t uid, uint32_t gid,
@@ -1186,10 +1208,10 @@ void Fam_CIS_Direct::restore(uint64_t destRegionId, const char *destAddr,
     ostringstream message;
     message << "Error While restoring dataitem : ";
     Fam_DataItem_Metadata destDataitem;
-    // Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
     Fam_Memory_Service *memoryService = get_memory_service(destMemoryServerId);
+    Fam_Restore_Wait_Object *waitObj = new Fam_Restore_Wait_Object();
 
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
@@ -1210,8 +1232,43 @@ void Fam_CIS_Direct::restore(uint64_t destRegionId, const char *destAddr,
         }
         throw;
     }
-    memoryService->restore(destRegionId, destAddr, destAddrLen, destOffset,
+    if (useAsyncCopy) {
+        Fam_Restore_Tag *tag = new Fam_Restore_Tag();
+        tag->restoreDone.store(false, boost::memory_order_seq_cst);
+        tag->memoryService = memoryService;
+        tag->destRegionId = destRegionId;
+        tag->destOffset = destOffset;
+        tag->size = size;
+        tag->destKey = destKey;
+        tag->destAddr = (char *)calloc(1, destAddrLen);
+        memcpy(tag->destAddr, destAddr, destAddrLen);
+        tag->destAddrLen = destAddrLen;
+        tag->destMemserverId = destMemoryServerId;
+        tag->inputFile = (char *)inputFile.c_str();
+        Fam_Ops_Info opsInfo = { RESTORE, NULL, NULL, 0, 0, 0, 0, 0, tag };
+        asyncQHandler->initiate_operation(opsInfo);
+        waitObj->tag = tag;
+    } else {
+    	memoryService->restore(destRegionId, destAddr, destAddrLen, destOffset,
                            destKey, destMemoryServerId, inputFile, size);
+    }
+    CIS_DIRECT_PROFILE_END_OPS(cis_restore);
+    return (void *)waitObj;
+
+}
+
+void Fam_CIS_Direct::wait_for_backup(void *waitObj) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Backup_Wait_Object *obj = (Fam_Backup_Wait_Object *)waitObj;
+    asyncQHandler->wait_for_backup((void *)(obj->tag));
+    CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_backup);
+}
+
+void Fam_CIS_Direct::wait_for_restore(void *waitObj) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Restore_Wait_Object *obj = (Fam_Restore_Wait_Object *)waitObj;
+    asyncQHandler->wait_for_restore((void *)(obj->tag));
+    CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_restore);
 }
 
 void Fam_CIS_Direct::acquire_CAS_lock(uint64_t offset,

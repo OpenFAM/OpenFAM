@@ -61,7 +61,7 @@ typedef struct {
     // Storage for the status of the RPC upon completion.
     ::grpc::Status status;
 
-    // falg for completion
+    // flag for completion
     bool isCompleted;
 
     uint64_t memServerId;
@@ -71,6 +71,50 @@ typedef struct {
 
     Fam_Copy_Tag *tag;
 } Fam_Copy_Wait_Object;
+
+typedef struct {
+    // Container for the data we expect from the server.
+    Fam_Backup_Restore_Response res;
+
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    ::grpc::ClientContext ctx;
+
+    // Storage for the status of the RPC upon completion.
+    ::grpc::Status status;
+
+    // flag for completion
+    bool isCompleted;
+
+    uint64_t memServerId;
+
+    std::unique_ptr< ::grpc::ClientAsyncResponseReader<
+        Fam_Backup_Restore_Response> > responseReader;
+
+    Fam_Backup_Tag *tag;
+} Fam_Backup_Wait_Object;
+
+typedef struct {
+    // Container for the data we expect from the server.
+    Fam_Backup_Restore_Response res;
+
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    ::grpc::ClientContext ctx;
+
+    // Storage for the status of the RPC upon completion.
+    ::grpc::Status status;
+
+    // flag for completion
+    bool isCompleted;
+
+    uint64_t memServerId;
+
+    std::unique_ptr< ::grpc::ClientAsyncResponseReader<
+        Fam_Backup_Restore_Response> > responseReader;
+
+    Fam_Restore_Tag *tag;
+} Fam_Restore_Wait_Object;
 
 class Fam_CIS {
   public:
@@ -271,16 +315,18 @@ class Fam_CIS {
      * @param waitObj - wait object
      **/
     virtual void wait_for_copy(void *waitObj) = 0;
-    virtual void backup(uint64_t srcRegionId, const char *srcAddr,
-                        uint32_t srcAddrLen, uint64_t srcOffset,
-                        uint64_t srcKey, uint64_t srcMemoryServerId,
-                        string outputFile, uint32_t uid, uint32_t gid,
-                        uint64_t size) = 0;
-    virtual void restore(uint64_t destRegionId, const char *destAddr,
-                         uint32_t destAddrLen, uint64_t destOffset,
-                         uint64_t destKey, uint64_t destMemoryServerId,
-                         string inputFile, uint32_t uid, uint32_t gid,
+    virtual void *backup(uint64_t srcRegionId, const char *srcAddr,
+                         uint32_t srcAddrLen, uint64_t srcOffset,
+                         uint64_t srcKey, uint64_t srcMemoryServerId,
+                         string outputFile, uint32_t uid, uint32_t gid,
                          uint64_t size) = 0;
+    virtual void *restore(uint64_t destRegionId, const char *destAddr,
+                          uint32_t destAddrLen, uint64_t destOffset,
+                          uint64_t destKey, uint64_t destMemoryServerId,
+                          string inputFile, uint32_t uid, uint32_t gid,
+                          uint64_t size) = 0;
+    virtual void wait_for_backup(void *waitObj) = 0;
+    virtual void wait_for_restore(void *waitObj) = 0;
     /**
      * Map a data item in FAM to the local virtual address space, and return its
      * pointer.

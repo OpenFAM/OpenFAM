@@ -316,18 +316,18 @@ void Fam_Allocator_Client::wait_for_copy(void *waitObj) {
     return famCIS->wait_for_copy(waitObj);
 }
 
-void Fam_Allocator_Client::backup(Fam_Descriptor *src, const char *srcAddr,
+void *Fam_Allocator_Client::backup(Fam_Descriptor *src, const char *srcAddr,
                                   uint32_t srcAddrLen, char *outputFile) {
     Fam_Global_Descriptor globalDescriptor = src->get_global_descriptor();
     uint64_t srcRegionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t srcMemoryServerId = src->get_memserver_id();
     uint64_t srcKey = src->get_key();
     uint64_t srcOffset = globalDescriptor.offset;
-    famCIS->backup(srcRegionId, srcAddr, srcAddrLen, srcOffset, srcKey,
+    return famCIS->backup(srcRegionId, srcAddr, srcAddrLen, srcOffset, srcKey,
                    srcMemoryServerId, outputFile, uid, gid, src->get_size());
 }
 
-void Fam_Allocator_Client::restore(Fam_Descriptor *dest, const char *destAddr,
+void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, const char *destAddr,
                                    uint32_t destAddrLen, char *inputFile,
                                    uint64_t filesize) {
     Fam_Global_Descriptor globalDescriptor = dest->get_global_descriptor();
@@ -341,8 +341,14 @@ void Fam_Allocator_Client::restore(Fam_Descriptor *dest, const char *destAddr,
             FAM_ERR_OUTOFRANGE,
             "Destination offset or size is beyond dataitem boundary");
     }
-    famCIS->restore(destRegionId, destAddr, destAddrLen, destOffset, destKey,
+    return famCIS->restore(destRegionId, destAddr, destAddrLen, destOffset, destKey,
                     destMemoryServerId, inputFile, uid, gid, filesize);
+}
+void Fam_Allocator_Client::wait_for_backup(void *waitObj) {
+    return famCIS->wait_for_backup(waitObj);
+}
+void Fam_Allocator_Client::wait_for_restore(void *waitObj) {
+    return famCIS->wait_for_restore(waitObj);
 }
 
 void *Fam_Allocator_Client::fam_map(Fam_Descriptor *descriptor) {

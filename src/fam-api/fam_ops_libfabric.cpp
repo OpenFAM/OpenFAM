@@ -586,7 +586,7 @@ void Fam_Ops_Libfabric::wait_for_copy(void *waitObj) {
     return famAllocator->wait_for_copy(waitObj);
 }
 
-void Fam_Ops_Libfabric::backup(Fam_Descriptor *descriptor, char *outputFile) {
+void *Fam_Ops_Libfabric::backup(Fam_Descriptor *descriptor, char *outputFile) {
 
     struct stat info;
     int exist = stat(outputFile, &info);
@@ -601,11 +601,11 @@ void Fam_Ops_Libfabric::backup(Fam_Descriptor *descriptor, char *outputFile) {
     else
         srcMemSrv = obj->second;
 
-    famAllocator->backup(descriptor, (const char *)srcMemSrv.first,
+    return famAllocator->backup(descriptor, (const char *)srcMemSrv.first,
                          (uint32_t)srcMemSrv.second, outputFile);
 }
 
-void Fam_Ops_Libfabric::restore(char *inputFile, Fam_Descriptor *dest) {
+void *Fam_Ops_Libfabric::restore(char *inputFile, Fam_Descriptor *dest) {
 
     struct stat info;
     int exist = stat(inputFile, &info);
@@ -624,8 +624,15 @@ void Fam_Ops_Libfabric::restore(char *inputFile, Fam_Descriptor *dest) {
     else
         srcMemSrv = obj->second;
 
-    famAllocator->restore(dest, (const char *)srcMemSrv.first,
+    return famAllocator->restore(dest, (const char *)srcMemSrv.first,
                           (uint32_t)srcMemSrv.second, inputFile, info.st_size);
+}
+
+void Fam_Ops_Libfabric::wait_for_backup(void *waitObj) {
+    return famAllocator->wait_for_backup(waitObj);
+}
+void Fam_Ops_Libfabric::wait_for_restore(void *waitObj) {
+    return famAllocator->wait_for_restore(waitObj);
 }
 
 void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {

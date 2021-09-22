@@ -70,7 +70,8 @@ TEST(FamBackupRestore, BackupSuccess) {
     char *cwd = get_current_dir_name();
     try {
         sprintf(filename, "%s/%s.%s.1", cwd, testRegion, firstItem);
-        my_fam->fam_backup(item, filename);
+        void *waitobj = my_fam->fam_backup(item, filename);
+	EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
     } catch (Fam_Exception &e) {
         cout << "fam_backup: " << e.fam_error_msg() << endl;
     }
@@ -100,7 +101,8 @@ TEST(FamBackupRestore, RestoreSuccess) {
     EXPECT_NO_THROW(my_fam->fam_get_blocking(local, item, 0, DATAITEM_SIZE));
 
     try {
-        my_fam->fam_restore(filename, item);
+        void *waitobj = my_fam->fam_restore(filename, item);
+	EXPECT_NO_THROW(my_fam->fam_restore_wait(waitobj));
     } catch (Fam_Exception &e) {
         cout << "fam_restore: " << e.fam_error_msg() << endl;
     }

@@ -634,7 +634,7 @@ void Fam_Ops_SHM::wait_for_copy(void *waitObj) {
     asyncQHandler->wait_for_copy(waitObj);
 }
 
-void Fam_Ops_SHM::backup(Fam_Descriptor *descriptor, char *outputFile) {
+void *Fam_Ops_SHM::backup(Fam_Descriptor *descriptor, char *outputFile) {
 
     struct stat info;
     int exist = stat(outputFile, &info);
@@ -642,45 +642,19 @@ void Fam_Ops_SHM::backup(Fam_Descriptor *descriptor, char *outputFile) {
         THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
                         "Mentioned backup file already exists.");
     }
-    void *base = descriptor->get_base_address();
+    void *src = descriptor->get_base_address();
     uint64_t size = descriptor->get_size();
-    // uint64_t key = descriptor->get_key();
 
-    int fileid = open((char *)outputFile, O_RDWR | O_CREAT, 0777);
-    if (fileid == -1) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "backup file creation failed.");
-    }
-    long pgsz = sysconf(_SC_PAGESIZE);
-    unsigned long page_size = ((size + (pgsz - 1)) / pgsz) * pgsz;
-    lseek(fileid, page_size - 1, SEEK_SET);
-    write(fileid, "", 1);
-    char *destaddr;
-    destaddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
-                            fileid, 0);
+    Fam_Backup_Tag *tag = new Fam_Backup_Tag();
+    tag->backupDone.store(false, boost::memory_order_seq_cst);
+    tag->memoryService = NULL;
 
-    if (destaddr == MAP_FAILED) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "mmap of file failed.");
-    }
-
-    void *src = (void *)((uint64_t)base);
-
-    char *dataitem_info = (char *)malloc(64);
-
-    snprintf(dataitem_info, 64,
-             "name: %s\nmemory_server_id: %lu\npermission: 0%o\nsize: %lu\n",
-             descriptor->get_name(), descriptor->get_memserver_id(),
-             descriptor->get_perm(), size);
-    memcpy(destaddr, dataitem_info, 64);
-    memcpy(destaddr + 64, src, page_size - 64);
-    msync(destaddr, page_size, MS_SYNC);
-    munmap(destaddr, page_size);
-    close(fileid);
-    free(dataitem_info);
+    Fam_Ops_Info opsInfo = {BACKUP, src, outputFile, size, 0, 0, 0, 0, tag};
+    asyncQHandler->initiate_operation(opsInfo);
+    return (void *)tag;
 }
 
-void Fam_Ops_SHM::restore(char *inputFile, Fam_Descriptor *dest) {
+void *Fam_Ops_SHM::restore(char *inputFile, Fam_Descriptor *dest) {
 
     struct stat info;
     int exist = stat(inputFile, &info);
@@ -690,36 +664,24 @@ void Fam_Ops_SHM::restore(char *inputFile, Fam_Descriptor *dest) {
     }
     void *base = dest->get_base_address();
     uint64_t size = dest->get_size();
-    // uint64_t key = dest->get_key();
 
-    int fileid = open((char *)inputFile, O_RDWR | O_CREAT, 0777);
-    if (fileid == -1) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "backup file creation failed.");
-    }
-    long pgsz = sysconf(_SC_PAGESIZE);
-    unsigned long page_size = ((size + (pgsz - 1)) / pgsz) * pgsz;
-    lseek(fileid, page_size - 1, SEEK_SET);
-    write(fileid, "", 1);
-    char *srcaddr;
-    srcaddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
-                           fileid, 0);
 
-    if (srcaddr == MAP_FAILED) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "mmap of file failed.");
-    }
-
-    void *destination = (void *)((uint64_t)base);
-
-    char *dataitem_info = (char *)malloc(64);
-
-    memcpy(destination, srcaddr, page_size);
-    msync(srcaddr, page_size, MS_SYNC);
-    munmap(srcaddr, page_size);
-    close(fileid);
-    free(dataitem_info);
+    Fam_Restore_Tag *tag = new Fam_Restore_Tag();
+    Fam_Ops_Info opsInfo = {RESTORE, inputFile, base, size, 0, 0, 0, 0, tag};
+    asyncQHandler->initiate_operation(opsInfo);
+    return (void *)tag;
 }
+
+
+void Fam_Ops_SHM::wait_for_backup(void *waitObj) {
+    asyncQHandler->wait_for_backup(waitObj);
+}
+
+
+void Fam_Ops_SHM::wait_for_restore(void *waitObj) {
+    asyncQHandler->wait_for_restore(waitObj);
+}
+
 
 void Fam_Ops_SHM::fence(Fam_Region_Descriptor *descriptor)
     FAM_OPS_UNIMPLEMENTED(void__);
