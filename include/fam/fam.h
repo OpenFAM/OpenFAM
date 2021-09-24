@@ -745,6 +745,8 @@ class fam {
     void *fam_backup(Fam_Descriptor *src, char *outputFile);
     // Restore data item  info from  a specific file to descriptor.
     void *fam_restore(char *inputFile, Fam_Descriptor *dest);
+    void *fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion, char *dataitemName, mode_t accessPermissions, Fam_Descriptor *dest);
+
 
     void fam_backup_wait(void *waitObj);
     void fam_restore_wait(void *waitObj);

@@ -215,6 +215,8 @@ class fam::Impl_ {
     void *fam_backup(Fam_Descriptor *src, char *outputFile);
 
     void *fam_restore(char *inputFile, Fam_Descriptor *dest);
+    void *fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion, char *dataitemName, mode_t accessPermissions, Fam_Descriptor *dest);
+
 
     void fam_backup_wait(void *waitObj);
 
@@ -1899,6 +1901,29 @@ void *fam::Impl_::fam_restore(char *inputFile, Fam_Descriptor *dest) {
     FAM_PROFILE_END_OPS(fam_restore);
     return result;
 }
+
+void *fam::Impl_::fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion, char *dataitemName, mode_t accessPermissions, Fam_Descriptor *dest) {
+
+    void *result = NULL;
+    struct stat sb;
+    FAM_CNTR_INC_API(fam_restore);
+    FAM_PROFILE_START_ALLOCATOR(fam_restore);
+
+    if (stat(inputFile, &sb) == -1) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "inputFile doesnot exists");
+    }
+    Fam_Descriptor *ret = famAllocator->allocate(dataitemName, sb.st_size, accessPermissions, destRegion);
+    memcpy(dest, ret,sizeof(Fam_Descriptor));
+    int retD = validate_item(dest);
+    FAM_PROFILE_END_ALLOCATOR(fam_restore);
+    FAM_PROFILE_START_OPS(fam_restore);
+
+    if (retD == 0 )
+	    result = famOps->restore(inputFile, dest);
+    FAM_PROFILE_END_OPS(fam_restore);
+    return result;
+}
+
 
 void fam::Impl_::fam_backup_wait(void *waitObj) {
     FAM_CNTR_INC_API(fam_backup_wait);
@@ -4498,6 +4523,12 @@ void *fam::fam_backup(Fam_Descriptor *src, char *outputFile) {
 void *fam::fam_restore(char *inputFile, Fam_Descriptor *dest) {
     TRY_CATCH_BEGIN
     return pimpl_->fam_restore(inputFile, dest);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void *fam::fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion, char *dataitemName, mode_t accessPermissions, Fam_Descriptor *dest) {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_restore(inputFile, destRegion, dataitemName, accessPermissions, dest);
     RETURN_WITH_FAM_EXCEPTION
 }
 

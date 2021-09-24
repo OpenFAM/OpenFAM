@@ -116,6 +116,38 @@ TEST(FamBackupRestore, RestoreSuccess) {
     free((void *)firstItem);
 }
 
+TEST(FamBackupRestore, CreateDataitemRestoreSuccess) {
+    Fam_Region_Descriptor *desc;
+    Fam_Descriptor item ;
+    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+    const char *secondItem = get_uniq_str("third", my_fam);
+    char *filename = (char *)malloc(100);
+    char *cwd = get_current_dir_name();
+    sprintf(filename, "%s/%s.%s.1", cwd, testRegion, firstItem);
+
+    EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
+    EXPECT_NE((void *)NULL, desc);
+    try {
+        void *waitobj = my_fam->fam_restore(filename, desc, (char *)secondItem, 0777,&item);
+	EXPECT_NO_THROW(my_fam->fam_restore_wait(waitobj));
+    } catch (Fam_Exception &e) {
+        cout << "fam_restore: " << e.fam_error_msg() << endl;
+    }
+    char *local2 = (char *)malloc(DATAITEM_SIZE);
+    try {
+    	my_fam->fam_get_blocking(local2, &item , 0, DATAITEM_SIZE);
+    } catch (Fam_Exception &e) {
+        cout << "fam_get_blocking: " << e.fam_error_msg() << endl;
+    }
+    cout << "data item holds: " << local2 << endl;
+
+    free(local2);
+
+    free((void *)testRegion);
+    free((void *)firstItem);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);
