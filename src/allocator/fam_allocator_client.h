@@ -48,9 +48,9 @@ class Fam_Allocator_Client {
     void allocator_finalize();
 
     uint64_t get_num_memory_servers();
-    Fam_Region_Descriptor *create_region(const char *name, uint64_t nbytes,
-                                         mode_t permissions,
-                                         Fam_Redundancy_Level redundancyLevel);
+    Fam_Region_Descriptor *
+    create_region(const char *name, uint64_t nbytes, mode_t permissions,
+                  Fam_Region_Attributes *regionAttributes);
     void destroy_region(Fam_Region_Descriptor *descriptor);
     void resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
 

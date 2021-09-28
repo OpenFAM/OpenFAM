@@ -59,7 +59,7 @@ int main(void) {
     try {
         // create a 100 MB region with 0777 permissions and RAID5 redundancy
         region = myFam->fam_create_region("myRegion", (uint64_t)10000000, 0777,
-                                          RAID5);
+                                          NULL);
         // create 50 element unnamed integer array in FAM with 0600
         // (read/write by owner) permissions in myRegion
         descriptor = myFam->fam_allocate("myItem", (uint64_t)(50 * sizeof(int)),

@@ -32,8 +32,6 @@
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
 #include <iostream>
-//#include "common/fam_test_config.h"
-
 using namespace std;
 using namespace openfam;
 
@@ -79,7 +77,7 @@ Fam_Region_Descriptor *spmv_fam_initialize(void) {
         // ignore
     }
     try {
-        region = my_fam->fam_create_region(REGION_NAME, size, 0777, NONE);
+        region = my_fam->fam_create_region(REGION_NAME, size, 0777, NULL);
     } catch (Fam_Exception &e) {
         cout << "fam initialization failed:" << e.fam_error_msg() << endl;
         exit(1);

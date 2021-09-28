@@ -102,10 +102,22 @@ typedef long long int128_t;
 #endif // int128_t
 
 /**
+ * Enumeration defining interleaving options for FAM.
+ */
+typedef enum { INTERLEAVE_DEFAULT = 0, ENABLE, DISABLE } Fam_Interleave_Enable;
+
+/**
+ * Enumeration defining memory types supported in FAM.
+ */
+typedef enum { MEMORY_TYPE_DEFAULT = 0, VOLATILE, PERSISTANT } Fam_Memory_Type;
+
+/**
  * Enumeration defining redundancy options for FAM. This enum defines redundancy
  * levels (software or hardware) supported within the library.
  */
 typedef enum {
+    /** System Default Value */
+    REDUNDANCY_LEVEL_DEFAULT = 0,
     /** No redundancy is provided */
     NONE,
     /** RAID 1 equivalent redundancy is provided */
@@ -114,6 +126,11 @@ typedef enum {
     RAID5
 } Fam_Redundancy_Level;
 
+typedef struct {
+    Fam_Redundancy_Level redundancyLevel;
+    Fam_Memory_Type memoryType;
+    Fam_Interleave_Enable interleaveEnable;
+} Fam_Region_Attributes;
 /**
  * Enumeration defining descriptor update on several  fields.
  */
@@ -226,6 +243,12 @@ class Fam_Region_Descriptor {
     void set_size(uint64_t itemSize);
     void set_perm(mode_t perm);
     void set_name(char *name);
+    void set_redundancyLevel(Fam_Redundancy_Level redundancyLevel);
+    void set_memoryType(Fam_Memory_Type memoryType);
+    void set_interleaveEnable(Fam_Interleave_Enable interleaveEnable);
+    Fam_Redundancy_Level get_redundancyLevel();
+    Fam_Memory_Type get_memoryType();
+    Fam_Interleave_Enable get_interleaveEnable();
     // get size, perm and name.
     uint64_t get_size();
     mode_t get_perm();
@@ -363,7 +386,7 @@ class fam {
      */
     Fam_Region_Descriptor *
     fam_create_region(const char *name, uint64_t size, mode_t permissions,
-                      Fam_Redundancy_Level redundancyLevel, ...);
+                      Fam_Region_Attributes *regionAttributes);
 
     /**
      * Destroy a region, and all contents within the region. Note that this

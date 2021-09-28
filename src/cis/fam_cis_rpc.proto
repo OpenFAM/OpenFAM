@@ -143,6 +143,9 @@ message Fam_Region_Request {
     string name = 6;
     uint64 size = 7;
     uint64 memserver_id = 8;
+    uint32 redundancylevel = 9;
+    uint32 memorytype = 10;
+    uint32 interleaveenable = 11;
 }
 
 /*
@@ -160,6 +163,9 @@ message Fam_Region_Response {
     uint64 maxnamelen = 7;
     uint64 perm = 8;
     uint64 memserver_id = 9;
+    uint32 redundancylevel = 10;
+    uint32 memorytype = 11;
+    uint32 interleaveenable = 12;
 }
 
 /*

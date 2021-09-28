@@ -47,6 +47,7 @@
 
 #include "common/fam_internal.h"
 #include "common/fam_internal_exception.h"
+#include "fam/fam.h"
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
@@ -55,6 +56,7 @@
 using namespace radixtree;
 using namespace nvmm;
 using namespace std;
+using namespace openfam;
 
 namespace metadata {
 
@@ -105,7 +107,9 @@ typedef struct {
     uint64_t used_memsrv_cnt;
     uint64_t memServerIds[MAX_MEMORY_SERVERS_CNT];
     bool isHeapCreated;
-    //   Fam_Redundancy_Level redundancyLevel;
+    Fam_Redundancy_Level redundancyLevel;
+    Fam_Memory_Type memoryType;
+    Fam_Interleave_Enable interleaveEnable;
     GlobalPtr dataItemIdRoot;
     GlobalPtr dataItemNameRoot;
 } Fam_Region_Metadata;
@@ -235,6 +239,7 @@ class Fam_Metadata_Service {
 
     virtual void metadata_validate_and_create_region(
         const std::string regionname, size_t size, uint64_t *regionid,
+        Fam_Region_Attributes *regionAttributes,
         std::list<int> *memory_server_list, int user_policy) = 0;
     virtual void metadata_validate_and_destroy_region(
         const uint64_t regionId, uint32_t uid, uint32_t gid,

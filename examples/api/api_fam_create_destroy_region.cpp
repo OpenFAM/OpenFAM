@@ -55,7 +55,7 @@ int main(void) {
     try {
         // create a 100 MB region with 0777 permissions and RAID5 redundancy
         Fam_Region_Descriptor *rd = myFam->fam_create_region(
-            "myRegion", (uint64_t)10000000, 0777, RAID5);
+            "myRegion", (uint64_t)10000000, 0777, NULL);
         // use the created region...
         if (rd != NULL)
             printf("fam_create_region successfull\n");

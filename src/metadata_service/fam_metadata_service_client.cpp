@@ -150,6 +150,9 @@ void Fam_Metadata_Service_Client::metadata_insert_region(
     req.set_perm(region->perm);
     req.set_uid(region->uid);
     req.set_gid(region->gid);
+    req.set_redundancylevel(region->redundancyLevel);
+    req.set_memorytype(region->memoryType);
+    req.set_interleaveenable(region->interleaveEnable);
     req.set_memsrv_cnt(region->used_memsrv_cnt);
     for (int i = 0; i < (int)region->used_memsrv_cnt; i++) {
         req.add_memsrv_list(region->memServerIds[i]);
@@ -688,7 +691,8 @@ void Fam_Metadata_Service_Client::metadata_reset_bitmap(uint64_t regionId) {
 
 void Fam_Metadata_Service_Client::metadata_validate_and_create_region(
     const std::string regionname, size_t size, uint64_t *regionid,
-    std::list<int> *memory_server_list, int user_policy) {
+    Fam_Region_Attributes *regionAttributes, std::list<int> *memory_server_list,
+    int user_policy) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
     Fam_Metadata_Region_Info_Response res;
@@ -697,6 +701,9 @@ void Fam_Metadata_Service_Client::metadata_validate_and_create_region(
     req.set_name(regionname);
     req.set_size(size);
     req.set_user_policy(user_policy);
+    req.set_redundancylevel(regionAttributes->redundancyLevel);
+    req.set_memorytype(regionAttributes->memoryType);
+    req.set_interleaveenable(regionAttributes->interleaveEnable);
 
     ::grpc::Status status =
         stub->metadata_validate_and_create_region(&ctx, req, &res);

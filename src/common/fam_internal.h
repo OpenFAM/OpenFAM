@@ -73,9 +73,10 @@
 #include "radixtree/kvs.h"
 #include "radixtree/radix_tree.h"
 
+#include "fam/fam.h"
+#include "fam/fam_exception.h"
 #include "nvmm/epoch_manager.h"
 #include "nvmm/memory_manager.h"
-#include "fam/fam_exception.h"
 #include <nvmm/fam.h>
 
 #include <grpcpp/grpcpp.h>
@@ -142,6 +143,9 @@ typedef struct {
     uint64_t key;
     uint64_t size;
     mode_t perm;
+    Fam_Redundancy_Level redundancyLevel;
+    Fam_Memory_Type memoryType;
+    Fam_Interleave_Enable interleaveEnable;
     void *base;
     char name[RadixTree::MAX_KEY_LEN];
     uint64_t memoryServerId;
