@@ -67,7 +67,7 @@ class Fam_CIS_Direct : public Fam_CIS {
 
     Fam_Region_Item_Info create_region(string name, size_t nbytes,
                                        mode_t permission,
-                                       Fam_Redundancy_Level redundancyLevel,
+                                       Fam_Region_Attributes *regionAttributes,
                                        uint32_t uid, uint32_t gid);
     void destroy_region(uint64_t regionId, uint64_t memoryServerId,
                         uint32_t uid, uint32_t gid);

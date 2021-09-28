@@ -104,7 +104,7 @@ uint64_t Fam_CIS_Client::get_num_memory_servers() {
 
 Fam_Region_Item_Info
 Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
-                              Fam_Redundancy_Level redundancyLevel,
+                              Fam_Region_Attributes *regionAttributes,
                               uint32_t uid, uint32_t gid) {
     Fam_Region_Request req;
     Fam_Region_Response res;
@@ -113,6 +113,9 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     req.set_name(name);
     req.set_size(nbytes);
     req.set_perm(permission);
+    req.set_redundancylevel(regionAttributes->redundancyLevel);
+    req.set_memorytype(regionAttributes->memoryType);
+    req.set_interleaveenable(regionAttributes->interleaveEnable);
     req.set_uid(uid);
     req.set_gid(gid);
 
@@ -122,6 +125,9 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     Fam_Region_Item_Info info;
     info.regionId = res.regionid();
     info.offset = res.offset();
+    info.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+    info.memoryType = (Fam_Memory_Type)res.memorytype();
+    info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     return info;
 }
 
@@ -265,6 +271,9 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name, uint32_t uid,
     info.size = res.size();
     info.perm = (mode_t)res.perm();
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    info.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+    info.memoryType = (Fam_Memory_Type)res.memorytype();
+    info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     return info;
 }
 

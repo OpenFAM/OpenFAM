@@ -93,7 +93,7 @@ class Fam_CIS {
      **/
     virtual Fam_Region_Item_Info
     create_region(string name, size_t nbytes, mode_t permission,
-                  Fam_Redundancy_Level redundancyLevel, uint32_t uid,
+                  Fam_Region_Attributes *regionAttributes, uint32_t uid,
                   uint32_t gid) = 0;
 
     /**

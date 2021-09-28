@@ -200,10 +200,10 @@ class Fam_Metadata_Service_Direct::Impl_ {
                                     metadata_region_item_op_t op, uint32_t uid,
                                     uint32_t gid);
 
-    void metadata_validate_and_create_region(string regionname, size_t size,
-                                             uint64_t *regionid,
-                                             std::list<int> *memory_server_list,
-                                             int user_policy);
+    void metadata_validate_and_create_region(
+        string regionname, size_t size, uint64_t *regionid,
+        Fam_Region_Attributes *regionAttributes,
+        std::list<int> *memory_server_list, int user_policy);
 
     void
     metadata_validate_and_destroy_region(const uint64_t regionId, uint32_t uid,
@@ -2296,7 +2296,8 @@ Fam_Metadata_Service_Direct::Impl_::metadata_reset_bitmap(uint64_t regionID) {
 
 void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_create_region(
     const std::string regionname, size_t size, uint64_t *regionid,
-    std::list<int> *memory_server_list, int user_policy = 0) {
+    Fam_Region_Attributes *regionAttributes, std::list<int> *memory_server_list,
+    int user_policy = 0) {
     ostringstream message;
     Fam_Region_Metadata region;
     //
@@ -2971,11 +2972,13 @@ void Fam_Metadata_Service_Direct::metadata_reset_bitmap(uint64_t regionId) {
 
 void Fam_Metadata_Service_Direct::metadata_validate_and_create_region(
     string regionname, size_t size, uint64_t *regionid,
-    std::list<int> *memory_server_list, int user_policy) {
+    Fam_Region_Attributes *regionAttributes, std::list<int> *memory_server_list,
+    int user_policy) {
 
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_validate_and_create_region(
-        regionname, size, regionid, memory_server_list, user_policy);
+        regionname, size, regionid, regionAttributes, memory_server_list,
+        user_policy);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_validate_and_create_region);
 }
 

@@ -134,7 +134,7 @@ class fam::Impl_ {
 
     Fam_Region_Descriptor *
     fam_create_region(const char *name, uint64_t size, mode_t permissions,
-                      Fam_Redundancy_Level redundancyLevel, ...);
+                      Fam_Region_Attributes *regionAttributes);
 
     void fam_destroy_region(Fam_Region_Descriptor *descriptor);
 
@@ -1133,11 +1133,11 @@ Fam_Descriptor *fam::Impl_::fam_lookup(const char *itemName,
 Fam_Region_Descriptor *
 fam::Impl_::fam_create_region(const char *name, uint64_t size,
                               mode_t permissions,
-                              Fam_Redundancy_Level redundancyLevel, ...) {
+                              Fam_Region_Attributes *regionAttributes) {
     FAM_CNTR_INC_API(fam_create_region);
     FAM_PROFILE_START_ALLOCATOR(fam_create_region);
     auto ret =
-        famAllocator->create_region(name, size, permissions, redundancyLevel);
+        famAllocator->create_region(name, size, permissions, regionAttributes);
     FAM_PROFILE_END_ALLOCATOR(fam_create_region);
     return ret;
 }
@@ -3861,9 +3861,9 @@ Fam_Descriptor *fam::fam_lookup(const char *itemName, const char *regionName) {
  */
 Fam_Region_Descriptor *
 fam::fam_create_region(const char *name, uint64_t size, mode_t permissions,
-                       Fam_Redundancy_Level redundancyLevel, ...) {
+                       Fam_Region_Attributes *regionAttributes) {
     TRY_CATCH_BEGIN
-    return pimpl_->fam_create_region(name, size, permissions, redundancyLevel);
+    return pimpl_->fam_create_region(name, size, permissions, regionAttributes);
     RETURN_WITH_FAM_EXCEPTION
 }
 

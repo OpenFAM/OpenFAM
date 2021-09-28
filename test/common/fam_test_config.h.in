@@ -38,9 +38,13 @@
 #include <string.h>
 #include <fam/fam.h>
 
+/*TO DO :: Change the create_region API in all tests and remove these macros*/
+#define RAID1 NULL
+#define RAID5 NULL
+#define NONE NULL
+
 using namespace std;
 using namespace openfam;
-
 // Fam_Options
 #cmakedefine TEST_DEFAULT_REGION "${TEST_DEFAULT_REGION}"
 #cmakedefine TEST_OPENFAM_MODEL "${TEST_OPENFAM_MODEL}"

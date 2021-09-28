@@ -145,10 +145,15 @@ Fam_CIS_Server::create_region(::grpc::ServerContext *context,
                               ::Fam_Region_Response *response) {
     CIS_SERVER_PROFILE_START_OPS()
     Fam_Region_Item_Info info;
+    Fam_Region_Attributes *regionAttributes = new (Fam_Region_Attributes);
+    regionAttributes->redundancyLevel =
+        (Fam_Redundancy_Level)request->redundancylevel();
+    regionAttributes->memoryType = (Fam_Memory_Type)request->memorytype();
+    regionAttributes->interleaveEnable =
+        (Fam_Interleave_Enable)request->interleaveenable();
     try {
         info = famCIS->create_region(request->name(), (size_t)request->size(),
-                                     (mode_t)request->perm(),
-                                     static_cast<Fam_Redundancy_Level>(0),
+                                     (mode_t)request->perm(), regionAttributes,
                                      request->uid(), request->gid());
     }
     catch (Fam_Exception &e) {
@@ -324,6 +329,9 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     response->set_perm(info.perm);
     response->set_name(info.name);
     response->set_maxnamelen(info.maxNameLen);
+    response->set_redundancylevel(info.redundancyLevel);
+    response->set_memorytype(info.memoryType);
+    response->set_interleaveenable(info.interleaveEnable);
 
     CIS_SERVER_PROFILE_END_OPS(lookup_region);
     return ::grpc::Status::OK;

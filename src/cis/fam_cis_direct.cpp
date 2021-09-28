@@ -360,7 +360,7 @@ inline int Fam_CIS_Direct::create_region_failure_cleanup(
 }
 Fam_Region_Item_Info
 Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
-                              Fam_Redundancy_Level redundancyLevel,
+                              Fam_Region_Attributes *regionAttributes,
                               uint32_t uid, uint32_t gid) {
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
@@ -384,7 +384,8 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     // in which region needs to be spanned.
     try {
         metadataService->metadata_validate_and_create_region(
-            name, nbytes, &regionId, &memory_server_list, user_policy);
+            name, nbytes, &regionId, regionAttributes, &memory_server_list,
+            user_policy);
     }
     catch (...) {
         throw;
@@ -460,6 +461,9 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     region.uid = uid;
     region.gid = gid;
     region.size = nbytes;
+    region.redundancyLevel = regionAttributes->redundancyLevel;
+    region.memoryType = regionAttributes->memoryType;
+    region.interleaveEnable = regionAttributes->interleaveEnable;
     region.used_memsrv_cnt = used_memsrv_cnt;
     memcpy(region.memServerIds, memServerIds,
            used_memsrv_cnt * sizeof(uint64_t));
@@ -837,6 +841,9 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name, uint32_t uid,
     info.perm = region.perm;
     strncpy(info.name, region.name, metadataMaxKeyLen);
     info.maxNameLen = metadataMaxKeyLen;
+    info.redundancyLevel = region.redundancyLevel;
+    info.memoryType = region.memoryType;
+    info.interleaveEnable = region.interleaveEnable;
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup_region);
     return info;
 }

@@ -280,6 +280,24 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
 
     char *get_name() { return name; }
 
+    void set_redundancyLevel(Fam_Redundancy_Level reg_redundancyLevel) {
+        redundancyLevel = reg_redundancyLevel;
+    }
+
+    void set_memoryType(Fam_Memory_Type reg_memoryType) {
+        memoryType = reg_memoryType;
+    }
+
+    void set_interleaveEnable(Fam_Interleave_Enable reg_interleaveEnable) {
+        interleaveEnable = reg_interleaveEnable;
+    }
+
+    Fam_Redundancy_Level get_redundancyLevel() { return redundancyLevel; }
+
+    Fam_Memory_Type get_memoryType() { return memoryType; }
+
+    Fam_Interleave_Enable get_interleaveEnable() { return interleaveEnable; }
+
   private:
     Fam_Global_Descriptor gDescriptor;
     void *context;
@@ -287,6 +305,9 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
     char *name;
     uint64_t size;
     mode_t perm;
+    Fam_Redundancy_Level redundancyLevel;
+    Fam_Memory_Type memoryType;
+    Fam_Interleave_Enable interleaveEnable;
 };
 
 Fam_Region_Descriptor::Fam_Region_Descriptor(Fam_Global_Descriptor gDescriptor,
@@ -342,4 +363,25 @@ char *Fam_Region_Descriptor::get_name() { return frdimpl_->get_name(); }
 
 uint64_t Fam_Region_Descriptor::get_memserver_id() {
     return frdimpl_->get_memserver_id();
+}
+
+void Fam_Region_Descriptor::set_redundancyLevel(
+    Fam_Redundancy_Level redundancyLevel) {
+    frdimpl_->set_redundancyLevel(redundancyLevel);
+}
+void Fam_Region_Descriptor::set_memoryType(Fam_Memory_Type memoryType) {
+    frdimpl_->set_memoryType(memoryType);
+}
+void Fam_Region_Descriptor::set_interleaveEnable(
+    Fam_Interleave_Enable interleaveEnable) {
+    frdimpl_->set_interleaveEnable(interleaveEnable);
+}
+Fam_Redundancy_Level Fam_Region_Descriptor::get_redundancyLevel() {
+    return frdimpl_->get_redundancyLevel();
+}
+Fam_Memory_Type Fam_Region_Descriptor::get_memoryType() {
+    return frdimpl_->get_memoryType();
+}
+Fam_Interleave_Enable Fam_Region_Descriptor::get_interleaveEnable() {
+    return frdimpl_->get_interleaveEnable();
 }
