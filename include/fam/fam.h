@@ -1103,7 +1103,7 @@ class fam {
 
     /**
      * fam_progress - returns number of pending FAM
-     * operations (put, scatter, atomics, copy).
+     * operations (put, get, scatter, gather, atomics).
      * @return - number of pending operations
      */
     uint64_t fam_progress(void);
