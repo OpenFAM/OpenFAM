@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_rpc.proto
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -140,6 +140,7 @@ message Fam_Memory_Copy_Request {
     uint32 src_addr_len = 9;
     uint64 src_memserver_id = 10;
     uint64 dest_memserver_id = 11;
+    uint64 src_base_addr = 12;
 }
 
 message Fam_Memory_Copy_Response {

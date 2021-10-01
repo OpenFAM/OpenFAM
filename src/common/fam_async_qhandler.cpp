@@ -1,6 +1,6 @@
 /*
  * fam_async_qhandler.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -258,8 +258,8 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         if (tag->memoryService)
             tag->memoryService->copy(
                 tag->srcRegionId, tag->srcOffset, tag->srcKey,
-                tag->srcCopyStart, tag->srcAddr, tag->srcAddrLen,
-                tag->destRegionId, tag->destOffset, tag->size,
+                tag->srcCopyStart, tag->srcBaseAddr, tag->srcAddr,
+                tag->srcAddrLen, tag->destRegionId, tag->destOffset, tag->size,
                 tag->srcMemserverId, tag->destMemserverId);
         else {
             memcpy(dest, src, nbytes);

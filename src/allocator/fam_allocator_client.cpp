@@ -1,8 +1,9 @@
 /*
  * fam_allocator_client.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -291,6 +292,7 @@ void *Fam_Allocator_Client::copy(Fam_Descriptor *src, uint64_t srcCopyStart,
     uint64_t srcItemSize = src->get_size();
     uint64_t destItemSize = dest->get_size();
     uint64_t srcKey = src->get_key();
+    uint64_t srcBaseAddr = (uint64_t)src->get_base_address();
 
     if ((srcCopyStart + nbytes) > srcItemSize) {
         throw Fam_Allocator_Exception(
@@ -304,10 +306,10 @@ void *Fam_Allocator_Client::copy(Fam_Descriptor *src, uint64_t srcCopyStart,
             "Destination offset or size is beyond dataitem boundary");
     }
 
-    return famCIS->copy(srcRegionId, srcOffset, srcCopyStart, srcKey, srcAddr,
-                        srcAddrLen, destRegionId, destOffset, destCopyStart,
-                        nbytes, srcMemoryServerId, destMemoryServerId, uid,
-                        gid);
+    return famCIS->copy(srcRegionId, srcOffset, srcCopyStart, srcKey,
+                        srcBaseAddr, srcAddr, srcAddrLen, destRegionId,
+                        destOffset, destCopyStart, nbytes, srcMemoryServerId,
+                        destMemoryServerId, uid, gid);
 }
 
 void Fam_Allocator_Client::wait_for_copy(void *waitObj) {

@@ -1,6 +1,6 @@
 /*
  * fam_cis_direct.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2020-21 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -1044,10 +1044,10 @@ void Fam_CIS_Direct::fam_unmap(void *local, uint64_t regionId, uint64_t offset,
 
 void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
                            uint64_t srcCopyStart, uint64_t srcKey,
-                           const char *srcAddr, uint32_t srcAddrLen,
-                           uint64_t destRegionId, uint64_t destOffset,
-                           uint64_t destCopyStart, uint64_t nbytes,
-                           uint64_t srcMemoryServerId,
+                           uint64_t srcBaseAddr, const char *srcAddr,
+                           uint32_t srcAddrLen, uint64_t destRegionId,
+                           uint64_t destOffset, uint64_t destCopyStart,
+                           uint64_t nbytes, uint64_t srcMemoryServerId,
                            uint64_t destMemoryServerId, uint32_t uid,
                            uint32_t gid) {
     ostringstream message;
@@ -1112,6 +1112,7 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         tag->memoryService = memoryService;
         tag->srcRegionId = srcRegionId;
         tag->srcOffset = (srcOffset + srcCopyStart);
+        tag->srcBaseAddr = srcBaseAddr;
         tag->destRegionId = destRegionId;
         tag->destOffset = (destOffset + destCopyStart);
         tag->size = nbytes;
@@ -1126,8 +1127,8 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         waitObj->tag = tag;
     } else {
         memoryService->copy(srcRegionId, (srcOffset + srcCopyStart), srcKey,
-                            srcCopyStart, srcAddr, srcAddrLen, destRegionId,
-                            (destOffset + destCopyStart), nbytes,
+                            srcCopyStart, srcBaseAddr, srcAddr, srcAddrLen,
+                            destRegionId, (destOffset + destCopyStart), nbytes,
                             srcMemoryServerId, destMemoryServerId);
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_copy);

@@ -1,8 +1,9 @@
 /*
  * fam_cis.h
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -246,6 +247,7 @@ class Fam_CIS {
      * @param srcOffset - offset of source dataitem
      * @param srcCopyStart - start position in source dataitem
      * @param srcKey - source dataitem key
+     * @param srcBaseAddr - source Base Address
      * @param srcAddr - source memory server address
      * @param srcAddrLen - source memory server address size
      * @param destRegionId - region Id of destination dataitem
@@ -257,13 +259,12 @@ class Fam_CIS {
      * @param uid - uid of user
      * @param gid - gid of user
      **/
-    virtual void *copy(uint64_t srcRegionId, uint64_t srcOffset,
-                       uint64_t srcCopyStart, uint64_t srcKey,
-                       const char *srcAddr, uint32_t srcAddrLen,
-                       uint64_t destRegionId, uint64_t destOffset,
-                       uint64_t destCopyStar, uint64_t nbytes,
-                       uint64_t srcMemoryServerId, uint64_t destMemoryServerId,
-                       uint32_t uid, uint32_t gid) = 0;
+    virtual void *
+    copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcCopyStart,
+         uint64_t srcKey, uint64_t srcBaseAddr, const char *srcAddr,
+         uint32_t srcAddrLen, uint64_t destRegionId, uint64_t destOffset,
+         uint64_t destCopyStar, uint64_t nbytes, uint64_t srcMemoryServerId,
+         uint64_t destMemoryServerId, uint32_t uid, uint32_t gid) = 0;
 
     /**
      * wait for particular copy issued earlier corresponding to wait object

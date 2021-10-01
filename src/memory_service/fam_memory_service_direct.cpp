@@ -241,9 +241,10 @@ void *Fam_Memory_Service_Direct::get_local_pointer(uint64_t regionId,
 
 void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
                                      uint64_t srcKey, uint64_t srcCopyStart,
-                                     const char *srcAddr, uint32_t srcAddrLen,
-                                     uint64_t destRegionId, uint64_t destOffset,
-                                     uint64_t size, uint64_t srcMemserverId,
+                                     uint64_t srcBaseAddr, const char *srcAddr,
+                                     uint32_t srcAddrLen, uint64_t destRegionId,
+                                     uint64_t destOffset, uint64_t size,
+                                     uint64_t srcMemserverId,
                                      uint64_t destMemserverId) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     // srcOffset/destOffset - offset within the region, used only when src and
@@ -342,8 +343,8 @@ void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         // perform fabric_read (blocking) on the source data item
         // do mem copy - read directly to the destination location.
         void *destPtr = allocator->get_local_pointer(destRegionId, destOffset);
-        if (fabric_read(srcKey, destPtr, size, srcCopyStart, srcFiAddr,
-                        famOps->get_defaultCtx(uint64_t(0))) != 0) {
+        if (fabric_read(srcKey, destPtr, size, (srcCopyStart + srcBaseAddr),
+                        srcFiAddr, famOps->get_defaultCtx(uint64_t(0))) != 0) {
             // raise exception
             message << "fabric_read failed: libfabric error";
             THROW_ERRNO_MSG(Memory_Service_Exception, LIBFABRIC_ERROR,
