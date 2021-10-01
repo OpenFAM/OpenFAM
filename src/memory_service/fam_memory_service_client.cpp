@@ -1,8 +1,9 @@
 /*
  * fam_memory_service_client.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -249,9 +250,10 @@ void Fam_Memory_Service_Client::deallocate(uint64_t regionId, uint64_t offset) {
 
 void Fam_Memory_Service_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
                                      uint64_t srcKey, uint64_t srcCopyStart,
-                                     const char *srcAddr, uint32_t srcAddrLen,
-                                     uint64_t destRegionId, uint64_t destOffset,
-                                     uint64_t size, uint64_t srcMemserverId,
+                                     uint64_t srcBaseAddr, const char *srcAddr,
+                                     uint32_t srcAddrLen, uint64_t destRegionId,
+                                     uint64_t destOffset, uint64_t size,
+                                     uint64_t srcMemserverId,
                                      uint64_t destMemserverId) {
     Fam_Memory_Copy_Request req;
     Fam_Memory_Copy_Response res;
@@ -263,6 +265,7 @@ void Fam_Memory_Service_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     req.set_src_offset(srcOffset);
     req.set_src_key(srcKey);
     req.set_src_copy_start(srcCopyStart);
+    req.set_src_base_addr(srcBaseAddr);
     req.set_src_addr(srcAddr, srcAddrLen);
     req.set_src_addr_len(srcAddrLen);
     req.set_dest_offset(destOffset);

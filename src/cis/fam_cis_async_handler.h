@@ -1,8 +1,9 @@
 /*
  * fam_rpc_server.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -171,11 +172,12 @@ class Fam_CIS_Async_Handler {
                     void *waitObj = famCIS->copy(
                         request.srcregionid(), request.srcoffset(),
                         request.srccopystart(), request.srckey(),
-                        request.srcaddr().c_str(), request.srcaddrlen(),
-                        request.destregionid(), request.destoffset(),
-                        request.destcopystart(), request.copysize(),
-                        request.src_memserver_id(), request.dest_memserver_id(),
-                        request.uid(), request.gid());
+                        request.srcbaseaddr(), request.srcaddr().c_str(),
+                        request.srcaddrlen(), request.destregionid(),
+                        request.destoffset(), request.destcopystart(),
+                        request.copysize(), request.src_memserver_id(),
+                        request.dest_memserver_id(), request.uid(),
+                        request.gid());
                     delete (Fam_Copy_Tag *)waitObj;
                 } catch (Memory_Service_Exception &e) {
                     response.set_errorcode(e.fam_error());

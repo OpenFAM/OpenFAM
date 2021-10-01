@@ -1,8 +1,9 @@
 /*
  * fam_cis_client.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -380,10 +381,10 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
 
 void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
                            uint64_t srcCopyStart, uint64_t srcKey,
-                           const char *srcAddr, uint32_t srcAddrLen,
-                           uint64_t destRegionId, uint64_t destOffset,
-                           uint64_t destCopyStar, uint64_t nbytes,
-                           uint64_t srcMemoryServerId,
+                           uint64_t srcBaseAddr, const char *srcAddr,
+                           uint32_t srcAddrLen, uint64_t destRegionId,
+                           uint64_t destOffset, uint64_t destCopyStar,
+                           uint64_t nbytes, uint64_t srcMemoryServerId,
                            uint64_t destMemoryServerId, uint32_t uid,
                            uint32_t gid) {
     Fam_Copy_Request req;
@@ -394,6 +395,7 @@ void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     req.set_destregionid(destRegionId);
     req.set_srcoffset(srcOffset);
     req.set_srckey(srcKey);
+    req.set_srcbaseaddr(srcBaseAddr);
     req.set_srcaddr(srcAddr, srcAddrLen);
     req.set_srcaddrlen(srcAddrLen);
     req.set_destoffset(destOffset);

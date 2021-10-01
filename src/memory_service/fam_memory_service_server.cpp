@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_server.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -273,9 +273,9 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
     try {
         memoryService->copy(
             request->src_region_id(), request->src_offset(), request->src_key(),
-            request->src_copy_start(), request->src_addr().c_str(),
-            request->src_addr_len(), request->dest_region_id(),
-            request->dest_offset(), request->size(),
+            request->src_copy_start(), request->src_base_addr(),
+            request->src_addr().c_str(), request->src_addr_len(),
+            request->dest_region_id(), request->dest_offset(), request->size(),
             request->src_memserver_id(), request->dest_memserver_id());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());

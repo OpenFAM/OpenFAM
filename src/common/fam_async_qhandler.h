@@ -1,6 +1,6 @@
 /*
  * fam_async_qhandler.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -58,6 +58,7 @@ typedef struct {
     uint64_t size;
     uint64_t srcKey;
     uint64_t srcCopyStart;
+    uint64_t srcBaseAddr;
     char *srcAddr;
     uint32_t srcAddrLen;
     uint64_t srcMemserverId;
