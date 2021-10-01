@@ -89,7 +89,7 @@ int main(void) {
         //          memory
         myFam->fam_put_nonblocking(local, descriptor, 6 * sizeof(int),
                                    10 * sizeof(int));
-	 // Get the number of pending non-blocking FAM operations
+        // Get the number of pending non-blocking FAM operations
         ret = myFam->fam_progress();
         printf("%ld I/Os in progress\n", ret);
         myFam->fam_quiet();
