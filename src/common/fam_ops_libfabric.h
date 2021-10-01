@@ -151,6 +151,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     void fence(Fam_Region_Descriptor *descriptor = NULL);
 
     void quiet(Fam_Region_Descriptor *descriptor = NULL);
+    uint64_t progress();
     void check_progress(Fam_Region_Descriptor *descriptor = NULL);
 
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
@@ -356,6 +357,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     Fam_Context *get_context(Fam_Descriptor *descriptor);
 
     void quiet_context(Fam_Context *context);
+
+    uint64_t progress_context();
 
     size_t get_addr_size() { return serverAddrNameLen; };
 

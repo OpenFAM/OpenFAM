@@ -587,6 +587,16 @@ void Fam_Ops_SHM::quiet(Fam_Region_Descriptor *descriptor) {
     }
 }
 
+uint64_t Fam_Ops_SHM::progress_context(Fam_Context *famCtx) {
+    uint64_t pending = 0;
+    famCtx->aquire_RDLock();
+    pending = asyncQHandler->progress(famCtx);
+    famCtx->release_lock();
+    return pending;
+}
+
+uint64_t Fam_Ops_SHM::progress() { return progress_context(get_defaultCtx()); }
+
 void Fam_Ops_SHM::abort(int status) FAM_OPS_UNIMPLEMENTED(void__);
 
 void *Fam_Ops_SHM::copy(Fam_Descriptor *src, uint64_t srcOffset,

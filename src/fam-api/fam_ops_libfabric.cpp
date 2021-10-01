@@ -713,6 +713,15 @@ void Fam_Ops_Libfabric::quiet(Fam_Region_Descriptor *descriptor) {
     }
 }
 
+uint64_t Fam_Ops_Libfabric::progress_context() {
+    uint64_t pending = 0;
+    for (auto fam_ctx : *defContexts) {
+        pending += fabric_progress(fam_ctx.second);
+    }
+    return pending;
+}
+
+uint64_t Fam_Ops_Libfabric::progress() { return progress_context(); }
 void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                                    int32_t value) {
     std::ostringstream message;

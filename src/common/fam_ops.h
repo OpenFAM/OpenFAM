@@ -705,6 +705,13 @@ class Fam_Ops {
     virtual void quiet(Fam_Region_Descriptor *descriptor = NULL) = 0;
 
     /**
+     * progress - returns number of all its pending FAM
+     * operations (put, scatter, atomics, copy).
+     * @return - number of pending operations
+     */
+    virtual uint64_t progress() = 0;
+
+    /**
      * check_progress thread is used by memory server to keep the I/Os going on.
      */
     virtual void check_progress(Fam_Region_Descriptor *descriptor = NULL) = 0;
