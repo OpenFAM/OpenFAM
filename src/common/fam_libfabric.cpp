@@ -1572,18 +1572,18 @@ uint64_t fabric_get_progress(Fam_Context *famCtx) {
 uint64_t fabric_progress(Fam_Context *famCtx) {
     uint64_t reads = 0;
     uint64_t writes = 0;
-    // Take Fam_Context Write lock
+    // Take Fam_Context Read lock
     famCtx->aquire_RDLock();
     try {
         writes = fabric_put_progress(famCtx);
         reads = fabric_get_progress(famCtx);
     } catch (...) {
-        // Release Fam_Context Write lock
+        // Release Fam_Context Read lock
         famCtx->release_lock();
         throw;
     }
 
-    // Release Fam_Context Write lock
+    // Release Fam_Context Read lock
     famCtx->release_lock();
     return (reads + writes);
 }
