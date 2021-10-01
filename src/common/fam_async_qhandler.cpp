@@ -97,6 +97,25 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         return;
     }
 
+    uint64_t read_progress(Fam_Context *famCtx) {
+        uint64_t total_reads, ctr = 0;
+        total_reads = famCtx->get_num_rx_ops();
+        ctr = readCtr.load(boost::memory_order_seq_cst);
+        return (total_reads - ctr);
+    }
+    uint64_t write_progress(Fam_Context *famCtx) {
+        uint64_t ctr, writes = 0;
+        writes = famCtx->get_num_tx_ops();
+        ctr = writeCtr.load(boost::memory_order_seq_cst);
+        return (writes - ctr);
+    }
+
+    uint64_t progress(Fam_Context *famCtx) {
+        uint64_t writes, reads = 0;
+        writes = write_progress(famCtx);
+        reads = read_progress(famCtx);
+        return (writes + reads);
+    }
     void quiet(Fam_Context *famCtx) {
 
         qreadCtr = famCtx->get_num_rx_ops();
@@ -315,6 +334,17 @@ void Fam_Async_QHandler::read_quiet(uint64_t ctr) {
     fAsyncQHandler_->read_quiet(ctr);
 }
 
+uint64_t Fam_Async_QHandler::progress(Fam_Context *famCtx) {
+    return fAsyncQHandler_->progress(famCtx);
+}
+
+uint64_t Fam_Async_QHandler::write_progress(Fam_Context *famCtx) {
+    return fAsyncQHandler_->write_progress(famCtx);
+}
+
+uint64_t Fam_Async_QHandler::read_progress(Fam_Context *famCtx) {
+    return fAsyncQHandler_->read_progress(famCtx);
+}
 void Fam_Async_QHandler::wait_for_copy(void *waitObj) {
     fAsyncQHandler_->wait_for_copy(waitObj);
 }

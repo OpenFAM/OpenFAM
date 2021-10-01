@@ -1,6 +1,6 @@
 /*
  * fam_libfabric.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -1547,6 +1547,45 @@ void fabric_quiet(Fam_Context *famCtx) {
     // Release Fam_Context Write lock
     famCtx->release_lock();
     return;
+}
+
+uint64_t fabric_put_progress(Fam_Context *famCtx) {
+    uint64_t txsuccess = 0;
+    uint64_t txfail = 0;
+    uint64_t txcnt = 0;
+    txcnt = famCtx->get_num_tx_ops();
+    FI_CALL(txsuccess, fi_cntr_read, famCtx->get_txCntr());
+    FI_CALL(txfail, fi_cntr_readerr, famCtx->get_txCntr());
+    return (txcnt - (txsuccess + txfail));
+}
+
+uint64_t fabric_get_progress(Fam_Context *famCtx) {
+    uint64_t rxsuccess = 0;
+    uint64_t rxfail = 0;
+    uint64_t rxcnt = 0;
+    rxcnt = famCtx->get_num_rx_ops();
+    FI_CALL(rxsuccess, fi_cntr_read, famCtx->get_rxCntr());
+    FI_CALL(rxfail, fi_cntr_readerr, famCtx->get_rxCntr());
+    return (rxcnt - (rxsuccess + rxfail));
+}
+
+uint64_t fabric_progress(Fam_Context *famCtx) {
+    uint64_t reads = 0;
+    uint64_t writes = 0;
+    // Take Fam_Context Read lock
+    famCtx->aquire_RDLock();
+    try {
+        writes = fabric_put_progress(famCtx);
+        reads = fabric_get_progress(famCtx);
+    } catch (...) {
+        // Release Fam_Context Read lock
+        famCtx->release_lock();
+        throw;
+    }
+
+    // Release Fam_Context Read lock
+    famCtx->release_lock();
+    return (reads + writes);
 }
 
 void fabric_atomic(uint64_t key, void *value, uint64_t offset, enum fi_op op,

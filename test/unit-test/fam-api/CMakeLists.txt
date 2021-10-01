@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -41,6 +41,7 @@ add_fam_test(fam_scatter_gather_index_blocking)
 add_fam_test(fam_scatter_gather_stride_blocking)
 add_fam_test(fam_put_get_region_ctx)
 add_fam_test(fam_quiet_put_get_nonblocking)
+add_fam_test(fam_progress)
 add_fam_test(fam_scatter_gather_index_nonblocking)
 add_fam_test(fam_scatter_gather_stride_nonblocking)
 add_fam_test(fam_scatter_gather_stride_blocking_with_validation)

@@ -360,6 +360,8 @@ class fam::Impl_ {
     void fam_fence(Fam_Region_Descriptor *descriptor = NULL);
     void fam_quiet(Fam_Region_Descriptor *descriptor = NULL);
 
+    uint64_t fam_progress();
+
     int validate_fam_options(Fam_Options *options,
                              configFileParams config_file_fam_options);
     void clean_fam_options();
@@ -3731,6 +3733,21 @@ void fam::Impl_::fam_quiet(Fam_Region_Descriptor *descriptor) {
 }
 
 /**
+ * fam_progress - returns number of all its pending FAM
+ * operations (put, scatter, atomics, copy).
+ * @return - number of pending operations
+ */
+
+uint64_t fam::Impl_::fam_progress() {
+    uint64_t ret;
+    FAM_CNTR_INC_API(fam_progress);
+    FAM_PROFILE_START_OPS(fam_progress);
+    ret = famOps->progress();
+    FAM_PROFILE_END_OPS(fam_progress);
+    return ret;
+}
+
+/**
  * Initialize the OpenFAM library. This method is required to be the first
  * method called when a process uses the OpenFAM library.
  * @param groupName - name of the group of cooperating PEs.
@@ -5166,6 +5183,16 @@ void fam::fam_quiet() {
     RETURN_WITH_FAM_EXCEPTION
 }
 
+/**
+ * fam_progress - returns number of all its pending FAM
+ * operations (put, scatter, atomics, copy).
+ * @return - number of pending operations
+ */
+uint64_t fam::fam_progress() {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_progress();
+    RETURN_WITH_FAM_EXCEPTION
+}
 
 #ifdef FAM_PROFILE
 void fam::fam_reset_profile() {

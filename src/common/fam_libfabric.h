@@ -1,6 +1,6 @@
 /*
  * fam_libfabric.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -147,6 +147,8 @@ void fabric_gather_index_nonblocking(uint64_t key, const void *local,
 void fabric_fence(fi_addr_t fiAddr, Fam_Context *context);
 
 void fabric_quiet(Fam_Context *context);
+
+uint64_t fabric_progress(Fam_Context *context);
 
 int fabric_retry(Fam_Context *context, int ret, uint64_t *retry_cnt);
 

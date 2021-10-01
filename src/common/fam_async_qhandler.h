@@ -101,6 +101,9 @@ class Fam_Async_QHandler {
     void quiet(Fam_Context *famCtx);
     void write_quiet(uint64_t ctr);
     void read_quiet(uint64_t ctr);
+    uint64_t progress(Fam_Context *famCtx);
+    uint64_t write_progress(Fam_Context *famCtx);
+    uint64_t read_progress(Fam_Context *famCtx);
     void wait_for_copy(void *waitObj);
     void decode_and_execute(Fam_Ops_Info opsInfo);
     void write_handler(void *src, void *dest, uint64_t nbytes, uint64_t offset,

@@ -1102,6 +1102,13 @@ class fam {
     void fam_quiet(void);
 
     /**
+     * fam_progress - returns number of pending FAM
+     * operations (put, get, scatter, gather, atomics).
+     * @return - number of pending operations
+     */
+    uint64_t fam_progress(void);
+
+    /**
      * fam() - constructor for fam class
      */
     fam();
