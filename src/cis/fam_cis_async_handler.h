@@ -206,7 +206,7 @@ class Fam_CIS_Async_Handler {
                     void *waitObj;
                     switch (type) {
                     case RT_COPY:
-                    *waitObj = famCIS->copy(
+                    waitObj = famCIS->copy(
                         request.srcregionid(), request.srcoffset(),
                         request.srccopystart(), request.srckey(),
                         request.srcbaseaddr(), request.srcaddr().c_str(),

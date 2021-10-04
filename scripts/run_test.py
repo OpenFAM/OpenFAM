@@ -4,6 +4,10 @@ import argparse
 import ruamel.yaml
 import time
 import math
+from pathlib import Path
+
+home_dir = str(Path.home())
+backup_dir = home_dir + "/backup/"
 
 # Create the parser
 my_parser = argparse.ArgumentParser(
@@ -139,6 +143,11 @@ my_parser.add_argument(
 )
 
 my_parser.add_argument(
+    "--fam_backup_path", action="store", type=str, help="path where data backup is stored", default=backup_dir
+)
+
+
+my_parser.add_argument(
     "--atlthreads", action="store", type=str, help="Atomic library threads count"
 )
 
@@ -261,6 +270,9 @@ if args.metapath is not None:
     metaservice_config_doc["metadata_path"] = args.metapath
 if args.fampath is not None:
     memservice_config_doc["fam_path"] = args.fampath
+if args.fam_backup_path is not None:
+    memservice_config_doc["fam_backup_path"] = args.fam_backup_path
+    print(args.fam_backup_path)
 if args.atlthreads is not None:
     memservice_config_doc["ATL_threads"] = args.atlthreads
 if args.atlqsize is not None:
