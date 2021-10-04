@@ -315,16 +315,13 @@ class Fam_CIS {
      * @param waitObj - wait object
      **/
     virtual void wait_for_copy(void *waitObj) = 0;
-    virtual void *backup(uint64_t srcRegionId, const char *srcAddr,
-                         uint32_t srcAddrLen, uint64_t srcOffset,
-                         uint64_t srcKey, uint64_t srcMemoryServerId,
-                         string outputFile, uint32_t uid, uint32_t gid,
-                         uint64_t size) = 0;
-    virtual void *restore(uint64_t destRegionId, const char *destAddr,
-                          uint32_t destAddrLen, uint64_t destOffset,
-                          uint64_t destKey, uint64_t destMemoryServerId,
-                          string inputFile, uint32_t uid, uint32_t gid,
-                          uint64_t size) = 0;
+    virtual void *backup(uint64_t srcRegionId, uint64_t srcOffset,
+                         uint64_t srcMemoryServerId, string outputFile,
+                         uint32_t uid, uint32_t gid, uint64_t size) = 0;
+    virtual void *restore(uint64_t destRegionId, uint64_t destOffset,
+                          uint64_t destMemoryServerId, string inputFile,
+                          uint32_t uid, uint32_t gid, uint64_t size) = 0;
+
     virtual void wait_for_backup(void *waitObj) = 0;
     virtual void wait_for_restore(void *waitObj) = 0;
     /**
@@ -362,7 +359,8 @@ class Fam_CIS {
     virtual size_t get_addr_size(uint64_t memoryServerId) = 0;
     virtual void get_addr(void *memServerFabricAddr,
                           uint64_t memoryServerId) = 0;
-
+    virtual int64_t get_file_info(std::string inputFile,
+                                  uint64_t memoryServerId) = 0;
     virtual size_t get_memserverinfo_size() = 0;
     virtual void get_memserverinfo(void *memServerInfo) = 0;
 

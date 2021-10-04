@@ -1,6 +1,6 @@
 /*
  * fam/fam_internal_exception.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -107,13 +107,16 @@ enum Internal_Error {
     ATL_QUEUE_FULL,
     ATL_QUEUE_INSERT_ERROR,
     ATL_NOT_ENABLED,
-    LIBFABRIC_ERROR
+    LIBFABRIC_ERROR,
+    BACKUP_FILE_EXIST,
+    BACKUP_FILE_NOT_FOUND
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     switch (serverErr) {
     case REGION_EXIST:
     case DATAITEM_EXIST:
+    case BACKUP_FILE_EXIST:
         return FAM_ERR_ALREADYEXIST;
 
     case REGION_NOT_CREATED:
@@ -121,6 +124,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
         return FAM_ERR_NOT_CREATED;
     case REGION_NOT_FOUND:
     case DATAITEM_NOT_FOUND:
+    case BACKUP_FILE_NOT_FOUND:
         return FAM_ERR_NOTFOUND;
 
     case DESTROY_REGION_NOT_PERMITTED:

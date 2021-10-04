@@ -464,8 +464,7 @@ Fam_CIS_Server::backup(::grpc::ServerContext *context,
     CIS_SERVER_PROFILE_START_OPS()
     try {
 
-        famCIS->backup(request->regionid(), request->addr().c_str(),
-                       request->addrlen(), request->offset(), request->key(),
+        famCIS->backup(request->regionid(), request->offset(),
                        request->memserver_id(), request->filename(),
                        request->uid(), request->gid(), request->size());
     }
@@ -486,8 +485,7 @@ Fam_CIS_Server::restore(::grpc::ServerContext *context,
                         ::Fam_Backup_Restore_Response *response) {
     CIS_SERVER_PROFILE_START_OPS()
     try {
-        famCIS->restore(request->regionid(), request->addr().c_str(),
-                        request->addrlen(), request->offset(), request->key(),
+        famCIS->restore(request->regionid(), request->offset(),
                         request->memserver_id(), request->filename(),
                         request->uid(), request->gid(), request->size());
 
@@ -532,6 +530,29 @@ Fam_CIS_Server::release_CAS_lock(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
     CIS_SERVER_PROFILE_END_OPS(release_CAS_lock);
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::get_file_info(::grpc::ServerContext *context,
+                              const ::Fam_File_Info_Request *request,
+                              ::Fam_File_Info_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    uint64_t size;
+    try {
+        size =
+            famCIS->get_file_info(request->filename(), request->memserver_id());
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        response->set_file_size(-1);
+
+        return ::grpc::Status::OK;
+    }
+    response->set_file_size(size);
+    CIS_SERVER_PROFILE_END_OPS(get_file_info);
+
     // Return status OK
     return ::grpc::Status::OK;
 }

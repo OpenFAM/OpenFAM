@@ -588,44 +588,13 @@ void Fam_Ops_Libfabric::wait_for_copy(void *waitObj) {
 
 void *Fam_Ops_Libfabric::backup(Fam_Descriptor *descriptor, char *outputFile) {
 
-    struct stat info;
-    int exist = stat(outputFile, &info);
-    if (exist == 0) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "Mentioned backup file already exists.");
-    }
-    std::pair<void *, size_t> srcMemSrv;
-    auto obj = memServerAddrs->find(descriptor->get_memserver_id());
-    if (obj == memServerAddrs->end())
-        THROW_ERR_MSG(Fam_Datapath_Exception, "memserver not found");
-    else
-        srcMemSrv = obj->second;
-
-    return famAllocator->backup(descriptor, (const char *)srcMemSrv.first,
-                         (uint32_t)srcMemSrv.second, outputFile);
+    return famAllocator->backup(descriptor, outputFile);
 }
 
-void *Fam_Ops_Libfabric::restore(char *inputFile, Fam_Descriptor *dest) {
+void *Fam_Ops_Libfabric::restore(char *inputFile, Fam_Descriptor *dest,
+                                 uint64_t size) {
 
-    struct stat info;
-    int exist = stat(inputFile, &info);
-    if (exist == -1) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "InputFile doesnt exist.");
-    }
-    if ((unsigned)(info.st_size - 4096) > (unsigned)dest->get_size()) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "InputFile size is greater than size of data item.");
-    }
-    std::pair<void *, size_t> srcMemSrv;
-    auto obj = memServerAddrs->find(dest->get_memserver_id());
-    if (obj == memServerAddrs->end())
-        THROW_ERR_MSG(Fam_Datapath_Exception, "memserver not found");
-    else
-        srcMemSrv = obj->second;
-
-    return famAllocator->restore(dest, (const char *)srcMemSrv.first,
-                          (uint32_t)srcMemSrv.second, inputFile, info.st_size);
+    return famAllocator->restore(dest, inputFile, size);
 }
 
 void Fam_Ops_Libfabric::wait_for_backup(void *waitObj) {

@@ -327,34 +327,9 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
 
     void backup_handler(void *src, void *dest, uint64_t nbytes,
                       Fam_Backup_Tag *tag) {
-        if (tag->memoryService)
-            tag->memoryService->backup(
-                tag->srcRegionId, tag->srcAddr, tag->srcAddrLen, 
-		tag->srcOffset, tag->srcKey, tag->srcMemserverId, tag->outputFile, tag->size);
-        else {
-	    long pgsz = sysconf(_SC_PAGESIZE);
-	    unsigned long page_size = ((nbytes + (pgsz - 1)) / pgsz) * pgsz;
-	    int fileid = open((char *)dest, O_RDWR | O_CREAT, 0777);
-	    if (fileid == -1) {
-        	THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "backup file creation failed.");
-	    }
-	    lseek(fileid, page_size - 1, SEEK_SET);
-	    write(fileid, "", 1);
-	    char * destAddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
-				    fileid, 0);
-
-	    if (destAddr == MAP_FAILED) {
-		THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-				"mmap of file failed.");
-	    }
- 
-            memcpy(destAddr, src, nbytes);
-            openfam_persist(destAddr, nbytes);
-            msync(destAddr, page_size, MS_SYNC);
-            munmap(destAddr, page_size);
-            close(fileid);
-
+        if (tag->memoryService) {
+            tag->memoryService->backup(tag->srcRegionId, tag->srcOffset,
+                                       tag->outputFile, tag->size);
         }
         {
             AQUIRE_MUTEX(backupMtx)
@@ -366,33 +341,9 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
 
     void restore_handler(void *src, void *dest, uint64_t nbytes,
                       Fam_Restore_Tag *tag) {
-        if (tag->memoryService)
-            tag->memoryService->restore(
-                tag->destRegionId, tag->destAddr, tag->destAddrLen,
-		tag->destOffset, tag->destKey,  tag->destMemserverId,
-		tag->inputFile, tag->size);
-        else {
-	    int fileid = open((char *)src, O_RDWR | O_CREAT, 0777);
-	    if (fileid == -1) {
-        	THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "restore file creation failed.");
-	    }
-	    long pgsz = sysconf(_SC_PAGESIZE);
-	    unsigned long page_size = ((nbytes + (pgsz - 1)) / pgsz) * pgsz;
-	    lseek(fileid, page_size - 1, SEEK_SET);
-	    write(fileid, "", 1);
-	    char *srcAddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
-				    fileid, 0);
-
-	    if (srcAddr == MAP_FAILED) {
-		THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-				"mmap of file failed.");
-	    }
-            memcpy(dest, srcAddr, nbytes);
-            openfam_persist(dest, nbytes);
-            msync(srcAddr, page_size, MS_SYNC);
-            munmap(srcAddr, page_size);
-            close(fileid);
+        if (tag->memoryService) {
+            tag->memoryService->restore(tag->destRegionId, tag->destOffset,
+                                        tag->inputFile, tag->size);
         }
         {
             AQUIRE_MUTEX(restoreMtx)

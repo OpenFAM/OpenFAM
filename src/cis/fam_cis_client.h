@@ -125,12 +125,10 @@ class Fam_CIS_Client : public Fam_CIS {
                uint32_t uid, uint32_t gid);
 
     void wait_for_copy(void *waitObj);
-    void *backup(uint64_t srcRegionId, const char *srcAddr, uint32_t srcAddrLen,
-                 uint64_t srcOffset, uint64_t srcKey,
+    void *backup(uint64_t srcRegionId, uint64_t srcOffset,
                  uint64_t srcMemoryServerId, string outputFile, uint32_t uid,
                  uint32_t gid, uint64_t size);
-    void *restore(uint64_t destRegionId, const char *destAddr,
-                  uint32_t destAddrLen, uint64_t destOffset, uint64_t destKey,
+    void *restore(uint64_t destRegionId, uint64_t destOffset,
                   uint64_t destMemoryServerId, string inputFile, uint32_t uid,
                   uint32_t gid, uint64_t size);
 
@@ -146,7 +144,7 @@ class Fam_CIS_Client : public Fam_CIS {
 
     size_t get_addr_size(uint64_t memoryServerId);
     void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
-
+    int64_t get_file_info(std::string inputFile, uint64_t memoryServerId);
     size_t get_memserverinfo_size();
     void get_memserverinfo(void *memServerInfo);
 

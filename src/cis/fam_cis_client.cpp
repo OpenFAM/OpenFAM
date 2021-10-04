@@ -488,19 +488,14 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
     }
 }
 
-void *Fam_CIS_Client::backup(uint64_t srcRegionId, const char *srcAddr,
-                            uint32_t srcAddrLen, uint64_t srcOffset,
-                            uint64_t srcKey, uint64_t srcMemoryServerId,
-                            string outputFile, uint32_t uid, uint32_t gid,
-                            uint64_t size) {
+void *Fam_CIS_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
+                             uint64_t srcMemoryServerId, string outputFile,
+                             uint32_t uid, uint32_t gid, uint64_t size) {
     Fam_Backup_Restore_Request req;
     Fam_Backup_Restore_Response res;
     ::grpc::ClientContext ctx;
     req.set_regionid(srcRegionId);
-    req.set_addr(srcAddr, srcAddrLen);
-    req.set_addrlen(srcAddrLen);
     req.set_offset(srcOffset);
-    req.set_key(srcKey);
     req.set_memserver_id(srcMemoryServerId);
     req.set_filename(outputFile);
     req.set_uid(uid);
@@ -586,19 +581,14 @@ void Fam_CIS_Client::wait_for_backup(void *waitObj) {
     }
 }
 
-void *Fam_CIS_Client::restore(uint64_t destRegionId, const char *destAddr,
-                             uint32_t destAddrLen, uint64_t destOffset,
-                             uint64_t destKey, uint64_t destMemoryServerId,
-                             string inputFile, uint32_t uid, uint32_t gid,
-                             uint64_t size) {
+void *Fam_CIS_Client::restore(uint64_t destRegionId, uint64_t destOffset,
+                              uint64_t destMemoryServerId, string inputFile,
+                              uint32_t uid, uint32_t gid, uint64_t size) {
     Fam_Backup_Restore_Request req;
     Fam_Backup_Restore_Response res;
     ::grpc::ClientContext ctx;
     req.set_regionid(destRegionId);
     req.set_memserver_id(destMemoryServerId);
-    req.set_key(destKey);
-    req.set_addr(destAddr, destAddrLen);
-    req.set_addrlen(destAddrLen);
     req.set_offset(destOffset);
     req.set_filename(inputFile);
     req.set_uid(uid);
@@ -766,6 +756,21 @@ void Fam_CIS_Client::get_addr(void *memServerFabricAddr,
         memcpy(((uint32_t *)memServerFabricAddr + readCount), &lastBytes,
                lastBytesCount);
     }
+}
+
+int64_t Fam_CIS_Client::get_file_info(std::string inputFile,
+                                      uint64_t memoryServerId) {
+    Fam_File_Info_Request req;
+    Fam_File_Info_Response res;
+    ::grpc::ClientContext ctx;
+
+    req.set_memserver_id(memoryServerId);
+    req.set_filename(inputFile);
+    ::grpc::Status status = stub->get_file_info(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+
+    return res.file_size();
 }
 
 size_t Fam_CIS_Client::get_memserverinfo_size() {

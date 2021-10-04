@@ -29,6 +29,19 @@
  *
  */
 
+#include "common/fam_ops_shm.h"
+#include "common/fam_config_info.h"
+#include "common/fam_context.h"
+#include "common/fam_internal.h"
+#include "common/fam_memserver_profile.h"
+#include "common/fam_ops.h"
+#include "common/fam_util_atomic.h"
+#include "fam/fam.h"
+#include "fam/fam_exception.h"
+#include "memory_service/fam_memory_service.h"
+#include "memory_service/fam_memory_service_client.h"
+#include "memory_service/fam_memory_service_direct.h"
+#include "nvmm/nvmm_fam_atomic.h"
 #include <arpa/inet.h>
 #include <iostream>
 #include <sstream>
@@ -36,15 +49,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "common/fam_context.h"
-#include "common/fam_internal.h"
-#include "common/fam_ops.h"
-#include "common/fam_ops_shm.h"
-#include "common/fam_util_atomic.h"
-#include "fam/fam.h"
-#include "fam/fam_exception.h"
-#include "nvmm/nvmm_fam_atomic.h"
 
 using namespace std;
 namespace openfam {
@@ -635,53 +639,21 @@ void Fam_Ops_SHM::wait_for_copy(void *waitObj) {
 }
 
 void *Fam_Ops_SHM::backup(Fam_Descriptor *descriptor, char *outputFile) {
-
-    struct stat info;
-    int exist = stat(outputFile, &info);
-    if (exist == 0) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "Mentioned backup file already exists.");
-    }
-    void *src = descriptor->get_base_address();
-    uint64_t size = descriptor->get_size();
-
-    Fam_Backup_Tag *tag = new Fam_Backup_Tag();
-    tag->backupDone.store(false, boost::memory_order_seq_cst);
-    tag->memoryService = NULL;
-
-    Fam_Ops_Info opsInfo = {BACKUP, src, outputFile, size, 0, 0, 0, 0, tag};
-    asyncQHandler->initiate_operation(opsInfo);
-    return (void *)tag;
+    return famAllocator->backup(descriptor, outputFile);
 }
 
-void *Fam_Ops_SHM::restore(char *inputFile, Fam_Descriptor *dest) {
+void *Fam_Ops_SHM::restore(char *inputFile, Fam_Descriptor *dest,
+                           uint64_t size) {
 
-    struct stat info;
-    int exist = stat(inputFile, &info);
-    if (exist == -1) {
-        THROW_ERRNO_MSG(Fam_Allocator_Exception, FAM_ERR_OUTOFRANGE,
-                        "InputFile doesnt exist.");
-    }
-    void *base = dest->get_base_address();
-    uint64_t size = dest->get_size();
-
-
-    Fam_Restore_Tag *tag = new Fam_Restore_Tag();
-    Fam_Ops_Info opsInfo = {RESTORE, inputFile, base, size, 0, 0, 0, 0, tag};
-    asyncQHandler->initiate_operation(opsInfo);
-    return (void *)tag;
+    return famAllocator->restore(dest, inputFile, size);
 }
-
 
 void Fam_Ops_SHM::wait_for_backup(void *waitObj) {
-    asyncQHandler->wait_for_backup(waitObj);
+    return famAllocator->wait_for_backup(waitObj);
 }
-
-
 void Fam_Ops_SHM::wait_for_restore(void *waitObj) {
-    asyncQHandler->wait_for_restore(waitObj);
+    return famAllocator->wait_for_restore(waitObj);
 }
-
 
 void Fam_Ops_SHM::fence(Fam_Region_Descriptor *descriptor)
     FAM_OPS_UNIMPLEMENTED(void__);

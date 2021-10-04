@@ -219,9 +219,8 @@ class Fam_CIS_Async_Handler {
                         break;
                     case RT_BACKUP:
                         waitObj = famCIS->backup(
-                            brequest.regionid(), brequest.addr().c_str(),
-                            brequest.addrlen(), brequest.offset(),
-                            brequest.key(), brequest.memserver_id(),
+                            brequest.regionid(), brequest.offset(),
+                            brequest.memserver_id(),
                             brequest.filename().c_str(), brequest.uid(),
                             brequest.gid(), brequest.size());
                         delete (Fam_Backup_Tag *)waitObj;
@@ -229,9 +228,8 @@ class Fam_CIS_Async_Handler {
                         break;
                     case RT_RESTORE:
                         waitObj = famCIS->restore(
-                            rrequest.regionid(), rrequest.addr().c_str(),
-                            rrequest.addrlen(), rrequest.offset(),
-                            rrequest.key(), rrequest.memserver_id(),
+                            rrequest.regionid(), rrequest.offset(),
+                            rrequest.memserver_id(),
                             rrequest.filename().c_str(), rrequest.uid(),
                             rrequest.gid(), rrequest.size());
                         delete (Fam_Restore_Tag *)waitObj;

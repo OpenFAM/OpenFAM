@@ -119,7 +119,12 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
         atoi(config_options["delayed_free_threads"].c_str());
 
     allocator = new Memserver_Allocator(num_delayed_free_Threads, fam_path);
-
+    fam_backup_path = config_options["fam_backup_path"];
+    struct stat info;
+    if (stat(fam_backup_path.c_str(), &info) == -1) {
+        if ((errno == ENOENT) || (errno == ENOTDIR))
+            mkdir(fam_backup_path.c_str(), 0777);
+    }
     if (isSharedMemory) {
         memoryRegistration = new Fam_Memory_Registration_SHM();
     } else {
@@ -355,24 +360,34 @@ void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_copy);
 }
 
-void Fam_Memory_Service_Direct::backup(uint64_t srcRegionId,
-                                       const char *srcAddr, uint32_t srcAddrLen,
-                                       uint64_t srcOffset, uint64_t srcKey,
-                                       uint64_t srcMemoryServerId,
+void Fam_Memory_Service_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
                                        string outputFile, uint64_t size) {
+    ostringstream message;
+    std::string outputFilename = fam_backup_path + "/" + outputFile;
+    struct stat sb;
+    if (stat(outputFilename.c_str(), &sb) == 0) {
+        message << "Backup already exists";
+        THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_FILE_EXIST,
+                        message.str().c_str());
+    }
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    allocator->backup(srcRegionId, srcOffset, outputFile, size);
+    allocator->backup(srcRegionId, srcOffset, outputFilename, size);
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_backup);
 }
 
 void Fam_Memory_Service_Direct::restore(uint64_t destRegionId,
-                                        const char *destAddr,
-                                        uint32_t destAddrLen,
-                                        uint64_t destOffset, uint64_t destKey,
-                                        uint64_t destMemoryServerId,
-                                        string inputFile, uint64_t size) {
+                                        uint64_t destOffset, string inputFile,
+                                        uint64_t size) {
+    ostringstream message;
+    std::string inputFilename = fam_backup_path + "/" + inputFile;
+    struct stat sb;
+    if (stat(inputFilename.c_str(), &sb) != 0) {
+        message << "Backup doesnt exist.";
+        THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_FILE_NOT_FOUND,
+                        message.str().c_str());
+    }
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    allocator->restore(destRegionId, destOffset, inputFile, size);
+    allocator->restore(destRegionId, destOffset, inputFilename, size);
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_restore);
 }
 
@@ -390,6 +405,20 @@ void *Fam_Memory_Service_Direct::get_addr() {
     addr = memoryRegistration->get_addr();
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_addr);
     return addr;
+}
+
+int64_t Fam_Memory_Service_Direct::get_file_info(std::string inputFile) {
+    ostringstream message;
+    struct stat sb;
+    std::string inputFilename = fam_backup_path + "/" + inputFile;
+    if (stat(inputFilename.c_str(), &sb) == -1) {
+        message << "Backup doesnt exist.";
+        //        THROW_ERRNO_MSG(Memory_Service_Exception,
+        //        BACKUP_FILE_NOT_FOUND ,message.str().c_str());
+        return -1;
+    } else {
+        return sb.st_size;
+    }
 }
 
 void Fam_Memory_Service_Direct::acquire_CAS_lock(uint64_t offset) {
@@ -482,6 +511,14 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
         } catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["delayed_free_threads"] = (char *)strdup("0");
+        }
+        try {
+            options["fam_backup_path"] = (char *)strdup(
+                (info->get_key_value("fam_backup_path")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["fam_backup_path"] = (char *)strdup("");
+            cout << "Couldn't locate fam_backup_path" << endl;
         }
     }
     return options;

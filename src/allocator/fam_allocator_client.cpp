@@ -316,34 +316,31 @@ void Fam_Allocator_Client::wait_for_copy(void *waitObj) {
     return famCIS->wait_for_copy(waitObj);
 }
 
-void *Fam_Allocator_Client::backup(Fam_Descriptor *src, const char *srcAddr,
-                                  uint32_t srcAddrLen, char *outputFile) {
+void *Fam_Allocator_Client::backup(Fam_Descriptor *src, char *outputFile) {
     Fam_Global_Descriptor globalDescriptor = src->get_global_descriptor();
     uint64_t srcRegionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t srcMemoryServerId = src->get_memserver_id();
-    uint64_t srcKey = src->get_key();
     uint64_t srcOffset = globalDescriptor.offset;
-    return famCIS->backup(srcRegionId, srcAddr, srcAddrLen, srcOffset, srcKey,
-                   srcMemoryServerId, outputFile, uid, gid, src->get_size());
+    return famCIS->backup(srcRegionId, srcOffset, srcMemoryServerId, outputFile,
+                          uid, gid, src->get_size());
 }
 
-void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, const char *destAddr,
-                                   uint32_t destAddrLen, char *inputFile,
-                                   uint64_t filesize) {
+void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, char *inputFile,
+                                    uint64_t filesize) {
     Fam_Global_Descriptor globalDescriptor = dest->get_global_descriptor();
     uint64_t destRegionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t destMemoryServerId = dest->get_memserver_id();
     uint64_t destOffset = globalDescriptor.offset;
     uint64_t destItemSize = dest->get_size();
-    uint64_t destKey = dest->get_key();
     if ((filesize - 4096) > destItemSize) {
         throw Fam_Allocator_Exception(
             FAM_ERR_OUTOFRANGE,
             "Destination offset or size is beyond dataitem boundary");
     }
-    return famCIS->restore(destRegionId, destAddr, destAddrLen, destOffset, destKey,
-                    destMemoryServerId, inputFile, uid, gid, filesize);
+    return famCIS->restore(destRegionId, destOffset, destMemoryServerId,
+                           inputFile, uid, gid, filesize);
 }
+
 void Fam_Allocator_Client::wait_for_backup(void *waitObj) {
     return famCIS->wait_for_backup(waitObj);
 }
@@ -400,6 +397,13 @@ int Fam_Allocator_Client::get_addr(void *addr, size_t addrSize,
 
     famCIS->get_addr(addr, memoryServerId);
     return 0;
+}
+
+int64_t Fam_Allocator_Client::get_file_info(string inputFile,
+                                            uint64_t memoryServerId) {
+
+    int64_t ret = famCIS->get_file_info(inputFile, memoryServerId);
+    return ret;
 }
 
 int Fam_Allocator_Client::get_memserverinfo_size(size_t *memServerInfoSize) {

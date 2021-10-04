@@ -36,3 +36,6 @@ ATL_queue_size: 1000
 # ATL data size per thread(MiB) - This will be used to allocate buffers and other queue related
 # data structures
 ATL_data_size: 1024
+
+# Path where data item backups are placed
+fam_backup_path: /home/username/backup

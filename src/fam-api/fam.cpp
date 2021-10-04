@@ -215,8 +215,9 @@ class fam::Impl_ {
     void *fam_backup(Fam_Descriptor *src, char *outputFile);
 
     void *fam_restore(char *inputFile, Fam_Descriptor *dest);
-    void *fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion, char *dataitemName, mode_t accessPermissions, Fam_Descriptor *dest);
-
+    void *fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion,
+                      char *dataitemName, mode_t accessPermissions,
+                      Fam_Descriptor **dest);
 
     void fam_backup_wait(void *waitObj);
 
@@ -1864,13 +1865,14 @@ void fam::Impl_::fam_copy_wait(void *waitObj) {
 
 void *fam::Impl_::fam_backup(Fam_Descriptor *src, char *outputFile) {
     void *result = NULL;
-    struct stat sb;
     FAM_CNTR_INC_API(fam_backup);
     FAM_PROFILE_START_ALLOCATOR(fam_backup);
-
-    if (stat(outputFile, &sb) == 0) {
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, "outputFile already exists");
+    int64_t size = 0;
+    size = famAllocator->get_file_info(outputFile, src->get_memserver_id());
+    if (size >= 0) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Backup already exist.");
     }
+
     int retS = validate_item(src);
     FAM_PROFILE_END_ALLOCATOR(fam_backup);
     FAM_PROFILE_START_OPS(fam_backup);
@@ -1884,42 +1886,49 @@ void *fam::Impl_::fam_backup(Fam_Descriptor *src, char *outputFile) {
 void *fam::Impl_::fam_restore(char *inputFile, Fam_Descriptor *dest) {
 
     void *result = NULL;
-    struct stat sb;
     FAM_CNTR_INC_API(fam_restore);
     FAM_PROFILE_START_ALLOCATOR(fam_restore);
-
-    if (stat(inputFile, &sb) == -1) {
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, "inputFile doesnot exists");
+    int64_t size =
+        famAllocator->get_file_info(inputFile, dest->get_memserver_id());
+    if (size == -1) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Backup doesnot exist.");
     }
+    if ((unsigned)size > (unsigned)dest->get_size()) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                      "InputFile size is greater than size of data item.");
+    }
+
     int retD = validate_item(dest);
     FAM_PROFILE_END_ALLOCATOR(fam_restore);
     FAM_PROFILE_START_OPS(fam_restore);
-
-
     if (retD == 0 )
-	    result = famOps->restore(inputFile, dest);
+        result = famOps->restore(inputFile, dest, (uint64_t)size);
     FAM_PROFILE_END_OPS(fam_restore);
     return result;
 }
 
-void *fam::Impl_::fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion, char *dataitemName, mode_t accessPermissions, Fam_Descriptor *dest) {
+void *fam::Impl_::fam_restore(char *inputFile,
+                              Fam_Region_Descriptor *destRegion,
+                              char *dataitemName, mode_t accessPermissions,
+                              Fam_Descriptor **dest) {
 
     void *result = NULL;
-    struct stat sb;
     FAM_CNTR_INC_API(fam_restore);
     FAM_PROFILE_START_ALLOCATOR(fam_restore);
 
-    if (stat(inputFile, &sb) == -1) {
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, "inputFile doesnot exists");
+    int64_t size =
+        famAllocator->get_file_info(inputFile, destRegion->get_memserver_id());
+    *dest = famAllocator->allocate(dataitemName, size, accessPermissions,
+                                   destRegion);
+    int retD = validate_item(*dest);
+    if (size == -1) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Backup doesnot exist.");
     }
-    Fam_Descriptor *ret = famAllocator->allocate(dataitemName, sb.st_size, accessPermissions, destRegion);
-    memcpy(dest, ret,sizeof(Fam_Descriptor));
-    int retD = validate_item(dest);
     FAM_PROFILE_END_ALLOCATOR(fam_restore);
     FAM_PROFILE_START_OPS(fam_restore);
 
     if (retD == 0 )
-	    result = famOps->restore(inputFile, dest);
+        result = famOps->restore(inputFile, *dest, (uint64_t)size);
     FAM_PROFILE_END_OPS(fam_restore);
     return result;
 }
@@ -4526,7 +4535,9 @@ void *fam::fam_restore(char *inputFile, Fam_Descriptor *dest) {
     RETURN_WITH_FAM_EXCEPTION
 }
 
-void *fam::fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion, char *dataitemName, mode_t accessPermissions, Fam_Descriptor *dest) {
+void *fam::fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion,
+                       char *dataitemName, mode_t accessPermissions,
+                       Fam_Descriptor **dest) {
     TRY_CATCH_BEGIN
     return pimpl_->fam_restore(inputFile, destRegion, dataitemName, accessPermissions, dest);
     RETURN_WITH_FAM_EXCEPTION

@@ -45,7 +45,6 @@
 #define DATAITEM_SIZE 1048576
 using namespace std;
 using namespace openfam;
-
 char *backup_restore_file;
 fam *my_fam;
 Fam_Options fam_opts;
@@ -65,13 +64,11 @@ TEST(FamBackupRestore, BackupSuccess) {
     // Allocating data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_lookup(firstItem, testRegion));
     EXPECT_NE((void *)NULL, item);
-
     char *filename = (char *)malloc(100);
-    char *cwd = get_current_dir_name();
     try {
-        sprintf(filename, "%s/%s.%s.1", cwd, testRegion, firstItem);
+        sprintf(filename, "%s.%s.1", testRegion, firstItem);
         void *waitobj = my_fam->fam_backup(item, filename);
-	EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
+        EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
     } catch (Fam_Exception &e) {
         cout << "fam_backup: " << e.fam_error_msg() << endl;
     }
@@ -86,65 +83,76 @@ TEST(FamBackupRestore, RestoreSuccess) {
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
     const char *secondItem = get_uniq_str("second", my_fam);
+    char *local = strdup("Test message");
     char *filename = (char *)malloc(100);
-    char *cwd = get_current_dir_name();
-    sprintf(filename, "%s/%s.%s.1", cwd, testRegion, firstItem);
+    sprintf(filename, "%s.%s.0", testRegion, firstItem);
 
     EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
     EXPECT_NE((void *)NULL, desc);
 
-    // Allocating data items in the created region
-    EXPECT_NO_THROW(
-        item = my_fam->fam_allocate(secondItem, 2 * DATAITEM_SIZE, 0777, desc));
-    EXPECT_NE((void *)NULL, item);
-    char *local = (char *)malloc(2 * DATAITEM_SIZE);
-    EXPECT_NO_THROW(my_fam->fam_get_blocking(local, item, 0, DATAITEM_SIZE));
-
     try {
+        // Allocating data items in the created region
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(
+                            secondItem, 2 * DATAITEM_SIZE, 0777, desc));
+        EXPECT_NE((void *)NULL, item);
+
+        // Start Restore
         void *waitobj = my_fam->fam_restore(filename, item);
-	EXPECT_NO_THROW(my_fam->fam_restore_wait(waitobj));
+        my_fam->fam_restore_wait(waitobj);
+
+    } catch (Fam_Exception &e) {
+        cout << "fam_restore: " << e.fam_error_msg() << endl;
+        return;
+    }
+    // Restoring is complete. Now get the content of restored data item
+    char *local2 = (char *)malloc(DATAITEM_SIZE);
+    try {
+        EXPECT_NO_THROW(
+            my_fam->fam_get_blocking(local2, item, 0, DATAITEM_SIZE));
     } catch (Fam_Exception &e) {
         cout << "fam_restore: " << e.fam_error_msg() << endl;
     }
-    char *local2 = (char *)malloc(DATAITEM_SIZE);
-    EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, item, 0, DATAITEM_SIZE));
-    cout << "data item holds: " << local2 << endl;
 
+    EXPECT_STREQ(local, local2);
     free(local2);
 
     free((void *)testRegion);
     free((void *)firstItem);
+    free((void *)secondItem);
 }
 
 TEST(FamBackupRestore, CreateDataitemRestoreSuccess) {
     Fam_Region_Descriptor *desc;
-    Fam_Descriptor item ;
+    Fam_Descriptor *item;
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
     const char *secondItem = get_uniq_str("third", my_fam);
     char *filename = (char *)malloc(100);
-    char *cwd = get_current_dir_name();
-    sprintf(filename, "%s/%s.%s.1", cwd, testRegion, firstItem);
+    char *local = strdup("Test message");
 
     EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
     EXPECT_NE((void *)NULL, desc);
+
+    sprintf(filename, "%s.%s.0", testRegion, firstItem);
     try {
         void *waitobj = my_fam->fam_restore(filename, desc, (char *)secondItem, 0777,&item);
-	EXPECT_NO_THROW(my_fam->fam_restore_wait(waitobj));
+
+        my_fam->fam_restore_wait(waitobj);
     } catch (Fam_Exception &e) {
         cout << "fam_restore: " << e.fam_error_msg() << endl;
+        return;
     }
     char *local2 = (char *)malloc(DATAITEM_SIZE);
     try {
-    	my_fam->fam_get_blocking(local2, &item , 0, DATAITEM_SIZE);
+        my_fam->fam_get_blocking(local2, item, 0, DATAITEM_SIZE);
     } catch (Fam_Exception &e) {
         cout << "fam_get_blocking: " << e.fam_error_msg() << endl;
     }
-    cout << "data item holds: " << local2 << endl;
-
+    EXPECT_STREQ(local, local2);
+    free(local);
     free(local2);
-
     free((void *)testRegion);
+    free((void *)secondItem);
     free((void *)firstItem);
 }
 
@@ -168,22 +176,19 @@ int main(int argc, char **argv) {
         item = my_fam->fam_allocate(firstItem, DATAITEM_SIZE, 0777, desc));
     EXPECT_NE((void *)NULL, item);
 
-    char *local = (char *)malloc(DATAITEM_SIZE);
-    sprintf(local, "This is a simple text file.\nThis data item content is "
-                   "being backed up and later restored.\n");
-    my_fam->fam_put_blocking(local, item, 0, DATAITEM_SIZE);
+    char *local = strdup("Test message");
+
+    my_fam->fam_put_blocking(local, item, 0, strlen(local));
     Fam_Stat famInfo;
     my_fam->fam_stat(item, &famInfo);
     ret = RUN_ALL_TESTS();
     free(local);
-
     // allocate local memory to receive 20 elements
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     delete item;
     delete desc;
-
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
 
     return ret;

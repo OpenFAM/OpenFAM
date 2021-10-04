@@ -135,6 +135,10 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                      ::Fam_Memory_Service_Response *response) override;
 
     ::grpc::Status
+    get_file_info(::grpc::ServerContext *context,
+                  const ::Fam_Memory_File_Info_Request *request,
+                  ::Fam_Memory_File_Info_Response *response) override;
+    ::grpc::Status
     get_local_pointer(::grpc::ServerContext *context,
                       const ::Fam_Memory_Service_Request *request,
                       ::Fam_Memory_Service_Response *response) override;

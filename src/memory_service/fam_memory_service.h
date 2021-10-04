@@ -67,13 +67,9 @@ class Fam_Memory_Service {
                       uint64_t nbytes, uint64_t srcMemserverId,
                       uint64_t destMemserverId) = 0;
 
-    virtual void backup(uint64_t srcRegionId, const char *srcAddr,
-                        uint32_t srcAddrLen, uint64_t srcOffset,
-                        uint64_t srcKey, uint64_t srcMemoryServerId,
+    virtual void backup(uint64_t srcRegionId, uint64_t srcOffset,
                         string outputFile, uint64_t size) = 0;
-    virtual void restore(uint64_t destRegionId, const char *destAddr,
-                         uint32_t destAddrLen, uint64_t destOffset,
-                         uint64_t destKey, uint64_t destMemoryServerId,
+    virtual void restore(uint64_t destRegionId, uint64_t destOffset,
                          string inputFile, uint64_t size) = 0;
 
     virtual void *get_local_pointer(uint64_t regionId, uint64_t offset) = 0;
@@ -83,6 +79,7 @@ class Fam_Memory_Service {
 
     virtual size_t get_addr_size() = 0;
     virtual void *get_addr() = 0;
+    virtual int64_t get_file_info(std::string inputFile) = 0;
     virtual uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
                              bool rwFlag) = 0;
 

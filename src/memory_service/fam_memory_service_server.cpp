@@ -293,9 +293,7 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
     ::Fam_Memory_Backup_Restore_Response *response) {
     MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
     try {
-        memoryService->backup(request->region_id(), request->addr().c_str(),
-                              request->addr_len(), request->offset(),
-                              request->key(), request->region_id(),
+        memoryService->backup(request->region_id(), request->offset(),
                               request->filename(), request->size());
 
     } catch (Memory_Service_Exception &e) {
@@ -315,9 +313,7 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
     ::Fam_Memory_Backup_Restore_Response *response) {
     MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
     try {
-        memoryService->restore(request->region_id(), request->addr().c_str(),
-                               request->addr_len(), request->offset(),
-                               request->key(), request->region_id(),
+        memoryService->restore(request->region_id(), request->offset(),
                                request->filename(), request->size());
 
     } catch (Memory_Service_Exception &e) {
@@ -359,6 +355,24 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
     MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_release_CAS_lock);
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+::grpc::Status Fam_Memory_Service_Server::get_file_info(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_File_Info_Request *request,
+    ::Fam_Memory_File_Info_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    int64_t size;
+    try {
+        size = memoryService->get_file_info(request->filename());
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    response->set_file_size((int64_t)size);
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_get_file_info);
     // Return status OK
     return ::grpc::Status::OK;
 }

@@ -148,7 +148,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
 
     void wait_for_copy(void *waitObj);
     void *backup(Fam_Descriptor *desc, char *outputFile);
-    void *restore(char *inputFile, Fam_Descriptor *dest);
+    void *restore(char *inputFile, Fam_Descriptor *dest, uint64_t size);
     void wait_for_backup(void *waitObj);
     void wait_for_restore(void *waitObj);
     void fence(Fam_Region_Descriptor *descriptor = NULL);

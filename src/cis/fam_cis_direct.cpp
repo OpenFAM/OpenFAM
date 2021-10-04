@@ -1143,11 +1143,9 @@ void Fam_CIS_Direct::wait_for_copy(void *waitObj) {
     CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_copy);
 }
 
-void *Fam_CIS_Direct::backup(uint64_t srcRegionId, const char *srcAddr,
-                            uint32_t srcAddrLen, uint64_t srcOffset,
-                            uint64_t srcKey, uint64_t srcMemoryServerId,
-                            string outputFile, uint32_t uid, uint32_t gid,
-                            uint64_t size) {
+void *Fam_CIS_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
+                             uint64_t srcMemoryServerId, string outputFile,
+                             uint32_t uid, uint32_t gid, uint64_t size) {
     ostringstream message;
     message << "Error While backing from dataitem : ";
     Fam_DataItem_Metadata srcDataitem;
@@ -1182,29 +1180,21 @@ void *Fam_CIS_Direct::backup(uint64_t srcRegionId, const char *srcAddr,
         tag->srcRegionId = srcRegionId;
         tag->srcOffset = srcOffset ;
         tag->size = size;
-        tag->srcKey = srcKey;
-        tag->srcAddr = (char *)calloc(1, srcAddrLen);
-        memcpy(tag->srcAddr, srcAddr, srcAddrLen);
-        tag->srcAddrLen = srcAddrLen;
-        tag->srcMemserverId = srcMemoryServerId;
         tag->outputFile = (char *) outputFile.c_str();
         Fam_Ops_Info opsInfo = { BACKUP, NULL, NULL, 0, 0, 0, 0, 0, tag };
         asyncQHandler->initiate_operation(opsInfo);
         waitObj->tag = tag;
     } else {
-	    memoryService->backup(srcRegionId, srcAddr, srcAddrLen, srcOffset, srcKey,
-                          srcMemoryServerId, outputFile, size);
+        memoryService->backup(srcRegionId, srcOffset, outputFile, size);
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_backup);
     return (void *)waitObj;
 
 }
 
-void *Fam_CIS_Direct::restore(uint64_t destRegionId, const char *destAddr,
-                             uint32_t destAddrLen, uint64_t destOffset,
-                             uint64_t destKey, uint64_t destMemoryServerId,
-                             string inputFile, uint32_t uid, uint32_t gid,
-                             uint64_t size) {
+void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
+                              uint64_t destMemoryServerId, string inputFile,
+                              uint32_t uid, uint32_t gid, uint64_t size) {
     ostringstream message;
     message << "Error While restoring dataitem : ";
     Fam_DataItem_Metadata destDataitem;
@@ -1239,18 +1229,12 @@ void *Fam_CIS_Direct::restore(uint64_t destRegionId, const char *destAddr,
         tag->destRegionId = destRegionId;
         tag->destOffset = destOffset;
         tag->size = size;
-        tag->destKey = destKey;
-        tag->destAddr = (char *)calloc(1, destAddrLen);
-        memcpy(tag->destAddr, destAddr, destAddrLen);
-        tag->destAddrLen = destAddrLen;
-        tag->destMemserverId = destMemoryServerId;
         tag->inputFile = (char *)inputFile.c_str();
         Fam_Ops_Info opsInfo = { RESTORE, NULL, NULL, 0, 0, 0, 0, 0, tag };
         asyncQHandler->initiate_operation(opsInfo);
         waitObj->tag = tag;
     } else {
-    	memoryService->restore(destRegionId, destAddr, destAddrLen, destOffset,
-                           destKey, destMemoryServerId, inputFile, size);
+        memoryService->restore(destRegionId, destOffset, inputFile, size);
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_restore);
     return (void *)waitObj;
@@ -1308,6 +1292,15 @@ void Fam_CIS_Direct::get_addr(void *memServerFabricAddr,
     memcpy(memServerFabricAddr, (void *)memoryService->get_addr(),
            memoryService->get_addr_size());
     CIS_DIRECT_PROFILE_END_OPS(cis_get_addr);
+}
+
+int64_t Fam_CIS_Direct::get_file_info(std::string inputFile,
+                                      uint64_t memoryServerId) {
+    ostringstream message;
+    int64_t fileSize;
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    fileSize = memoryService->get_file_info(inputFile);
+    return fileSize;
 }
 
 size_t Fam_CIS_Direct::get_memserverinfo_size() {

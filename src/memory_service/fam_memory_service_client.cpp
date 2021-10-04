@@ -279,10 +279,7 @@ void Fam_Memory_Service_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_copy);
 }
 
-void Fam_Memory_Service_Client::backup(uint64_t srcRegionId,
-                                       const char *srcAddr, uint32_t srcAddrLen,
-                                       uint64_t srcOffset, uint64_t srcKey,
-                                       uint64_t srcMemoryServerId,
+void Fam_Memory_Service_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
                                        string outputFile, uint64_t size) {
     Fam_Memory_Backup_Restore_Request req;
     Fam_Memory_Backup_Restore_Response res;
@@ -291,10 +288,6 @@ void Fam_Memory_Service_Client::backup(uint64_t srcRegionId,
     MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
     req.set_region_id(srcRegionId);
     req.set_offset(srcOffset);
-    req.set_key(srcKey);
-    req.set_addr(srcAddr, srcAddrLen);
-    req.set_addr_len(srcAddrLen);
-    req.set_memserver_id(srcMemoryServerId);
     req.set_filename(outputFile);
     req.set_size(size);
 
@@ -304,11 +297,8 @@ void Fam_Memory_Service_Client::backup(uint64_t srcRegionId,
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_backup);
 }
 void Fam_Memory_Service_Client::restore(uint64_t destRegionId,
-                                        const char *destAddr,
-                                        uint32_t destAddrLen,
-                                        uint64_t destOffset, uint64_t destKey,
-                                        uint64_t destMemoryServerId,
-                                        string inputFile, uint64_t size) {
+                                        uint64_t destOffset, string inputFile,
+                                        uint64_t size) {
     Fam_Memory_Backup_Restore_Request req;
     Fam_Memory_Backup_Restore_Response res;
     ::grpc::ClientContext ctx;
@@ -316,10 +306,6 @@ void Fam_Memory_Service_Client::restore(uint64_t destRegionId,
     MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
     req.set_region_id(destRegionId);
     req.set_offset(destOffset);
-    req.set_key(destKey);
-    req.set_addr(destAddr, destAddrLen);
-    req.set_addr_len(destAddrLen);
-    req.set_memserver_id(destMemoryServerId);
     req.set_filename(inputFile);
     req.set_size(size);
 
@@ -363,6 +349,22 @@ size_t Fam_Memory_Service_Client::get_addr_size() {
 
 void *Fam_Memory_Service_Client::get_addr() { return memServerFabricAddr; }
 
+int64_t Fam_Memory_Service_Client::get_file_info(std::string inputFile) {
+
+    Fam_Memory_File_Info_Request req;
+    Fam_Memory_File_Info_Response res;
+    ::grpc::ClientContext ctx;
+    std::string filename = std::string(inputFile);
+    req.set_filename(filename);
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+
+    ::grpc::Status status = stub->get_file_info(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_file_info);
+
+    return res.file_size();
+}
 void *Fam_Memory_Service_Client::get_local_pointer(uint64_t regionId,
                                                    uint64_t offset) {
     Fam_Memory_Service_Request req;
