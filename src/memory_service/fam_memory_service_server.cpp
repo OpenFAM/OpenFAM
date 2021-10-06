@@ -424,10 +424,10 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
     ::Fam_Memory_Atomic_Response *response) {
     MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
     try {
-        memoryService->get_atomic(request->regionid(), request->srcoffset(),
-                                  request->dstoffset(), request->nbytes(),
-                                  request->key(), request->nodeaddr().c_str(),
-                                  request->nodeaddrsize());
+        memoryService->get_atomic(
+            request->regionid(), request->srcoffset(), request->dstoffset(),
+            request->nbytes(), request->key(), request->src_base_addr(),
+            request->nodeaddr().c_str(), request->nodeaddrsize());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -445,8 +445,9 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
     try {
         memoryService->put_atomic(
             request->regionid(), request->srcoffset(), request->dstoffset(),
-            request->nbytes(), request->key(), request->nodeaddr().c_str(),
-            request->nodeaddrsize(), request->data().c_str());
+            request->nbytes(), request->key(), request->src_base_addr(),
+            request->nodeaddr().c_str(), request->nodeaddrsize(),
+            request->data().c_str());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -465,8 +466,8 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
         memoryService->scatter_strided_atomic(
             request->regionid(), request->offset(), request->nelements(),
             request->firstelement(), request->stride(), request->elementsize(),
-            request->key(), request->nodeaddr().c_str(),
-            request->nodeaddrsize());
+            request->key(), request->src_base_addr(),
+            request->nodeaddr().c_str(), request->nodeaddrsize());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -485,8 +486,8 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
         memoryService->gather_strided_atomic(
             request->regionid(), request->offset(), request->nelements(),
             request->firstelement(), request->stride(), request->elementsize(),
-            request->key(), request->nodeaddr().c_str(),
-            request->nodeaddrsize());
+            request->key(), request->src_base_addr(),
+            request->nodeaddr().c_str(), request->nodeaddrsize());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -505,8 +506,8 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
         memoryService->scatter_indexed_atomic(
             request->regionid(), request->offset(), request->nelements(),
             request->elementindex().c_str(), request->elementsize(),
-            request->key(), request->nodeaddr().c_str(),
-            request->nodeaddrsize());
+            request->key(), request->src_base_addr(),
+            request->nodeaddr().c_str(), request->nodeaddrsize());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -525,8 +526,8 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
         memoryService->gather_indexed_atomic(
             request->regionid(), request->offset(), request->nelements(),
             request->elementindex().c_str(), request->elementsize(),
-            request->key(), request->nodeaddr().c_str(),
-            request->nodeaddrsize());
+            request->key(), request->src_base_addr(),
+            request->nodeaddr().c_str(), request->nodeaddrsize());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());

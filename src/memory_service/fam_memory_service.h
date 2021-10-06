@@ -85,17 +85,19 @@ class Fam_Memory_Service {
 
     virtual void get_atomic(uint64_t regionId, uint64_t srcOffset,
                             uint64_t dstOffset, uint64_t nbytes, uint64_t key,
-                            const char *nodeAddr, uint32_t nodeAddrSize) = 0;
+                            uint64_t srcBaseAddr, const char *nodeAddr,
+                            uint32_t nodeAddrSize) = 0;
 
     virtual void put_atomic(uint64_t regionId, uint64_t srcOffset,
                             uint64_t dstOffset, uint64_t nbytes, uint64_t key,
-                            const char *nodeAddr, uint32_t nodeAddrSize,
-                            const char *data) = 0;
+                            uint64_t srcBaseAddr, const char *nodeAddr,
+                            uint32_t nodeAddrSize, const char *data) = 0;
 
     virtual void scatter_strided_atomic(uint64_t regionId, uint64_t offset,
                                         uint64_t nElements,
                                         uint64_t firstElement, uint64_t stride,
                                         uint64_t elementSize, uint64_t key,
+                                        uint64_t srcBaseAddr,
                                         const char *nodeAddr,
                                         uint32_t nodeAddrSize) = 0;
 
@@ -103,22 +105,19 @@ class Fam_Memory_Service {
                                        uint64_t nElements,
                                        uint64_t firstElement, uint64_t stride,
                                        uint64_t elementSize, uint64_t key,
+                                       uint64_t srcBaseAddr,
                                        const char *nodeAddr,
                                        uint32_t nodeAddrSize) = 0;
 
-    virtual void scatter_indexed_atomic(uint64_t regionId, uint64_t offset,
-                                        uint64_t nElements,
-                                        const void *elementIndex,
-                                        uint64_t elementSize, uint64_t key,
-                                        const char *nodeAddr,
-                                        uint32_t nodeAddrSize) = 0;
+    virtual void scatter_indexed_atomic(
+        uint64_t regionId, uint64_t offset, uint64_t nElements,
+        const void *elementIndex, uint64_t elementSize, uint64_t key,
+        uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize) = 0;
 
-    virtual void gather_indexed_atomic(uint64_t regionId, uint64_t offset,
-                                       uint64_t nElements,
-                                       const void *elementIndex,
-                                       uint64_t elementSize, uint64_t key,
-                                       const char *nodeAddr,
-                                       uint32_t nodeAddrSize) = 0;
+    virtual void gather_indexed_atomic(
+        uint64_t regionId, uint64_t offset, uint64_t nElements,
+        const void *elementIndex, uint64_t elementSize, uint64_t key,
+        uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize) = 0;
 };
 
 } // namespace openfam
