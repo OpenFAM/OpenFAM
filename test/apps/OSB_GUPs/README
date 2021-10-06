@@ -1,0 +1,39 @@
+Modifications copyright (C) 2021 Advanced Micro Devices, Inc. All rights reserved.
+
+1.	This is a modified version of the random access benchmark initially developed by David Koester and Bob Lucas. 
+
+2.	In the OpenFAM version, the entire HPCC_Table is allocated in the Fabric-Attached Memory (FAM) region via a FAM allocator. According to the OpenFAM API, first a FAM region is initialized and then the data item like “HPCC_Table” is either mapped to the process virtual address space directly from the FAM or we copy a segment of memory in between FAM and local memory. 
+
+3.	The initial OpenSHMEM version is available at https://github.com/ornl-languages/osb/tree/master/GUPs This OpenFAM-ported version differs from the OpenSHMEM version like so:
+	3.1 OpenSHMEM version uses only put/get operations, while the OpenFAM version works in two modes: Put&Get and Load$Store
+	3.2	In the OpenSHMEM version, HPCC_Table for each PE is determined by the word size, “sizeof(u64Int)”, and the local table size, “LocalTableSize”. The FAM allocator allocates a data item for “HPCC_Table” to be accessed by ALL PEs, so the size of “HPCC_Table” is determined by not only “sizeof(u64Int)” and “LocalTableSize” but also the number of PEs. In this case, each PE requires a unique offset, PE_ID*sizeof(u64Int)*LocalTableSize, in both modes for accessing to the corresponding values.
+	3.3	In the OpenSHMEM version, remote variable is allocated via “shmem_malloc”, while the OpenFAM version defines unique data items to be allocated in the FAM region. 
+	For example, to verify the number of updates in the remote memory by each PE, we replace “shmem_malloc” with “fam_allocate” as follows:  
+		s64Int *updates = (s64Int *) shmem_malloc(sizeof(s64Int) * numNodes); ---->
+        Fam_Descriptor *updates = my_fam->fam_allocate(updatesVariable, sizeof(s64Int) * NumProcs, 0777, region);	
+	3.4	OpenSHMEM version uses shmem_longlong_g to fetch a word from the remote memory, while the OpenFAM version uses either a direct load operation or get operation for the corresponding PE:
+		3.4.1	offset = sizeof(u64Int) * LocalTableSize * remote_proc
+		3.4.2.1	LoadStore Mode:	remote_val = (u64Int) &hPCC_Table[offset + wordIndex]
+		3.4.2.2	PutGet Mode:	my_fam->fam_get_nonblocking(&remote_val, HPCC_Table, offset + wordIndex , sizeof(u64Int)); my_fam->fam_barrier_all();
+	3.5	OpenSHMEM version uses shmem_longlong_p to store the modified word in the remote memory, while the OpenFAM version uses either a direct store operation or put operation for the corresponding PE:
+		3.5.1	LoadStore Mode:	hPCC_Table[offset + wordIndex]= remote_val
+		3.5.2	PutGet Mode:	my_fam->fam_put_nonblocking(&remote_val, HPCC_Table, offset + wordIndex , sizeof(u64Int)); my_fam->fam_barrier_all();
+	3.6	OpenSHMEM version uses shmem_longlong_inc to increment the number of updates for each PE, while the OpenFAM version directly increments the number of updates for the corresponding PE via updates[thisPeId] = updates[thisPeId]+1
+	3.7	OpenSHMEM version uses shmem_longlong_sum_to_all to calculate the summation of updates, while the OpenFAM version does not support sum_to_all. For this, we define a temporary data item “all_updates” to be used for all PE for adding its corresponding updates to it as follows:
+		3.7.1	all_updates[0]+=updates[MyProc]; my_fam->fam_barrier_all();
+
+4.	How to install the OpenFAM runtime
+	4.1	Download the source code of openFAM from https://github.com/OpenFAM/OpenFAM. 
+	4.2	Follow instructions in https://github.com/OpenFAM/OpenFAM to install the OpenFAM.
+
+5.	How to run
+	5.1	Copy OSB_GUPs files to the following directory: ../OpenFAM-master/test/apps/
+	5.2	Go to ../OpenFAM-master/build/test/apps/OSB_GUPs to build it via "make clean", "make"
+	5.3	Run the OpenFAM servers: "source ../OpenFAM-master/build/setup.sh --memserver=127.0.0.1 --metaserver=127.0.0.1 --cisserver=127.0.0.1"
+	5.4	Load data to FAM: "../OpenFAM-master/third-party/build/bin/mpirun -np 1 ./fam_GUPS 0 2 0"
+	5.5	Run: "../OpenFAM-master/third-party/build/bin/mpirun -np 2 ./fam_GUPS 1 2 0"
+	    where ../OpenFAM-master/third-party/build/bin/mpirun -np  arg_0 ./fam_GUPS arg_1 arg_2 arg_3
+		5.6.1	arg_0: #PEs (Must be 1 for the memory region initialization).
+		5.6.2	arg_1: Initialize or run (0: Initialize the memory region; 1: Run mode).
+		5.6.3	arg_2: #PEs in the Run mode (supply the same for the initialization mode).
+		5.6.4	arg_3: Operation Mode (0: LoadStore vs. 1: PutGet).
