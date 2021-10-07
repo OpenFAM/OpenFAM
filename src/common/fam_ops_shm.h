@@ -110,8 +110,8 @@ class Fam_Ops_SHM : public Fam_Ops {
                uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
-    void *backup(Fam_Descriptor *desc, char *outputFile);
-    void *restore(char *inputFile, Fam_Descriptor *dest, uint64_t size);
+    void *backup(Fam_Descriptor *desc, char *BackupName);
+    void *restore(char *BackupName, Fam_Descriptor *dest, uint64_t size);
     void wait_for_backup(void *waitObj);
     void wait_for_restore(void *waitObj);
 

@@ -1,6 +1,6 @@
 /*
- * fam_put_get_reg_test.cpp
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * fam_backup_restore_reg_test.cpp
+ * Copyright (c) 2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -28,6 +28,7 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
+#include <fam/fam.h>
 #include <fam/fam_exception.h>
 #include <fstream>
 #include <gtest/gtest.h>
@@ -35,9 +36,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
-
-#include <fam/fam.h>
 
 #include "common/fam_test_config.h"
 
@@ -50,6 +50,7 @@ fam *my_fam;
 Fam_Options fam_opts;
 Fam_Region_Descriptor *desc;
 Fam_Descriptor *item;
+time_t backup_time = 0;
 
 // Test case 1 - put get test.
 TEST(FamBackupRestore, BackupSuccess) {
@@ -64,15 +65,16 @@ TEST(FamBackupRestore, BackupSuccess) {
     // Allocating data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_lookup(firstItem, testRegion));
     EXPECT_NE((void *)NULL, item);
-    char *filename = (char *)malloc(100);
+    char *backupName = (char *)malloc(100);
     try {
-        sprintf(filename, "%s.%s.1", testRegion, firstItem);
-        void *waitobj = my_fam->fam_backup(item, filename);
+        backup_time = time(NULL);
+        sprintf(backupName, "%s.%s.%ld", testRegion, firstItem, backup_time);
+        void *waitobj = my_fam->fam_backup(item, backupName);
         EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
     } catch (Fam_Exception &e) {
         cout << "fam_backup: " << e.fam_error_msg() << endl;
     }
-    free((char *)filename);
+    free((char *)backupName);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -84,8 +86,8 @@ TEST(FamBackupRestore, RestoreSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
     const char *secondItem = get_uniq_str("second", my_fam);
     char *local = strdup("Test message");
-    char *filename = (char *)malloc(100);
-    sprintf(filename, "%s.%s.0", testRegion, firstItem);
+    char *backupName = (char *)malloc(100);
+    sprintf(backupName, "%s.%s.%ld", testRegion, firstItem, backup_time);
 
     EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
     EXPECT_NE((void *)NULL, desc);
@@ -97,7 +99,7 @@ TEST(FamBackupRestore, RestoreSuccess) {
         EXPECT_NE((void *)NULL, item);
 
         // Start Restore
-        void *waitobj = my_fam->fam_restore(filename, item);
+        void *waitobj = my_fam->fam_restore(backupName, item);
         my_fam->fam_restore_wait(waitobj);
 
     } catch (Fam_Exception &e) {
@@ -127,15 +129,16 @@ TEST(FamBackupRestore, CreateDataitemRestoreSuccess) {
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
     const char *secondItem = get_uniq_str("third", my_fam);
-    char *filename = (char *)malloc(100);
+    char *backupName = (char *)malloc(100);
     char *local = strdup("Test message");
 
     EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
     EXPECT_NE((void *)NULL, desc);
 
-    sprintf(filename, "%s.%s.0", testRegion, firstItem);
+    sprintf(backupName, "%s.%s.%ld", testRegion, firstItem, backup_time);
     try {
-        void *waitobj = my_fam->fam_restore(filename, desc, (char *)secondItem, 0777,&item);
+        void *waitobj = my_fam->fam_restore(backupName, desc,
+                                            (char *)secondItem, 0777, &item);
 
         my_fam->fam_restore_wait(waitobj);
     } catch (Fam_Exception &e) {

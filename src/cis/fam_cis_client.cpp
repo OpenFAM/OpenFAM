@@ -582,7 +582,7 @@ void Fam_CIS_Client::wait_for_backup(void *waitObj) {
 }
 
 void *Fam_CIS_Client::restore(uint64_t destRegionId, uint64_t destOffset,
-                              uint64_t destMemoryServerId, string inputFile,
+                              uint64_t destMemoryServerId, string BackupName,
                               uint32_t uid, uint32_t gid, uint64_t size) {
     Fam_Backup_Restore_Request req;
     Fam_Backup_Restore_Response res;
@@ -590,7 +590,7 @@ void *Fam_CIS_Client::restore(uint64_t destRegionId, uint64_t destOffset,
     req.set_regionid(destRegionId);
     req.set_memserver_id(destMemoryServerId);
     req.set_offset(destOffset);
-    req.set_filename(inputFile);
+    req.set_filename(BackupName);
     req.set_uid(uid);
     req.set_gid(gid);
     req.set_size(size);
@@ -758,19 +758,25 @@ void Fam_CIS_Client::get_addr(void *memServerFabricAddr,
     }
 }
 
-int64_t Fam_CIS_Client::get_file_info(std::string inputFile,
-                                      uint64_t memoryServerId) {
-    Fam_File_Info_Request req;
-    Fam_File_Info_Response res;
+Fam_Backup_Info Fam_CIS_Client::get_backup_info(std::string BackupName,
+                                                uint64_t memoryServerId) {
+    Fam_Backup_Info_Request req;
+    Fam_Backup_Info_Response res;
     ::grpc::ClientContext ctx;
 
     req.set_memserver_id(memoryServerId);
-    req.set_filename(inputFile);
-    ::grpc::Status status = stub->get_file_info(&ctx, req, &res);
+    req.set_filename(BackupName);
+    ::grpc::Status status = stub->get_backup_info(&ctx, req, &res);
 
     STATUS_CHECK(CIS_Exception)
+    Fam_Backup_Info info;
+    info.name = (char *)(res.name().c_str());
+    info.size = res.size();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.mode = res.mode();
 
-    return res.file_size();
+    return info;
 }
 
 size_t Fam_CIS_Client::get_memserverinfo_size() {

@@ -73,7 +73,7 @@ service Fam_CIS_Rpc {
 
     rpc get_addr(Fam_Address_Request) returns (Fam_Address_Response) {}
 
-    rpc get_file_info(Fam_File_Info_Request) returns (Fam_File_Info_Response) {}
+    rpc get_backup_info(Fam_Backup_Info_Request) returns (Fam_Backup_Info_Response) {}
     rpc get_num_memory_servers(Fam_Request) returns (Fam_Response) {}
 
     rpc get_memserverinfo_size(Fam_Request)
@@ -312,14 +312,18 @@ message Fam_Atomic_SG_Indexed_Request {
     uint32 gid = 11;
 }
 
-message Fam_File_Info_Request {
+message Fam_Backup_Info_Request {
     string filename = 1;
     uint64 memserver_id = 2;
 }
 
-message Fam_File_Info_Response {
-    int64 file_size = 1;
+message Fam_Backup_Info_Response {
+    int64 size = 1;
     int32 errorcode = 2;
     string errormsg = 3;
+    uint32 uid = 4;
+    uint32 gid = 5;
+    uint32 mode = 6;
+    string name = 7;
 }
 

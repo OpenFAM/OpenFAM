@@ -586,15 +586,15 @@ void Fam_Ops_Libfabric::wait_for_copy(void *waitObj) {
     return famAllocator->wait_for_copy(waitObj);
 }
 
-void *Fam_Ops_Libfabric::backup(Fam_Descriptor *descriptor, char *outputFile) {
+void *Fam_Ops_Libfabric::backup(Fam_Descriptor *descriptor, char *BackupName) {
 
-    return famAllocator->backup(descriptor, outputFile);
+    return famAllocator->backup(descriptor, BackupName);
 }
 
-void *Fam_Ops_Libfabric::restore(char *inputFile, Fam_Descriptor *dest,
+void *Fam_Ops_Libfabric::restore(char *BackupName, Fam_Descriptor *dest,
                                  uint64_t size) {
 
-    return famAllocator->restore(dest, inputFile, size);
+    return famAllocator->restore(dest, BackupName, size);
 }
 
 void Fam_Ops_Libfabric::wait_for_backup(void *waitObj) {

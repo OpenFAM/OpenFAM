@@ -38,4 +38,4 @@ ATL_queue_size: 1000
 ATL_data_size: 1024
 
 # Path where data item backups are placed
-fam_backup_path: /home/username/backup
+fam_backup_path: OPENFAM_ROOT/backup

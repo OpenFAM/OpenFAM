@@ -471,10 +471,11 @@ void Memserver_Allocator::copy(uint64_t srcRegionId, uint64_t srcOffset,
 }
 
 void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
-                                 string outputFile, uint64_t size) {
+                                 string BackupName, uint64_t size) {
 
     void *src = get_local_pointer(srcRegionId, srcOffset);
-    int fileid = open((char *)outputFile.c_str(), O_RDWR | O_CREAT, 0777);
+    int fileid = open((char *)BackupName.c_str(), O_RDWR | O_CREAT,
+                      S_IRWXU | S_IRWXG | S_IRWXO);
     if (fileid == -1) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
                         "backup file creation failed.");
@@ -498,16 +499,16 @@ void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
 }
 
 void Memserver_Allocator::restore(uint64_t destRegionId, uint64_t destOffset,
-                                  string inputFile, uint64_t size) {
+                                  string BackupName, uint64_t size) {
     void *dest = get_local_pointer(destRegionId, destOffset);
     struct stat info;
-    int exist = stat(inputFile.c_str(), &info);
+    int exist = stat(BackupName.c_str(), &info);
     if (exist == -1) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
                         "InputFile doesnt exist.");
     }
-    //    size = info.st_size;
-    int fileid = open((char *)inputFile.c_str(), O_RDONLY, 0777);
+    int fileid =
+        open((char *)BackupName.c_str(), O_RDONLY, S_IRWXU | S_IRWXG | S_IRWXO);
     if (fileid == -1) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
                         "Opening of input file failed.");
@@ -524,13 +525,32 @@ void Memserver_Allocator::restore(uint64_t destRegionId, uint64_t destOffset,
     }
 
     memcpy(dest, srcaddr, page_size);
-    // msync(dest, page_size, MS_SYNC | MS_INVALIDATE);
     msync(dest, page_size, MS_SYNC);
     msync(srcaddr, page_size, MS_SYNC);
     openfam_persist(dest, page_size);
     munmap(srcaddr, page_size);
     close(fileid);
 }
+
+Fam_Backup_Info Memserver_Allocator::get_backup_info(std::string BackupName) {
+    ostringstream message;
+    struct stat sb;
+    Fam_Backup_Info info;
+    info.name = (char *)BackupName.c_str();
+    if (stat(BackupName.c_str(), &sb) == -1) {
+        info.size = -1;
+        info.uid = -1;
+        info.gid = -1;
+        info.mode = -1;
+    } else {
+        info.size = sb.st_size;
+        info.uid = sb.st_uid;
+        info.gid = sb.st_gid;
+        info.mode = sb.st_mode;
+    }
+    return info;
+}
+
 void *Memserver_Allocator::get_local_pointer(uint64_t regionId,
                                              uint64_t offset) {
     ostringstream message;

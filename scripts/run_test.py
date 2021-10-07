@@ -6,9 +6,6 @@ import time
 import math
 from pathlib import Path
 
-home_dir = str(Path.home())
-backup_dir = home_dir + "/backup/"
-
 # Create the parser
 my_parser = argparse.ArgumentParser(
     fromfile_prefix_chars="@", description="Generate the config files"
@@ -25,6 +22,7 @@ my_parser.add_argument(
     type=str,
     help="path where generated output config files to be stored",
 )
+
 
 my_parser.add_argument("buildpath", action="store",
                        type=str, help="OpenFAM build path")
@@ -143,7 +141,7 @@ my_parser.add_argument(
 )
 
 my_parser.add_argument(
-    "--fam_backup_path", action="store", type=str, help="path where data backup is stored", default=backup_dir
+    "--fam_backup_path", action="store", type=str, help="path where data backup is stored"
 )
 
 
@@ -273,6 +271,8 @@ if args.fampath is not None:
 if args.fam_backup_path is not None:
     memservice_config_doc["fam_backup_path"] = args.fam_backup_path
     print(args.fam_backup_path)
+else:
+    memservice_config_doc["fam_backup_path"] = args.outpath + "/backup/"
 if args.atlthreads is not None:
     memservice_config_doc["ATL_threads"] = args.atlthreads
 if args.atlqsize is not None:
@@ -288,7 +288,6 @@ if args.regionspanningsize is not None:
     memservice_config_doc["region_span_size_per_memoryserver"] = (
         args.regionspanningsize
     )
-
 cmd = "mkdir -p " + args.outpath + "/config"
 os.system(cmd)
 

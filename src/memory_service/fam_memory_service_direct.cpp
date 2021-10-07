@@ -123,7 +123,8 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
     struct stat info;
     if (stat(fam_backup_path.c_str(), &info) == -1) {
         if ((errno == ENOENT) || (errno == ENOTDIR))
-            mkdir(fam_backup_path.c_str(), 0777);
+            mkdir(fam_backup_path.c_str(),
+                  S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     }
     if (isSharedMemory) {
         memoryRegistration = new Fam_Memory_Registration_SHM();
@@ -361,33 +362,35 @@ void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
 }
 
 void Fam_Memory_Service_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
-                                       string outputFile, uint64_t size) {
+                                       string BackupName, uint64_t size) {
     ostringstream message;
-    std::string outputFilename = fam_backup_path + "/" + outputFile;
-    struct stat sb;
-    if (stat(outputFilename.c_str(), &sb) == 0) {
+    std::string BackupNamePath = fam_backup_path + "/" + BackupName;
+    Fam_Backup_Info info = allocator->get_backup_info(BackupNamePath);
+
+    if (info.size >= 0) {
         message << "Backup already exists";
         THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_FILE_EXIST,
                         message.str().c_str());
     }
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    allocator->backup(srcRegionId, srcOffset, outputFilename, size);
+    allocator->backup(srcRegionId, srcOffset, BackupNamePath, size);
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_backup);
 }
 
 void Fam_Memory_Service_Direct::restore(uint64_t destRegionId,
-                                        uint64_t destOffset, string inputFile,
+                                        uint64_t destOffset, string BackupName,
                                         uint64_t size) {
     ostringstream message;
-    std::string inputFilename = fam_backup_path + "/" + inputFile;
-    struct stat sb;
-    if (stat(inputFilename.c_str(), &sb) != 0) {
+    std::string BackupNamePath = fam_backup_path + "/" + BackupName;
+    Fam_Backup_Info info = allocator->get_backup_info(BackupNamePath);
+
+    if (info.size == -1) {
         message << "Backup doesnt exist.";
         THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_FILE_NOT_FOUND,
                         message.str().c_str());
     }
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    allocator->restore(destRegionId, destOffset, inputFilename, size);
+    allocator->restore(destRegionId, destOffset, BackupNamePath, size);
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_restore);
 }
 
@@ -407,18 +410,14 @@ void *Fam_Memory_Service_Direct::get_addr() {
     return addr;
 }
 
-int64_t Fam_Memory_Service_Direct::get_file_info(std::string inputFile) {
+Fam_Backup_Info
+Fam_Memory_Service_Direct::get_backup_info(std::string BackupName) {
     ostringstream message;
-    struct stat sb;
-    std::string inputFilename = fam_backup_path + "/" + inputFile;
-    if (stat(inputFilename.c_str(), &sb) == -1) {
-        message << "Backup doesnt exist.";
-        //        THROW_ERRNO_MSG(Memory_Service_Exception,
-        //        BACKUP_FILE_NOT_FOUND ,message.str().c_str());
-        return -1;
-    } else {
-        return sb.st_size;
-    }
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    std::string BackupNamePath = fam_backup_path + "/" + BackupName;
+    Fam_Backup_Info info = allocator->get_backup_info(BackupNamePath);
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_backup_info);
+    return info;
 }
 
 void Fam_Memory_Service_Direct::acquire_CAS_lock(uint64_t offset) {

@@ -77,7 +77,7 @@ typedef struct {
     uint64_t srcRegionId;
     uint64_t srcOffset;
     uint64_t size;
-    char *outputFile;
+    char *BackupName;
     uint64_t srcMemserverId;
 } Fam_Backup_Tag;
 
@@ -85,7 +85,7 @@ typedef struct {
     boost::atomic<bool> restoreDone;
     Fam_Memory_Service *memoryService;
     uint64_t size;
-    char *inputFile;
+    char *BackupName;
     uint64_t destMemserverId;
     uint64_t destOffset;
     uint64_t destRegionId;

@@ -329,7 +329,7 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                       Fam_Backup_Tag *tag) {
         if (tag->memoryService) {
             tag->memoryService->backup(tag->srcRegionId, tag->srcOffset,
-                                       tag->outputFile, tag->size);
+                                       tag->BackupName, tag->size);
         }
         {
             AQUIRE_MUTEX(backupMtx)
@@ -343,7 +343,7 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                       Fam_Restore_Tag *tag) {
         if (tag->memoryService) {
             tag->memoryService->restore(tag->destRegionId, tag->destOffset,
-                                        tag->inputFile, tag->size);
+                                        tag->BackupName, tag->size);
         }
         {
             AQUIRE_MUTEX(restoreMtx)
@@ -442,15 +442,4 @@ void Fam_Async_QHandler::copy_handler(void *src, void *dest, uint64_t nbytes,
     fAsyncQHandler_->copy_handler(src, dest, nbytes, tag);
 }
 
-/*
-void Fam_Async_QHandler::backup_handler(void *src, void *dest, uint64_t nbytes,
-                                      Fam_Backup_Tag *tag) {
-    fAsyncQHandler_->backup_handler(src, dest, nbytes, tag);
-}
-
-void Fam_Async_QHandler::restore_handler(void *src, void *dest, uint64_t nbytes,
-                                      Fam_Restore_Tag *tag) {
-    fAsyncQHandler_->restore_handler(src, dest, nbytes, tag);
-}
-*/
 } // namespace openfam

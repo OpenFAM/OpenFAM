@@ -325,7 +325,7 @@ void *Fam_Allocator_Client::backup(Fam_Descriptor *src, char *outputFile) {
                           uid, gid, src->get_size());
 }
 
-void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, char *inputFile,
+void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, char *BackupName,
                                     uint64_t filesize) {
     Fam_Global_Descriptor globalDescriptor = dest->get_global_descriptor();
     uint64_t destRegionId = globalDescriptor.regionId & REGIONID_MASK;
@@ -338,7 +338,7 @@ void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, char *inputFile,
             "Destination offset or size is beyond dataitem boundary");
     }
     return famCIS->restore(destRegionId, destOffset, destMemoryServerId,
-                           inputFile, uid, gid, filesize);
+                           BackupName, uid, gid, filesize);
 }
 
 void Fam_Allocator_Client::wait_for_backup(void *waitObj) {
@@ -399,11 +399,10 @@ int Fam_Allocator_Client::get_addr(void *addr, size_t addrSize,
     return 0;
 }
 
-int64_t Fam_Allocator_Client::get_file_info(string inputFile,
-                                            uint64_t memoryServerId) {
+Fam_Backup_Info Fam_Allocator_Client::get_backup_info(string BackupName,
+                                                      uint64_t memoryServerId) {
 
-    int64_t ret = famCIS->get_file_info(inputFile, memoryServerId);
-    return ret;
+    return famCIS->get_backup_info(BackupName, memoryServerId);
 }
 
 int Fam_Allocator_Client::get_memserverinfo_size(size_t *memServerInfoSize) {

@@ -164,6 +164,16 @@ typedef struct {
     mode_t perm;
     char *name;
 } Fam_Stat;
+
+typedef struct {
+    char *name;   /* Backup Name*/
+    int64_t size; /* Backup Size */
+    uid_t uid;    /* User ID of owner */
+    gid_t gid;    /* Group ID of owner */
+    mode_t mode;  /*File Type and Mode */
+
+} Fam_Backup_Info;
+
 /**
  * Structure defining a FAM descriptor. Descriptors are PE independent data
  * structures that enable the OpenFAM library to uniquely locate an area of
@@ -742,14 +752,27 @@ class fam {
     void fam_copy_wait(void *waitObj);
 
     // Backup data item to a specific file
-    void *fam_backup(Fam_Descriptor *src, char *outputFile);
+    void *fam_backup(Fam_Descriptor *src, char *BackupName);
+
     // Restore data item  info from  a specific file to descriptor.
-    void *fam_restore(char *inputFile, Fam_Descriptor *dest);
-    void *fam_restore(char *inputFile, Fam_Region_Descriptor *destRegion,
+    void *fam_restore(char *BackupName, Fam_Descriptor *dest);
+    void *fam_restore(char *BackupName, Fam_Region_Descriptor *destRegion,
                       char *dataitemName, mode_t accessPermissions,
                       Fam_Descriptor **dest);
 
+    /**
+     * Wait for backup operation correspond to the wait object passed to
+     * complete
+     * @param waitObj - unique tag to backup operation
+     * @return - none
+     */
     void fam_backup_wait(void *waitObj);
+    /**
+     * Wait for restore operation correspond to the wait object passed to
+     * complete
+     * @param waitObj - unique tag to restore operation
+     * @return - none
+     */
     void fam_restore_wait(void *waitObj);
 
     // ATOMICS Group
