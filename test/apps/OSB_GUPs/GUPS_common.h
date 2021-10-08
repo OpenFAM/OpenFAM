@@ -115,7 +115,7 @@ Fam_Descriptor *gups_get_dataitem(const char *dataitemName) {
         dataitem = my_fam->fam_lookup(dataitemName, REGION_NAME);
     } catch (Fam_Exception &e) {
         // ignore
-        fam_stream << "fam lookup failed for dataitem :" <<  e.fam_error_msg()<< dataitemName
+        fam_stream << "fam lookup failed for dataitem :" <<  e.fam_error_msg() << " " << dataitemName
                    << endl;
         exit(1);
     }
