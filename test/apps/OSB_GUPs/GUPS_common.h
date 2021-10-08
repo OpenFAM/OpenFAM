@@ -102,7 +102,7 @@ Fam_Region_Descriptor *GUPS_fam_initialize(size_t size) {
     try {
         region = my_fam->fam_create_region(REGION_NAME, size, 0777, NONE);
     } catch (Fam_Exception &e) {
-        cout << "fam initialization failed 3:" << e.fam_error_msg() << endl;
+        cout << "fam create region failed 3:" << e.fam_error_msg() << endl;
         exit(1);
     }
     return region;
@@ -113,9 +113,9 @@ Fam_Descriptor *gups_get_dataitem(const char *dataitemName) {
     // Lookup  dataitem
     try {
         dataitem = my_fam->fam_lookup(dataitemName, REGION_NAME);
-    } catch (...) {
+    } catch (Fam_Exception &e) {
         // ignore
-        fam_stream << "fam lookup failed for dataitem :" << dataitemName
+        fam_stream << "fam lookup failed for dataitem :" <<  e.fam_error_msg() << " " << dataitemName
                    << endl;
         exit(1);
     }
