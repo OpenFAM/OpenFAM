@@ -167,6 +167,36 @@ my_parser.add_argument(
     help="Run regression and unit tests"
 )
 
+my_parser.add_argument(
+    "--mpi_type",
+    default="pmix_v2",
+    type=str,
+    action="store",
+    help="Slurm mpi type"
+)
+
+my_parser.add_argument(
+    "--partition",
+    type=str,
+    action="store",
+    help="Slurm partition"
+)
+
+my_parser.add_argument(
+    "--sleep",
+    default=5,
+    type=int,
+    action="store",
+    help="Number of seconds to sleep"
+)
+
+my_parser.add_argument(
+    "--yamlonly",
+    default=False,
+    action="store_true",
+    help="Generate yaml files then exit"
+)
+
 args = my_parser.parse_args()
 
 # Open all config file templates
@@ -191,6 +221,12 @@ with open(
         metaservice_config_infile, ruamel.yaml.RoundTripLoader
     )
 # Assign values to config options if corresponding argument is set
+sleepsecs = args.sleep
+mpitype = args.mpi_type
+if args.partition is not None:
+    slurm_partition = " -p " + args.partition
+else:
+    slurm_partition = ""
 if args.n is not None:
     npe = args.n
 else:
@@ -278,9 +314,10 @@ else:
         + str(len(args.pehosts.split(",")))
         + " -n "
         + str(npe)
+        + slurm_partition
         + " --nodelist="
         + args.pehosts
-        + " --mpi=pmix_v2"
+        + " --mpi=" + mpitype
     )
 # Check if user has provided any service interface as "rpc" when openfam model is shared_memory
 if pe_config_doc["openfam_model"] == "shared_memory":
@@ -330,6 +367,10 @@ with open(
         metaservice_config_outfile,
         Dumper=ruamel.yaml.RoundTripDumper,
     )
+
+if args.yamlonly:
+   sys.exit()
+
 # Set OPENFAM_ROOT environment variable
 os.environ["OPENFAM_ROOT"] = args.outpath
 env_cmd = (
@@ -345,7 +386,7 @@ env_cmd = (
 os.system(env_cmd)
 
 ssh_cmd = "ssh " + os.environ["USER"] + "@"
-srun_cmd = "srun -N 1 --nodelist="
+srun_cmd = "srun -N 1 " + slurm_partition + " --nodelist="
 
 # start all memory services
 if (
@@ -380,7 +421,7 @@ if (
             cmd = (
                 srun_cmd
                 + memory_server_addr
-                + " --mpi=pmix_v2 "
+                + " --mpi=" + mpitype
                 + args.buildpath
                 + "/src/memory_server -a "
                 + memory_server_addr
@@ -439,7 +480,7 @@ if (
             cmd = (
                 srun_cmd
                 + metadata_server_addr
-                + " --mpi=pmix_v2 "
+                + " --mpi=" + mpitype
                 + args.buildpath
                 + "/src/metadata_server -a "
                 + metadata_server_addr
@@ -458,7 +499,7 @@ if (
                 + " &"
             )
         os.system(cmd)
-time.sleep(5)
+time.sleep(sleepsecs)
 
 # Start CIS
 if (
@@ -486,7 +527,7 @@ if (
         cmd = (
             srun_cmd
             + cis_addr
-            + " --mpi=pmix_v2 "
+            + " --mpi=" + mpitype
             + args.buildpath
             + "/src/cis_server -a "
             + cis_addr
@@ -505,7 +546,7 @@ if (
             + " &"
         )
     os.system(cmd)
-time.sleep(5)
+time.sleep(sleepsecs)
 
 # Terminate all services
 
@@ -554,7 +595,7 @@ def terminate_services():
         else:
             cmd = "pkill cis_server"
         os.system(cmd)
-    time.sleep(5)  # sufficient time to terminate the services
+    time.sleep(sleepsecs)  # sufficient time to terminate the services
 
 if args.runtests:
     # Run regression and unit tests
