@@ -751,24 +751,26 @@ class fam {
      */
     void fam_copy_wait(void *waitObj);
 
-    // Backup data item to a specific file
+    // Backup data item .
     void *fam_backup(Fam_Descriptor *src, char *BackupName);
 
-    // Restore data item  info from  a specific file to descriptor.
+    // Restore data item to a descriptor.
     void *fam_restore(char *BackupName, Fam_Descriptor *dest);
+    // Create a data item in a given region and restore the backed up contents
+    // in this data item.
     void *fam_restore(char *BackupName, Fam_Region_Descriptor *destRegion,
                       char *dataitemName, mode_t accessPermissions,
                       Fam_Descriptor **dest);
 
     /**
-     * Wait for backup operation correspond to the wait object passed to
+     * Wait for backup operation corresponding to the wait object passed to
      * complete
      * @param waitObj - unique tag to backup operation
      * @return - none
      */
     void fam_backup_wait(void *waitObj);
     /**
-     * Wait for restore operation correspond to the wait object passed to
+     * Wait for restore operation corresponding to the wait object passed to
      * complete
      * @param waitObj - unique tag to restore operation
      * @return - none

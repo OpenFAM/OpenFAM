@@ -57,9 +57,9 @@ Fam_CIS_Client::Fam_CIS_Client(const char *name, uint64_t port) {
         throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
     }
 
-    cq = new ::grpc::CompletionQueue();
-    bcq = new ::grpc::CompletionQueue();
-    rcq = new ::grpc::CompletionQueue();
+    copycq = new ::grpc::CompletionQueue();
+    backupcq = new ::grpc::CompletionQueue();
+    restorecq = new ::grpc::CompletionQueue();
 }
 
 Fam_CIS_Client::~Fam_CIS_Client() {
@@ -414,7 +414,8 @@ void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     waitObj->isCompleted = false;
     waitObj->memServerId = destMemoryServerId;
 
-    waitObj->responseReader = stub->PrepareAsynccopy(&waitObj->ctx, req, cq);
+    waitObj->responseReader =
+        stub->PrepareAsynccopy(&waitObj->ctx, req, copycq);
 
     // StartCall initiates the RPC call
     waitObj->responseReader->StartCall();
@@ -457,7 +458,7 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
     } else {
 
         do {
-            GPR_ASSERT(cq->Next(&got_waitObj, &ok));
+            GPR_ASSERT(copycq->Next(&got_waitObj, &ok));
             // The waitObj is the memory location of Fam_Copy_waitObj object
             waitObjCompleted = static_cast<Fam_Copy_Wait_Object *>(got_waitObj);
             if (!waitObjCompleted) {
@@ -506,7 +507,8 @@ void *Fam_CIS_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
     waitObj->isCompleted = false;
     waitObj->memServerId = srcMemoryServerId;
 
-    waitObj->responseReader = stub->PrepareAsyncbackup(&waitObj->ctx, req, cq);
+    waitObj->responseReader =
+        stub->PrepareAsyncbackup(&waitObj->ctx, req, backupcq);
 
     // StartCall initiates the RPC call
     waitObj->responseReader->StartCall();
@@ -550,7 +552,7 @@ void Fam_CIS_Client::wait_for_backup(void *waitObj) {
     } else {
 
         do {
-            GPR_ASSERT(cq->Next(&got_waitObj, &ok));
+            GPR_ASSERT(backupcq->Next(&got_waitObj, &ok));
             // The waitObj is the memory location of Fam_Backup_waitObj object
             waitObjCompleted = static_cast<Fam_Backup_Wait_Object *>(got_waitObj);
             if (!waitObjCompleted) {
@@ -599,7 +601,8 @@ void *Fam_CIS_Client::restore(uint64_t destRegionId, uint64_t destOffset,
     waitObj->isCompleted = false;
     waitObj->memServerId = destMemoryServerId;
 
-    waitObj->responseReader = stub->PrepareAsyncrestore(&waitObj->ctx, req, cq);
+    waitObj->responseReader =
+        stub->PrepareAsyncrestore(&waitObj->ctx, req, restorecq);
 
     // StartCall initiates the RPC call
     waitObj->responseReader->StartCall();
@@ -643,7 +646,7 @@ void Fam_CIS_Client::wait_for_restore(void *waitObj) {
     } else {
 
         do {
-            GPR_ASSERT(cq->Next(&got_waitObj, &ok));
+            GPR_ASSERT(restorecq->Next(&got_waitObj, &ok));
             // The waitObj is the memory location of Fam_Restore_waitObj object
             waitObjCompleted = static_cast<Fam_Restore_Wait_Object *>(got_waitObj);
             if (!waitObjCompleted) {

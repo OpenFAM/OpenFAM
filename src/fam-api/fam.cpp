@@ -1919,12 +1919,12 @@ void *fam::Impl_::fam_restore(char *BackupName,
 
     Fam_Backup_Info info = famAllocator->get_backup_info(
         BackupName, destRegion->get_memserver_id());
-    *dest = famAllocator->allocate(dataitemName, info.size, accessPermissions,
-                                   destRegion);
-    int retD = validate_item(*dest);
     if (info.size == (int)-1) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Backup doesnot exist.");
     }
+    *dest = famAllocator->allocate(dataitemName, info.size, accessPermissions,
+                                   destRegion);
+    int retD = validate_item(*dest);
     FAM_PROFILE_END_ALLOCATOR(fam_restore);
     FAM_PROFILE_START_OPS(fam_restore);
 

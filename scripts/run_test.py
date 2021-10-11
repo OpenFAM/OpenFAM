@@ -141,7 +141,7 @@ my_parser.add_argument(
 )
 
 my_parser.add_argument(
-    "--fam_backup_path", action="store", type=str, help="path where data backup is stored"
+    "--fam_backup_path", action="store", type=str, help="path where data backup is stored(on shared filesystem)"
 )
 
 

@@ -335,7 +335,7 @@ void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, char *BackupName,
     if ((filesize - 4096) > destItemSize) {
         throw Fam_Allocator_Exception(
             FAM_ERR_OUTOFRANGE,
-            "Destination offset or size is beyond dataitem boundary");
+            "Backup data doesnot fit in the given destination data item.");
     }
     return famCIS->restore(destRegionId, destOffset, destMemoryServerId,
                            BackupName, uid, gid, filesize);

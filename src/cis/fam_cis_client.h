@@ -60,9 +60,9 @@ typedef struct {
     service stub;
     size_t memServerFabricAddrSize;
     char *memServerFabricAddr;
-    ::grpc::CompletionQueue *cq;
-    ::grpc::CompletionQueue *bcq;
-    ::grpc::CompletionQueue *rcq;
+    ::grpc::CompletionQueue *copycq;
+    ::grpc::CompletionQueue *backupcq;
+    ::grpc::CompletionQueue *restorecq;
 } Fam_CIS_Server_Info;
 
 using Server_List = std::map<uint64_t, Fam_CIS_Server_Info *>;
@@ -189,9 +189,9 @@ class Fam_CIS_Client : public Fam_CIS {
 
   private:
     std::unique_ptr<Fam_CIS_Rpc::Stub> stub;
-    ::grpc::CompletionQueue *cq;
-    ::grpc::CompletionQueue *bcq;
-    ::grpc::CompletionQueue *rcq;
+    ::grpc::CompletionQueue *copycq;
+    ::grpc::CompletionQueue *backupcq;
+    ::grpc::CompletionQueue *restorecq;
 };
 
 } // namespace openfam

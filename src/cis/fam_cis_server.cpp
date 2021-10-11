@@ -461,20 +461,6 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
 Fam_CIS_Server::backup(::grpc::ServerContext *context,
                        const ::Fam_Backup_Restore_Request *request,
                        ::Fam_Backup_Restore_Response *response) {
-    CIS_SERVER_PROFILE_START_OPS()
-    try {
-
-        famCIS->backup(request->regionid(), request->offset(),
-                       request->memserver_id(), request->filename(),
-                       request->uid(), request->gid(), request->size());
-    }
-
-    catch (Fam_Exception &e) {
-        response->set_errorcode(e.fam_error());
-        response->set_errormsg(e.fam_error_msg());
-    }
-    CIS_SERVER_PROFILE_END_OPS(backup);
-
     return ::grpc::Status::OK;
 }
 
@@ -482,17 +468,6 @@ Fam_CIS_Server::backup(::grpc::ServerContext *context,
 Fam_CIS_Server::restore(::grpc::ServerContext *context,
                         const ::Fam_Backup_Restore_Request *request,
                         ::Fam_Backup_Restore_Response *response) {
-    CIS_SERVER_PROFILE_START_OPS()
-    try {
-        famCIS->restore(request->regionid(), request->offset(),
-                        request->memserver_id(), request->filename(),
-                        request->uid(), request->gid(), request->size());
-
-    } catch (Fam_Exception &e) {
-        response->set_errorcode(e.fam_error());
-        response->set_errormsg(e.fam_error_msg());
-    }
-    CIS_SERVER_PROFILE_END_OPS(restore);
     return ::grpc::Status::OK;
 }
 

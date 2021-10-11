@@ -37,5 +37,6 @@ ATL_queue_size: 1000
 # data structures
 ATL_data_size: 1024
 
-# Path where data item backups are placed
-fam_backup_path: OPENFAM_ROOT/backup
+# Path where data item backups are placed.
+# This path needs to be in a shared filesystem and accessible to  all memory servers.
+#fam_backup_path: $OPENFAM_ROOT/backup

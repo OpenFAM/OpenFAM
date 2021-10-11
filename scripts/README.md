@@ -17,7 +17,7 @@ usage: run_test.py [-h] [-n N] [--pehosts PEHOSTS] [--launcher {mpi,slurm}]
                    [--atlqsize ATLQSIZE] [--atldatasize ATLDATASIZE]
                    [--disableregionspanning]
                    [--regionspanningsize REGIONSPANNINGSIZE] [--runtests]
-		   [--fam_backup_path backup_path
+                   [--fam_backup_path backup_path
                    rootpath outpath buildpath
 ```
 positional arguments:
