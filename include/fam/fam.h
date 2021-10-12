@@ -165,15 +165,16 @@ typedef struct {
     char *name;
 } Fam_Stat;
 
+/*
 typedef struct {
-    char *name;   /* Backup Name*/
-    int64_t size; /* Backup Size */
-    uid_t uid;    /* User ID of owner */
-    gid_t gid;    /* Group ID of owner */
-    mode_t mode;  /*File Type and Mode */
+    char *name;   // Backup Name
+    int64_t size; // Backup Size
+    uid_t uid;    // User ID of owner
+    gid_t gid;    // Group ID of owner
+    mode_t mode;  // File Type and Mode
 
 } Fam_Backup_Info;
-
+*/
 /**
  * Structure defining a FAM descriptor. Descriptors are PE independent data
  * structures that enable the OpenFAM library to uniquely locate an area of

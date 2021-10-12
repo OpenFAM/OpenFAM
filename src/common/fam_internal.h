@@ -152,6 +152,15 @@ typedef struct {
     size_t maxNameLen;
 } Fam_Region_Item_Info;
 
+typedef struct {
+    char *name;   // Backup Name
+    int64_t size; // Backup Size
+    uid_t uid;    // User ID of owner
+    gid_t gid;    // Group ID of owner
+    mode_t mode;  // File Type and Mode
+
+} Fam_Backup_Info;
+
 // Input string contains <node-id>:<ipaddr>:<grpc-port>,<node-id>:...
 inline Server_Map parse_server_list(std::string memServer,
                                     std::string delimiter1,

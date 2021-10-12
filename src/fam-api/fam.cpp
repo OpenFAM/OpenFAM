@@ -1896,7 +1896,7 @@ void *fam::Impl_::fam_restore(char *BackupName, Fam_Descriptor *dest) {
     }
     if ((unsigned)info.size > (unsigned)dest->get_size()) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception,
-                      "InputFile size is greater than size of data item.");
+                      "Backup size is greater than size of data item.");
     }
 
     int retD = validate_item(dest);
