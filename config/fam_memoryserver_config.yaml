@@ -39,4 +39,6 @@ ATL_data_size: 1024
 
 # Path where data item backups are placed.
 # This path needs to be in a shared filesystem and accessible to  all memory servers.
-#fam_backup_path: $OPENFAM_ROOT/backup
+# By default, the backup folder is created in a directory under directory mentioned 
+# as part of environment variable OPENFAM_ROOT.
+#fam_backup_path: /path-to-backup/

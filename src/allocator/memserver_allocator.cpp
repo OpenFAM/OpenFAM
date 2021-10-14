@@ -481,20 +481,20 @@ void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
                         "backup file creation failed.");
     }
     long pgsz = sysconf(_SC_PAGESIZE);
-    unsigned long page_size = (((size + 64) + (pgsz - 1)) / pgsz) * pgsz;
-    lseek(fileid, page_size - 1, SEEK_SET);
+    unsigned long dataItemSize = ((size + (pgsz - 1)) / pgsz) * pgsz;
+    lseek(fileid, dataItemSize - 1, SEEK_SET);
     write(fileid, "", 1);
     char *destaddr;
-    destaddr = (char *)mmap(NULL, page_size, PROT_WRITE | PROT_READ, MAP_SHARED,
-                            fileid, 0);
+    destaddr = (char *)mmap(NULL, dataItemSize, PROT_WRITE | PROT_READ,
+                            MAP_SHARED, fileid, 0);
 
     if (destaddr == MAP_FAILED) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
                         "mmap of file failed.");
     }
-    memcpy(destaddr, src, page_size);
-    msync(destaddr, page_size, MS_SYNC);
-    munmap(destaddr, page_size);
+    memcpy(destaddr, src, dataItemSize);
+    msync(destaddr, dataItemSize, MS_SYNC);
+    munmap(destaddr, dataItemSize);
     close(fileid);
 }
 
@@ -514,21 +514,20 @@ void Memserver_Allocator::restore(uint64_t destRegionId, uint64_t destOffset,
                         "Opening of input file failed.");
     }
     long pgsz = sysconf(_SC_PAGESIZE);
-    unsigned long page_size = ((size + (pgsz - 1)) / pgsz) * pgsz;
-    lseek(fileid, page_size - 1, SEEK_SET);
+    unsigned long dataItemSize = ((size + (pgsz - 1)) / pgsz) * pgsz;
+    lseek(fileid, dataItemSize - 1, SEEK_SET);
     char *srcaddr;
-    srcaddr = (char *)mmap(NULL, page_size, PROT_READ, MAP_SHARED, fileid, 0);
+    srcaddr =
+        (char *)mmap(NULL, dataItemSize, PROT_READ, MAP_SHARED, fileid, 0);
 
     if (srcaddr == MAP_FAILED) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
                         "mmap of input file failed.");
     }
 
-    memcpy(dest, srcaddr, page_size);
-    msync(dest, page_size, MS_SYNC);
-    msync(srcaddr, page_size, MS_SYNC);
-    openfam_persist(dest, page_size);
-    munmap(srcaddr, page_size);
+    memcpy(dest, srcaddr, size);
+    openfam_persist(dest, dataItemSize);
+    munmap(srcaddr, dataItemSize);
     close(fileid);
 }
 

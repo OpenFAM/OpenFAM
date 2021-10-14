@@ -316,29 +316,29 @@ void Fam_Allocator_Client::wait_for_copy(void *waitObj) {
     return famCIS->wait_for_copy(waitObj);
 }
 
-void *Fam_Allocator_Client::backup(Fam_Descriptor *src, char *outputFile) {
+void *Fam_Allocator_Client::backup(Fam_Descriptor *src, char *BackupName) {
     Fam_Global_Descriptor globalDescriptor = src->get_global_descriptor();
     uint64_t srcRegionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t srcMemoryServerId = src->get_memserver_id();
     uint64_t srcOffset = globalDescriptor.offset;
-    return famCIS->backup(srcRegionId, srcOffset, srcMemoryServerId, outputFile,
+    return famCIS->backup(srcRegionId, srcOffset, srcMemoryServerId, BackupName,
                           uid, gid, src->get_size());
 }
 
 void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, char *BackupName,
-                                    uint64_t filesize) {
+                                    uint64_t BackupSize) {
     Fam_Global_Descriptor globalDescriptor = dest->get_global_descriptor();
     uint64_t destRegionId = globalDescriptor.regionId & REGIONID_MASK;
     uint64_t destMemoryServerId = dest->get_memserver_id();
     uint64_t destOffset = globalDescriptor.offset;
     uint64_t destItemSize = dest->get_size();
-    if ((filesize - 4096) > destItemSize) {
+    if (BackupSize > destItemSize) {
         throw Fam_Allocator_Exception(
             FAM_ERR_OUTOFRANGE,
             "Backup data does not fit in the given destination data item.");
     }
     return famCIS->restore(destRegionId, destOffset, destMemoryServerId,
-                           BackupName, uid, gid, filesize);
+                           BackupName, uid, gid, BackupSize);
 }
 
 void Fam_Allocator_Client::wait_for_backup(void *waitObj) {
