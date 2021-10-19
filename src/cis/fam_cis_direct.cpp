@@ -1,8 +1,9 @@
 /*
  * fam_cis_direct.cpp
- * Copyright (c) 2020-21 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -1142,6 +1143,118 @@ void Fam_CIS_Direct::wait_for_copy(void *waitObj) {
     CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_copy);
 }
 
+void *Fam_CIS_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
+                             uint64_t srcMemoryServerId, string BackupName,
+                             uint32_t uid, uint32_t gid, uint64_t size) {
+    ostringstream message;
+    message << "Error While backing from dataitem : ";
+    Fam_DataItem_Metadata srcDataitem;
+    CIS_DIRECT_PROFILE_START_OPS()
+    uint64_t metadataServiceId = 0;
+    Fam_Memory_Service *memoryService = get_memory_service(srcMemoryServerId);
+    Fam_Backup_Wait_Object *waitObj = new Fam_Backup_Wait_Object();
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(metadataServiceId);
+
+    // Permission check, data item out of bound check, already done on the
+    // client side. This looks redundant, can be removed later.
+    uint64_t srcDataitemId = get_dataitem_id(srcOffset, srcMemoryServerId);
+
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_READ, srcDataitemId, srcRegionId, uid, gid,
+            srcDataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Read operation is not permitted on source dataitem";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
+    }
+    if (useAsyncCopy) {
+        Fam_Backup_Tag *tag = new Fam_Backup_Tag();
+        tag->backupDone.store(false, boost::memory_order_seq_cst);
+        tag->memoryService = memoryService;
+        tag->srcRegionId = srcRegionId;
+        tag->srcOffset = srcOffset ;
+        tag->size = size;
+        tag->BackupName = (char *)BackupName.c_str();
+        Fam_Ops_Info opsInfo = { BACKUP, NULL, NULL, 0, 0, 0, 0, 0, tag };
+        asyncQHandler->initiate_operation(opsInfo);
+        waitObj->tag = tag;
+    } else {
+        memoryService->backup(srcRegionId, srcOffset, BackupName, size);
+    }
+    CIS_DIRECT_PROFILE_END_OPS(cis_backup);
+    return (void *)waitObj;
+
+}
+
+void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
+                              uint64_t destMemoryServerId, string BackupName,
+                              uint32_t uid, uint32_t gid, uint64_t size) {
+    ostringstream message;
+    message << "Error While restoring dataitem : ";
+    Fam_DataItem_Metadata destDataitem;
+    CIS_DIRECT_PROFILE_START_OPS()
+    uint64_t metadataServiceId = 0;
+    Fam_Memory_Service *memoryService = get_memory_service(destMemoryServerId);
+    Fam_Restore_Wait_Object *waitObj = new Fam_Restore_Wait_Object();
+
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(metadataServiceId);
+
+    // Permission check, data item out of bound check, already done on the
+    // client side. This looks redundant, can be removed later.
+    uint64_t destDataitemId = get_dataitem_id(destOffset, destMemoryServerId);
+
+    try {
+        metadataService->metadata_find_dataitem_and_check_permissions(
+            META_REGION_ITEM_READ, destDataitemId, destRegionId, uid, gid,
+            destDataitem);
+    } catch (Fam_Exception &e) {
+        if (e.fam_error() == NO_PERMISSION) {
+            message << "Read operation is not permitted on source dataitem";
+            THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
+                            message.str().c_str());
+        }
+        throw;
+    }
+    if (useAsyncCopy) {
+        Fam_Restore_Tag *tag = new Fam_Restore_Tag();
+        tag->restoreDone.store(false, boost::memory_order_seq_cst);
+        tag->memoryService = memoryService;
+        tag->destRegionId = destRegionId;
+        tag->destOffset = destOffset;
+        tag->size = size;
+        tag->BackupName = (char *)BackupName.c_str();
+        Fam_Ops_Info opsInfo = { RESTORE, NULL, NULL, 0, 0, 0, 0, 0, tag };
+        asyncQHandler->initiate_operation(opsInfo);
+        waitObj->tag = tag;
+    } else {
+        memoryService->restore(destRegionId, destOffset, BackupName, size);
+    }
+    CIS_DIRECT_PROFILE_END_OPS(cis_restore);
+    return (void *)waitObj;
+
+}
+
+void Fam_CIS_Direct::wait_for_backup(void *waitObj) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Backup_Wait_Object *obj = (Fam_Backup_Wait_Object *)waitObj;
+    asyncQHandler->wait_for_backup((void *)(obj->tag));
+    CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_backup);
+}
+
+void Fam_CIS_Direct::wait_for_restore(void *waitObj) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Restore_Wait_Object *obj = (Fam_Restore_Wait_Object *)waitObj;
+    asyncQHandler->wait_for_restore((void *)(obj->tag));
+    CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_restore);
+}
+
 void Fam_CIS_Direct::acquire_CAS_lock(uint64_t offset,
                                       uint64_t memoryServerId) {
     CIS_DIRECT_PROFILE_START_OPS()
@@ -1179,6 +1292,17 @@ void Fam_CIS_Direct::get_addr(void *memServerFabricAddr,
     memcpy(memServerFabricAddr, (void *)memoryService->get_addr(),
            memoryService->get_addr_size());
     CIS_DIRECT_PROFILE_END_OPS(cis_get_addr);
+}
+
+Fam_Backup_Info Fam_CIS_Direct::get_backup_info(std::string BackupName,
+                                                uint64_t memoryServerId) {
+    ostringstream message;
+
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+    Fam_Backup_Info info = memoryService->get_backup_info(BackupName);
+    CIS_DIRECT_PROFILE_END_OPS(cis_get_backup_info);
+    return info;
 }
 
 size_t Fam_CIS_Direct::get_memserverinfo_size() {

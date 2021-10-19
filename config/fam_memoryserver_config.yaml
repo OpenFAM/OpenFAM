@@ -36,3 +36,9 @@ ATL_queue_size: 1000
 # ATL data size per thread(MiB) - This will be used to allocate buffers and other queue related
 # data structures
 ATL_data_size: 1024
+
+# Path where data item backups are placed.
+# This path needs to be in a shared filesystem and accessible to  all memory servers.
+# By default, the backup folder is created in a directory under directory mentioned 
+# as part of environment variable OPENFAM_ROOT.
+#fam_backup_path: /path-to-backup/

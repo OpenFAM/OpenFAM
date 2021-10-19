@@ -46,6 +46,9 @@ service Fam_Memory_Service_Rpc {
         returns (Fam_Memory_Service_Response) {}
 
     rpc copy(Fam_Memory_Copy_Request) returns (Fam_Memory_Copy_Response) {}
+    rpc backup(Fam_Memory_Backup_Restore_Request) returns (Fam_Memory_Backup_Restore_Response) {}
+    rpc restore(Fam_Memory_Backup_Restore_Request) returns (Fam_Memory_Backup_Restore_Response) {}
+    rpc get_backup_info(Fam_Memory_Backup_Info_Request) returns (Fam_Memory_Backup_Info_Response) {}
 
     rpc acquire_CAS_lock(Fam_Memory_Service_Request)
         returns (Fam_Memory_Service_Response) {}
@@ -148,6 +151,22 @@ message Fam_Memory_Copy_Response {
     string errormsg = 2;
 }
 
+message Fam_Memory_Backup_Restore_Request {
+    uint64 region_id = 1;
+    uint64 offset = 2;
+    uint64 key = 3;
+    bytes  addr = 4;
+    uint32 addr_len = 5;
+    uint64 memserver_id = 6;
+    string filename = 7;
+    uint64 size = 8;
+}
+
+message Fam_Memory_Backup_Restore_Response {
+    int32 errorcode = 1;
+    string errormsg = 2;
+}
+
 message Fam_Memory_Atomic_Get_Request {
     uint64 regionid = 1;
     uint64 srcoffset = 2;
@@ -195,5 +214,19 @@ message Fam_Memory_Atomic_SG_Indexed_Request {
     uint64 elementsize = 6;
     bytes nodeaddr = 7;
     uint32 nodeaddrsize = 8;
+}
+
+message Fam_Memory_Backup_Info_Request {
+    string filename = 1;
+}
+message Fam_Memory_Backup_Info_Response {
+    uint64 size = 1;
+    int32 errorcode = 2;
+    string errormsg = 3;
+    uint32 uid = 4;
+    uint32 gid = 5;
+    uint32 mode = 6;
+    string name = 7;
+
 }
 

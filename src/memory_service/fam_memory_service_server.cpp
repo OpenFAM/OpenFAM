@@ -287,6 +287,42 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
     // Return status OK
     return ::grpc::Status::OK;
 }
+::grpc::Status Fam_Memory_Service_Server::backup(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Backup_Restore_Request *request,
+    ::Fam_Memory_Backup_Restore_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        memoryService->backup(request->region_id(), request->offset(),
+                              request->filename(), request->size());
+
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_backup);
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_Memory_Service_Server::restore(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Backup_Restore_Request *request,
+    ::Fam_Memory_Backup_Restore_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        memoryService->restore(request->region_id(), request->offset(),
+                               request->filename(), request->size());
+
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+    }
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_restore);
+    return ::grpc::Status::OK;
+}
 
 ::grpc::Status Fam_Memory_Service_Server::acquire_CAS_lock(
     ::grpc::ServerContext *context, const ::Fam_Memory_Service_Request *request,
@@ -316,6 +352,29 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
     MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_release_CAS_lock);
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+::grpc::Status Fam_Memory_Service_Server::get_backup_info(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Backup_Info_Request *request,
+    ::Fam_Memory_Backup_Info_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    Fam_Backup_Info info;
+    try {
+        info = memoryService->get_backup_info(request->filename());
+        response->set_name(info.name);
+        response->set_mode(info.mode);
+        response->set_size(info.size);
+        response->set_uid(info.uid);
+        response->set_gid(info.gid);
+    } catch (Memory_Service_Exception &e) {
+        response->set_size(-1);
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_get_backup_info);
     // Return status OK
     return ::grpc::Status::OK;
 }

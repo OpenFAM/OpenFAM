@@ -1,6 +1,6 @@
 /*
  * fam_ops_libfabric.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -584,6 +584,24 @@ void *Fam_Ops_Libfabric::copy(Fam_Descriptor *src, uint64_t srcOffset,
 
 void Fam_Ops_Libfabric::wait_for_copy(void *waitObj) {
     return famAllocator->wait_for_copy(waitObj);
+}
+
+void *Fam_Ops_Libfabric::backup(Fam_Descriptor *descriptor, char *BackupName) {
+
+    return famAllocator->backup(descriptor, BackupName);
+}
+
+void *Fam_Ops_Libfabric::restore(char *BackupName, Fam_Descriptor *dest,
+                                 uint64_t size) {
+
+    return famAllocator->restore(dest, BackupName, size);
+}
+
+void Fam_Ops_Libfabric::wait_for_backup(void *waitObj) {
+    return famAllocator->wait_for_backup(waitObj);
+}
+void Fam_Ops_Libfabric::wait_for_restore(void *waitObj) {
+    return famAllocator->wait_for_restore(waitObj);
 }
 
 void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {

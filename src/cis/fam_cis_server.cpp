@@ -1,6 +1,6 @@
 /*
  * fam_cis_server.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -458,6 +458,20 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
 }
 
 ::grpc::Status
+Fam_CIS_Server::backup(::grpc::ServerContext *context,
+                       const ::Fam_Backup_Restore_Request *request,
+                       ::Fam_Backup_Restore_Response *response) {
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::restore(::grpc::ServerContext *context,
+                        const ::Fam_Backup_Restore_Request *request,
+                        ::Fam_Backup_Restore_Response *response) {
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
 Fam_CIS_Server::acquire_CAS_lock(::grpc::ServerContext *context,
                                  const ::Fam_Dataitem_Request *request,
                                  ::Fam_Dataitem_Response *response) {
@@ -489,6 +503,37 @@ Fam_CIS_Server::release_CAS_lock(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
     CIS_SERVER_PROFILE_END_OPS(release_CAS_lock);
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::get_backup_info(::grpc::ServerContext *context,
+                                const ::Fam_Backup_Info_Request *request,
+                                ::Fam_Backup_Info_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    Fam_Backup_Info info;
+    try {
+        info = famCIS->get_backup_info(request->filename(),
+                                       request->memserver_id());
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        response->set_size(-1);
+        response->set_name(NULL);
+        response->set_mode(-1);
+        response->set_uid(-1);
+        response->set_gid(-1);
+
+        return ::grpc::Status::OK;
+    }
+    response->set_size(info.size);
+    response->set_name(info.name);
+    response->set_mode(info.mode);
+    response->set_uid(info.uid);
+    response->set_gid(info.gid);
+    CIS_SERVER_PROFILE_END_OPS(get_backup_info);
+
     // Return status OK
     return ::grpc::Status::OK;
 }

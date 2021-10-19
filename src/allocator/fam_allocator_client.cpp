@@ -316,6 +316,38 @@ void Fam_Allocator_Client::wait_for_copy(void *waitObj) {
     return famCIS->wait_for_copy(waitObj);
 }
 
+void *Fam_Allocator_Client::backup(Fam_Descriptor *src, char *BackupName) {
+    Fam_Global_Descriptor globalDescriptor = src->get_global_descriptor();
+    uint64_t srcRegionId = globalDescriptor.regionId & REGIONID_MASK;
+    uint64_t srcMemoryServerId = src->get_memserver_id();
+    uint64_t srcOffset = globalDescriptor.offset;
+    return famCIS->backup(srcRegionId, srcOffset, srcMemoryServerId, BackupName,
+                          uid, gid, src->get_size());
+}
+
+void *Fam_Allocator_Client::restore(Fam_Descriptor *dest, char *BackupName,
+                                    uint64_t BackupSize) {
+    Fam_Global_Descriptor globalDescriptor = dest->get_global_descriptor();
+    uint64_t destRegionId = globalDescriptor.regionId & REGIONID_MASK;
+    uint64_t destMemoryServerId = dest->get_memserver_id();
+    uint64_t destOffset = globalDescriptor.offset;
+    uint64_t destItemSize = dest->get_size();
+    if (BackupSize > destItemSize) {
+        throw Fam_Allocator_Exception(
+            FAM_ERR_OUTOFRANGE,
+            "Backup data does not fit in the given destination data item.");
+    }
+    return famCIS->restore(destRegionId, destOffset, destMemoryServerId,
+                           BackupName, uid, gid, BackupSize);
+}
+
+void Fam_Allocator_Client::wait_for_backup(void *waitObj) {
+    return famCIS->wait_for_backup(waitObj);
+}
+void Fam_Allocator_Client::wait_for_restore(void *waitObj) {
+    return famCIS->wait_for_restore(waitObj);
+}
+
 void *Fam_Allocator_Client::fam_map(Fam_Descriptor *descriptor) {
     Fam_Global_Descriptor globalDescriptor =
         descriptor->get_global_descriptor();
@@ -365,6 +397,12 @@ int Fam_Allocator_Client::get_addr(void *addr, size_t addrSize,
 
     famCIS->get_addr(addr, memoryServerId);
     return 0;
+}
+
+Fam_Backup_Info Fam_Allocator_Client::get_backup_info(string BackupName,
+                                                      uint64_t memoryServerId) {
+
+    return famCIS->get_backup_info(BackupName, memoryServerId);
 }
 
 int Fam_Allocator_Client::get_memserverinfo_size(size_t *memServerInfoSize) {

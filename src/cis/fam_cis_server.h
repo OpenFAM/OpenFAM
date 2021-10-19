@@ -1,6 +1,6 @@
 /*
  * fam_cis_server.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -150,6 +150,14 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
                         const ::Fam_Copy_Request *request,
                         ::Fam_Copy_Response *response) override;
 
+    ::grpc::Status backup(::grpc::ServerContext *context,
+                          const ::Fam_Backup_Restore_Request *request,
+                          ::Fam_Backup_Restore_Response *response) override;
+
+    ::grpc::Status restore(::grpc::ServerContext *context,
+                           const ::Fam_Backup_Restore_Request *request,
+                           ::Fam_Backup_Restore_Response *response) override;
+
     ::grpc::Status acquire_CAS_lock(::grpc::ServerContext *context,
                                     const ::Fam_Dataitem_Request *request,
                                     ::Fam_Dataitem_Response *response) override;
@@ -165,6 +173,10 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
     ::grpc::Status get_addr(grpc::ServerContext *context,
                             const Fam_Address_Request *request,
                             Fam_Address_Response *response) override;
+
+    ::grpc::Status get_backup_info(grpc::ServerContext *context,
+                                   const Fam_Backup_Info_Request *request,
+                                   Fam_Backup_Info_Response *response) override;
 
     ::grpc::Status
     get_memserverinfo_size(grpc::ServerContext *context,

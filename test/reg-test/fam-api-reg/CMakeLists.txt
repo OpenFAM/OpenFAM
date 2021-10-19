@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -75,6 +75,7 @@ add_fam_test(fam_put_get_negative_test)
 add_fam_test(fam_fence_reg_test)
 add_fam_test(fam_invalidkey_reg_test)
 add_fam_test(fam_barrier_reg_test)
+add_fam_test(fam_backup_restore_reg_test)
 #add_fam_test(fam_put_get)
 #add_fam_test(fam_put_get_multiple)
 #add_fam_test(fam_put_get_region_ctx)

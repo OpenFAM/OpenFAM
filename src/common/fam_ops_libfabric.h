@@ -1,6 +1,6 @@
 /*
  * fam_ops_libfabric.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -147,7 +147,10 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
-
+    void *backup(Fam_Descriptor *desc, char *outputFile);
+    void *restore(char *inputFile, Fam_Descriptor *dest, uint64_t size);
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
     void fence(Fam_Region_Descriptor *descriptor = NULL);
 
     void quiet(Fam_Region_Descriptor *descriptor = NULL);

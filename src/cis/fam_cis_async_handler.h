@@ -79,7 +79,14 @@ void cis_async_profile_end() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(CIS_ASYNC)
 }
 
-typedef Fam_CIS_Rpc::WithAsyncMethod_copy<Fam_CIS_Server> sType;
+typedef Fam_CIS_Rpc::WithAsyncMethod_restore<
+    Fam_CIS_Rpc::WithAsyncMethod_backup<
+        Fam_CIS_Rpc::WithAsyncMethod_copy<Fam_CIS_Server> > > sType;
+enum RequestType {
+    RT_COPY,
+    RT_BACKUP,
+    RT_RESTORE
+};
 
 class Fam_CIS_Async_Handler {
   public:
@@ -113,7 +120,9 @@ class Fam_CIS_Async_Handler {
         builder.RegisterService(service);
 
         // Add completion queue
-        cq = builder.AddCompletionQueue();
+        copycq = builder.AddCompletionQueue();
+        backupcq = builder.AddCompletionQueue();
+        restorecq = builder.AddCompletionQueue();
 
         // Finally assemble the server.
         server = builder.BuildAndStart();
@@ -123,11 +132,20 @@ class Fam_CIS_Async_Handler {
 
         // Spawn a seperate thread to handle asynchronous service
         std::thread async_service_handler(
-            &Fam_CIS_Async_Handler::HandleRpcs<sType>, this, service, cq.get(),
-            famCIS);
+            &Fam_CIS_Async_Handler::HandleRpcs<sType>, this, service,
+            copycq.get(), famCIS, RT_COPY);
+
+        std::thread async_service_handler_backup(
+            &Fam_CIS_Async_Handler::HandleRpcs<sType>, this, service,
+            backupcq.get(), famCIS, RT_BACKUP);
+        std::thread async_service_handler_restore(
+            &Fam_CIS_Async_Handler::HandleRpcs<sType>, this, service,
+            restorecq.get(), famCIS, RT_RESTORE);
 
         server->Wait();
         async_service_handler.join();
+        async_service_handler_backup.join();
+        async_service_handler_restore.join();
     }
 
   private:
@@ -138,15 +156,16 @@ class Fam_CIS_Async_Handler {
         // asynchronous server) and the completion queue "cq" used for
         // asynchronous communication with the gRPC runtime.
         CallData(sType *service, ServerCompletionQueue *cq,
-                 Fam_CIS_Direct *__famCIS)
-            : ret(0), service(service), cq(cq), responder(&ctx),
-              status(CREATE) {
+                 Fam_CIS_Direct *__famCIS, RequestType type)
+            : ret(0), service(service), cq(cq), copyresponder(&ctx),
+              backupresponder(&ctx), restoreresponder(&ctx), status(CREATE) {
+
             famCIS = __famCIS;
             // Invoke the serving logic right away.
-            Proceed();
+            Proceed(type);
         }
 
-        void Proceed() {
+        void Proceed(RequestType type) {
             if (status == CREATE) {
                 CIS_ASYNC_PROFILE_START_OPS()
                 // Make this instance progress to the PROCESS state.
@@ -157,31 +176,86 @@ class Fam_CIS_Async_Handler {
                 // that different CallData instances can serve different
                 // requests concurrently), in this case the memory address of
                 // this CallData instance.
-                service->Requestcopy(&ctx, &request, &responder, cq, cq, this);
-                CIS_ASYNC_PROFILE_END_OPS(copy_create);
+                switch (type) {
+                case RT_COPY:
+                    service->Requestcopy(&ctx, &copyrequest, &copyresponder, cq,
+                                         cq, this);
+                    CIS_ASYNC_PROFILE_END_OPS(copy_create);
+                    break;
+                case RT_BACKUP:
+                    service->Requestbackup(&ctx, &backuprequest,
+                                           &backupresponder, cq, cq, this);
+                    CIS_ASYNC_PROFILE_END_OPS(backup_create);
+                    break;
+                case RT_RESTORE:
+                    service->Requestrestore(&ctx, &restorerequest,
+                                            &restoreresponder, cq, cq, this);
+                    CIS_ASYNC_PROFILE_END_OPS(restore_create);
+                    break;
+                }
             } else if (status == PROCESS) {
                 CIS_ASYNC_PROFILE_START_OPS()
                 // Spawn a new CallData instance to serve new clients while we
                 // process the one for this CallData. The instance will
                 // deallocate itself as part of its FINISH state.
+                new CallData(service, cq, famCIS, type);
 
-                new CallData(service, cq, famCIS);
                 // copy the data from source dataitem to target dataitem
                 grpcStatus = Status::OK;
                 try {
-                    void *waitObj = famCIS->copy(
-                        request.srcregionid(), request.srcoffset(),
-                        request.srccopystart(), request.srckey(),
-                        request.srcbaseaddr(), request.srcaddr().c_str(),
-                        request.srcaddrlen(), request.destregionid(),
-                        request.destoffset(), request.destcopystart(),
-                        request.copysize(), request.src_memserver_id(),
-                        request.dest_memserver_id(), request.uid(),
-                        request.gid());
-                    delete (Fam_Copy_Tag *)waitObj;
+                    void *waitObj;
+                    switch (type) {
+                    case RT_COPY:
+                        waitObj = famCIS->copy(
+                            copyrequest.srcregionid(), copyrequest.srcoffset(),
+                            copyrequest.srccopystart(), copyrequest.srckey(),
+                            copyrequest.srcbaseaddr(),
+                            copyrequest.srcaddr().c_str(),
+                            copyrequest.srcaddrlen(),
+                            copyrequest.destregionid(),
+                            copyrequest.destoffset(),
+                            copyrequest.destcopystart(), copyrequest.copysize(),
+                            copyrequest.src_memserver_id(),
+                            copyrequest.dest_memserver_id(), copyrequest.uid(),
+                            copyrequest.gid());
+                        delete (Fam_Copy_Tag *)waitObj;
+                        break;
+                    case RT_BACKUP:
+                        waitObj = famCIS->backup(
+                            backuprequest.regionid(), backuprequest.offset(),
+                            backuprequest.memserver_id(),
+                            backuprequest.filename().c_str(),
+                            backuprequest.uid(), backuprequest.gid(),
+                            backuprequest.size());
+                        delete (Fam_Backup_Tag *)waitObj;
+
+                        break;
+                    case RT_RESTORE:
+                        waitObj = famCIS->restore(
+                            restorerequest.regionid(), restorerequest.offset(),
+                            restorerequest.memserver_id(),
+                            restorerequest.filename().c_str(),
+                            restorerequest.uid(), restorerequest.gid(),
+                            restorerequest.size());
+                        delete (Fam_Restore_Tag *)waitObj;
+                        break;
+                    }
                 } catch (Memory_Service_Exception &e) {
-                    response.set_errorcode(e.fam_error());
-                    response.set_errormsg(e.fam_error_msg());
+                    switch (type) {
+                    case RT_COPY:
+                        copyresponse.set_errorcode(e.fam_error());
+                        copyresponse.set_errormsg(e.fam_error_msg());
+                        break;
+
+                    case RT_BACKUP:
+                        backupresponse.set_errorcode(e.fam_error());
+                        backupresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    case RT_RESTORE:
+                        restoreresponse.set_errorcode(e.fam_error());
+                        restoreresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    }
                     grpcStatus = Status::OK;
                 }
 
@@ -189,14 +263,37 @@ class Fam_CIS_Async_Handler {
                 // using the memory address of this instance as the uniquely
                 // identifying tag for the event.
                 status = FINISH;
-                responder.Finish(response, grpcStatus, this);
-                CIS_ASYNC_PROFILE_END_OPS(copy_process);
+                switch (type) {
+                case RT_COPY:
+                    copyresponder.Finish(copyresponse, grpcStatus, this);
+                    CIS_ASYNC_PROFILE_END_OPS(copy_process);
+                    break;
+                case RT_BACKUP:
+                    backupresponder.Finish(backupresponse, grpcStatus, this);
+                    CIS_ASYNC_PROFILE_END_OPS(backup_process);
+                    break;
+                case RT_RESTORE:
+                    restoreresponder.Finish(restoreresponse, grpcStatus, this);
+                    CIS_ASYNC_PROFILE_END_OPS(restore_process);
+                    break;
+                }
+
             } else {
                 CIS_ASYNC_PROFILE_START_OPS()
                 GPR_ASSERT(status == FINISH);
                 // Once in the FINISH state, deallocate ourselves (CallData).
                 delete this;
-                CIS_ASYNC_PROFILE_END_OPS(copy_finish);
+                switch (type) {
+                case RT_COPY:
+                    CIS_ASYNC_PROFILE_END_OPS(copy_finish);
+                    break;
+                case RT_BACKUP:
+                    CIS_ASYNC_PROFILE_END_OPS(backup_finish);
+                    break;
+                case RT_RESTORE:
+                    CIS_ASYNC_PROFILE_END_OPS(restore_finish);
+                    break;
+                }
             }
         }
 
@@ -216,13 +313,28 @@ class Fam_CIS_Async_Handler {
 
         Fam_CIS_Direct *famCIS;
         // What we get from the client.
-        Fam_Copy_Request request;
+        Fam_Copy_Request copyrequest;
+
         // What we send back to the client.
-        Fam_Copy_Response response;
+        Fam_Copy_Response copyresponse;
+
+        // What we get from the client.
+        Fam_Backup_Restore_Request backuprequest;
+
+        // What we send back to the client.
+        Fam_Backup_Restore_Response backupresponse;
+
+        // What we get from the client.
+        Fam_Backup_Restore_Request restorerequest;
+
+        // What we send back to the client.
+        Fam_Backup_Restore_Response restoreresponse;
 
         Status grpcStatus;
         // The means to get back to the client.
-        ServerAsyncResponseWriter<Fam_Copy_Response> responder;
+        ServerAsyncResponseWriter<Fam_Copy_Response> copyresponder;
+        ServerAsyncResponseWriter<Fam_Backup_Restore_Response> backupresponder;
+        ServerAsyncResponseWriter<Fam_Backup_Restore_Response> restoreresponder;
 
         // Let's implement a tiny state machine with the following states.
         enum CallStatus { CREATE, PROCESS, FINISH };
@@ -232,9 +344,9 @@ class Fam_CIS_Async_Handler {
     // This can be run in multiple threads if needed.
     template <class Service>
     void HandleRpcs(Service *service, ServerCompletionQueue *cq,
-                    Fam_CIS_Direct *famCIS) {
+                    Fam_CIS_Direct *famCIS, RequestType type) {
         // Spawn a new CallData instance to serve new clients.
-        new CallData(service, cq, famCIS);
+        new CallData(service, cq, famCIS, type);
         void *tag; // uniquely identifies a request.
         bool ok;
         while (true) {
@@ -245,13 +357,15 @@ class Fam_CIS_Async_Handler {
             // there is any kind of event or cq is shutting down.
             GPR_ASSERT(cq->Next(&tag, &ok));
             GPR_ASSERT(ok);
-            static_cast<CallData *>(tag)->Proceed();
+            static_cast<CallData *>(tag)->Proceed(type);
         }
     }
     char *serverAddress;
     uint64_t port;
     // Fam_Rpc_Service_Impl* sericeImpl;
-    std::unique_ptr<ServerCompletionQueue> cq;
+    std::unique_ptr<ServerCompletionQueue> copycq;
+    std::unique_ptr<ServerCompletionQueue> backupcq;
+    std::unique_ptr<ServerCompletionQueue> restorecq;
     sType *service;
     std::unique_ptr<Server> server;
 };

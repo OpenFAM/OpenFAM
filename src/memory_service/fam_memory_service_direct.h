@@ -70,8 +70,12 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
 
     void copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcKey,
               uint64_t srcCopyStart, uint64_t srcBaseAddr, const char *srcAddr,
-              uint32_t srcAddrLen, uint64_t destRegionId, uint64_t destOffset,
+              uint32_t srcAddrLen,uint64_t destRegionId, uint64_t destOffset,
               uint64_t size, uint64_t srcMemserverId, uint64_t destMemserverId);
+    void backup(uint64_t srcRegionId, uint64_t srcOffset, string BackupName,
+                uint64_t size);
+    void restore(uint64_t destRegionId, uint64_t destOffset, string BackupName,
+                 uint64_t size);
 
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
 
@@ -81,6 +85,7 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
     size_t get_addr_size();
     void *get_addr();
 
+    Fam_Backup_Info get_backup_info(std::string BackupName);
     uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
                      bool rwFlag);
     configFileParams get_config_info(std::string filename);
@@ -120,6 +125,7 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
     Memserver_Allocator *allocator;
     pthread_mutex_t casLock[CAS_LOCK_CNT];
     Fam_Memory_Registration *memoryRegistration;
+    std::string fam_backup_path;
 };
 
 } // namespace openfam

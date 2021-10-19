@@ -1,8 +1,9 @@
 /*
  * fam_allocator_client.h
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -77,6 +78,10 @@ class Fam_Allocator_Client {
                uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
+    void *backup(Fam_Descriptor *descriptor, char *outputFile);
+    void *restore(Fam_Descriptor *dest, char *BackupName, uint64_t size);
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
 
     /**
      * fam_map - Map a data item in FAM to the process address space.
@@ -111,6 +116,8 @@ class Fam_Allocator_Client {
     int get_addr_size(size_t *addrSize, uint64_t nodeId);
 
     int get_addr(void *addr, size_t addrSize, uint64_t nodeId);
+
+    Fam_Backup_Info get_backup_info(string BackupName, uint64_t memoryServerId);
 
     int get_memserverinfo_size(size_t *memServerInfoSize);
 

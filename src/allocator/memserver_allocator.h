@@ -86,6 +86,11 @@ class Memserver_Allocator {
     void deallocate(uint64_t regionId, uint64_t offset);
     void copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t destRegionId,
               uint64_t destOffset, uint64_t size);
+    void backup(uint64_t srcRegionId, uint64_t srcOffset, string outputFile,
+                uint64_t size);
+    void restore(uint64_t destRegionId, uint64_t destOffset, string inputFile,
+                 uint64_t size);
+    Fam_Backup_Info get_backup_info(std::string BackupName);
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
     void open_heap(uint64_t regionId);
     void create_ATL_root(size_t nbytes);

@@ -55,6 +55,8 @@ service Fam_CIS_Rpc {
     rpc get_stat_info(Fam_Dataitem_Request) returns (Fam_Dataitem_Response) {}
 
     rpc copy(Fam_Copy_Request) returns (Fam_Copy_Response) {}
+    rpc backup(Fam_Backup_Restore_Request) returns (Fam_Backup_Restore_Response) {}
+    rpc restore(Fam_Backup_Restore_Request) returns (Fam_Backup_Restore_Response) {}
 
     rpc acquire_CAS_lock(Fam_Dataitem_Request) returns (Fam_Dataitem_Response) {
     }
@@ -71,6 +73,7 @@ service Fam_CIS_Rpc {
 
     rpc get_addr(Fam_Address_Request) returns (Fam_Address_Response) {}
 
+    rpc get_backup_info(Fam_Backup_Info_Request) returns (Fam_Backup_Info_Response) {}
     rpc get_num_memory_servers(Fam_Request) returns (Fam_Response) {}
 
     rpc get_memserverinfo_size(Fam_Request)
@@ -230,6 +233,24 @@ message Fam_Copy_Response {
     string errormsg = 2;
 }
 
+message Fam_Backup_Restore_Request {
+    uint64 regionid = 1;
+    bytes addr = 2;
+    uint32 addrlen = 3;
+    uint64 offset = 4;
+    uint64 key = 5;
+    uint64 memserver_id = 6;
+    string filename = 7;
+    uint32 uid = 8;
+    uint32 gid = 9;
+    uint64 size = 10;
+}
+
+message Fam_Backup_Restore_Response {
+    int32 errorcode = 1;
+    string errormsg = 2;
+}
+
 message Fam_Atomic_Get_Request {
     uint64 regionid = 1;
     uint64 srcoffset = 2;
@@ -289,5 +310,20 @@ message Fam_Atomic_SG_Indexed_Request {
     uint64 memserver_id = 9;
     uint32 uid = 10;
     uint32 gid = 11;
+}
+
+message Fam_Backup_Info_Request {
+    string filename = 1;
+    uint64 memserver_id = 2;
+}
+
+message Fam_Backup_Info_Response {
+    int64 size = 1;
+    int32 errorcode = 2;
+    string errormsg = 3;
+    uint32 uid = 4;
+    uint32 gid = 5;
+    uint32 mode = 6;
+    string name = 7;
 }
 

@@ -17,6 +17,7 @@ usage: run_test.py [-h] [-n N] [--pehosts PEHOSTS] [--launcher {mpi,slurm}]
                    [--atlqsize ATLQSIZE] [--atldatasize ATLDATASIZE]
                    [--disableregionspanning]
                    [--regionspanningsize REGIONSPANNINGSIZE] [--runtests]
+                   [--fam_backup_path backup_path
                    rootpath outpath buildpath
 ```
 positional arguments:
@@ -55,7 +56,7 @@ optional arguments:
 |    --disableregionspanning                |  Disable region spanning  |
 |    --regionspanningsize REGIONSPANNINGSIZE|  Region spanning size  |
 |    --runtests                             |  Run regression and unit tests  |
-
+|    --fam_backup_path backup_path          |  Absolute Path where data item backups are placed  |
 
   Note : arguments can also be passed via argument file, for example
 

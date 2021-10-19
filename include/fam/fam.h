@@ -1,9 +1,9 @@
 /*
  * fam.h
- * Copyright (c) 2017, 2018, 2020 Hewlett Packard Enterprise Development, LP.
- * All rights reserved. Redistribution and use in source and binary forms, with
- * or without modification, are permitted provided that the following conditions
- * are met:
+ * Copyright (c) 2017, 2018, 2020, 2021 Hewlett Packard Enterprise Development,
+ * LP. All rights reserved. Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided that the following
+ * conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -164,6 +164,7 @@ typedef struct {
     mode_t perm;
     char *name;
 } Fam_Stat;
+
 /**
  * Structure defining a FAM descriptor. Descriptors are PE independent data
  * structures that enable the OpenFAM library to uniquely locate an area of
@@ -740,6 +741,33 @@ class fam {
      * @return - none
      */
     void fam_copy_wait(void *waitObj);
+
+    // Backup data item .
+    void *fam_backup(Fam_Descriptor *src, char *BackupName);
+
+    // Restore data item to a descriptor.
+    void *fam_restore(char *BackupName, Fam_Descriptor *dest);
+    // Create a data item in a given region and restore the backed up contents
+    // in this data item.
+    void *fam_restore(char *BackupName, Fam_Region_Descriptor *destRegion,
+                      char *dataitemName, mode_t accessPermissions,
+                      Fam_Descriptor **dest);
+
+    /**
+     * Wait for backup operation corresponding to the wait object passed to
+     * complete
+     * @param waitObj - unique tag to backup operation
+     * @return - none
+     */
+    void fam_backup_wait(void *waitObj);
+    /**
+     * Wait for restore operation corresponding to the wait object passed to
+     * complete
+     * @param waitObj - unique tag to restore operation
+     * @return - none
+     */
+    void fam_restore_wait(void *waitObj);
+
     // ATOMICS Group
 
     // NON fetching routines

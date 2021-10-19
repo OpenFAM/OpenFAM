@@ -1,6 +1,6 @@
 /*
  * fam_ops_shm.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -29,6 +29,19 @@
  *
  */
 
+#include "common/fam_ops_shm.h"
+#include "common/fam_config_info.h"
+#include "common/fam_context.h"
+#include "common/fam_internal.h"
+#include "common/fam_memserver_profile.h"
+#include "common/fam_ops.h"
+#include "common/fam_util_atomic.h"
+#include "fam/fam.h"
+#include "fam/fam_exception.h"
+#include "memory_service/fam_memory_service.h"
+#include "memory_service/fam_memory_service_client.h"
+#include "memory_service/fam_memory_service_direct.h"
+#include "nvmm/nvmm_fam_atomic.h"
 #include <arpa/inet.h>
 #include <iostream>
 #include <sstream>
@@ -36,15 +49,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include "common/fam_context.h"
-#include "common/fam_internal.h"
-#include "common/fam_ops.h"
-#include "common/fam_ops_shm.h"
-#include "common/fam_util_atomic.h"
-#include "fam/fam.h"
-#include "fam/fam_exception.h"
-#include "nvmm/nvmm_fam_atomic.h"
 
 using namespace std;
 namespace openfam {
@@ -632,6 +636,23 @@ void *Fam_Ops_SHM::copy(Fam_Descriptor *src, uint64_t srcOffset,
 
 void Fam_Ops_SHM::wait_for_copy(void *waitObj) {
     asyncQHandler->wait_for_copy(waitObj);
+}
+
+void *Fam_Ops_SHM::backup(Fam_Descriptor *descriptor, char *BackupName) {
+    return famAllocator->backup(descriptor, BackupName);
+}
+
+void *Fam_Ops_SHM::restore(char *BackupName, Fam_Descriptor *dest,
+                           uint64_t size) {
+
+    return famAllocator->restore(dest, BackupName, size);
+}
+
+void Fam_Ops_SHM::wait_for_backup(void *waitObj) {
+    return famAllocator->wait_for_backup(waitObj);
+}
+void Fam_Ops_SHM::wait_for_restore(void *waitObj) {
+    return famAllocator->wait_for_restore(waitObj);
 }
 
 void Fam_Ops_SHM::fence(Fam_Region_Descriptor *descriptor)
