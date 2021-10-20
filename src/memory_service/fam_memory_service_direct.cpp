@@ -670,6 +670,7 @@ void Fam_Memory_Service_Direct::scatter_strided_atomic(
     InpMsg.stride = stride;
     InpMsg.selementSize = elementSize;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.flag |= ATOMIC_SCATTER_STRIDE;
 
     int ret = atomicQ[qId].push(&InpMsg, inpData);
@@ -714,6 +715,7 @@ void Fam_Memory_Service_Direct::gather_strided_atomic(
     InpMsg.stride = stride;
     InpMsg.selementSize = elementSize;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.flag |= ATOMIC_GATHER_STRIDE;
 
     int ret = atomicQ[qId].push(&InpMsg, inpData);
@@ -755,6 +757,7 @@ void Fam_Memory_Service_Direct::scatter_indexed_atomic(
     InpMsg.inElements = nElements;
     InpMsg.ielementSize = elementSize;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.flag |= ATOMIC_SCATTER_INDEX;
 
     int ret = atomicQ[qId].push(&InpMsg, elementIndex);
@@ -796,6 +799,7 @@ void Fam_Memory_Service_Direct::gather_indexed_atomic(
     InpMsg.inElements = nElements;
     InpMsg.ielementSize = elementSize;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.flag |= ATOMIC_GATHER_INDEX;
 
     int ret = atomicQ[qId].push(&InpMsg, elementIndex);
