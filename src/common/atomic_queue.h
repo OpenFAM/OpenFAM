@@ -83,6 +83,7 @@ typedef struct atomicMsg {
     uint32_t nodeAddrSize;
     Fam_Global_Descriptor dstDataGdesc;
     uint64_t key;
+    uint64_t srcBaseAddr;
     uint64_t offsetBuffer;
     union {
         struct {

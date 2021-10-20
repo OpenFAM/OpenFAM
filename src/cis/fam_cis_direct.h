@@ -147,42 +147,45 @@ class Fam_CIS_Direct : public Fam_CIS {
     uint64_t align_to_address(uint64_t size, int multiple);
 
     int get_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
-                   uint64_t nbytes, uint64_t key, const char *nodeAddr,
-                   uint32_t nodeAddrSize, uint64_t memoryServerId, uint32_t uid,
-                   uint32_t gid);
+                   uint64_t nbytes, uint64_t key, uint64_t srcBaseAddr,
+                   const char *nodeAddr, uint32_t nodeAddrSize,
+                   uint64_t memoryServerId, uint32_t uid, uint32_t gid);
 
     int put_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
-                   uint64_t nbytes, uint64_t key, const char *nodeAddr,
-                   uint32_t nodeAddrSize, const char *data,
-                   uint64_t memoryServerId, uint32_t uid, uint32_t gid);
+                   uint64_t nbytes, uint64_t key, uint64_t srcBaseAddr,
+                   const char *nodeAddr, uint32_t nodeAddrSize,
+                   const char *data, uint64_t memoryServerId, uint32_t uid,
+                   uint32_t gid);
 
     int scatter_strided_atomic(uint64_t regionId, uint64_t offset,
                                uint64_t nElements, uint64_t firstElement,
                                uint64_t stride, uint64_t elementSize,
-                               uint64_t key, const char *nodeAddr,
-                               uint32_t nodeAddrSize, uint64_t memoryServerId,
-                               uint32_t uid, uint32_t gid);
-
-    int gather_strided_atomic(uint64_t regionId, uint64_t offset,
-                              uint64_t nElements, uint64_t firstElement,
-                              uint64_t stride, uint64_t elementSize,
-                              uint64_t key, const char *nodeAddr,
-                              uint32_t nodeAddrSize, uint64_t memoryServerId,
-                              uint32_t uid, uint32_t gid);
-
-    int scatter_indexed_atomic(uint64_t regionId, uint64_t offset,
-                               uint64_t nElements, const void *elementIndex,
-                               uint64_t elementSize, uint64_t key,
+                               uint64_t key, uint64_t srcBaseAddr,
                                const char *nodeAddr, uint32_t nodeAddrSize,
                                uint64_t memoryServerId, uint32_t uid,
                                uint32_t gid);
 
-    int gather_indexed_atomic(uint64_t regionId, uint64_t offset,
-                              uint64_t nElements, const void *elementIndex,
-                              uint64_t elementSize, uint64_t key,
+    int gather_strided_atomic(uint64_t regionId, uint64_t offset,
+                              uint64_t nElements, uint64_t firstElement,
+                              uint64_t stride, uint64_t elementSize,
+                              uint64_t key, uint64_t srcBaseAddr,
                               const char *nodeAddr, uint32_t nodeAddrSize,
                               uint64_t memoryServerId, uint32_t uid,
                               uint32_t gid);
+
+    int scatter_indexed_atomic(uint64_t regionId, uint64_t offset,
+                               uint64_t nElements, const void *elementIndex,
+                               uint64_t elementSize, uint64_t key,
+                               uint64_t srcBaseAddr, const char *nodeAddr,
+                               uint32_t nodeAddrSize, uint64_t memoryServerId,
+                               uint32_t uid, uint32_t gid);
+
+    int gather_indexed_atomic(uint64_t regionId, uint64_t offset,
+                              uint64_t nElements, const void *elementIndex,
+                              uint64_t elementSize, uint64_t key,
+                              uint64_t srcBaseAddr, const char *nodeAddr,
+                              uint32_t nodeAddrSize, uint64_t memoryServerId,
+                              uint32_t uid, uint32_t gid);
 
   private:
     Fam_Async_QHandler *asyncQHandler;

@@ -555,7 +555,8 @@ void Fam_Memory_Service_Direct::init_atomic_queue() {
 void Fam_Memory_Service_Direct::get_atomic(uint64_t regionId,
                                            uint64_t srcOffset,
                                            uint64_t dstOffset, uint64_t nbytes,
-                                           uint64_t key, const char *nodeAddr,
+                                           uint64_t key, uint64_t srcBaseAddr,
+                                           const char *nodeAddr,
                                            uint32_t nodeAddrSize) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
@@ -577,6 +578,7 @@ void Fam_Memory_Service_Direct::get_atomic(uint64_t regionId,
     InpMsg.dstDataGdesc.offset = srcOffset;
     InpMsg.offset = dstOffset;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.size = nbytes;
     InpMsg.flag |= ATOMIC_READ;
 
@@ -595,12 +597,10 @@ void Fam_Memory_Service_Direct::get_atomic(uint64_t regionId,
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_atomic)
 }
 
-void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
-                                           uint64_t srcOffset,
-                                           uint64_t dstOffset, uint64_t nbytes,
-                                           uint64_t key, const char *nodeAddr,
-                                           uint32_t nodeAddrSize,
-                                           const char *data) {
+void Fam_Memory_Service_Direct::put_atomic(
+    uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset, uint64_t nbytes,
+    uint64_t key, uint64_t srcBaseAddr, const char *nodeAddr,
+    uint32_t nodeAddrSize, const char *data) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     string hashStr = "";
@@ -620,6 +620,7 @@ void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
     InpMsg.dstDataGdesc.offset = srcOffset;
     InpMsg.offset = dstOffset;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.size = nbytes;
     InpMsg.flag |= ATOMIC_WRITE;
     if ((nbytes > 0) && (nbytes < MAX_DATA_IN_MSG)) {
@@ -645,7 +646,7 @@ void Fam_Memory_Service_Direct::put_atomic(uint64_t regionId,
 void Fam_Memory_Service_Direct::scatter_strided_atomic(
     uint64_t regionId, uint64_t offset, uint64_t nElements,
     uint64_t firstElement, uint64_t stride, uint64_t elementSize, uint64_t key,
-    const char *nodeAddr, uint32_t nodeAddrSize) {
+    uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     void *inpData = NULL;
@@ -669,6 +670,7 @@ void Fam_Memory_Service_Direct::scatter_strided_atomic(
     InpMsg.stride = stride;
     InpMsg.selementSize = elementSize;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.flag |= ATOMIC_SCATTER_STRIDE;
 
     int ret = atomicQ[qId].push(&InpMsg, inpData);
@@ -689,7 +691,7 @@ void Fam_Memory_Service_Direct::scatter_strided_atomic(
 void Fam_Memory_Service_Direct::gather_strided_atomic(
     uint64_t regionId, uint64_t offset, uint64_t nElements,
     uint64_t firstElement, uint64_t stride, uint64_t elementSize, uint64_t key,
-    const char *nodeAddr, uint32_t nodeAddrSize) {
+    uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     void *inpData = NULL;
@@ -713,6 +715,7 @@ void Fam_Memory_Service_Direct::gather_strided_atomic(
     InpMsg.stride = stride;
     InpMsg.selementSize = elementSize;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.flag |= ATOMIC_GATHER_STRIDE;
 
     int ret = atomicQ[qId].push(&InpMsg, inpData);
@@ -733,7 +736,7 @@ void Fam_Memory_Service_Direct::gather_strided_atomic(
 void Fam_Memory_Service_Direct::scatter_indexed_atomic(
     uint64_t regionId, uint64_t offset, uint64_t nElements,
     const void *elementIndex, uint64_t elementSize, uint64_t key,
-    const char *nodeAddr, uint32_t nodeAddrSize) {
+    uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     string hashStr = "";
@@ -754,6 +757,7 @@ void Fam_Memory_Service_Direct::scatter_indexed_atomic(
     InpMsg.inElements = nElements;
     InpMsg.ielementSize = elementSize;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.flag |= ATOMIC_SCATTER_INDEX;
 
     int ret = atomicQ[qId].push(&InpMsg, elementIndex);
@@ -774,7 +778,7 @@ void Fam_Memory_Service_Direct::scatter_indexed_atomic(
 void Fam_Memory_Service_Direct::gather_indexed_atomic(
     uint64_t regionId, uint64_t offset, uint64_t nElements,
     const void *elementIndex, uint64_t elementSize, uint64_t key,
-    const char *nodeAddr, uint32_t nodeAddrSize) {
+    uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     string hashStr = "";
@@ -795,6 +799,7 @@ void Fam_Memory_Service_Direct::gather_indexed_atomic(
     InpMsg.inElements = nElements;
     InpMsg.ielementSize = elementSize;
     InpMsg.key = key;
+    InpMsg.srcBaseAddr = srcBaseAddr;
     InpMsg.flag |= ATOMIC_GATHER_INDEX;
 
     int ret = atomicQ[qId].push(&InpMsg, elementIndex);
