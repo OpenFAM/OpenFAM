@@ -94,6 +94,7 @@ namespace openfam {
  * Internal implementation of fam
  */
 class fam::Impl_ {
+//class fam::Impl_ : public std::enable_shared_from_this<Impl_> {
   public:
     Impl_() {
         uid = getuid();
@@ -105,9 +106,35 @@ class fam::Impl_ {
         famAllocator = NULL;
         famRuntime = NULL;
         memset((void *)&famOptions, 0, sizeof(Fam_Options));
+        ctxId = FAM_DEFAULT_CTX_ID;
+        ctxList = NULL;
+    }
+
+    Impl_(Impl_ *pimpl) {
+        uid = pimpl->uid;
+        gid = pimpl->gid;
+
+        optValueMap = pimpl->optValueMap;
+        groupName = pimpl->groupName;
+
+        if (strcmp((pimpl->famOptions).openFamModel, FAM_OPTIONS_SHM_STR) == 0){
+            famOps = pimpl->famOps;
+            ctxId = FAM_DEFAULT_CTX_ID;
+	} else {
+            famOps = new Fam_Ops_Libfabric((Fam_Ops_Libfabric*)pimpl->famOps);
+            ctxId = famOps->get_context_id();
+        }
+        famAllocator = pimpl->famAllocator;
+        famRuntime = pimpl->famRuntime;
+        memset((void *)&famOptions, 0, sizeof(Fam_Options));
+        memcpy((void *)&famOptions, (void*)&pimpl->famOptions, sizeof(Fam_Options));
+        ctxList = pimpl->ctxList;
+        famThreadModel = pimpl->famThreadModel;
+        famContextModel = pimpl->famContextModel;
     }
 
     ~Impl_() {
+        if (ctxId == FAM_DEFAULT_CTX_ID) {
         if (groupName)
             free(groupName);
         if (famOps)
@@ -116,11 +143,17 @@ class fam::Impl_ {
             delete famAllocator;
         if (famRuntime)
             delete famRuntime;
+        }
     }
 
     void fam_initialize(const char *groupName, Fam_Options *options);
 
     void fam_finalize(const char *groupName);
+    fam_ctx *fam_context_open();
+    void fam_context_close(fam_ctx *ctx);
+
+    //void *fam_internal_ctx_open();
+    //void fam_internal_ctx_close(void *internal_ctx);
 
     void fam_abort(int status);
 
@@ -383,6 +416,7 @@ class fam::Impl_ {
     void clean_fam_options();
     int validate_item(Fam_Descriptor *descriptor);
     configFileParams get_info_from_config_file(std::string filename);
+
 #ifdef FAM_PROFILE
     void fam_reset_profile();
 #endif
@@ -398,6 +432,8 @@ class fam::Impl_ {
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Runtime *famRuntime;
+    std::list<fam_ctx*> *ctxList;
+    uint64_t ctxId;
 
 #ifdef FAM_PROFILE
     Fam_Counter_St profileData[fam_counter_max][FAM_CNTR_TYPE_MAX];
@@ -635,7 +671,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     // Initialize Options
     //
     optValueMap = new std::map<std::string, const void *>();
-
+    ctxList = new std::list<fam_ctx*>();
+ 
     optValueMap->insert({supportedOptionList[VERSION], strdup(OPENFAM_VERSION)});
 
     // Look for options information from config file.
@@ -894,6 +931,52 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
 
     return ret;
 }
+
+fam_ctx* fam::Impl_::fam_context_open() {
+    std::cout<<"At Impl_::fam_context_open"<<std::endl;
+    fam_ctx *ctx = new fam_ctx(this);
+    uint64_t contextId = ctx->pimpl_->ctxId;
+    famOps->context_open(contextId);
+
+    //fam_ctx *ctx = new fam_ctx(shared_from_this());
+    ctxList->push_back(ctx);
+    std::cout<<"At Impl_::fam_context_open, opened ctx:"<<ctx<<std::endl;
+    return ctx;
+}
+
+void fam::Impl_::fam_context_close(fam_ctx *ctx) {
+    auto it = std::find(ctxList->begin(),ctxList->end(),ctx);
+    if (it != ctxList->end()) {
+        uint64_t contextId = ctx->pimpl_->ctxId;
+        famOps->context_close(contextId);
+        ctxList->erase(it);
+    }
+
+    std::cout<<"At Impl_::fam_context_close deleting ctx: "<<ctx<<" uid "<<uid<<" famAllocator "<<famAllocator<<std::endl;
+    delete ctx;
+    std::cout<<"At Impl_::fam_context_close"<<std::endl;
+}
+
+//void* fam::Impl_::fam_internal_ctx_open() {
+//    std::cout<<"At Impl_::fam_internal_ctx_open, famOps: "<<famOps<<std::endl;
+//    return famOps->context_open();
+//}
+
+//void test_fun(void *internal_ctx) {
+//    std::cout<<"At internal_ctx"<<std::endl;
+//    return;
+//}
+//void fam::Impl_::fam_internal_ctx_close(void *internal_ctx) {
+//    if(internal_ctx==NULL)
+//      return;
+//    std::cout<<"At Impl_::fam_internal_ctx_close uid: "<<uid<<" famAllocator "<<famAllocator<<std::endl;
+//    std::cout<<"At Impl_::fam_internal_ctx_close, internal_ctx="<<internal_ctx<<" famOps: "<<famOps<<std::endl;
+    //test_fun(internal_ctx);
+    //famOps->context_open();
+//    famOps->context_close(internal_ctx); 
+//    return;
+    
+//}
 
 /**
  * Clean Fam_Options
@@ -3981,6 +4064,7 @@ uint64_t fam::Impl_::fam_progress() {
 void fam::fam_initialize(const char *groupName, Fam_Options *options) {
     TRY_CATCH_BEGIN
     pimpl_->fam_initialize(groupName, options);
+    //ctxId = 0;
     RETURN_WITH_FAM_EXCEPTION
 }
 
@@ -5472,10 +5556,49 @@ void fam::fam_reset_profile() {
 }
 #endif
 
+fam_ctx* fam::fam_context_open() {
+    // Open context and return to user
+    // Do we need id to track context ?
+    // In case of fam_finalize we will have to close all fam contexts,
+    // So, fam_context needs to be stored somwhere.
+    //
+    // TODO: Take lock
+#if 0    
+    int context_id = get_next_context_id(); 
+    if(context_id == -1)
+       return NULL;
+    fam_ctx *ctx = new fam_ctx(pimpl_, context_id);
+    ctx_list.push_back(ctx);
+#endif
+    fam_ctx *ctx = (fam_ctx*)pimpl_->fam_context_open();    
+    return ctx;
+}
+
+void fam::fam_context_close(fam_ctx *ctx) {
+#if 0
+    auto it = std::find(ctx_list.begin(),ctx_list.end(),ctx);
+    if (it != ctx_list.end()) {
+        ctx_list.erase(it);
+    }
+    delete ctx;
+#endif
+    pimpl_->fam_context_close(ctx);
+    return;
+}
+
+#if 0
+int fam::get_next_context_id() {
+if (ctxid < 1023)
+   return ctxid++;
+else return -1;
+}
+#endif
+
 /**
  * fam() - constructor for fam class
  */
 fam::fam() { pimpl_ = new Impl_; }
+//fam::fam() { pimpl_ = std::make_shared<Impl_>(); }
 
 /**
  * ~fam() - destructor for fam class
@@ -5483,6 +5606,22 @@ fam::fam() { pimpl_ = new Impl_; }
 fam::~fam() {
     if (pimpl_)
         delete pimpl_;
+}
+
+fam_ctx::fam_ctx(Impl_ *inp_fam_impl) {
+//fam_ctx::fam_ctx(std::shared_ptr<Impl_> inp_fam_impl) {
+    pimpl_ = new Impl_(inp_fam_impl);
+    //Fam_Ops FamOps = inp_fam_impl->get_famOps();
+    //inp_fam_impl->famOps->context_open(pimpl_->ctxId);
+
+//    internal_ctx = pimpl_->fam_internal_ctx_open();
+//    std::cout<<"Context open at "<<internal_ctx<<std::endl;
+    return;
+}
+
+fam_ctx::~fam_ctx() {
+    //std::cout<<"Context closing at "<<internal_ctx<<std::endl;
+    //pimpl_->fam_internal_ctx_close(internal_ctx);
 }
 
 } // namespace openfam

@@ -76,7 +76,7 @@ set(CMAKE_CXX_FLAGS "-std=c++11 -pthread")
 set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -Wall -W -Wextra -Wredundant-decls -Wunused -Wunused-macros -Wno-unused-parameter -Wcast-align -Wwrite-strings -Wmissing-field-initializers -Wendif-labels -Winit-self -Wlogical-op -Wpacked -Wstack-protector -Wformat=2 -Wswitch-enum -Wstrict-overflow=5 -Wpointer-arith -Wnormalized=nfc -Wno-long-long -Wconversion -Wunreachable-code")
 # Convert all warnings to errors
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
 
 
 #
@@ -177,6 +177,10 @@ configure_file( ${PROJECT_SOURCE_DIR}/test/common/fam_test_config.h.in ${PROJECT
 # Read version number from VERSION file
 file(STRINGS "VERSION" VERSION_STR)
 add_definitions(-DOPENFAM_VERSION="${VERSION_STR}")
+
+# To be removed. Use any one definition below.
+add_definitions(-DUSE_SINGLE_CTX)
+#add_definitions(-DUSE_MEMSRV_CTX)
 
 #
 # add source code

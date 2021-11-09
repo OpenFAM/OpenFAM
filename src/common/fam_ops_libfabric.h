@@ -86,6 +86,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                       Fam_Thread_Model famTM, Fam_Allocator_Client *famAlloc,
                       Fam_Context_Model famCM, const char *memServerName,
                       const char *libfabricPort);
+    Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps);
     /**
      * Initialize the libfabric library. This method is required to be the first
      * method called when a process uses the OpenFAM library.
@@ -315,6 +316,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                               uint32_t value);
     uint64_t atomic_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
                               uint64_t value);
+    void context_open(uint64_t contextId);
+    void context_close(uint64_t contextId);
     /**
      * Routines to access protected members
      *
@@ -328,6 +331,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     };
     std::vector<fi_addr_t> *get_fiAddrs() { return fiAddrs; };
     std::map<uint64_t, Fam_Region_Map_t *> *get_fiMrs() { return fiMrs; };
+   
+    // Use context_id instead of nodeID 
     Fam_Context *get_defaultCtx(uint64_t nodeId) {
         auto obj = defContexts->find(nodeId);
         if (obj == defContexts->end())
@@ -336,8 +341,16 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         else
             return obj->second;
     }
+
+    //TODO: Lets not use this two varients of get_defautlCtx
+    //      To be deleted.
     Fam_Context *get_defaultCtx(Fam_Region_Descriptor *descriptor) {
+#ifdef USE_MEMSRV_CTX
         auto obj = defContexts->find(descriptor->get_memserver_id());
+#endif
+#ifdef USE_SINGLE_CTX
+        auto obj = defContexts->find(get_context_id());
+#endif
         if (obj == defContexts->end())
             THROW_ERR_MSG(Fam_Datapath_Exception,
                           "Context for memserver not found");
@@ -345,13 +358,23 @@ class Fam_Ops_Libfabric : public Fam_Ops {
             return obj->second;
     };
     Fam_Context *get_defaultCtx(Fam_Descriptor *descriptor) {
+#ifdef USE_MEMSRV_CTX
         auto obj = defContexts->find(descriptor->get_memserver_id());
+#endif
+#ifdef USE_SINGLE_CTX
+        auto obj = defContexts->find(get_context_id());
+#endif
         if (obj == defContexts->end())
             THROW_ERR_MSG(Fam_Datapath_Exception,
                           "Context for memserver not found");
         else
             return obj->second;
     };
+
+    uint64_t get_context_id(){ return ctxId; };
+
+    void set_context_id(uint64_t contextID){ ctxId = contextID; };
+    
     pthread_rwlock_t *get_mr_lock() { return &fiMrLock; };
 
     pthread_rwlock_t *get_memsrvaddr_lock() { return &fiMemsrvAddrLock; };
@@ -380,6 +403,12 @@ class Fam_Ops_Libfabric : public Fam_Ops {
 
     std::map<uint64_t, fi_addr_t> *get_fiMemsrvMap() { return fiMemsrvMap; }
 
+    uint64_t get_next_ctxId(uint64_t cnt) {
+        uint64_t nextId;
+        nextId = __sync_fetch_and_add(&nextCtxId, cnt);
+        return nextId;
+    }
+
   protected:
     // Server_Map name;
     char *memoryServerName;
@@ -401,6 +430,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
 
     pthread_rwlock_t fiMrLock;
     pthread_mutex_t ctxLock;
+    uint64_t nextCtxId;
+    uint64_t ctxId;
 
     std::vector<fi_addr_t> *fiAddrs;
     std::map<uint64_t, Fam_Region_Map_t *> *fiMrs;
