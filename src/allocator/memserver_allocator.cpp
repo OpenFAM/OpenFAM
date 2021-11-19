@@ -484,7 +484,7 @@ void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
     unsigned long dataItemSize = ((size + (pgsz - 1)) / pgsz) * pgsz;
     lseek(fileid, dataItemSize - 1, SEEK_SET);
     ssize_t nWrite = 0;
-    if ((nwrite = write(fileid, "", 1)) <= 0) {
+    if ((nWrite = write(fileid, "", 1)) <= 0) {
         nWrite++;
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
                         "Write failed");
