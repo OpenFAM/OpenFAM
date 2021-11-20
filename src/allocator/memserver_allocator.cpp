@@ -483,13 +483,10 @@ void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
     long pgsz = sysconf(_SC_PAGESIZE);
     unsigned long dataItemSize = ((size + (pgsz - 1)) / pgsz) * pgsz;
     lseek(fileid, dataItemSize - 1, SEEK_SET);
-    ssize_t nWrite = 0;
-    if ((nWrite = write(fileid, "", 1)) <= 0) {
-        nWrite++;
+    if (write(fileid, "", 1) <= 0) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
                         "Write failed");
     }
-
     char *destaddr;
     destaddr = (char *)mmap(NULL, dataItemSize, PROT_WRITE | PROT_READ,
                             MAP_SHARED, fileid, 0);
