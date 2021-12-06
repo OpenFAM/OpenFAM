@@ -29,19 +29,20 @@
  *
  */
 #include "allocator/memserver_allocator.h"
+#include "common/atomic_queue.h"
+#include "common/fam_memserver_profile.h"
 #include <boost/atomic.hpp>
 #include <chrono>
+#include <dirent.h>
 #include <iomanip>
 #include <libgen.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "common/atomic_queue.h"
-#include "common/fam_memserver_profile.h"
 using namespace std;
 using namespace chrono;
 
 namespace openfam {
+
 MEMSERVER_PROFILE_START(NVMM)
 #ifdef MEMSERVER_PROFILE
 #define NVMM_PROFILE_START_OPS()                                               \
@@ -471,86 +472,295 @@ void Memserver_Allocator::copy(uint64_t srcRegionId, uint64_t srcOffset,
 }
 
 void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
-                                 string BackupName, uint64_t size) {
-
+                                 const string BackupName, uint64_t size,
+                                 uint32_t uid, uint32_t gid, mode_t mode,
+                                 const string dataitemName) {
+    // Get the content from data item
     void *src = get_local_pointer(srcRegionId, srcOffset);
-    int fileid = open((char *)BackupName.c_str(), O_RDWR | O_CREAT,
-                      S_IRWXU | S_IRWXG | S_IRWXO);
-    if (fileid == -1) {
+    FILE *backup_fp;
+    backup_fp = fopen((char *)BackupName.c_str(), "w");
+    if (backup_fp == NULL) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
-                        "backup file creation failed.");
+                        "Backup creation failed.");
     }
-    long pgsz = sysconf(_SC_PAGESIZE);
-    unsigned long dataItemSize = ((size + (pgsz - 1)) / pgsz) * pgsz;
-    lseek(fileid, dataItemSize - 1, SEEK_SET);
-    if (write(fileid, "", 1) <= 0) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
-                        "Write failed");
-    }
-    char *destaddr;
-    destaddr = (char *)mmap(NULL, dataItemSize, PROT_WRITE | PROT_READ,
-                            MAP_SHARED, fileid, 0);
+    fwrite(src, sizeof(char), size, backup_fp);
+    fclose(backup_fp);
 
-    if (destaddr == MAP_FAILED) {
+    // Prepare metadata for backup file
+    string metafile = BackupName + ".info";
+    char metainfo[BACKUP_META_SIZE];
+    time_t now = time(0);
+    tm *ltm = localtime(&now);
+    char backupTime[MIN_INFO_SIZE];
+
+    snprintf(backupTime, MIN_INFO_SIZE, "%d-%d-%d:%d:%d:%d",
+             ltm->tm_year + 1900, ltm->tm_mon + 1, ltm->tm_mday, ltm->tm_hour,
+             ltm->tm_min, ltm->tm_sec);
+    snprintf(metainfo, BACKUP_META_SIZE,
+             "backupName: %s\ndataitemName: %s\ndataitemSize: %lu\nBackupTime: "
+             "%s\nuid: %u\ngid: %u\nmode: %u\n",
+             BackupName.c_str(), dataitemName.c_str(), size, backupTime, uid,
+             gid, mode);
+
+    // Update metadata info in metatadata file.
+    FILE *meta_fp;
+    meta_fp = fopen((char *)metafile.c_str(), "w");
+    if (meta_fp == NULL) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
-                        "mmap of file failed.");
+                        "Backup creation failed.");
     }
-    memcpy(destaddr, src, dataItemSize);
-    msync(destaddr, dataItemSize, MS_SYNC);
-    munmap(destaddr, dataItemSize);
-    close(fileid);
+    size_t meta_size =
+        fwrite(metainfo, sizeof(char), strlen(metainfo), meta_fp);
+    if (meta_size < strlen(metainfo)) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "Backup metadata creation failed.");
+    }
+    fclose(meta_fp);
 }
 
 void Memserver_Allocator::restore(uint64_t destRegionId, uint64_t destOffset,
-                                  string BackupName, uint64_t size) {
+                                  const string BackupName, uint64_t size) {
     void *dest = get_local_pointer(destRegionId, destOffset);
     struct stat info;
     int exist = stat(BackupName.c_str(), &info);
     if (exist == -1) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
-                        "InputFile doesnt exist.");
+                        "Backup doesnt exist.");
     }
-    int fileid =
-        open((char *)BackupName.c_str(), O_RDONLY, S_IRWXU | S_IRWXG | S_IRWXO);
-    if (fileid == -1) {
+    FILE *restore_fp;
+    restore_fp = fopen((char *)BackupName.c_str(), "r");
+    if (restore_fp == NULL) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
-                        "Opening of input file failed.");
+                        "Opening of Backup failed.");
     }
-    long pgsz = sysconf(_SC_PAGESIZE);
-    unsigned long dataItemSize = ((size + (pgsz - 1)) / pgsz) * pgsz;
-    lseek(fileid, dataItemSize - 1, SEEK_SET);
-    char *srcaddr;
-    srcaddr =
-        (char *)mmap(NULL, dataItemSize, PROT_READ, MAP_SHARED, fileid, 0);
-
-    if (srcaddr == MAP_FAILED) {
+    size_t di_size = fread(dest, sizeof(char), size, restore_fp);
+    if (di_size < size) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
-                        "mmap of input file failed.");
+                        "Reading of Backup failed.");
     }
 
-    memcpy(dest, srcaddr, size);
-    openfam_persist(dest, dataItemSize);
-    munmap(srcaddr, dataItemSize);
-    close(fileid);
+    fclose(restore_fp);
 }
 
-Fam_Backup_Info Memserver_Allocator::get_backup_info(std::string BackupName) {
-    ostringstream message;
+Fam_Backup_Info Memserver_Allocator::get_backup_info(const string BackupName,
+                                                     uint32_t uid, uint32_t gid,
+                                                     uint32_t mode) {
     struct stat sb;
     Fam_Backup_Info info;
-    info.name = (char *)BackupName.c_str();
-    if (stat(BackupName.c_str(), &sb) == -1) {
-        info.size = -1;
-        info.uid = -1;
-        info.gid = -1;
-        info.mode = -1;
-    } else {
-        info.size = sb.st_size;
-        info.uid = sb.st_uid;
-        info.gid = sb.st_gid;
-        info.mode = sb.st_mode;
+    info.bname = (char *)BackupName.c_str();
+    info.size = -1;
+    info.uid = -1;
+    info.gid = -1;
+    info.mode = -1;
+    string metafile = BackupName + ".info";
+    if (stat(metafile.c_str(), &sb) == -1) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "Backup doesnt exist.");
+    }
+    char *backup_meta = (char *)malloc(sb.st_size);
+    FILE *restore_fp;
+    restore_fp = fopen((char *)metafile.c_str(), "r");
+    if (restore_fp == NULL) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "Opening of Backup meta failed.");
+    }
+    size_t size = fread(backup_meta, sizeof(char), sb.st_size, restore_fp);
+    if ((unsigned)size < sb.st_size) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                        "Reading of Backup meta failed.");
+    }
+
+    fclose(restore_fp);
+
+    std::stringstream buffer;
+    std::string dataitemName;
+    buffer.str(backup_meta);
+
+    for (std::string token; std::getline(buffer, token);) {
+        size_t pos = token.find(":");
+        std::string attribute;
+        std::string value;
+        if (pos <= token.length()) {
+            attribute = token.substr(0, pos);
+            value = token.substr(pos + 1, token.length());
+        }
+        if (attribute.compare("dataitemName") == 0)
+            info.dname = value;
+        if (attribute.compare("dataitemSize") == 0) {
+            info.size = std::stol(value);
+        }
+
+        if (attribute.compare("BackupTime") == 0) {
+            info.backupTime = value;
+        }
+        if (attribute.compare("uid") == 0)
+            info.uid = std::stoi(value);
+
+        if (attribute.compare("gid") == 0)
+            info.gid = std::stoi(value);
+
+        if (attribute.compare("mode") == 0)
+            info.mode = std::stoi(value);
+    }
+    bool status = validate_backup(info, uid, gid, mode);
+    if (status == false) {
+        THROW_ERRNO_MSG(Memory_Service_Exception, NO_PERMISSION,
+                        "Insufficient Permissions for backup.");
     }
     return info;
+}
+
+std::string Memserver_Allocator::list_backup(const string BackupName,
+                                             uint32_t uid, uint32_t gid,
+                                             uint32_t perm) {
+
+    struct stat s;
+    int filecnt = 1;
+    Fam_Backup_Info metainfo;
+    char *header = (char *)malloc(MIN_INFO_SIZE);
+    snprintf(header, MIN_INFO_SIZE, "%-8s%-40s%-30s%-30s%-10s%-10s%-8s%-8s\n",
+             "SLNo.", "BackupName", "DataItemName", "CreationTime", "Size",
+             "uid", "gid", "mode");
+    std::string info = string(header);
+    free(header);
+    if (stat(BackupName.c_str(), &s) == 0) {
+        if (s.st_mode & S_IFREG) {
+            string metafile = BackupName + ".info";
+            try {
+                metainfo = get_backup_info(BackupName, uid, gid, perm);
+            } catch (Fam_Exception &e) {
+                throw;
+            }
+
+            char *metadata = (char *)malloc(BACKUP_META_SIZE);
+            snprintf(metadata, BACKUP_META_SIZE,
+                     "%-8u%-40s%-30s%-30s%-10lu%-10u%-8u%-8o\n", filecnt,
+                     (char *)basename((char *)BackupName.c_str()),
+                     metainfo.dname.c_str(), metainfo.backupTime.c_str(),
+                     metainfo.size, metainfo.uid, metainfo.gid, metainfo.mode);
+            if (metainfo.mode & (S_IRUSR | S_IRGRP | S_IROTH))
+                info.append(std::string(metadata));
+            free(metadata);
+
+        } else if (s.st_mode & S_IFDIR) {
+            struct dirent *d;
+            DIR *dr;
+            dr = opendir(BackupName.c_str());
+            if (dr != NULL) {
+                for (d = readdir(dr); d != NULL; d = readdir(dr)) {
+                    string name =
+                        BackupName + string(basename((char *)d->d_name));
+                    size_t pos = name.find(".info");
+                    if (pos != std::string::npos) {
+                        string bname = name.erase(pos, std::string::npos);
+                        try {
+                            metainfo = get_backup_info(bname, uid, gid, perm);
+                        } catch (Fam_Exception &e) {
+                            continue;
+                        }
+                        char *metadata = (char *)malloc(BACKUP_META_SIZE);
+                        snprintf(metadata, BACKUP_META_SIZE,
+                                 "%-8u%-40s%-30s%-30s%-10lu%-10u%-8u%-8o\n",
+                                 filecnt,
+                                 (char *)basename((char *)name.c_str()),
+                                 metainfo.dname.c_str(),
+                                 metainfo.backupTime.c_str(), metainfo.size,
+                                 metainfo.uid, metainfo.gid, metainfo.mode);
+                        if (metainfo.mode & (S_IRUSR | S_IRGRP | S_IROTH))
+                            info.append(std::string(metadata));
+                        filecnt++;
+                        free(metadata);
+                    }
+                }
+                closedir(dr);
+            }
+        }
+
+    } else {
+        info = "Backup file doesn't exist";
+    }
+    return info;
+}
+
+void Memserver_Allocator::delete_backup(const string BackupName) {
+    if (remove(BackupName.c_str()) == 0) {
+        std::string backupMetaInfo = BackupName + ".info";
+        if (remove(backupMetaInfo.c_str()) == 0) {
+            return;
+        }
+    }
+    ostringstream message;
+    message << "Error While deleting backup: ";
+    THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_FILE_NOT_FOUND,
+                    message.str().c_str());
+}
+
+// Check if user has sufficient permissions to restore/list/delete backups.
+inline bool Memserver_Allocator::validate_backup(Fam_Backup_Info info,
+                                                 uint32_t uid, uint32_t gid,
+                                                 mode_t op) {
+
+    ostringstream message;
+    bool write = false, read = false, exec = false;
+    if (uid == info.uid) {
+
+        if (op & BACKUP_WRITE) {
+            write = write || (info.mode & S_IWUSR) ? true : false;
+        }
+        if (op & BACKUP_READ) {
+            read = read || (info.mode & S_IRUSR) ? true : false;
+        }
+
+        if (op & BACKUP_EXEC) {
+            exec = exec || (info.mode & S_IXUSR) ? true : false;
+        }
+    }
+    if (gid == info.gid) {
+        if (op & BACKUP_WRITE) {
+            write = write || (info.mode & S_IWGRP) ? true : false;
+        }
+        if (op & BACKUP_READ) {
+            read = read || (info.mode & S_IRGRP) ? true : false;
+        }
+
+        if (op & BACKUP_EXEC) {
+            exec = exec || (info.mode & S_IXGRP) ? true : false;
+        }
+    }
+
+    if (op & BACKUP_WRITE) {
+        write = write || (info.mode & S_IWOTH) ? true : false;
+    }
+    if (op & BACKUP_READ) {
+        read = read || (info.mode & S_IROTH) ? true : false;
+    }
+    if (op & BACKUP_EXEC) {
+        exec = exec || (info.mode & S_IXOTH) ? true : false;
+    }
+    if ((op & BACKUP_WRITE) && (op & BACKUP_READ) && (op & BACKUP_EXEC)) {
+        if (!(write && read && exec))
+            return false;
+    } else if ((op & BACKUP_WRITE) && (op & BACKUP_READ)) {
+        if (!(write && read))
+            return false;
+    } else if ((op & BACKUP_WRITE) && (op & BACKUP_EXEC)) {
+        if (!(write && exec))
+            return false;
+    } else if ((op & BACKUP_READ) && (op & BACKUP_EXEC)) {
+        if (!(read && exec))
+            return false;
+    } else if (op & BACKUP_WRITE) {
+        if (!write)
+            return false;
+    } else if (op & BACKUP_READ) {
+        if (!read)
+            return false;
+    } else if (op & BACKUP_EXEC) {
+        if (!exec)
+            return false;
+    }
+
+    return true;
 }
 
 void *Memserver_Allocator::get_local_pointer(uint64_t regionId,

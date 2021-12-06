@@ -78,11 +78,13 @@ class Fam_Allocator_Client {
                uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
-    void *backup(Fam_Descriptor *descriptor, char *outputFile);
-    void *restore(Fam_Descriptor *dest, char *BackupName, uint64_t size);
+    void *backup(Fam_Descriptor *descriptor, const char *BackupName);
+    void *restore(Fam_Descriptor *dest, const char *BackupName);
     void wait_for_backup(void *waitObj);
     void wait_for_restore(void *waitObj);
-
+    void *delete_backup(const char *BackupName);
+    void wait_for_delete_backup(void *waitObj);
+    char *list_backup(const char *BackupName);
     /**
      * fam_map - Map a data item in FAM to the process address space.
      * @param descriptor - Descriptor associated with the data item in FAM.
@@ -117,7 +119,8 @@ class Fam_Allocator_Client {
 
     int get_addr(void *addr, size_t addrSize, uint64_t nodeId);
 
-    Fam_Backup_Info get_backup_info(string BackupName, uint64_t memoryServerId);
+    Fam_Backup_Info get_backup_info(string BackupName,
+                                    Fam_Region_Descriptor *destRegion);
 
     int get_memserverinfo_size(size_t *memServerInfoSize);
 

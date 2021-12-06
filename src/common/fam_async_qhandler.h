@@ -51,7 +51,8 @@ typedef enum {
     READ,
     COPY,
     BACKUP,
-    RESTORE
+    RESTORE,
+    DELETE_BACKUP
 } Fam_Ops_Type;
 
 typedef struct {
@@ -77,19 +78,37 @@ typedef struct {
     uint64_t srcRegionId;
     uint64_t srcOffset;
     uint64_t size;
-    char *BackupName;
     uint64_t srcMemserverId;
+    uint32_t uid;
+    uint32_t gid;
+    mode_t mode;
+    string dataitemName;
+    string BackupName;
 } Fam_Backup_Tag;
 
 typedef struct {
     boost::atomic<bool> restoreDone;
     Fam_Memory_Service *memoryService;
     uint64_t size;
-    char *BackupName;
+    string BackupName;
     uint64_t destMemserverId;
     uint64_t destOffset;
     uint64_t destRegionId;
 } Fam_Restore_Tag;
+
+typedef struct {
+    boost::atomic<bool> delbackupDone;
+    Fam_Memory_Service *memoryService;
+    uint64_t srcRegionId;
+    uint64_t srcOffset;
+    uint64_t size;
+    string dataitemName;
+    string BackupName;
+    uint64_t srcMemserverId;
+    uid_t uid;
+    gid_t gid;
+    mode_t mode;
+} Fam_Delete_Backup_Tag;
 
 typedef struct {
     Fam_Ops_Type opsType;
@@ -133,6 +152,7 @@ class Fam_Async_QHandler {
     void wait_for_copy(void *waitObj);
     void wait_for_backup(void *waitObj);
     void wait_for_restore(void *waitObj);
+    void wait_for_delete_backup(void *waitObj);
     void decode_and_execute(Fam_Ops_Info opsInfo);
     void write_handler(void *src, void *dest, uint64_t nbytes, uint64_t offset,
                        uint64_t upperBound, uint64_t key, uint64_t itemSize);
@@ -144,6 +164,8 @@ class Fam_Async_QHandler {
                         Fam_Backup_Tag *tag);
     void restore_handler(void *src, void *dest, uint64_t nbytes,
                          Fam_Restore_Tag *tag);
+    void delete_backup_handler(void *src, void *dest, uint64_t nbytes,
+                               Fam_Delete_Backup_Tag *tag);
 
   private:
     class FamAsyncQHandlerImpl_;

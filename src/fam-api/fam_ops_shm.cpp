@@ -638,14 +638,13 @@ void Fam_Ops_SHM::wait_for_copy(void *waitObj) {
     asyncQHandler->wait_for_copy(waitObj);
 }
 
-void *Fam_Ops_SHM::backup(Fam_Descriptor *descriptor, char *BackupName) {
+void *Fam_Ops_SHM::backup(Fam_Descriptor *descriptor, const char *BackupName) {
     return famAllocator->backup(descriptor, BackupName);
 }
 
-void *Fam_Ops_SHM::restore(char *BackupName, Fam_Descriptor *dest,
-                           uint64_t size) {
+void *Fam_Ops_SHM::restore(const char *BackupName, Fam_Descriptor *dest) {
 
-    return famAllocator->restore(dest, BackupName, size);
+    return famAllocator->restore(dest, BackupName);
 }
 
 void Fam_Ops_SHM::wait_for_backup(void *waitObj) {

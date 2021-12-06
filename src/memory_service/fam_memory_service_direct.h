@@ -73,10 +73,16 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
               uint32_t srcAddrLen,uint64_t destRegionId, uint64_t destOffset,
               uint64_t size, uint64_t srcMemserverId, uint64_t destMemserverId);
     void backup(uint64_t srcRegionId, uint64_t srcOffset, string BackupName,
-                uint64_t size);
+                uint64_t size, uint32_t uid, uint32_t gid, mode_t mode,
+                string dataitemName);
     void restore(uint64_t destRegionId, uint64_t destOffset, string BackupName,
                  uint64_t size);
 
+    Fam_Backup_Info get_backup_info(std::string BackupName, uint32_t uid,
+                                    uint32_t gid, uint32_t mode);
+    std::string list_backup(std::string BackupName, uint32_t uid, uint32_t gid,
+                            mode_t mode);
+    void delete_backup(std::string BackupName);
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
 
     void acquire_CAS_lock(uint64_t offset);
@@ -85,7 +91,6 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
     size_t get_addr_size();
     void *get_addr();
 
-    Fam_Backup_Info get_backup_info(std::string BackupName);
     uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
                      bool rwFlag);
     configFileParams get_config_info(std::string filename);

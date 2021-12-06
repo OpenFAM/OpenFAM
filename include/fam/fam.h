@@ -165,6 +165,9 @@ typedef struct {
     char *name;
 } Fam_Stat;
 
+typedef struct {
+    uint32_t backup_option_reserved;
+} Fam_Backup_Options;
 /**
  * Structure defining a FAM descriptor. Descriptors are PE independent data
  * structures that enable the OpenFAM library to uniquely locate an area of
@@ -743,14 +746,15 @@ class fam {
     void fam_copy_wait(void *waitObj);
 
     // Backup data item .
-    void *fam_backup(Fam_Descriptor *src, char *BackupName);
+    void *fam_backup(Fam_Descriptor *src, const char *BackupName,
+                     Fam_Backup_Options *backupOptions);
 
     // Restore data item to a descriptor.
-    void *fam_restore(char *BackupName, Fam_Descriptor *dest);
+    void *fam_restore(const char *BackupName, Fam_Descriptor *dest);
     // Create a data item in a given region and restore the backed up contents
     // in this data item.
-    void *fam_restore(char *BackupName, Fam_Region_Descriptor *destRegion,
-                      char *dataitemName, mode_t accessPermissions,
+    void *fam_restore(const char *BackupName, Fam_Region_Descriptor *destRegion,
+                      const char *dataitemName, mode_t accessPermissions,
                       Fam_Descriptor **dest);
 
     /**
@@ -768,6 +772,10 @@ class fam {
      */
     void fam_restore_wait(void *waitObj);
 
+    void *fam_delete_backup(const char *BackupName);
+    void fam_delete_backup_wait(void *waitObj);
+
+    char *fam_list_backup(const char *BackupName);
     // ATOMICS Group
 
     // NON fetching routines

@@ -47,6 +47,7 @@ using namespace std;
 
 namespace openfam {
 
+enum { BACKUP_READ = 0, BACKUP_WRITE, BACKUP_EXEC };
 /**
  * structure for keeping state and data information of fam copy
  */
@@ -115,6 +116,28 @@ typedef struct {
 
     Fam_Restore_Tag *tag;
 } Fam_Restore_Wait_Object;
+
+typedef struct {
+    // Container for the data we expect from the server.
+    Fam_Backup_List_Response res;
+
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    ::grpc::ClientContext ctx;
+
+    // Storage for the status of the RPC upon completion.
+    ::grpc::Status status;
+
+    // flag for completion
+    bool isCompleted;
+
+    uint64_t memServerId;
+
+    std::unique_ptr<::grpc::ClientAsyncResponseReader<Fam_Backup_List_Response>>
+        responseReader;
+
+    Fam_Delete_Backup_Tag *tag;
+} Fam_Delete_Backup_Wait_Object;
 
 class Fam_CIS {
   public:
@@ -320,10 +343,18 @@ class Fam_CIS {
                          uint32_t uid, uint32_t gid, uint64_t size) = 0;
     virtual void *restore(uint64_t destRegionId, uint64_t destOffset,
                           uint64_t destMemoryServerId, string BackupName,
-                          uint32_t uid, uint32_t gid, uint64_t size) = 0;
+                          uint32_t uid, uint32_t gid) = 0;
 
+    virtual string list_backup(std::string BackupName, uint64_t memoryServerId,
+                               uint32_t uid, uint32_t gid) = 0;
+    virtual void *delete_backup(string BackupName, uint64_t memoryServerId,
+                                uint32_t uid, uint32_t gid) = 0;
+    virtual Fam_Backup_Info get_backup_info(std::string BackupName,
+                                            uint64_t memoryServerId,
+                                            uint32_t uid, uint32_t gid) = 0;
     virtual void wait_for_backup(void *waitObj) = 0;
     virtual void wait_for_restore(void *waitObj) = 0;
+    virtual void wait_for_delete_backup(void *waitObj) = 0;
     /**
      * Map a data item in FAM to the local virtual address space, and return its
      * pointer.
@@ -359,8 +390,7 @@ class Fam_CIS {
     virtual size_t get_addr_size(uint64_t memoryServerId) = 0;
     virtual void get_addr(void *memServerFabricAddr,
                           uint64_t memoryServerId) = 0;
-    virtual Fam_Backup_Info get_backup_info(std::string BackupName,
-                                            uint64_t memoryServerId) = 0;
+
     virtual size_t get_memserverinfo_size() = 0;
     virtual void get_memserverinfo(void *memServerInfo) = 0;
 

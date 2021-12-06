@@ -153,11 +153,13 @@ typedef struct {
 } Fam_Region_Item_Info;
 
 typedef struct {
-    char *name;   // Backup Name
+    string bname; // Backup Name
+    string dname; // Data Item Name
     int64_t size; // Backup Size
     uid_t uid;    // User ID of owner
     gid_t gid;    // Group ID of owner
     mode_t mode;  // File Type and Mode
+    string backupTime;
 
 } Fam_Backup_Info;
 

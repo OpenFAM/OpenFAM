@@ -125,6 +125,20 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
             ::Fam_Memory_Backup_Restore_Response *response) override;
 
     ::grpc::Status
+    get_backup_info(::grpc::ServerContext *context,
+                    const ::Fam_Memory_Backup_Info_Request *request,
+                    ::Fam_Memory_Backup_Info_Response *response) override;
+    ::grpc::Status
+    list_backup(::grpc::ServerContext *context,
+                const ::Fam_Memory_Backup_List_Request *request,
+                ::Fam_Memory_Backup_List_Response *response) override;
+
+    ::grpc::Status
+    delete_backup(::grpc::ServerContext *context,
+                  const ::Fam_Memory_Backup_List_Request *request,
+                  ::Fam_Memory_Backup_List_Response *response) override;
+
+    ::grpc::Status
     acquire_CAS_lock(::grpc::ServerContext *context,
                      const ::Fam_Memory_Service_Request *request,
                      ::Fam_Memory_Service_Response *response) override;
@@ -134,10 +148,6 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                      const ::Fam_Memory_Service_Request *request,
                      ::Fam_Memory_Service_Response *response) override;
 
-    ::grpc::Status
-    get_backup_info(::grpc::ServerContext *context,
-                    const ::Fam_Memory_Backup_Info_Request *request,
-                    ::Fam_Memory_Backup_Info_Response *response) override;
     ::grpc::Status
     get_local_pointer(::grpc::ServerContext *context,
                       const ::Fam_Memory_Service_Request *request,

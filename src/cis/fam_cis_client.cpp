@@ -60,6 +60,7 @@ Fam_CIS_Client::Fam_CIS_Client(const char *name, uint64_t port) {
     copycq = new ::grpc::CompletionQueue();
     backupcq = new ::grpc::CompletionQueue();
     restorecq = new ::grpc::CompletionQueue();
+    delbackupcq = new ::grpc::CompletionQueue();
 }
 
 Fam_CIS_Client::~Fam_CIS_Client() {
@@ -490,15 +491,16 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
 }
 
 void *Fam_CIS_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
-                             uint64_t srcMemoryServerId, string outputFile,
+                             uint64_t srcMemoryServerId, string BackupName,
                              uint32_t uid, uint32_t gid, uint64_t size) {
+
     Fam_Backup_Restore_Request req;
     Fam_Backup_Restore_Response res;
     ::grpc::ClientContext ctx;
     req.set_regionid(srcRegionId);
     req.set_offset(srcOffset);
     req.set_memserver_id(srcMemoryServerId);
-    req.set_filename(outputFile);
+    req.set_bname(BackupName);
     req.set_uid(uid);
     req.set_gid(gid);
     req.set_size(size);
@@ -517,7 +519,6 @@ void *Fam_CIS_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
                                     (void *)waitObj);
 
     return (void *)waitObj;
-
 }
 
 void Fam_CIS_Client::wait_for_backup(void *waitObj) {
@@ -585,17 +586,16 @@ void Fam_CIS_Client::wait_for_backup(void *waitObj) {
 
 void *Fam_CIS_Client::restore(uint64_t destRegionId, uint64_t destOffset,
                               uint64_t destMemoryServerId, string BackupName,
-                              uint32_t uid, uint32_t gid, uint64_t size) {
+                              uint32_t uid, uint32_t gid) {
     Fam_Backup_Restore_Request req;
     Fam_Backup_Restore_Response res;
     ::grpc::ClientContext ctx;
     req.set_regionid(destRegionId);
     req.set_memserver_id(destMemoryServerId);
     req.set_offset(destOffset);
-    req.set_filename(BackupName);
+    req.set_bname(BackupName);
     req.set_uid(uid);
     req.set_gid(gid);
-    req.set_size(size);
     Fam_Restore_Wait_Object *waitObj = new Fam_Restore_Wait_Object();
 
     waitObj->isCompleted = false;
@@ -611,7 +611,6 @@ void *Fam_CIS_Client::restore(uint64_t destRegionId, uint64_t destOffset,
                                     (void *)waitObj);
 
     return (void *)waitObj;
-
 }
 
 void Fam_CIS_Client::wait_for_restore(void *waitObj) {
@@ -675,6 +674,134 @@ void Fam_CIS_Client::wait_for_restore(void *waitObj) {
             throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
         }
     }
+}
+
+string Fam_CIS_Client::list_backup(string BackupName, uint64_t memoryServerId,
+                                   uint32_t uid, uint32_t gid) {
+    Fam_Backup_List_Request req;
+    Fam_Backup_List_Response res;
+    ::grpc::ClientContext ctx;
+
+    req.set_bname(BackupName);
+    req.set_memserver_id(memoryServerId);
+    req.set_uid(uid);
+    req.set_gid(gid);
+
+    ::grpc::Status status = stub->list_backup(&ctx, req, &res);
+    STATUS_CHECK(CIS_Exception)
+    string info = res.contents();
+    return info;
+}
+
+void *Fam_CIS_Client::delete_backup(string BackupName, uint64_t memoryServerId,
+                                    uint32_t uid, uint32_t gid) {
+    Fam_Backup_List_Request req;
+    Fam_Backup_List_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_bname(BackupName);
+    req.set_memserver_id(memoryServerId);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    Fam_Delete_Backup_Wait_Object *waitObj =
+        new Fam_Delete_Backup_Wait_Object();
+    waitObj->isCompleted = false;
+
+    waitObj->responseReader =
+        stub->PrepareAsyncdelete_backup(&waitObj->ctx, req, delbackupcq);
+
+    // StartCall initiates the RPC call
+    waitObj->responseReader->StartCall();
+
+    waitObj->responseReader->Finish(&waitObj->res, &waitObj->status,
+                                    (void *)waitObj);
+    return (void *)waitObj;
+}
+
+void Fam_CIS_Client::wait_for_delete_backup(void *waitObj) {
+    void *got_waitObj;
+    bool ok = false;
+    Fam_Delete_Backup_Wait_Object *waitObjIn, *waitObjCompleted;
+    ::grpc::Status status;
+    Fam_Backup_List_Response res;
+    waitObjIn = static_cast<Fam_Delete_Backup_Wait_Object *>(waitObj);
+
+    if (!waitObjIn) {
+        throw CIS_Exception(FAM_ERR_INVALID, "Delete Backup waitObj is null");
+    }
+
+    if (waitObjIn->isCompleted) {
+        if (waitObjIn->status.ok()) {
+            if (waitObjIn->res.errorcode()) {
+                res = waitObjIn->res;
+                delete waitObjIn;
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
+            } else {
+                delete waitObjIn;
+                return;
+            }
+        } else {
+            status = waitObjIn->status;
+            delete waitObjIn;
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        }
+    } else {
+
+        do {
+            GPR_ASSERT(delbackupcq->Next(&got_waitObj, &ok));
+            // The waitObj is the memory location of Fam_Backup_waitObj object
+            waitObjCompleted =
+                static_cast<Fam_Delete_Backup_Wait_Object *>(got_waitObj);
+            if (!waitObjCompleted) {
+                throw CIS_Exception(FAM_ERR_INVALID,
+                                    "Delete Backup waitObj is null");
+            }
+            waitObjCompleted->isCompleted = true;
+            // Verify that the request was completed successfully. Note
+            // that "ok" corresponds solely to the request for updates
+            // introduced by Finish().
+            GPR_ASSERT(ok);
+        } while (waitObjIn != waitObjCompleted);
+
+        if (waitObjCompleted->status.ok()) {
+            if (waitObjCompleted->res.errorcode()) {
+                res = waitObjCompleted->res;
+                delete waitObjCompleted;
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
+            } else {
+                delete waitObjCompleted;
+                return;
+                return;
+            }
+        } else {
+            status = waitObjCompleted->status;
+            delete waitObjCompleted;
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        }
+    }
+}
+
+Fam_Backup_Info Fam_CIS_Client::get_backup_info(std::string BackupName,
+                                                uint64_t memoryServerId,
+                                                uint32_t uid, uint32_t gid) {
+    Fam_Backup_Info_Request req;
+    Fam_Backup_Info_Response res;
+    ::grpc::ClientContext ctx;
+
+    req.set_memserver_id(memoryServerId);
+    req.set_bname(BackupName);
+    ::grpc::Status status = stub->get_backup_info(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+    Fam_Backup_Info info;
+    info.bname = (char *)(res.name().c_str());
+    info.size = res.size();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.mode = res.mode();
+
+    return info;
 }
 
 void *Fam_CIS_Client::fam_map(uint64_t regionId, uint64_t offset,
@@ -761,26 +888,6 @@ void Fam_CIS_Client::get_addr(void *memServerFabricAddr,
     }
 }
 
-Fam_Backup_Info Fam_CIS_Client::get_backup_info(std::string BackupName,
-                                                uint64_t memoryServerId) {
-    Fam_Backup_Info_Request req;
-    Fam_Backup_Info_Response res;
-    ::grpc::ClientContext ctx;
-
-    req.set_memserver_id(memoryServerId);
-    req.set_filename(BackupName);
-    ::grpc::Status status = stub->get_backup_info(&ctx, req, &res);
-
-    STATUS_CHECK(CIS_Exception)
-    Fam_Backup_Info info;
-    info.name = (char *)(res.name().c_str());
-    info.size = res.size();
-    info.uid = res.uid();
-    info.gid = res.gid();
-    info.mode = res.mode();
-
-    return info;
-}
 
 size_t Fam_CIS_Client::get_memserverinfo_size() {
     Fam_Request req;
