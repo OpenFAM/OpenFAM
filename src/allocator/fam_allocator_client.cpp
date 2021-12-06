@@ -324,13 +324,8 @@ void *Fam_Allocator_Client::backup(Fam_Descriptor *src,
     uint64_t srcOffset = globalDescriptor.offset;
 
     void *waitObj;
-    try {
-        waitObj = famCIS->backup(srcRegionId, srcOffset, srcMemoryServerId,
-                                 BackupName, uid, gid, src->get_size());
-    } catch (Fam_Exception &e) {
-        throw Fam_Allocator_Exception((enum Fam_Error)e.fam_error(),
-                                      e.fam_error_msg());
-    }
+    waitObj = famCIS->backup(srcRegionId, srcOffset, srcMemoryServerId,
+                             BackupName, uid, gid, src->get_size());
     return waitObj;
 }
 

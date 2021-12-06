@@ -480,7 +480,7 @@ void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
     FILE *backup_fp;
     backup_fp = fopen((char *)BackupName.c_str(), "w");
     if (backup_fp == NULL) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
                         "Backup creation failed.");
     }
     fwrite(src, sizeof(char), size, backup_fp);
@@ -506,13 +506,13 @@ void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
     FILE *meta_fp;
     meta_fp = fopen((char *)metafile.c_str(), "w");
     if (meta_fp == NULL) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
                         "Backup creation failed.");
     }
     size_t meta_size =
         fwrite(metainfo, sizeof(char), strlen(metainfo), meta_fp);
     if (meta_size < strlen(metainfo)) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
                         "Backup metadata creation failed.");
     }
     fclose(meta_fp);
@@ -524,13 +524,13 @@ void Memserver_Allocator::restore(uint64_t destRegionId, uint64_t destOffset,
     struct stat info;
     int exist = stat(BackupName.c_str(), &info);
     if (exist == -1) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOTFOUND,
                         "Backup doesnt exist.");
     }
     FILE *restore_fp;
     restore_fp = fopen((char *)BackupName.c_str(), "r");
     if (restore_fp == NULL) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOTFOUND,
                         "Opening of Backup failed.");
     }
     size_t di_size = fread(dest, sizeof(char), size, restore_fp);
@@ -554,14 +554,14 @@ Fam_Backup_Info Memserver_Allocator::get_backup_info(const string BackupName,
     info.mode = -1;
     string metafile = BackupName + ".info";
     if (stat(metafile.c_str(), &sb) == -1) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOTFOUND,
                         "Backup doesnt exist.");
     }
     char *backup_meta = (char *)malloc(sb.st_size);
     FILE *restore_fp;
     restore_fp = fopen((char *)metafile.c_str(), "r");
     if (restore_fp == NULL) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
                         "Opening of Backup meta failed.");
     }
     size_t size = fread(backup_meta, sizeof(char), sb.st_size, restore_fp);
