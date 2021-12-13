@@ -280,7 +280,9 @@ void Fam_Memory_Service_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
 }
 
 void Fam_Memory_Service_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
-                                       string outputFile, uint64_t size) {
+                                       const string BackupName, uint64_t size,
+                                       uint32_t uid, uint32_t gid, mode_t mode,
+                                       const string dataitemName) {
     Fam_Memory_Backup_Restore_Request req;
     Fam_Memory_Backup_Restore_Response res;
     ::grpc::ClientContext ctx;
@@ -288,16 +290,21 @@ void Fam_Memory_Service_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
     MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
     req.set_region_id(srcRegionId);
     req.set_offset(srcOffset);
-    req.set_filename(outputFile);
+    req.set_bname(BackupName);
     req.set_size(size);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    req.set_mode(mode);
+    req.set_diname(dataitemName);
 
     ::grpc::Status status = stub->backup(&ctx, req, &res);
 
     STATUS_CHECK(Memory_Service_Exception)
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_backup);
 }
+
 void Fam_Memory_Service_Client::restore(uint64_t destRegionId,
-                                        uint64_t destOffset, string inputFile,
+                                        uint64_t destOffset, string BackupName,
                                         uint64_t size) {
     Fam_Memory_Backup_Restore_Request req;
     Fam_Memory_Backup_Restore_Response res;
@@ -306,13 +313,71 @@ void Fam_Memory_Service_Client::restore(uint64_t destRegionId,
     MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
     req.set_region_id(destRegionId);
     req.set_offset(destOffset);
-    req.set_filename(inputFile);
+    req.set_bname(BackupName);
     req.set_size(size);
 
     ::grpc::Status status = stub->restore(&ctx, req, &res);
 
     STATUS_CHECK(Memory_Service_Exception)
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_restore);
+}
+
+Fam_Backup_Info
+Fam_Memory_Service_Client::get_backup_info(std::string BackupName, uint32_t uid,
+                                           uint32_t gid, uint32_t mode) {
+
+    Fam_Memory_Backup_Info_Request req;
+    Fam_Memory_Backup_Info_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_bname(BackupName);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    req.set_mode(mode);
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+
+    ::grpc::Status status = stub->get_backup_info(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_backup_info);
+
+    Fam_Backup_Info info;
+    info.size = res.size();
+    info.bname = (char *)(res.name().c_str());
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.mode = res.mode();
+
+    return info;
+}
+
+std::string Fam_Memory_Service_Client::list_backup(std::string BackupName,
+                                                   uint32_t uid, uint32_t gid,
+                                                   mode_t mode) {
+
+    Fam_Memory_Backup_List_Request req;
+    Fam_Memory_Backup_List_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_bname(BackupName);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    req.set_mode(mode);
+    std::string info;
+    ::grpc::Status status = stub->list_backup(&ctx, req, &res);
+    STATUS_CHECK(Memory_Service_Exception)
+    info = res.contents();
+    return info;
+}
+
+void Fam_Memory_Service_Client::delete_backup(std::string BackupName) {
+    Fam_Memory_Backup_List_Request req;
+    Fam_Memory_Backup_List_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_bname(BackupName);
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    ::grpc::Status status = stub->delete_backup(&ctx, req, &res);
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_delete_backup_info);
+
+    STATUS_CHECK(Memory_Service_Exception)
 }
 
 void Fam_Memory_Service_Client::acquire_CAS_lock(uint64_t offset) {
@@ -349,31 +414,6 @@ size_t Fam_Memory_Service_Client::get_addr_size() {
 
 void *Fam_Memory_Service_Client::get_addr() { return memServerFabricAddr; }
 
-Fam_Backup_Info
-Fam_Memory_Service_Client::get_backup_info(std::string inputFile) {
-
-    Fam_Memory_Backup_Info_Request req;
-    Fam_Memory_Backup_Info_Response res;
-    ::grpc::ClientContext ctx;
-    std::string filename = std::string(inputFile);
-    req.set_filename(filename);
-    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
-
-    ::grpc::Status status = stub->get_backup_info(&ctx, req, &res);
-
-    STATUS_CHECK(Memory_Service_Exception)
-    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_backup_info);
-
-    Fam_Backup_Info info;
-    info.size = res.size();
-    // info.name = (char *)strdup(res.name());
-    info.name = (char *)(res.name().c_str());
-    info.uid = res.uid();
-    info.gid = res.gid();
-    info.mode = res.mode();
-
-    return info;
-}
 void *Fam_Memory_Service_Client::get_local_pointer(uint64_t regionId,
                                                    uint64_t offset) {
     Fam_Memory_Service_Request req;

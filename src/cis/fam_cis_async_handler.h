@@ -79,14 +79,11 @@ void cis_async_profile_end() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(CIS_ASYNC)
 }
 
-typedef Fam_CIS_Rpc::WithAsyncMethod_restore<
-    Fam_CIS_Rpc::WithAsyncMethod_backup<
-        Fam_CIS_Rpc::WithAsyncMethod_copy<Fam_CIS_Server> > > sType;
-enum RequestType {
-    RT_COPY,
-    RT_BACKUP,
-    RT_RESTORE
-};
+typedef Fam_CIS_Rpc::WithAsyncMethod_delete_backup<
+    Fam_CIS_Rpc::WithAsyncMethod_restore<Fam_CIS_Rpc::WithAsyncMethod_backup<
+        Fam_CIS_Rpc::WithAsyncMethod_copy<Fam_CIS_Server>>>>
+    sType;
+enum RequestType { RT_COPY, RT_BACKUP, RT_RESTORE, RT_DELETE_BACKUP };
 
 class Fam_CIS_Async_Handler {
   public:
@@ -123,7 +120,7 @@ class Fam_CIS_Async_Handler {
         copycq = builder.AddCompletionQueue();
         backupcq = builder.AddCompletionQueue();
         restorecq = builder.AddCompletionQueue();
-
+        delbackupcq = builder.AddCompletionQueue();
         // Finally assemble the server.
         server = builder.BuildAndStart();
 #if defined(FAM_DEBUG)
@@ -141,11 +138,15 @@ class Fam_CIS_Async_Handler {
         std::thread async_service_handler_restore(
             &Fam_CIS_Async_Handler::HandleRpcs<sType>, this, service,
             restorecq.get(), famCIS, RT_RESTORE);
+        std::thread async_service_handler_delete_backup(
+            &Fam_CIS_Async_Handler::HandleRpcs<sType>, this, service,
+            delbackupcq.get(), famCIS, RT_DELETE_BACKUP);
 
         server->Wait();
         async_service_handler.join();
         async_service_handler_backup.join();
         async_service_handler_restore.join();
+        async_service_handler_delete_backup.join();
     }
 
   private:
@@ -158,7 +159,8 @@ class Fam_CIS_Async_Handler {
         CallData(sType *service, ServerCompletionQueue *cq,
                  Fam_CIS_Direct *__famCIS, RequestType type)
             : ret(0), service(service), cq(cq), copyresponder(&ctx),
-              backupresponder(&ctx), restoreresponder(&ctx), status(CREATE) {
+              backupresponder(&ctx), restoreresponder(&ctx),
+              delbackupresponder(&ctx), status(CREATE) {
 
             famCIS = __famCIS;
             // Invoke the serving logic right away.
@@ -192,6 +194,12 @@ class Fam_CIS_Async_Handler {
                                             &restoreresponder, cq, cq, this);
                     CIS_ASYNC_PROFILE_END_OPS(restore_create);
                     break;
+                case RT_DELETE_BACKUP:
+                    service->Requestdelete_backup(&ctx, &delbackuprequest,
+                                                  &delbackupresponder, cq, cq,
+                                                  this);
+                    CIS_ASYNC_PROFILE_END_OPS(delete_backup_create);
+                    break;
                 }
             } else if (status == PROCESS) {
                 CIS_ASYNC_PROFILE_START_OPS()
@@ -223,8 +231,7 @@ class Fam_CIS_Async_Handler {
                     case RT_BACKUP:
                         waitObj = famCIS->backup(
                             backuprequest.regionid(), backuprequest.offset(),
-                            backuprequest.memserver_id(),
-                            backuprequest.filename().c_str(),
+                            backuprequest.memserver_id(), backuprequest.bname(),
                             backuprequest.uid(), backuprequest.gid(),
                             backuprequest.size());
                         delete (Fam_Backup_Tag *)waitObj;
@@ -234,10 +241,17 @@ class Fam_CIS_Async_Handler {
                         waitObj = famCIS->restore(
                             restorerequest.regionid(), restorerequest.offset(),
                             restorerequest.memserver_id(),
-                            restorerequest.filename().c_str(),
-                            restorerequest.uid(), restorerequest.gid(),
-                            restorerequest.size());
+                            restorerequest.bname(), restorerequest.uid(),
+                            restorerequest.gid());
                         delete (Fam_Restore_Tag *)waitObj;
+                        break;
+                    case RT_DELETE_BACKUP:
+                        waitObj = famCIS->delete_backup(
+                            delbackuprequest.bname().c_str(),
+                            delbackuprequest.memserver_id(),
+                            delbackuprequest.uid(), delbackuprequest.gid());
+                        delete (Fam_Delete_Backup_Tag *)waitObj;
+
                         break;
                     }
                 } catch (Memory_Service_Exception &e) {
@@ -254,6 +268,31 @@ class Fam_CIS_Async_Handler {
                     case RT_RESTORE:
                         restoreresponse.set_errorcode(e.fam_error());
                         restoreresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    case RT_DELETE_BACKUP:
+                        delbackupresponse.set_errorcode(e.fam_error());
+                        delbackupresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    }
+                    grpcStatus = Status::OK;
+                } catch (CIS_Exception &e) {
+                    switch (type) {
+                    case RT_COPY:
+                        copyresponse.set_errorcode(e.fam_error());
+                        copyresponse.set_errormsg(e.fam_error_msg());
+                        break;
+
+                    case RT_BACKUP:
+                        backupresponse.set_errorcode(e.fam_error());
+                        backupresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    case RT_RESTORE:
+                        restoreresponse.set_errorcode(e.fam_error());
+                        restoreresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    case RT_DELETE_BACKUP:
+                        delbackupresponse.set_errorcode(e.fam_error());
+                        delbackupresponse.set_errormsg(e.fam_error_msg());
                         break;
                     }
                     grpcStatus = Status::OK;
@@ -276,6 +315,11 @@ class Fam_CIS_Async_Handler {
                     restoreresponder.Finish(restoreresponse, grpcStatus, this);
                     CIS_ASYNC_PROFILE_END_OPS(restore_process);
                     break;
+                case RT_DELETE_BACKUP:
+                    delbackupresponder.Finish(delbackupresponse, grpcStatus,
+                                              this);
+                    CIS_ASYNC_PROFILE_END_OPS(delete_backup_process);
+                    break;
                 }
 
             } else {
@@ -292,6 +336,9 @@ class Fam_CIS_Async_Handler {
                     break;
                 case RT_RESTORE:
                     CIS_ASYNC_PROFILE_END_OPS(restore_finish);
+                    break;
+                case RT_DELETE_BACKUP:
+                    CIS_ASYNC_PROFILE_END_OPS(delete_backup_finish);
                     break;
                 }
             }
@@ -330,11 +377,18 @@ class Fam_CIS_Async_Handler {
         // What we send back to the client.
         Fam_Backup_Restore_Response restoreresponse;
 
+        // What we get from the client.
+        Fam_Backup_List_Request delbackuprequest;
+
+        // What we send back to the client.
+        Fam_Backup_List_Response delbackupresponse;
+
         Status grpcStatus;
         // The means to get back to the client.
         ServerAsyncResponseWriter<Fam_Copy_Response> copyresponder;
         ServerAsyncResponseWriter<Fam_Backup_Restore_Response> backupresponder;
         ServerAsyncResponseWriter<Fam_Backup_Restore_Response> restoreresponder;
+        ServerAsyncResponseWriter<Fam_Backup_List_Response> delbackupresponder;
 
         // Let's implement a tiny state machine with the following states.
         enum CallStatus { CREATE, PROCESS, FINISH };
@@ -366,6 +420,7 @@ class Fam_CIS_Async_Handler {
     std::unique_ptr<ServerCompletionQueue> copycq;
     std::unique_ptr<ServerCompletionQueue> backupcq;
     std::unique_ptr<ServerCompletionQueue> restorecq;
+    std::unique_ptr<ServerCompletionQueue> delbackupcq;
     sType *service;
     std::unique_ptr<Server> server;
 };

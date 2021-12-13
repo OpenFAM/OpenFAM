@@ -165,6 +165,9 @@ typedef struct {
     char *name;
 } Fam_Stat;
 
+typedef struct {
+    uint32_t backup_option_reserved;
+} Fam_Backup_Options;
 /**
  * Structure defining a FAM descriptor. Descriptors are PE independent data
  * structures that enable the OpenFAM library to uniquely locate an area of
@@ -742,15 +745,34 @@ class fam {
      */
     void fam_copy_wait(void *waitObj);
 
-    // Backup data item .
-    void *fam_backup(Fam_Descriptor *src, char *BackupName);
+    /* Backup data item to archival storage.
+     * @param src - Data item to be backed up.
+     * @param BackupName - Name of the backup
+     * @param Fam_Backup_Options - backup related info.
+     * @return - a pointer to the wait object for the backup operation.
+     */
+    void *fam_backup(Fam_Descriptor *src, const char *BackupName,
+                     Fam_Backup_Options *backupOptions);
 
-    // Restore data item to a descriptor.
-    void *fam_restore(char *BackupName, Fam_Descriptor *dest);
-    // Create a data item in a given region and restore the backed up contents
-    // in this data item.
-    void *fam_restore(char *BackupName, Fam_Region_Descriptor *destRegion,
-                      char *dataitemName, mode_t accessPermissions,
+    /* Restore backup data from  archival storage to data item.
+     * @param BackupName - Name of the backup
+     * @param dest - Data item in which backup content will be restored.
+     * @return - a pointer to the wait object for the restore operation.
+     */
+    void *fam_restore(const char *BackupName, Fam_Descriptor *dest);
+    /* Creates data item, Restore backup data from  archival storage to newly
+     * created data item.
+     * @param BackupName - Name of the backup
+     * @param destRegion - Region where data item is to be created for restoring
+     * backup content.
+     * @param dataitemName - Data item name in which backup content will be
+     * restored.
+     * @param accessPermissions - Access permissions associated with data item.
+     * @param dest - dataitem handle created during fam_restore call.
+     * @return - a pointer to the wait object for the restore operation.
+     */
+    void *fam_restore(const char *BackupName, Fam_Region_Descriptor *destRegion,
+                      const char *dataitemName, mode_t accessPermissions,
                       Fam_Descriptor **dest);
 
     /**
@@ -768,6 +790,30 @@ class fam {
      */
     void fam_restore_wait(void *waitObj);
 
+    /* Deletes the backup mentioned by BackupName.
+     * @param BackupName -  name of backup to be deleted.
+     * @return - a pointer to the wait object for the backup deletion operation.
+     */
+    void *fam_delete_backup(const char *BackupName);
+    /**
+     * Wait for backup deletion operation corresponding to the wait object
+     * passed to complete
+     * @param waitObj - unique tag to restore operation
+     * @return - none
+     */
+    void fam_delete_backup_wait(void *waitObj);
+    /**
+     * Provides metadata information of the specified BackupName if user has
+     * sufficient privileges.
+     * @param BackupName:
+     *  - If specific name is given, it returns backup metadata  of given item.
+     * 	- If "*" is specified, returns backup metadata of backup data which
+     *    user has access to.
+     * @return - backup metadata info
+     * (This is an internal API as of now.)
+     */
+
+    char *fam_list_backup(const char *BackupName);
     // ATOMICS Group
 
     // NON fetching routines

@@ -178,6 +178,13 @@ class Fam_CIS_Server : public Fam_CIS_Rpc::Service {
                                    const Fam_Backup_Info_Request *request,
                                    Fam_Backup_Info_Response *response) override;
 
+    ::grpc::Status list_backup(grpc::ServerContext *context,
+                               const Fam_Backup_List_Request *request,
+                               Fam_Backup_List_Response *response) override;
+    ::grpc::Status delete_backup(grpc::ServerContext *context,
+                                 const Fam_Backup_List_Request *request,
+                                 Fam_Backup_List_Response *response) override;
+
     ::grpc::Status
     get_memserverinfo_size(grpc::ServerContext *context,
                            const Fam_Request *request,

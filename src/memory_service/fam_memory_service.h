@@ -68,10 +68,20 @@ class Fam_Memory_Service {
                       uint64_t destMemserverId) = 0;
 
     virtual void backup(uint64_t srcRegionId, uint64_t srcOffset,
-                        string BackupName, uint64_t size) = 0;
+                        string BackupName, uint64_t size, uint32_t uid,
+                        uint32_t gid, mode_t mode, string dataitemName) = 0;
     virtual void restore(uint64_t destRegionId, uint64_t destOffset,
                          string BackupName, uint64_t size) = 0;
 
+    virtual Fam_Backup_Info get_backup_info(std::string BackupName,
+                                            uint32_t uid, uint32_t gid,
+                                            uint32_t mode) = 0;
+    virtual string list_backup(std::string BackupName, uint32_t uid,
+                               uint32_t gid, mode_t mode) = 0;
+    virtual void delete_backup(std::string BackupName) = 0;
+
+    virtual uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
+                             bool rwFlag) = 0;
     virtual void *get_local_pointer(uint64_t regionId, uint64_t offset) = 0;
 
     virtual void acquire_CAS_lock(uint64_t offset) = 0;
@@ -79,9 +89,6 @@ class Fam_Memory_Service {
 
     virtual size_t get_addr_size() = 0;
     virtual void *get_addr() = 0;
-    virtual Fam_Backup_Info get_backup_info(std::string BackupName) = 0;
-    virtual uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
-                             bool rwFlag) = 0;
 
     virtual void get_atomic(uint64_t regionId, uint64_t srcOffset,
                             uint64_t dstOffset, uint64_t nbytes, uint64_t key,

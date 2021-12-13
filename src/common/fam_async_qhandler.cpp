@@ -201,6 +201,18 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         return;
     }
 
+    void wait_for_delete_backup(void *waitObj) {
+        Fam_Delete_Backup_Tag *tag =
+            static_cast<Fam_Delete_Backup_Tag *>(waitObj);
+        {
+            AQUIRE_MUTEX(deletebackupMtx);
+            while (!tag->delbackupDone.load(boost::memory_order_seq_cst)) {
+                deletebackupCond.wait(lk);
+            }
+        }
+        return;
+    }
+
     void decode_and_execute(Fam_Ops_Info opsInfo) {
         switch (opsInfo.opsType) {
         case WRITE: {
@@ -230,6 +242,12 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                          (Fam_Restore_Tag *)opsInfo.tag);
 	    break;
 	}
+        case DELETE_BACKUP: {
+            delete_backup_handler(opsInfo.src, opsInfo.dest, opsInfo.nbytes,
+                                  (Fam_Delete_Backup_Tag *)opsInfo.tag);
+            break;
+        }
+
         default: {
             THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_INVALIDOP,
                             "invalid operation request");
@@ -329,7 +347,8 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                       Fam_Backup_Tag *tag) {
         if (tag->memoryService) {
             tag->memoryService->backup(tag->srcRegionId, tag->srcOffset,
-                                       tag->BackupName, tag->size);
+                                       tag->BackupName, tag->size, tag->uid,
+                                       tag->gid, tag->mode, tag->dataitemName);
         }
         {
             AQUIRE_MUTEX(backupMtx)
@@ -354,16 +373,33 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         return;
     }
 
+    void delete_backup_handler(void *src, void *dest, uint64_t nbytes,
+                               Fam_Delete_Backup_Tag *tag) {
+        if (tag->memoryService) {
+            tag->memoryService->delete_backup(tag->BackupName);
+        }
+        {
+            AQUIRE_MUTEX(deletebackupMtx)
+            tag->delbackupDone.store(true, boost::memory_order_seq_cst);
+        }
+        deletebackupCond.notify_one();
+        return;
+    }
+
   private:
     boost::lockfree::queue<Fam_Ops_Info> *queue;
     boost::lockfree::queue<Fam_Async_Err *> *readCQ, *writeCQ;
     boost::thread_group consumerThreads;
 #ifdef USE_BOOST_FIBER
-    boost::fibers::condition_variable readCond, writeCond, copyCond, queueCond, backupCond, restoreCond;
-    boost::fibers::mutex readMtx, writeMtx, copyMtx, queueMtx, backupMtx, restoreMtx;
+    boost::fibers::condition_variable readCond, writeCond, copyCond, queueCond,
+        backupCond, restoreCond, deletebackupCond;
+    boost::fibers::mutex readMtx, writeMtx, copyMtx, queueMtx, backupMtx,
+        restoreMtx, deletebackupMtx;
 #else
-    std::condition_variable readCond, writeCond, copyCond, queueCond, backupCond, restoreCond;
-    std::mutex readMtx, writeMtx, copyMtx, queueMtx, backupMtx, restoreMtx;
+    std::condition_variable readCond, writeCond, copyCond, queueCond,
+        backupCond, restoreCond, deletebackupCond;
+    std::mutex readMtx, writeMtx, copyMtx, queueMtx, backupMtx, restoreMtx,
+        deletebackupMtx;
 #endif
     boost::atomic_uint64_t readCtr, writeCtr, readErrCtr, writeErrCtr,
         qwriteCtr, qreadCtr;
@@ -440,6 +476,26 @@ void Fam_Async_QHandler::read_handler(void *src, void *dest, uint64_t nbytes,
 void Fam_Async_QHandler::copy_handler(void *src, void *dest, uint64_t nbytes,
                                       Fam_Copy_Tag *tag) {
     fAsyncQHandler_->copy_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::backup_handler(void *src, void *dest, uint64_t nbytes,
+                                        Fam_Backup_Tag *tag) {
+    fAsyncQHandler_->backup_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::restore_handler(void *src, void *dest, uint64_t nbytes,
+                                         Fam_Restore_Tag *tag) {
+    fAsyncQHandler_->restore_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::delete_backup_handler(void *src, void *dest,
+                                               uint64_t nbytes,
+                                               Fam_Delete_Backup_Tag *tag) {
+    fAsyncQHandler_->delete_backup_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::wait_for_delete_backup(void *waitObj) {
+    fAsyncQHandler_->wait_for_delete_backup(waitObj);
 }
 
 } // namespace openfam

@@ -514,13 +514,14 @@ Fam_CIS_Server::get_backup_info(::grpc::ServerContext *context,
     CIS_SERVER_PROFILE_START_OPS()
     Fam_Backup_Info info;
     try {
-        info = famCIS->get_backup_info(request->filename(),
-                                       request->memserver_id());
+        info =
+            famCIS->get_backup_info(request->bname(), request->memserver_id(),
+                                    request->uid(), request->gid());
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
         response->set_size(-1);
-        response->set_name(NULL);
+        response->set_name("");
         response->set_mode(-1);
         response->set_uid(-1);
         response->set_gid(-1);
@@ -528,13 +529,41 @@ Fam_CIS_Server::get_backup_info(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
     response->set_size(info.size);
-    response->set_name(info.name);
+    response->set_name(info.bname);
     response->set_mode(info.mode);
     response->set_uid(info.uid);
     response->set_gid(info.gid);
     CIS_SERVER_PROFILE_END_OPS(get_backup_info);
 
     // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::list_backup(::grpc::ServerContext *context,
+                            const ::Fam_Backup_List_Request *request,
+                            ::Fam_Backup_List_Response *response) {
+    string contents;
+    try {
+        contents =
+            famCIS->list_backup(request->bname(), request->memserver_id(),
+                                request->uid(), request->gid());
+        response->set_contents(contents);
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        response->set_contents(string("Backup Listing failed."));
+
+        return ::grpc::Status::OK;
+    }
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::delete_backup(::grpc::ServerContext *context,
+                              const ::Fam_Backup_List_Request *request,
+                              ::Fam_Backup_List_Response *response) {
     return ::grpc::Status::OK;
 }
 

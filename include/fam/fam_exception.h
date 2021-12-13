@@ -64,7 +64,10 @@ enum Fam_Error {
     FAM_ERR_ATL_QUEUE_FULL,
     FAM_ERR_ATL_QUEUE_INSERT,
     FAM_ERR_ATL_NOT_ENABLED,
-    FAM_ERR_ATL
+    FAM_ERR_ATL,
+    FAM_BACKUP_NOT_CREATED,
+    FAM_BACKUP_NOTFOUND,
+    FAM_BACKUP_INFO_NOTFOUND
 };
 
 class Fam_Exception : public std::exception {

@@ -130,10 +130,20 @@ class Fam_CIS_Client : public Fam_CIS {
                  uint32_t gid, uint64_t size);
     void *restore(uint64_t destRegionId, uint64_t destOffset,
                   uint64_t destMemoryServerId, string BackupName, uint32_t uid,
-                  uint32_t gid, uint64_t size);
+                  uint32_t gid);
+
+    Fam_Backup_Info get_backup_info(std::string BackupName,
+                                    uint64_t memoryServerId, uint32_t uid,
+                                    uint32_t gid);
+    string list_backup(std::string BackupName, uint64_t memoryServerId,
+                       uint32_t uid, uint32_t gid);
+    void *delete_backup(string BackupName, uint64_t memoryServerId,
+                        uint32_t uid, uint32_t gid);
 
     void wait_for_backup(void *waitObj);
     void wait_for_restore(void *waitObj);
+    void wait_for_delete_backup(void *waitObj);
+
     void *fam_map(uint64_t regionId, uint64_t offset, uint64_t memoryServerId,
                   uint32_t uid, uint32_t gid);
     void fam_unmap(void *local, uint64_t regionId, uint64_t offset,
@@ -144,8 +154,6 @@ class Fam_CIS_Client : public Fam_CIS {
 
     size_t get_addr_size(uint64_t memoryServerId);
     void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
-    Fam_Backup_Info get_backup_info(std::string BackupName,
-                                    uint64_t memoryServerId);
     size_t get_memserverinfo_size();
     void get_memserverinfo(void *memServerInfo);
 
@@ -195,6 +203,7 @@ class Fam_CIS_Client : public Fam_CIS {
     ::grpc::CompletionQueue *copycq;
     ::grpc::CompletionQueue *backupcq;
     ::grpc::CompletionQueue *restorecq;
+    ::grpc::CompletionQueue *delbackupcq;
 };
 
 } // namespace openfam
