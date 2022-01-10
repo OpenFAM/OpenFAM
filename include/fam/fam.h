@@ -70,10 +70,8 @@
 
 #include <stdint.h>   // needed for uint64_t etc.
 #include <sys/stat.h> // needed for mode_t
-#include <memory> // for shared_ptr
 
 #ifdef __cplusplus
-#include <list>
 /** C++ Header
  *  The header is defined as a single interface containing all desired methods
  */
@@ -1204,24 +1202,14 @@ class fam {
   protected:
     class Impl_;
     Impl_ *pimpl_;
-    //std::shared_ptr<Impl_> pimpl_;
-    //std::list<fam_ctx*> ctx_list; // Move it to impl_ class
-    //int ctxid; // comment
-    //int get_next_context_id();
 };
 
 class fam_ctx: public fam {
 public:
-    fam_ctx(Impl_ *inp_fam_impl);
-    //fam_ctx(std::shared_ptr<Impl_> inp_fam_impl);
+    fam_ctx(void *inp_fam_impl);
     ~fam_ctx();
-    //void fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint32_t value);
-    //void fam_or(Fam_Descriptor *descriptor, uint64_t offset, uint64_t value);   
-    //void fam_quiet(void); 
-private:
-    //int id_; 
-    //void *internal_ctx;    
 };
+
 } // namespace openfam
 
 #endif /* end of C/C11 Headers */

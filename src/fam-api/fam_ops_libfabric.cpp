@@ -244,21 +244,7 @@ int Fam_Ops_Libfabric::initialize() {
                 memServerAddrs->insert(
                     {nodeId, std::make_pair(nodeAddr, addrSize)});
 
-#ifdef USE_MEMSRV_CTX
-                // Initialize defaultCtx
-                if (famContextModel == FAM_CONTEXT_DEFAULT) {
-                    Fam_Context *defaultCtx =
-                        new Fam_Context(fi, domain, famThreadModel);
-                    defContexts->insert({nodeId, defaultCtx});
-                    ret =
-                        fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
-                    if (ret < 0) {
-                        // TODO: Log error
-                        return ret;
-                    }
-                }
-#endif
-                std::vector<fi_addr_t> tmpAddrV;
+               std::vector<fi_addr_t> tmpAddrV;
                 ret = fabric_insert_av((char *)nodeAddr, av, &tmpAddrV);
 
                 if (ret < 0) {
@@ -276,7 +262,7 @@ int Fam_Ops_Libfabric::initialize() {
                 fiAddrs->at(nodeId) = tmpAddrV[0];
 
             }
-#ifdef USE_SINGLE_CTX
+
             // Initialize defaultCtx
             if (famContextModel == FAM_CONTEXT_DEFAULT) {
                 Fam_Context *defaultCtx =
@@ -289,7 +275,6 @@ int Fam_Ops_Libfabric::initialize() {
                     return ret;
                 }
             }
-#endif
  
         }
     } else {
@@ -331,15 +316,7 @@ Fam_Context *Fam_Ops_Libfabric::get_context(Fam_Descriptor *descriptor) {
     std::ostringstream message;
     // Case - FAM_CONTEXT_DEFAULT
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-
-#ifdef USE_MEMSRV_CTX
-        uint64_t nodeId = descriptor->get_memserver_id();
-        return get_defaultCtx(nodeId);
-#endif
-#ifdef USE_SINGLE_CTX
         return get_defaultCtx(get_context_id());
-#endif
-
     } else if (famContextModel == FAM_CONTEXT_REGION) {
 
 //TODO: We can remove the below implementation in this release
@@ -674,18 +651,10 @@ void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {
 
     uint64_t nodeId = 0;
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-#ifdef USE_SINGLE_CTX
         for (auto memServers: *memServerAddrs) {
             nodeId = memServers.first;
             fabric_fence((*fiAddr)[nodeId], get_context(NULL));
         }
-#endif
-#ifdef USE_MEMSRV_CTX
-        for (auto fam_ctx : *defContexts) {
-            nodeId = fam_ctx.first;
-            fabric_fence((*fiAddr)[nodeId], fam_ctx.second);
-        }
-#endif
     } else if (famContextModel == FAM_CONTEXT_REGION) {
         // ctx mutex lock
         (void)pthread_mutex_lock(&ctxLock);
@@ -772,12 +741,7 @@ void Fam_Ops_Libfabric::quiet_context(Fam_Context *context = NULL) {
 
 void Fam_Ops_Libfabric::quiet(Fam_Region_Descriptor *descriptor) {
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-#ifdef USE_MEMSRV_CTX
-        quiet_context();
-#endif
-#ifdef USE_SINGLE_CTX
         quiet_context(get_defaultCtx(get_context_id()));
-#endif
         return;
     } else if (famContextModel == FAM_CONTEXT_REGION) {
         // ctx mutex lock
@@ -1934,13 +1898,11 @@ int128_t Fam_Ops_Libfabric::atomic_fetch_int128(Fam_Descriptor *descriptor,
 }
 
 void Fam_Ops_Libfabric::context_open(uint64_t contextId) {
-    std::cout<<"Opening context with libfabric : CTXID="<<ctxId<<std::endl;
     // Create a new fam_context
     Fam_Context *ctx = new Fam_Context(fi, domain, famThreadModel);
     int ret = fabric_enable_bind_ep(fi, av, eq, ctx->get_ep());
     if (ret < 0) 
        return;
-    std::cout<<"Created new internal context"<<(void*)ctx<<std::endl;
 
     // Add it in the context map with unique contextId
     defContexts->insert({contextId, ctx}); 
@@ -1948,7 +1910,6 @@ void Fam_Ops_Libfabric::context_open(uint64_t contextId) {
 }
 
 void Fam_Ops_Libfabric::context_close(uint64_t contextId) {
-    std::cout<<"Closing context with libfabric contextID:"<<contextId<<std::endl;
     //Remove context from defContexts map
     auto obj = defContexts->find(get_context_id());
     if (obj == defContexts->end())

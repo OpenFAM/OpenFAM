@@ -721,9 +721,15 @@ class Fam_Ops {
      * check_progress thread is used by memory server to keep the I/Os going on.
      */
     virtual void check_progress(Fam_Region_Descriptor *descriptor = NULL) = 0;
+
+    /**
+     * context_open, context_close, get_context_id
+     * These APIs are added to support user specific communication context
+     */
     virtual void context_open(uint64_t) = 0;
-    virtual void context_close(uint64_t) = 0; 
-    virtual uint64_t get_context_id() = 0; 
+    virtual void context_close(uint64_t) = 0;
+    virtual uint64_t get_context_id() = 0;
+
     /**
      * fam() - constructor for fam class
      */

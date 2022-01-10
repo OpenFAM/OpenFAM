@@ -331,8 +331,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     };
     std::vector<fi_addr_t> *get_fiAddrs() { return fiAddrs; };
     std::map<uint64_t, Fam_Region_Map_t *> *get_fiMrs() { return fiMrs; };
-   
-    // Use context_id instead of nodeID 
+
+    // Use context_id instead of nodeID
     Fam_Context *get_defaultCtx(uint64_t nodeId) {
         auto obj = defContexts->find(nodeId);
         if (obj == defContexts->end())
@@ -345,12 +345,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     //TODO: Lets not use this two varients of get_defautlCtx
     //      To be deleted.
     Fam_Context *get_defaultCtx(Fam_Region_Descriptor *descriptor) {
-#ifdef USE_MEMSRV_CTX
-        auto obj = defContexts->find(descriptor->get_memserver_id());
-#endif
-#ifdef USE_SINGLE_CTX
         auto obj = defContexts->find(get_context_id());
-#endif
         if (obj == defContexts->end())
             THROW_ERR_MSG(Fam_Datapath_Exception,
                           "Context for memserver not found");
@@ -358,12 +353,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
             return obj->second;
     };
     Fam_Context *get_defaultCtx(Fam_Descriptor *descriptor) {
-#ifdef USE_MEMSRV_CTX
-        auto obj = defContexts->find(descriptor->get_memserver_id());
-#endif
-#ifdef USE_SINGLE_CTX
         auto obj = defContexts->find(get_context_id());
-#endif
         if (obj == defContexts->end())
             THROW_ERR_MSG(Fam_Datapath_Exception,
                           "Context for memserver not found");
@@ -374,7 +364,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     uint64_t get_context_id(){ return ctxId; };
 
     void set_context_id(uint64_t contextID){ ctxId = contextID; };
-    
+
     pthread_rwlock_t *get_mr_lock() { return &fiMrLock; };
 
     pthread_rwlock_t *get_memsrvaddr_lock() { return &fiMemsrvAddrLock; };
