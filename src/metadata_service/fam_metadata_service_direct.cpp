@@ -704,8 +704,12 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
 
     // Insert region name -> region id mapping in regionDataKVS
     ret = insert_in_regionname_kvs(regionName, regionKey);
-    size_t tmpSize = region->size / 4;
+    //Fix for Github issue number 165 https://github.com/OpenFAM/OpenFAM/issues/165
+
+    size_t tmpSize = MAX_DATAITEM_NUM_HINT * sizeof(region) ;
+    tmpSize =  (tmpSize < ((region->size)/4)) ? tmpSize : (region->size)/4;
     tmpSize = (tmpSize < MIN_HEAP_SIZE ? MIN_HEAP_SIZE : tmpSize);
+
     if (ret == META_NO_ERROR) {
         // Region key does not exist, create an entry
 
