@@ -190,8 +190,10 @@ message Fam_Permission_Response {
 }
 
 message Fam_Memservcnt_Request {
-    optional uint32 nmemservers = 1;
-    repeated uint64 memsrv_list = 2;
+    optional uint32 nmemserverspersistent = 1;
+    repeated uint64 memsrv_persistent_list = 2;
+    optional uint32 nmemserversvolatile = 3;
+    repeated uint64 memsrv_volatile_list = 4;
 }
 
 message Fam_Metadata_Region_Info_Response {

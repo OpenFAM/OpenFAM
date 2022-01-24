@@ -218,8 +218,10 @@ class Fam_Metadata_Service_Direct::Impl_ {
                                                    const uint64_t dataitemId,
                                                    uint32_t uid, uint32_t gid);
     size_t metadata_maxkeylen();
-    void metadata_update_memoryserver(int nmemServers,
-                                      std::vector<uint64_t> memsrv_id_list);
+    void metadata_update_memoryserver(
+        int nmemServersPersistent,
+        std::vector<uint64_t> memsrv_persistent_id_list,
+        int nmemServersVolatile, std::vector<uint64_t> memsrv_volatile_id_list);
     void metadata_reset_bitmap(uint64_t regionID);
     uint64_t align_to_address(uint64_t size, int multiple);
     void metadata_find_region_and_check_permissions(
@@ -252,11 +254,12 @@ class Fam_Metadata_Service_Direct::Impl_ {
     // KVS root pointer for region Name tree
     GlobalPtr regionNameRoot;
     bitmap *bmap;
-    int memoryServerCount;
-    std::vector<uint64_t> memoryServerList;
+    std::vector<uint64_t> memoryServerPersistentList;
+    std::vector<uint64_t> memoryServerVolatileList;
     bool use_meta_region;
     KvsMap *metadataKvsMap;
     pthread_rwlock_t kvsMapLock;
+    pthread_mutex_t memserverListLock;
 
     MemoryManager *memoryManager;
     bool enable_region_spanning;
@@ -286,7 +289,9 @@ class Fam_Metadata_Service_Direct::Impl_ {
     void init_poolid_bmap();
 
     std::list<int> find_memory_server_list(const std::string regionName,
-                                           size_t size, int user_policy);
+                                           size_t size,
+                                           Fam_Memory_Type memoryType,
+                                           int user_policy);
 
     std::list<int> find_memory_server_list(Fam_Region_Metadata region);
 
@@ -308,6 +313,7 @@ int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg, bool flag,
     region_span_size_per_memoryserver = size;
     metadataKvsMap = new KvsMap();
     pthread_rwlock_init(&kvsMapLock, NULL);
+    pthread_mutex_init(&memserverListLock, NULL);
     use_meta_region = use_meta_reg;
 
     // Create the KVS tree for Region ID
@@ -348,7 +354,6 @@ int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg, bool flag,
 
     // TODO: Read memoryServerCount from KVS
     // As of now set memory server count as 1 in init.
-    memoryServerCount = 1;
 
     return META_NO_ERROR;
 }
@@ -359,6 +364,7 @@ int Fam_Metadata_Service_Direct::Impl_::Final() {
     delete regionNameKVS;
     delete metadataKvsMap;
     pthread_rwlock_destroy(&kvsMapLock);
+    pthread_mutex_destroy(&memserverListLock);
 
     return META_NO_ERROR;
 }
@@ -2258,11 +2264,21 @@ size_t Fam_Metadata_Service_Direct::Impl_::metadata_maxkeylen() {
 }
 
 void Fam_Metadata_Service_Direct::Impl_::metadata_update_memoryserver(
-    int nmemServers, std::vector<uint64_t> memsrv_id_list) {
-    memoryServerCount = nmemServers;
-    for (int i = 0; i < nmemServers; i++) {
-        memoryServerList.push_back((int)memsrv_id_list[i]);
+    int nmemServersPersistent, std::vector<uint64_t> memsrv_persistent_id_list,
+    int nmemServersVolatile, std::vector<uint64_t> memsrv_volatile_id_list) {
+    pthread_mutex_lock(&memserverListLock);
+    if ((memoryServerPersistentList.size() != 0) ||
+        memoryServerVolatileList.size() != 0) {
+        pthread_mutex_unlock(&memserverListLock);
+        return;
     }
+    for (int i = 0; i < nmemServersPersistent; i++) {
+        memoryServerPersistentList.push_back((int)memsrv_persistent_id_list[i]);
+    }
+    for (int i = 0; i < nmemServersVolatile; i++) {
+        memoryServerVolatileList.push_back((int)memsrv_volatile_id_list[i]);
+    }
+    pthread_mutex_unlock(&memserverListLock);
 }
 
 int Fam_Metadata_Service_Direct::Impl_::get_regionid_from_bitmap(
@@ -2325,8 +2341,14 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_create_region(
                         message.str().c_str());
     }
     // Call find_memory_server for the size asked for and for user policy
-    *memory_server_list =
-        find_memory_server_list(regionname, size, user_policy);
+    *memory_server_list = find_memory_server_list(
+        regionname, size, regionAttributes->memoryType, user_policy);
+    if ((*memory_server_list).size() == 0) {
+        message << "Create region error : Requested Memory type not available.";
+        THROW_ERRNO_MSG(Metadata_Service_Exception,
+                        REQUESTED_MEMORY_TYPE_NOT_AVAILABLE,
+                        message.str().c_str());
+    }
 }
 
 /**
@@ -2574,14 +2596,33 @@ void Fam_Metadata_Service_Direct::Impl_::
 }
 
 std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
-    const std::string regionname, size_t size, int user_policy) {
+    const std::string regionname, size_t size, Fam_Memory_Type memoryType,
+    int user_policy) {
     std::list<int> memsrv_list;
+
+    std::vector<uint64_t> memoryServerList;
+    int memoryServerCount;
+    ostringstream message;
     std::uint64_t hashVal = std::hash<std::string> {}
     (regionname);
-    unsigned int id = (int)(hashVal % memoryServerCount);
     unsigned int i = 0;
     uint64_t aligned_size = align_to_address(size, 64);
     size = (aligned_size > size ? aligned_size : size);
+    if (memoryType == PERSISTENT) {
+        memoryServerList = memoryServerPersistentList;
+        memoryServerCount = (int)memoryServerPersistentList.size();
+    } else {
+        memoryServerList = memoryServerVolatileList;
+        memoryServerCount = (int)memoryServerVolatileList.size();
+    }
+
+    unsigned int id = (int)(hashVal % memoryServerCount);
+    if (memoryServerCount == 0) {
+        message << "Create region error : Requested Memory type not available.";
+        THROW_ERRNO_MSG(Metadata_Service_Exception,
+                        REQUESTED_MEMORY_TYPE_NOT_AVAILABLE,
+                        message.str().c_str());
+    }
     if (enable_region_spanning == 1) {
         if (size <= region_span_size_per_memoryserver) {
             // Size is smaller than region_span_size_per_memoryserver and hence
@@ -2958,9 +2999,12 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
     return options;
 }
 void Fam_Metadata_Service_Direct::metadata_update_memoryserver(
-    int nmemServers, std::vector<uint64_t> memsrv_id_list) {
+    int nmemServersPersistent, std::vector<uint64_t> memsrv_persistent_id_list,
+    int nmemServersVolatile, std::vector<uint64_t> memsrv_volatile_id_list) {
     METADATA_DIRECT_PROFILE_START_OPS()
-    pimpl_->metadata_update_memoryserver(nmemServers, memsrv_id_list);
+    pimpl_->metadata_update_memoryserver(
+        nmemServersPersistent, memsrv_persistent_id_list, nmemServersVolatile,
+        memsrv_volatile_id_list);
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_update_memoryserver);
 }
 

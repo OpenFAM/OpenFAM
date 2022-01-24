@@ -52,6 +52,8 @@ class config_info {
 
   public:
     virtual std::string get_key_value(std::string key) = 0;
+    virtual std::string get_map_value(std::string mapinfo, uint64_t key,
+                                      std::string val) = 0;
     virtual std::vector<std::string> get_value_list(std::string key) = 0;
     virtual int get_value_type(std::string key) = 0;
     virtual ~config_info() {}
@@ -61,6 +63,8 @@ class yaml_config_info : public config_info {
   public:
     yaml_config_info(std::string file_name);
     std::string get_key_value(std::string key);
+    std::string get_map_value(std::string mapinfo, uint64_t key,
+                              std::string val);
     std::vector<std::string> get_value_list(std::string key);
     int get_value_type(std::string key);
     ~yaml_config_info();

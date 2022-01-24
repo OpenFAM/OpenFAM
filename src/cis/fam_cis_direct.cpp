@@ -118,8 +118,11 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
     metadataServers = new metadataServerMap();
     std::string delimiter1 = ",";
     std::string delimiter2 = ":";
-    std::vector<uint64_t> memsrv_id_list;
+    std::vector<uint64_t> memsrv_persistent_id_list;
+    std::vector<uint64_t> memsrv_volatile_id_list;
 
+    uint64_t memoryServerPersistentCount = 0;
+    uint64_t memoryServerVolatileCount = 0;
     if (config_options.empty()) {
         // Raise an exception;
         message << "Fam config options not found.";
@@ -127,10 +130,17 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
     }
 
     if (isSharedMemory) {
-        Fam_Memory_Service *memoryService = new Fam_Memory_Service_Direct(
-            cisName, NULL, NULL, NULL, isSharedMemory);
+        Fam_Memory_Service *memoryService =
+            new Fam_Memory_Service_Direct(0, isSharedMemory);
         memoryServers->insert({ 0, memoryService });
-        memsrv_id_list.push_back(0);
+        Fam_Memory_Type memory_type = memoryService->get_memtype();
+        if (memory_type == PERSISTENT) {
+            memsrv_persistent_id_list.push_back(0);
+            memoryServerPersistentCount++;
+        } else {
+            memsrv_volatile_id_list.push_back(0);
+            memoryServerVolatileCount++;
+        }
     } else if (strcmp(config_options["memsrv_interface_type"].c_str(),
                       FAM_OPTIONS_RPC_STR) == 0) {
         Server_Map memoryServerList = parse_server_list(
@@ -141,9 +151,18 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
             Fam_Memory_Service *memoryService = new Fam_Memory_Service_Client(
                 (service.first).c_str(), service.second);
             memoryServers->insert({ obj->first, memoryService });
-            memsrv_id_list.push_back(obj->first);
 
             size_t addrSize = get_addr_size(obj->first);
+            Fam_Memory_Type memory_type = memoryService->get_memtype();
+            if (memory_type == PERSISTENT) {
+                memsrv_persistent_id_list.push_back(obj->first);
+                memoryServerPersistentCount++;
+
+            } else {
+                memsrv_volatile_id_list.push_back(obj->first);
+                memoryServerVolatileCount++;
+            }
+
             void *addr = calloc(1, addrSize);
             get_addr(addr, obj->first);
             memServerInfoV->push_back(
@@ -155,10 +174,16 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
         // Start memory service only with name(ipaddr) and let Memory service
         // direct reads libfabric port and provider from memroy server config
         // file.
-        Fam_Memory_Service *memoryService =
-            new Fam_Memory_Service_Direct(cisName, NULL, NULL, NULL);
+        Fam_Memory_Service *memoryService = new Fam_Memory_Service_Direct(0);
         memoryServers->insert({ 0, memoryService });
-        memsrv_id_list.push_back(0);
+        Fam_Memory_Type memory_type = memoryService->get_memtype();
+        if (memory_type == PERSISTENT) {
+            memsrv_persistent_id_list.push_back(0);
+            memoryServerPersistentCount++;
+        } else {
+            memsrv_volatile_id_list.push_back(0);
+            memoryServerVolatileCount++;
+        }
 
         // Note: Need to perform this only for memory server model.
         size_t addrSize = get_addr_size(0);
@@ -201,10 +226,12 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
             new Fam_Metadata_Service_Direct();
         metadataServers->insert({ 0, metadataService });
         memoryServerCount = memoryServers->size();
+
         // TODO: This code needs to be revisited. Currently memoryserverCount
         // will be updated to all metadata servers.
-        metadataService->metadata_update_memoryserver((int)memoryServerCount,
-                                                      memsrv_id_list);
+        metadataService->metadata_update_memoryserver(
+            (int)memoryServerPersistentCount, memsrv_persistent_id_list,
+            (int)memoryServerVolatileCount, memsrv_volatile_id_list);
     } else if (strcmp(config_options["metadata_interface_type"].c_str(),
                       FAM_OPTIONS_RPC_STR) == 0) {
         Server_Map metadataServerList = parse_server_list(
@@ -217,10 +244,12 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
                                                 service.second);
             metadataServers->insert({ obj->first, metadataService });
             memoryServerCount = memoryServers->size();
+
             // TODO: This code needs to be revisited. Currently
             // memoryserverCount will be updated to all metadata servers.
             metadataService->metadata_update_memoryserver(
-                (int)memoryServerCount, memsrv_id_list);
+                (int)memoryServerPersistentCount, memsrv_persistent_id_list,
+                (int)memoryServerVolatileCount, memsrv_volatile_id_list);
         }
     } else if (strcmp(config_options["metadata_interface_type"].c_str(),
                       FAM_OPTIONS_DIRECT_STR) == 0) {
@@ -230,8 +259,9 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
         memoryServerCount = memoryServers->size();
         // TODO: This code needs to be revisited. Currently memoryserverCount
         // will be updated to all metadata servers.
-        metadataService->metadata_update_memoryserver((int)memoryServerCount,
-                                                      memsrv_id_list);
+        metadataService->metadata_update_memoryserver(
+            (int)memoryServerPersistentCount, memsrv_persistent_id_list,
+            (int)memoryServerVolatileCount, memsrv_volatile_id_list);
     } else {
         // Raise an exception
         message << "Invalid value specified for Fam config "

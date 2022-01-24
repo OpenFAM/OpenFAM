@@ -80,10 +80,10 @@ void memory_service_direct_profile_dump() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(MEMORY_SERVICE_DIRECT)
 }
 
-Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
-    const char *name, const char *libfabricPort, const char *libfabricProvider,
-    const char *fam_path, bool isSharedMemory) {
-
+Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(uint64_t memserver_id,
+                                                     bool isSharedMemory) {
+    memory_server_id = memserver_id;
+    ostringstream message;
     // Look for options information from config file.
     // Use config file options only if NULL is passed.
     std::string config_file_path;
@@ -95,30 +95,44 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
         config_file_path =
             find_config_file(strdup("fam_memoryserver_config.yaml"));
     } catch (Fam_InvalidOption_Exception &e) {
+
         // If the config_file is not present, then ignore the exception.
     }
     // Get the configuration info from the configruation file.
     if (!config_file_path.empty()) {
         config_options = get_config_info(config_file_path);
+    } else {
+        message << "No config file present in OPENFAM_ROOT path.";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
-    libfabricPort =
-        (((libfabricPort == NULL) || (strcmp(libfabricPort, strdup("")) == 0))
-             ? config_options["libfabric_port"].c_str()
-             : libfabricPort);
+    std::string memType = config_options["Memservers:memory_type"];
+    fam_path = config_options["Memservers:fam_path"];
+    // default case??
+    if (strcmp(memType.c_str(), "volatile") == 0) {
+        memServermemType = VOLATILE;
+        printf("%d\n", memServermemType);
+    } else if (strcmp(memType.c_str(), "persistent") == 0) {
+        memServermemType = PERSISTENT;
+        printf("%d\n", memServermemType);
+    } else {
+        message << "memory_type option in the config file is invalid.";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    }
 
-    libfabricProvider = (((libfabricProvider == NULL) ||
-                          (strcmp(libfabricProvider, strdup("")) == 0))
-                             ? config_options["provider"].c_str()
-                             : libfabricProvider);
+    printf("%ld\n", memory_server_id);
+    libfabricPort = config_options["Memservers:libfabric_port"];
 
-    fam_path = (((fam_path == NULL) || (strcmp(fam_path, strdup("")) == 0))
-                    ? config_options["fam_path"].c_str()
-                    : fam_path);
+    rpc_interface = config_options["Memservers:rpc_interface"];
+    std::string addr = rpc_interface.substr(0, rpc_interface.find(':'));
+    if_device = config_options["Memservers:if_device"];
+    libfabricProvider = config_options["provider"];
+
     int num_delayed_free_Threads =
         atoi(config_options["delayed_free_threads"].c_str());
 
-    allocator = new Memserver_Allocator(num_delayed_free_Threads, fam_path);
+    allocator =
+        new Memserver_Allocator(num_delayed_free_Threads, fam_path.c_str());
     fam_backup_path = config_options["fam_backup_path"];
     struct stat info;
     if (stat(fam_backup_path.c_str(), &info) == -1) {
@@ -130,7 +144,7 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(
         memoryRegistration = new Fam_Memory_Registration_SHM();
     } else {
         memoryRegistration = new Fam_Memory_Registration_Libfabric(
-            name, libfabricPort, libfabricProvider);
+            addr.c_str(), libfabricPort.c_str(), libfabricProvider.c_str());
     }
 
     for (int i = 0; i < CAS_LOCK_CNT; i++) {
@@ -430,6 +444,32 @@ void *Fam_Memory_Service_Direct::get_addr() {
     return addr;
 }
 
+Fam_Memory_Type Fam_Memory_Service_Direct::get_memtype() {
+    Fam_Memory_Type memory_type;
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    memory_type = memServermemType;
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_memtype);
+    return memory_type;
+}
+
+std::string Fam_Memory_Service_Direct::get_rpcaddr() {
+    std::string rpcaddr;
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    rpcaddr = rpc_interface;
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_rpcaddr);
+    return rpcaddr;
+}
+
+Fam_Backup_Info
+Fam_Memory_Service_Direct::get_backup_info(std::string BackupName) {
+    ostringstream message;
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    std::string BackupNamePath = fam_backup_path + "/" + BackupName;
+    Fam_Backup_Info info = allocator->get_backup_info(BackupNamePath);
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_backup_info);
+    return info;
+}
+
 void Fam_Memory_Service_Direct::acquire_CAS_lock(uint64_t offset) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     int idx = LOCKHASH(offset);
@@ -463,6 +503,8 @@ uint64_t Fam_Memory_Service_Direct::get_key(uint64_t regionId, uint64_t offset,
 configFileParams
 Fam_Memory_Service_Direct::get_config_info(std::string filename) {
     configFileParams options;
+    ostringstream message;
+
     config_info *info = NULL;
     if (filename.find("fam_memoryserver_config.yaml") != std::string::npos) {
         info = new yaml_config_info(filename);
@@ -472,14 +514,6 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
         } catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
             options["provider"] = (char *)strdup("sockets");
-        }
-
-        try {
-            options["libfabric_port"] =
-                (char *)strdup((info->get_key_value("libfabric_port")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
-            // If parameter is not present, then set the default.
-            options["libfabric_port"] = (char *)strdup("7500");
         }
 
         try {
@@ -506,14 +540,6 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
             options["ATL_data_size"] = (char *)strdup("1073741824");
 	}
 
-	try {
-            options["fam_path"] =
-                (char *)strdup((info->get_key_value("fam_path")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
-            // If parameter is not present, then set the default.
-            options["fam_path"] = (char *)strdup("");
-        }
-
         try {
             options["delayed_free_threads"] = (char *)strdup(
                 (info->get_key_value("delayed_free_threads")).c_str());
@@ -528,6 +554,51 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
             // If parameter is not present, then set the default.
             options["fam_backup_path"] = (char *)strdup("");
             cout << "Couldn't locate fam_backup_path" << endl;
+        }
+        try {
+            options["Memservers:memory_type"] = (char *)strdup(
+                (info->get_map_value("Memservers", memory_server_id,
+                                     "memory_type"))
+                    .c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            message << "memory_type option in the config file is invalid.";
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
+        try {
+            options["Memservers:fam_path"] =
+                (char *)strdup((info->get_map_value(
+                                    "Memservers", memory_server_id, "fam_path"))
+                                   .c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            message << "fam_path option in the config file is invalid.";
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
+        try {
+            options["Memservers:libfabric_port"] = (char *)strdup(
+                (info->get_map_value("Memservers", memory_server_id,
+                                     "libfabric_port"))
+                    .c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            message << "libfabric_port option in the config file is invalid.";
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
+        try {
+            options["Memservers:rpc_interface"] = (char *)strdup(
+                (info->get_map_value("Memservers", memory_server_id,
+                                     "rpc_interface"))
+                    .c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            message << "rpc_interface option in the config file is invalid.";
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
+        try {
+            options["Memservers:if_device"] = (char *)strdup(
+                (info->get_map_value("Memservers", memory_server_id,
+                                     "if_device"))
+                    .c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["Memservers:if_device"] = (char *)strdup("ib0");
         }
     }
     return options;

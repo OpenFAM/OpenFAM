@@ -46,10 +46,7 @@ namespace openfam {
 
 class Fam_Memory_Service_Direct : public Fam_Memory_Service {
   public:
-    Fam_Memory_Service_Direct(const char *name,
-                              const char *libfabricPort = NULL,
-                              const char *libfabricProvider = NULL,
-                              const char *fam_path = NULL,
+    Fam_Memory_Service_Direct(const uint64_t memserver_id = 0,
                               bool isSharedMemory = false);
 
     ~Fam_Memory_Service_Direct();
@@ -90,7 +87,9 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
 
     size_t get_addr_size();
     void *get_addr();
-
+    Fam_Memory_Type get_memtype();
+    std::string get_rpcaddr();
+    Fam_Backup_Info get_backup_info(std::string BackupName);
     uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
                      bool rwFlag);
     configFileParams get_config_info(std::string filename);
@@ -134,6 +133,14 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
     pthread_mutex_t casLock[CAS_LOCK_CNT];
     Fam_Memory_Registration *memoryRegistration;
     std::string fam_backup_path;
+    Fam_Memory_Type memServermemType;
+    uint64_t memory_server_id;
+    std::string fam_path;
+    std::string libfabricPort;
+    std::string libfabricProvider;
+    std::string port;
+    std::string rpc_interface;
+    std::string if_device;
 };
 
 } // namespace openfam

@@ -65,7 +65,6 @@ class Fam_CIS_Direct : public Fam_CIS {
     Fam_Metadata_Service *get_metadata_service(uint64_t metadataServerId);
 
     uint64_t get_num_memory_servers();
-
     Fam_Region_Item_Info create_region(string name, size_t nbytes,
                                        mode_t permission,
                                        Fam_Region_Attributes *regionAttributes,

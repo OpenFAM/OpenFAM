@@ -91,6 +91,7 @@ class Fam_Memory_Service_Client : public Fam_Memory_Service {
 
     size_t get_addr_size();
     void *get_addr();
+    Fam_Memory_Type get_memtype();
 
     uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
                      bool rwFlag);
@@ -132,6 +133,7 @@ class Fam_Memory_Service_Client : public Fam_Memory_Service {
     std::unique_ptr<Fam_Memory_Service_Rpc::Stub> stub;
     size_t memServerFabricAddrSize;
     char *memServerFabricAddr;
+    Fam_Memory_Type memServermemType;
 };
 
 } // namespace openfam

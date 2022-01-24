@@ -127,8 +127,10 @@ class Fam_Metadata_Service_Client : public Fam_Metadata_Service {
                                     metadata_region_item_op_t op, uint32_t uid,
                                     uint32_t gid);
     size_t metadata_maxkeylen();
-    void metadata_update_memoryserver(int nmemServers,
-                                      std::vector<uint64_t> memsrv_id_list);
+    void metadata_update_memoryserver(
+        int nmemServersPersistent,
+        std::vector<uint64_t> memsrv_persistent_id_list,
+        int nmemServersVolatile, std::vector<uint64_t> memsrv_volatile_id_list);
     void metadata_reset_bitmap(uint64_t regionId);
     void metadata_validate_and_create_region(
         const std::string regionname, size_t size, uint64_t *regionid,

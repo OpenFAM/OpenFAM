@@ -57,8 +57,7 @@ using grpc::Status;
 
 class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
   public:
-    Fam_Memory_Service_Server(uint64_t rpcPort, char *name, char *libfabricPort,
-                              char *libfabricProvider, char *fam_path);
+    Fam_Memory_Service_Server(uint64_t memserver_id);
 
     ~Fam_Memory_Service_Server();
 
@@ -186,8 +185,6 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                           ::Fam_Memory_Atomic_Response *response) override;
 
   protected:
-    char *serverAddress;
-    uint64_t port;
     int numClients;
     Fam_Memory_Service_Rpc::Service *service;
     std::unique_ptr<Server> server;

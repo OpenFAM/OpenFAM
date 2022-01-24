@@ -56,6 +56,19 @@ std::string yaml_config_info::get_key_value(std::string key) {
     return value;
 }
 
+std::string yaml_config_info::get_map_value(std::string mapinfo, uint64_t key,
+                                            std::string val) {
+    std::string value;
+    const YAML::Node &mapInfo = config[mapinfo];
+    if (mapInfo[key][val]) {
+        value = (mapInfo[key][val].as<std::string>());
+    } else {
+        std::ostringstream message;
+        message << "Fam Config:  value does not exist - " << val;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    }
+    return value;
+}
 std::vector<std::string> yaml_config_info::get_value_list(std::string key) {
     std::vector<std::string> valueList;
     if (config[key]) {

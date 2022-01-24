@@ -110,7 +110,8 @@ enum Internal_Error {
     LIBFABRIC_ERROR,
     BACKUP_FILE_EXIST,
     BACKUP_FILE_NOT_FOUND,
-    DATAITEM_SIZE_TOO_LONG
+    DATAITEM_SIZE_TOO_LONG,
+    REQUESTED_MEMORY_TYPE_NOT_AVAILABLE
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -122,6 +123,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
 
     case REGION_NOT_CREATED:
     case DATAITEM_NOT_CREATED:
+    case REQUESTED_MEMORY_TYPE_NOT_AVAILABLE:
         return FAM_ERR_NOT_CREATED;
     case REGION_NOT_FOUND:
     case DATAITEM_NOT_FOUND:

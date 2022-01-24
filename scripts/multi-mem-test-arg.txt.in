@@ -4,6 +4,6 @@
 --memserverinterface=rpc
 --metaserverinterface=rpc
 --cisrpcaddr=127.0.0.1:8787
---memserverlist=0:127.0.0.1:8795,1:127.0.0.1:8796,2:127.0.0.1:8797,3:127.0.0.1:8798
+--memservers=0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0};1:{memory_type:persistent,fam_path:/dev/shm/per/,rpc_interface:127.0.0.1,rpc_port:8796,libfabric_port:7501,if_device:eth1};2:{memory_type:volatile,fam_path:/dev/shm/vol1/,rpc_interface:127.0.0.1,rpc_port:8797,libfabric_port:7503,if_device:eth0};3:{memory_type:persistent,fam_path:/dev/shm/per1/,rpc_interface:127.0.0.1,rpc_port:8798,libfabric_port:7504,if_device:eth1};4:{memory_type:volatile,fam_path:/dev/shm/vol2/,rpc_interface:127.0.0.1,rpc_port:8793,libfabric_port:7505,if_device:eth0};5:{memory_type:persistent,fam_path:/dev/shm/per2/,rpc_interface:127.0.0.1,rpc_port:8794,libfabric_port:7506,if_device:eth1}
 --metaserverlist=0:127.0.0.1:8788
 --regionspanningsize=1048576

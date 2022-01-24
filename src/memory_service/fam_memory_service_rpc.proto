@@ -104,6 +104,7 @@ message Fam_Memory_Service_General_Response {}
 message Fam_Memory_Service_Start_Response {
     repeated fixed32 addrname = 1;
     uint64 addrnamelen = 2;
+    uint32 memorytype = 3; 
 }
 
 /*
