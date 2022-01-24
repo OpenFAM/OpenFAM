@@ -111,16 +111,16 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(uint64_t memserver_id,
     // default case??
     if (strcmp(memType.c_str(), "volatile") == 0) {
         memServermemType = VOLATILE;
-        printf("%d\n", memServermemType);
+        (void)memServermemType;
     } else if (strcmp(memType.c_str(), "persistent") == 0) {
         memServermemType = PERSISTENT;
-        printf("%d\n", memServermemType);
+        (void)memServermemType;
     } else {
         message << "memory_type option in the config file is invalid.";
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
-    printf("%ld\n", memory_server_id);
+    (void)memory_server_id;
     libfabricPort = config_options["Memservers:libfabric_port"];
 
     rpc_interface = config_options["Memservers:rpc_interface"];
