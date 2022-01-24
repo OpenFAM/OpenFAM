@@ -460,16 +460,6 @@ std::string Fam_Memory_Service_Direct::get_rpcaddr() {
     return rpcaddr;
 }
 
-Fam_Backup_Info
-Fam_Memory_Service_Direct::get_backup_info(std::string BackupName) {
-    ostringstream message;
-    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    std::string BackupNamePath = fam_backup_path + "/" + BackupName;
-    Fam_Backup_Info info = allocator->get_backup_info(BackupNamePath);
-    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_backup_info);
-    return info;
-}
-
 void Fam_Memory_Service_Direct::acquire_CAS_lock(uint64_t offset) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     int idx = LOCKHASH(offset);
