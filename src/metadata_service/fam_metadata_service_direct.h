@@ -138,8 +138,10 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
     size_t metadata_maxkeylen();
     configFileParams get_config_info(std::string filename);
     uint64_t align_to_address(uint64_t size, int multiple);
-    void metadata_update_memoryserver(int nmemServers,
-                                      std::vector<uint64_t> memsrv_id_list);
+    void metadata_update_memoryserver(
+        int nmemServersPersistent,
+        std::vector<uint64_t> memsrv_persistent_id_list,
+        int nmemServersVolatile, std::vector<uint64_t> memsrv_volatile_id_list);
     void metadata_validate_and_create_region(
         const std::string regionname, size_t size, uint64_t *regionid,
         Fam_Region_Attributes *regionAttributes,

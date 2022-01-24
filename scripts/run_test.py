@@ -112,6 +112,13 @@ my_parser.add_argument(
 )
 
 my_parser.add_argument(
+    "--memservers",
+    action="store",
+    type=str,
+    help="Memory server attributes list(comma seperated) eg : 0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0};1:{memory_type:persistent,fam_path:/dev/shm/per/,rpc_interface:127.0.0.1,rpc_port:8796,libfabric_port:7501,if_device:eth1}",
+)
+
+my_parser.add_argument(
     "--metaserverlist",
     action="store",
     type=str,
@@ -256,18 +263,12 @@ if args.memserverinterface is not None:
     cis_config_doc["memsrv_interface_type"] = args.memserverinterface
 if args.metaserverinterface is not None:
     cis_config_doc["metadata_interface_type"] = args.metaserverinterface
-if args.memserverlist is not None:
-    cis_config_doc["memsrv_list"] = args.memserverlist.split(",")
 if args.metaserverlist is not None:
     cis_config_doc["metadata_list"] = args.metaserverlist.split(",")
 if args.kvstype is not None:
     metaservice_config_doc["metadata_manager"] = args.kvstype
-if args.libfabricport is not None:
-    memservice_config_doc["libfabric_port"] = args.libfabricport
 if args.metapath is not None:
     metaservice_config_doc["metadata_path"] = args.metapath
-if args.fampath is not None:
-    memservice_config_doc["fam_path"] = args.fampath
 if args.fam_backup_path is not None:
     memservice_config_doc["fam_backup_path"] = args.fam_backup_path
     print(args.fam_backup_path)
@@ -279,6 +280,30 @@ if args.atlqsize is not None:
     memservice_config_doc["ATL_queue_size"] = args.atlqsize
 if args.atldatasize is not None:
     memservice_config_doc["ATL_data_size"] = args.atldatasize
+memserver_map = {}
+memserver_id_list = []
+if args.memservers is not None:
+    memservers_list=args.memservers.split(";")
+    for m in memservers_list:
+        m_id=int(m.split('{')[0].split(':')[0])
+        m_value=m.split('{')[1].split('}')[0]
+        value_list=m_value.split(',')
+        value_map={}
+        for value in value_list:
+            v=value.split(':')
+            if v[1].isnumeric():
+               v[1]=int(v[1])
+            if v[0]=='rpc_port':
+               rpc_interface=value_map['rpc_interface']
+               value_map['rpc_interface']=rpc_interface+':'+str(v[1])
+               memserver_id_list.append(str(m_id)+':'+rpc_interface+':'+str(v[1]))
+            else:
+               value_map[v[0]]=v[1]
+        memserver_map[m_id]=value_map
+
+    memservice_config_doc["Memservers"]=memserver_map
+    cis_config_doc["memsrv_list"]=memserver_id_list
+
 if args.disableregionspanning:
     print("region spanning disabled")
     memservice_config_doc["enable_region_spanning"] = "false"
@@ -405,11 +430,9 @@ if (
     and cis_config_doc["memsrv_interface_type"] == "rpc"
 ):
     # Iterate over list of memory servers
-    fabric_port = memservice_config_doc["libfabric_port"]
     i = 0
     for server in cis_config_doc["memsrv_list"]:
-        memory_server_addr = server.split(":")[1]
-        memory_server_rpc_port = server.split(":")[2]
+        memory_server_id = server.split(":")[0]
         if args.launcher == "mpi":
             cmd = (
                 ssh_cmd
@@ -418,14 +441,8 @@ if (
                 + env_cmd
                 + "nohup "
                 + args.buildpath
-                + "/src/memory_server -a "
-                + memory_server_addr
-                + " -r "
-                + str(memory_server_rpc_port)
-                + " -l "
-                + str(memservice_config_doc["libfabric_port"])
-                + " -p "
-                + memservice_config_doc["provider"]
+                + "/src/memory_server -m "
+                + memory_server_id
                 + "> /dev/null 2>&1 &'\""
             )
         elif args.launcher == "slurm":
@@ -434,34 +451,18 @@ if (
                 + memory_server_addr
                 + " --mpi=" + mpitype
                 + args.buildpath
-                + "/src/memory_server -a "
-                + memory_server_addr
-                + " -r "
-                + str(memory_server_rpc_port)
-                + " -l "
-                + str(memservice_config_doc["libfabric_port"])
-                + " -p "
-                + memservice_config_doc["provider"]
+                + "/src/memory_server -m "
+                + memory_server_id
                 + " &"
             )
         else:
             cmd = (
                 env_cmd
                 + args.buildpath
-                + "/src/memory_server -a "
-                + memory_server_addr
-                + " -r "
-                + str(memory_server_rpc_port)
-                + " -l "
-                + str(fabric_port)
-                + " -p  "
-                + memservice_config_doc["provider"]
-                + " -f"
-                + " /dev/shm/mem"
-                + str(i)
+                + "/src/memory_server -m "
+                + memory_server_id
                 + " &"
             )
-            fabric_port = fabric_port + 1
             i = i + 1
         os.system(cmd)
 # start all metadata services
@@ -575,7 +576,7 @@ def terminate_services():
         elif args.launcher == "slurm":
             cmd = "scancel --quiet -n memory_server > /dev/null 2>&1"
         else:
-            cmd = "pkill memory_server"
+            cmd = "pkill -9 memory_server"
         os.system(cmd)
     if (
         pe_config_doc["openfam_model"] == "memory_server"
@@ -593,7 +594,7 @@ def terminate_services():
         elif args.launcher == "slurm":
             cmd = "scancel --quiet -n metadata_server > /dev/null 2>&1"
         else:
-            cmd = "pkill metadata_server"
+            cmd = "pkill -9 metadata_server"
         os.system(cmd)
     if (
         pe_config_doc["openfam_model"] == "memory_server"
@@ -604,7 +605,7 @@ def terminate_services():
         elif args.launcher == "slurm":
             cmd = "scancel --quiet -n cis_server > /dev/null 2>&1"
         else:
-            cmd = "pkill cis_server"
+            cmd = "pkill -9 cis_server"
         os.system(cmd)
     time.sleep(sleepsecs)  # sufficient time to terminate the services
 

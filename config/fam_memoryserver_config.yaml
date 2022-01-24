@@ -1,28 +1,8 @@
 # MemoryServer Config file
-# Path where data is stored.
-# By default NVMM default location will be selected (which by default is /dev/shm/<username>).
-# fam_path: /dev/shm/username
 #
-# Rpc interface
-# Rpc address used by memory server to accept connections from Client Interface Service.
-#
-# The Client Interface Service connect to this address if the memsrv_interface_type
-# (defined in fam_client_interface_config.yaml) is rpc.
-#Format:
-#rpc_interface: <interface_address>:<portno>
-# where interface address is hostname (fqdn)/ip4 address where grpc port should be exposed.
-# portno is port to be used by OpenFAM for communication between Memory Server and
-# Client Interface Service.
-# This field is reserved for future use. Please use the command line options to pass the
-# RPC interface, while starting up the memory_server.
-#rpc_interface: 127.0.0.1:8789
-
 # Libfabric provider to be used by OpenFAM libfabric datapath operations; default is sockets.
 # Other options are psm2/verbs.
 provider: sockets
-
-# Libfabric port to be used for datapath operations.
-libfabric_port: 7500
 
 # Number of threads used for delayed free.
 delayed_free_threads: 0 
@@ -42,3 +22,24 @@ ATL_data_size: 1024
 # By default, the backup folder is created in a directory under directory mentioned 
 # as part of environment variable OPENFAM_ROOT.
 #fam_backup_path: /path-to-backup/
+
+#Memory Server Attributes
+#memory_type: memory type used in the memory server(persistent/volatile)
+#fam_path : Path where data is stored.
+#rpc_interface: Rpc address used by memory server to accept connections from Client Interface Service.
+#libfabric port to be used for datapath operations.
+#if_device: Interface used to connect to memory server(for eg: ib0,ib1).
+Memservers:
+ 0:
+   memory_type: volatile
+   fam_path: /dev/shm/vol/
+   rpc_interface: 127.0.0.1:8789
+   libfabric_port: 7500
+   if_device: eth0 
+
+ 1:
+   memory_type: persistent
+   fam_path: /dev/shm/per/
+   rpc_interface: 127.0.0.1:8788
+   libfabric_port: 7501
+   if_device: eth1 

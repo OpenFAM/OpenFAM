@@ -109,7 +109,7 @@ typedef enum { INTERLEAVE_DEFAULT = 0, ENABLE, DISABLE } Fam_Interleave_Enable;
 /**
  * Enumeration defining memory types supported in FAM.
  */
-typedef enum { MEMORY_TYPE_DEFAULT = 0, VOLATILE, PERSISTANT } Fam_Memory_Type;
+typedef enum { MEMORY_TYPE_DEFAULT = 0, VOLATILE, PERSISTENT } Fam_Memory_Type;
 
 /**
  * Enumeration defining redundancy options for FAM. This enum defines redundancy
@@ -277,6 +277,7 @@ typedef struct {
     /** CIS servers to be used by OpenFam PEs */
     char *cisServer;
     /** Port to be used by OpenFam for CIS server RPC connection */
+    char *fam_default_memory_type;
     char *grpcPort;
     /** Libfabric provider to be used by OpenFam libfabric datapath operations;
      * "sockets" by default */

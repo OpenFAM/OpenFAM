@@ -78,24 +78,16 @@ void memory_service_server_profile_dump() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(MEMORY_SERVICE_SERVER)
 }
 
-Fam_Memory_Service_Server::Fam_Memory_Service_Server(uint64_t rpcPort,
-                                                     char *name,
-                                                     char *libfabricPort,
-                                                     char *libfabricProvider,
-                                                     char *fam_path)
-    : serverAddress(name), port(rpcPort) {
+Fam_Memory_Service_Server::Fam_Memory_Service_Server(uint64_t memserver_id) {
     MEMSERVER_PROFILE_INIT(MEMORY_SERVICE_SERVER)
     MEMSERVER_PROFILE_START_TIME(MEMORY_SERVICE_SERVER)
-    memoryService = new Fam_Memory_Service_Direct(name, libfabricPort,
-                                                  libfabricProvider, fam_path);
+    memoryService = new Fam_Memory_Service_Direct(memserver_id);
 }
 
 void Fam_Memory_Service_Server::run() {
     //    memoryService->init_atomic_queue();
-    char address[ADDR_SIZE + sizeof(uint64_t)];
-    sprintf(address, "%s:%lu", serverAddress, port);
-    std::string serverAddress(address);
-
+    const char *serverAddress;
+    serverAddress = (memoryService->get_rpcaddr()).c_str();
     ::grpc::ServerBuilder builder;
     // Listen on the given address without any authentication mechanism.
     builder.AddListeningPort(serverAddress, grpc::InsecureServerCredentials());
@@ -138,6 +130,9 @@ Fam_Memory_Service_Server::~Fam_Memory_Service_Server() {
         memcpy(&lastBytes, ((uint32_t *)addr + count), lastBytesCount);
         response->add_addrname(lastBytes);
     }
+
+    Fam_Memory_Type memory_type = memoryService->get_memtype();
+    response->set_memorytype(memory_type);
 
     return ::grpc::Status::OK;
 }

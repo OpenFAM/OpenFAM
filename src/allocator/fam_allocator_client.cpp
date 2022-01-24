@@ -70,45 +70,9 @@ Fam_Allocator_Client::create_region(const char *name, uint64_t nbytes,
                                     mode_t permissions,
                                     Fam_Region_Attributes *regionAttributes) {
     Fam_Region_Item_Info info;
-    Fam_Region_Attributes *regionAttributesParam = NULL;
     Fam_Global_Descriptor globalDescriptor;
     Fam_Region_Descriptor *region;
 
-    if ((regionAttributes == NULL) ||
-        (regionAttributes->redundancyLevel == REDUNDANCY_LEVEL_DEFAULT ||
-         regionAttributes->memoryType == MEMORY_TYPE_DEFAULT ||
-         regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT)) {
-        regionAttributesParam =
-            (Fam_Region_Attributes *)malloc(sizeof(Fam_Region_Attributes));
-        memset(regionAttributesParam, 0, sizeof(Fam_Region_Attributes));
-        if (regionAttributes == NULL) {
-            regionAttributesParam->redundancyLevel = NONE;
-            regionAttributesParam->memoryType = VOLATILE;
-            regionAttributesParam->interleaveEnable = DISABLE;
-        } else {
-            regionAttributesParam->redundancyLevel =
-                regionAttributes->redundancyLevel;
-            regionAttributesParam->memoryType = regionAttributes->memoryType;
-            regionAttributesParam->interleaveEnable =
-                regionAttributes->interleaveEnable;
-            if (regionAttributes->redundancyLevel == REDUNDANCY_LEVEL_DEFAULT)
-                regionAttributesParam->redundancyLevel = NONE;
-            if (regionAttributes->memoryType == MEMORY_TYPE_DEFAULT)
-                regionAttributesParam->memoryType = VOLATILE;
-            if (regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT)
-                regionAttributesParam->interleaveEnable = DISABLE;
-        }
-        info = famCIS->create_region(name, nbytes, permissions,
-                                     regionAttributesParam, uid, gid);
-        globalDescriptor.regionId = info.regionId;
-        globalDescriptor.offset = info.offset;
-
-        region = new Fam_Region_Descriptor(globalDescriptor, nbytes);
-        region->set_redundancyLevel(regionAttributesParam->redundancyLevel);
-        region->set_memoryType(regionAttributesParam->memoryType);
-        region->set_interleaveEnable(regionAttributesParam->interleaveEnable);
-        free(regionAttributesParam);
-    } else {
         info = famCIS->create_region(name, nbytes, permissions,
                                      regionAttributes, uid, gid);
         globalDescriptor.regionId = info.regionId;
@@ -117,7 +81,6 @@ Fam_Allocator_Client::create_region(const char *name, uint64_t nbytes,
         region->set_redundancyLevel(regionAttributes->redundancyLevel);
         region->set_memoryType(regionAttributes->memoryType);
         region->set_interleaveEnable(regionAttributes->interleaveEnable);
-    }
 
     region->set_name((char *)name);
     region->set_perm(permissions);

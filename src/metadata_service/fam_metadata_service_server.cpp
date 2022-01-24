@@ -467,13 +467,19 @@ void Fam_Metadata_Service_Server::run() {
 ::grpc::Status Fam_Metadata_Service_Server::metadata_update_memoryserver(
     ::grpc::ServerContext *context, const ::Fam_Memservcnt_Request *request,
     ::Fam_Metadata_Gen_Response *response) {
-    std::vector<uint64_t> memsrv_id_list;
+    std::vector<uint64_t> memsrv_persistent_id_list;
+    std::vector<uint64_t> memsrv_volatile_id_list;
     METADATA_SERVER_PROFILE_START_OPS()
-    for (int ndx = 0; ndx < (int)request->nmemservers(); ndx++) {
-        memsrv_id_list.push_back(request->memsrv_list(ndx));
+    for (int ndx = 0; ndx < (int)request->nmemserverspersistent(); ndx++) {
+        memsrv_persistent_id_list.push_back(
+            request->memsrv_persistent_list(ndx));
     }
-    metadataService->metadata_update_memoryserver(request->nmemservers(),
-                                                  memsrv_id_list);
+    for (int ndx = 0; ndx < (int)request->nmemserversvolatile(); ndx++) {
+        memsrv_volatile_id_list.push_back(request->memsrv_volatile_list(ndx));
+    }
+    metadataService->metadata_update_memoryserver(
+        request->nmemserverspersistent(), memsrv_persistent_id_list,
+        request->nmemserversvolatile(), memsrv_volatile_id_list);
     METADATA_SERVER_PROFILE_END_OPS(server_metadata_update_memoryserver);
     return ::grpc::Status::OK;
 }

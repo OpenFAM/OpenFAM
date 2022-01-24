@@ -665,14 +665,19 @@ size_t Fam_Metadata_Service_Client::metadata_maxkeylen() {
 }
 
 void Fam_Metadata_Service_Client::metadata_update_memoryserver(
-    int nmemServers, std::vector<uint64_t> memsrv_id_list) {
+    int nmemServersPersistent, std::vector<uint64_t> memsrv_persistent_id_list,
+    int nmemServersVolatile, std::vector<uint64_t> memsrv_volatile_id_list) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Memservcnt_Request req;
     Fam_Metadata_Gen_Response res;
     ::grpc::ClientContext ctx;
-    req.set_nmemservers(nmemServers);
-    for (int i = 0; i < (int)nmemServers; i++) {
-        req.add_memsrv_list(memsrv_id_list[i]);
+    req.set_nmemserverspersistent(nmemServersPersistent);
+    for (int i = 0; i < (int)nmemServersPersistent; i++) {
+        req.add_memsrv_persistent_list(memsrv_persistent_id_list[i]);
+    }
+    req.set_nmemserversvolatile(nmemServersVolatile);
+    for (int i = 0; i < (int)nmemServersVolatile; i++) {
+        req.add_memsrv_volatile_list(memsrv_volatile_id_list[i]);
     }
 
     ::grpc::Status status = stub->metadata_update_memoryserver(&ctx, req, &res);

@@ -59,12 +59,11 @@ then
         echo "OpenFAM build with memoryserver version failed.. exit..."
         exit 1
 fi
-
 echo "==========================================================="
 echo "Test OpenFAM with cis-rpc-meta-direct-mem-rpc configuration"
 echo "==========================================================="
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-rpc
-python3 $SCRIPT_DIR/run_test.py --runtests $LAUNCHER -n 1 --cisinterface rpc --cisrpcaddr 127.0.0.1:8787 --memserverinterface rpc --metaserverinterface direct --memserverlist 0:127.0.0.1:8789 $CURRENTDIR $CONFIG_OUT_DIR $BUILD_DIR
+python3 $SCRIPT_DIR/run_test.py --runtests $LAUNCHER -n 1 --cisinterface rpc --cisrpcaddr 127.0.0.1:8787 --memserverinterface rpc --metaserverinterface direct --memservers '0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0}' $CURRENTDIR $CONFIG_OUT_DIR $BUILD_DIR
 
 if [[ $? > 0 ]]
 then
@@ -78,15 +77,14 @@ echo "========================================================"
 echo "Test OpenFAM with cis-rpc-meta-rpc-mem-rpc configuration"
 echo "========================================================"
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-rpc-meta-rpc-mem-rpc
-python3 $SCRIPT_DIR/run_test.py --runtests $LAUNCHER -n 1 --cisinterface rpc --cisrpcaddr 127.0.0.1:8787 --memserverinterface rpc --metaserverinterface rpc --memserverlist 0:127.0.0.1:8789 --metaserverlist 0:127.0.0.1:8788 $CURRENTDIR $CONFIG_OUT_DIR $BUILD_DIR
+python3 $SCRIPT_DIR/run_test.py --runtests $LAUNCHER -n 1 --cisinterface rpc --cisrpcaddr 127.0.0.1:8787 --memserverinterface rpc --metaserverinterface rpc --memservers '0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0}' --metaserverlist 0:127.0.0.1:8788 $CURRENTDIR $CONFIG_OUT_DIR $BUILD_DIR
 
 if [[ $? > 0 ]]
 then
         echo "OpenFAM test with cis-rpc-meta-rpc-mem-rpc configuration failed. exit..."
         exit 1
 fi
-
-sleep 5 
+sleep 5
 
 echo "=============================================================="
 echo "Test OpenFAM with cis-rpc-meta-direct-mem-direct configuration"
@@ -100,13 +98,12 @@ then
         exit 1
 fi
 
-sleep 5 
-
+sleep 5
 echo "==========================================================="
 echo "Test OpenFAM with cis-direct-meta-rpc-mem-rpc configuration"
 echo "==========================================================="
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-direct-meta-rpc-mem-rpc
-python3 $SCRIPT_DIR/run_test.py --runtests $LAUNCHER -n 1 --cisinterface direct --memserverinterface rpc --metaserverinterface rpc --memserverlist 0:127.0.0.1:8789 --metaserverlist 0:127.0.0.1:8788 $CURRENTDIR $CONFIG_OUT_DIR $BUILD_DIR
+python3 $SCRIPT_DIR/run_test.py --runtests $LAUNCHER -n 1 --cisinterface direct --memserverinterface rpc --metaserverinterface rpc --memservers '0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0}' --metaserverlist 0:127.0.0.1:8788 $CURRENTDIR $CONFIG_OUT_DIR $BUILD_DIR
 
 if [[ $? > 0 ]]
 then
@@ -115,7 +112,6 @@ then
 fi
 
 sleep 5 
-
 echo "==========================================================="
 echo "Test OpenFAM with shared memory configuration"
 echo "==========================================================="
@@ -127,7 +123,6 @@ then
         echo "OpenFAM test with shared memory configuration failed. exit..."
         exit 1
 fi
-
 if [ "$run_multi_mem_test" == "true" ]
 then
 sleep 5 

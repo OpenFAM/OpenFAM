@@ -106,6 +106,7 @@ Fam_Memory_Service_Client::Fam_Memory_Service_Client(const char *name,
                                        (status.error_message()).c_str());
     }
 
+    Fam_Memory_Type memory_type = (Fam_Memory_Type)res.memorytype();
     size_t FabricAddrSize = res.addrnamelen();
     char *fabricAddr = (char *)calloc(1, FabricAddrSize);
 
@@ -127,6 +128,7 @@ Fam_Memory_Service_Client::Fam_Memory_Service_Client(const char *name,
     }
     memServerFabricAddrSize = FabricAddrSize;
     memServerFabricAddr = fabricAddr;
+    memServermemType = memory_type;
 }
 
 Fam_Memory_Service_Client::~Fam_Memory_Service_Client() {
@@ -413,6 +415,10 @@ size_t Fam_Memory_Service_Client::get_addr_size() {
 }
 
 void *Fam_Memory_Service_Client::get_addr() { return memServerFabricAddr; }
+
+Fam_Memory_Type Fam_Memory_Service_Client::get_memtype() {
+    return memServermemType;
+}
 
 void *Fam_Memory_Service_Client::get_local_pointer(uint64_t regionId,
                                                    uint64_t offset) {

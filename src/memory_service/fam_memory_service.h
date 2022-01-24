@@ -89,6 +89,7 @@ class Fam_Memory_Service {
 
     virtual size_t get_addr_size() = 0;
     virtual void *get_addr() = 0;
+    virtual Fam_Memory_Type get_memtype() = 0;
 
     virtual void get_atomic(uint64_t regionId, uint64_t srcOffset,
                             uint64_t dstOffset, uint64_t nbytes, uint64_t key,
