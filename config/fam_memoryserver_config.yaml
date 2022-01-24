@@ -21,7 +21,7 @@ ATL_data_size: 1024
 # This path needs to be in a shared filesystem and accessible to  all memory servers.
 # By default, the backup folder is created in a directory under directory mentioned 
 # as part of environment variable OPENFAM_ROOT.
-fam_backup_path: /path-to-backup/
+#fam_backup_path: /path-to-backup/
 
 #Memory Server Attributes
 #memory_type: memory type used in the memory server(persistent/volatile)
