@@ -52,8 +52,6 @@
 #include "nvmm/memory_manager.h"
 #define MIN_HEAP_SIZE (64 * (1UL << 20))
 
-// Hint for maximum number of data items is set to 1 Million as part of fix for
-// Github issue number 165 https://github.com/OpenFAM/OpenFAM/issues/165
 #define MAX_DATAITEM_NUM_HINT 1000000
 
 using namespace radixtree;
