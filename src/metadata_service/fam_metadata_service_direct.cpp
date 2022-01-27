@@ -710,8 +710,20 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
 
     // Insert region name -> region id mapping in regionDataKVS
     ret = insert_in_regionname_kvs(regionName, regionKey);
-    size_t tmpSize = region->size / 4;
+
+/** The logic for setting initial size for metadata region: 
+ *  - The initial size for metadata region is set by multiplying the size of the
+ *    metadata for one data item by MAX_DATAITEM_NUM_HINT, which provides a hint
+ *    regarding the  maximum data items that may be created. 
+ *  - The initial size is then compared to 1/4th of the region size and the
+ *    minimum of the two is selected.  
+ *  - It is again compared to  MIN_HEAP_SIZE and the larger of the two is set
+ *    as the initial size for metadata region.
+ */
+    size_t tmpSize = MAX_DATAITEM_NUM_HINT * sizeof(Fam_DataItem_Metadata) ;
+    tmpSize =  (tmpSize < ((region->size)/4)) ? tmpSize : (region->size)/4;
     tmpSize = (tmpSize < MIN_HEAP_SIZE ? MIN_HEAP_SIZE : tmpSize);
+
     if (ret == META_NO_ERROR) {
         // Region key does not exist, create an entry
 
