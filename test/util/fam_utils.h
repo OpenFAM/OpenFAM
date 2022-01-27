@@ -37,10 +37,10 @@ using namespace std;
 using namespace chrono;
 
 #define create_region(pass, my_fam, region, name, size, permission,            \
-                      redundancy)                                              \
+                      attributes)                                              \
     try {                                                                      \
         region =                                                               \
-            my_fam->fam_create_region(name, size, permission, redundancy);     \
+            my_fam->fam_create_region(name, size, permission, NULL);     \
     } catch (Fam_Exception & e) {                                              \
         pass = false;                                                          \
         cout << "Exception caught" << endl;                                    \

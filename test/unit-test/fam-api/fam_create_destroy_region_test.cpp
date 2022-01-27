@@ -57,7 +57,7 @@ int main() {
     int i = 0;
 
     for (i = 0; i < 10; i++) {
-        desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
+        desc = my_fam->fam_create_region("test", 8192, 0777, NULL);
         if (desc == NULL) {
             cout << "fam create region failed" << endl;
             exit(1);
@@ -80,31 +80,31 @@ int main() {
 
     Fam_Region_Descriptor *desc1, *desc2, *desc3, *desc4, *desc5;
 
-    desc1 = my_fam->fam_create_region("test1", 8192, 0777, RAID1);
+    desc1 = my_fam->fam_create_region("test1", 8192, 0777, NULL);
     if (desc1 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
-    desc2 = my_fam->fam_create_region("test2", 8192, 0777, RAID1);
+    desc2 = my_fam->fam_create_region("test2", 8192, 0777, NULL);
     if (desc2 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
-    desc3 = my_fam->fam_create_region("test3", 8192, 0777, RAID1);
+    desc3 = my_fam->fam_create_region("test3", 8192, 0777, NULL);
     if (desc3 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
-    desc4 = my_fam->fam_create_region("test4", 8192, 0777, RAID1);
+    desc4 = my_fam->fam_create_region("test4", 8192, 0777, NULL);
     if (desc4 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
-    desc5 = my_fam->fam_create_region("test5", 8192, 0777, RAID1);
+    desc5 = my_fam->fam_create_region("test5", 8192, 0777, NULL);
     if (desc5 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -116,13 +116,13 @@ int main() {
     if (desc2 != NULL)
         my_fam->fam_destroy_region(desc2);
 
-    desc1 = my_fam->fam_create_region("test1", 8192, 0777, RAID1);
+    desc1 = my_fam->fam_create_region("test1", 8192, 0777, NULL);
     if (desc1 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
-    desc2 = my_fam->fam_create_region("test2", 8192, 0777, RAID1);
+    desc2 = my_fam->fam_create_region("test2", 8192, 0777, NULL);
     if (desc2 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -143,13 +143,13 @@ int main() {
     if (desc5 != NULL)
         my_fam->fam_destroy_region(desc5);
 
-    desc4 = my_fam->fam_create_region("test4", 8192, 0777, RAID1);
+    desc4 = my_fam->fam_create_region("test4", 8192, 0777, NULL);
     if (desc4 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
-    desc5 = my_fam->fam_create_region("test5", 8192, 0777, RAID1);
+    desc5 = my_fam->fam_create_region("test5", 8192, 0777, NULL);
     if (desc5 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);

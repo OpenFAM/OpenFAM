@@ -59,7 +59,7 @@ TEST(FamCopy, CopySuccess) {
     const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
 
     EXPECT_NO_THROW(
-        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, RAID1));
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region
@@ -68,7 +68,7 @@ TEST(FamCopy, CopySuccess) {
     EXPECT_NE((void *)NULL, srcItem);
 
     EXPECT_NO_THROW(destDesc = my_fam->fam_create_region(destRegionName, 8192,
-                                                         0777, RAID1));
+                                                         0777, NULL));
     EXPECT_NE((void *)NULL, destDesc);
 
     for (int i = 0; i < MESSAGE_SIZE; i++) {
@@ -140,7 +140,7 @@ TEST(FamCopy, CopyFailSrcOutOfRange) {
     const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
 
     EXPECT_NO_THROW(
-        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, RAID1));
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region
@@ -149,7 +149,7 @@ TEST(FamCopy, CopyFailSrcOutOfRange) {
     EXPECT_NE((void *)NULL, srcItem);
 
     EXPECT_NO_THROW(destDesc = my_fam->fam_create_region(destRegionName, 8192,
-                                                         0777, RAID1));
+                                                         0777, NULL));
     EXPECT_NE((void *)NULL, destDesc);
 
     // Allocating data items in the created region
@@ -192,7 +192,7 @@ TEST(FamCopy, CopyFailDstOutOfRange) {
     const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
 
     EXPECT_NO_THROW(
-        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, RAID1));
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region
@@ -201,7 +201,7 @@ TEST(FamCopy, CopyFailDstOutOfRange) {
     EXPECT_NE((void *)NULL, srcItem);
 
     EXPECT_NO_THROW(destDesc = my_fam->fam_create_region(destRegionName, 8192,
-                                                         0777, RAID1));
+                                                         0777, NULL));
     EXPECT_NE((void *)NULL, destDesc);
 
     // Allocating data items in the created region
@@ -244,7 +244,7 @@ TEST(FamCopy, CopyFailLenOutOfRange) {
     const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
 
     EXPECT_NO_THROW(
-        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, RAID1));
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region
@@ -253,7 +253,7 @@ TEST(FamCopy, CopyFailLenOutOfRange) {
     EXPECT_NE((void *)NULL, srcItem);
 
     EXPECT_NO_THROW(destDesc = my_fam->fam_create_region(destRegionName, 8192,
-                                                         0777, RAID1));
+                                                         0777, NULL));
     EXPECT_NE((void *)NULL, destDesc);
 
     // Allocating data items in the created region
@@ -297,7 +297,7 @@ TEST(FamCopy, CopyWithinSameRegionSuccess) {
     const char *destItemName = get_uniq_str("Dest_Item", my_fam);
 
     EXPECT_NO_THROW(srcDesc = my_fam->fam_create_region(srcRegionName, 819200,
-                                                        0777, RAID1));
+                                                        0777, NULL));
     EXPECT_NE((void *)NULL, srcDesc);
 
     // Allocating data items in the created region

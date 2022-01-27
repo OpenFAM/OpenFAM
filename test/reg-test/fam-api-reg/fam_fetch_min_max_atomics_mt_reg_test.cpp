@@ -100,7 +100,7 @@ TEST(FamMinMaxAtomicInt32, MinMaxAtomicInt32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, 0777, RAID1));
+                        testRegionStr, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -169,7 +169,7 @@ TEST(FamMinMaxAtomicInt64, MinMaxAtomicInt64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, 0777, RAID1));
+                        testRegionStr, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -238,7 +238,7 @@ TEST(FamMinMaxAtomicUint32, MinMaxAtomicUint32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, 0777, RAID1));
+                        testRegionStr, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -306,7 +306,7 @@ TEST(FamMinMaxAtomicUint64, MinMaxAtomicUint64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, 0777, RAID1));
+                        testRegionStr, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -374,7 +374,7 @@ TEST(FamMinMaxAtomicFloat, MinMaxAtomicFloatSuccess) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, 0777, RAID1));
+                        testRegionStr, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -442,7 +442,7 @@ TEST(FamMinMaxAtomicDouble, MinMaxAtomicDoubleSuccess) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, 0777, RAID1));
+                        testRegionStr, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region

@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
             const char *testRegion = getRegionName(i, numsrv);
 
             EXPECT_NO_THROW(testRegionDesc[i] = my_fam->fam_create_region(
-                                testRegion, REGION_SIZE, REGION_PERM, RAID1));
+                                testRegion, REGION_SIZE, REGION_PERM, NULL));
             EXPECT_NE((void *)NULL, testRegionDesc[i]);
             cout << "PE ID: " << *peId << "Region with name " << testRegion
                  << " created in memory node : "

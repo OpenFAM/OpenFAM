@@ -50,7 +50,7 @@ TEST(FamMMTest, FamCreateDestroySuccess) {
     const char *testRegion = get_uniq_str("mmtest", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 4096, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 4096, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
     delete desc;
@@ -64,7 +64,7 @@ TEST(FamMMTest, FamAllocateDeallocateSuccess) {
     const char *dataItem = get_uniq_str("mm_data", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 4096, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 4096, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem, 1024, 0444, desc));
     EXPECT_NE((void *)NULL, item);
@@ -85,7 +85,7 @@ TEST(FamMMTest, FamAllocateDeallocateBignameSuccess) {
         get_uniq_str("testdatatestdatatestdatatestdatate", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 4096, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 4096, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem, 1024, 0444, desc));
     EXPECT_NE((void *)NULL, item);
@@ -105,7 +105,7 @@ TEST(FamMMTest, FamAllocateSameSuccess) {
     const char *dataItem = get_uniq_str("mm_data", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 4096, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 4096, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem, 1024, 0777, desc));
     EXPECT_NE((void *)NULL, item);
@@ -132,7 +132,7 @@ TEST(FamMMTest, FamCheckPermissionSuccess) {
     const char *dataItem = get_uniq_str("mm_data", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 4096, 0444, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 4096, 0444, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(my_fam->fam_change_permissions(desc, 0777));
 
@@ -154,17 +154,17 @@ TEST(FamMMTest, FamCreateSameRegionDestroysSuccess) {
     const char *testRegion = get_uniq_str("mm_test", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 4096, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 4096, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     EXPECT_THROW(desc =
-                     my_fam->fam_create_region(testRegion, 4096, 0777, RAID1),
+                     my_fam->fam_create_region(testRegion, 4096, 0777, NULL),
                  Fam_Exception);
     EXPECT_THROW(desc =
-                     my_fam->fam_create_region(testRegion, 1024, 0777, RAID1),
+                     my_fam->fam_create_region(testRegion, 1024, 0777, NULL),
                  Fam_Exception);
     EXPECT_THROW(desc =
-                     my_fam->fam_create_region(testRegion, 4096, 0444, RAID1),
+                     my_fam->fam_create_region(testRegion, 4096, 0444, NULL),
                  Fam_Exception);
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
@@ -180,7 +180,7 @@ TEST(FamMMTest, FamAllocateMultipleItemsSameHeapSuccess) {
     const char *testRegion = get_uniq_str("mm_test", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 2147483648, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 2147483648, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     for (int i = 0; i < num_allocs; i++) {
         string name = "test" + to_string(rand());
@@ -202,7 +202,7 @@ TEST(FamMMTest, FamAllocateUnnamedItemSuccess) {
     const char *testRegion = get_uniq_str("mm_test", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 4096, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 4096, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(item = my_fam->fam_allocate(1024, 0444, desc));
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
@@ -216,7 +216,7 @@ TEST(FamMMNegativeTest, FamCreateGreaterBignameRegionFailure) {
     const char *testRegion =
         get_uniq_str("testtesttesttesttesttesttesttesttesttest", my_fam);
 
-    EXPECT_THROW(my_fam->fam_create_region(testRegion, 4096, 0777, RAID1),
+    EXPECT_THROW(my_fam->fam_create_region(testRegion, 4096, 0777, NULL),
                  Fam_Exception);
 }
 
@@ -225,7 +225,7 @@ TEST(FamMMTest, FamCreateBignameRegionDestroySuccess) {
     const char *testRegion = get_uniq_str("memory_manager_test_region", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 4096, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 4096, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
     delete desc;
@@ -239,7 +239,7 @@ TEST(FamMMTest, FamCreateDestroyMultipleSuccess) {
 
     lookup_region(pass, my_fam, desc, name.c_str());
     if (pass == false && desc == NULL)
-        create_region(pass, my_fam, desc, name.c_str(), 4096, 0777, RAID1);
+        create_region(pass, my_fam, desc, name.c_str(), 4096, 0777, NULL);
     sleep(2);
     if (desc == NULL) {
         lookup_region(pass, my_fam, desc, name.c_str());
@@ -259,7 +259,7 @@ TEST(FamMMTest, FamCreateSameRegionDestroySuccess) {
 
     lookup_region(pass, my_fam, desc, name.c_str());
     if (pass == false && desc == NULL) {
-        create_region(pass, my_fam, desc, name.c_str(), 4096, 0777, RAID1);
+        create_region(pass, my_fam, desc, name.c_str(), 4096, 0777, NULL);
     }
     sleep(2);
     if (desc == NULL) {

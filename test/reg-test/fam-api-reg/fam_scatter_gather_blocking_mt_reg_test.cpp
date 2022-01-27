@@ -149,7 +149,7 @@ TEST(FamScatterGatherIndexBlockMT, ScatterGatherIndexBlockSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+                        testRegion, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -189,7 +189,7 @@ TEST(FamScatterGatherStrideBlockMT, ScatterGatherStrideBlockSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+                        testRegion, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -229,7 +229,7 @@ TEST(FamScatterGatherIndexBlockMT, ScatterGatherIndexBlockFailure) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+                        testRegion, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -271,7 +271,7 @@ TEST(FamScatterGatherStrideBlockMT, ScatterGatherStrideBlockFailure) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+                        testRegion, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region

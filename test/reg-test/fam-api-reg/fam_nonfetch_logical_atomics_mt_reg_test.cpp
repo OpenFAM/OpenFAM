@@ -106,7 +106,7 @@ TEST(FamNonfetchLogicalAtomicUint32, NonfetchLogicalAtomicUint32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -182,7 +182,7 @@ TEST(FamNonfetchLogicalAtomicUint64, NonfetchLogicalAtomicUint64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region

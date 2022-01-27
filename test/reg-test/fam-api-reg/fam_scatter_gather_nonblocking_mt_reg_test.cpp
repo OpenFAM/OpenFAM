@@ -110,7 +110,7 @@ TEST(FamScatterGatherIndexNonblockMT, ScatterGatherIndexNonblockSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+                        testRegion, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
     // Allocating data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, (1024 * NUM_THREADS),
@@ -151,7 +151,7 @@ TEST(FamScatterGatherStrideNonblockMT, ScatterGatherStrideNonblockSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, (8192 * NUM_THREADS), 0777, RAID1));
+                        testRegion, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region

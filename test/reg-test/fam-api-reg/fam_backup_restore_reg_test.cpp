@@ -316,7 +316,7 @@ int main(int argc, char **argv) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region

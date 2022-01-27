@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
     const char *testRegion = get_uniq_str("testGlobal", my_fam);
 
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(
-                        testRegion, BIG_REGION_SIZE, 0777, RAID1));
+                        testRegion, BIG_REGION_SIZE, 0777, NULL));
     test_perm_mode = ALL_PERM;
     test_item_size = BLOCK_SIZE;
     // Allocating data items in the created region

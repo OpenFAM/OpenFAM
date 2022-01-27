@@ -103,7 +103,7 @@ TEST(FamArithAtomicInt32, ArithAtomicInt32Success) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -180,7 +180,7 @@ TEST(FamArithAtomicInt64, ArithAtomicInt64Success) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -263,7 +263,7 @@ TEST(FamArithAtomicUint32, ArithAtomicUint32Success) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -346,7 +346,7 @@ TEST(FamArithAtomicUint64, ArithAtomicUint64Success) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -423,7 +423,7 @@ TEST(FamArithAtomicFloat, ArithAtomiciFloatSuccess) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -500,7 +500,7 @@ TEST(FamArithAtomiciDouble, ArithAtomicDoubleSuccess) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region

@@ -51,7 +51,7 @@ TEST(FamResize, ResizeSuccess) {
     const char *testRegion = get_uniq_str("test1", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     uint64_t regionSize;
@@ -90,7 +90,7 @@ TEST(FamResize, MultiAllocationMultiResizeSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 1048576, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 1048576, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     uint64_t regionSize;
@@ -142,7 +142,7 @@ TEST(FamResize, MultiAllocationMultiResizeFail) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 1048576, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 1048576, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     uint64_t regionSize;
@@ -230,7 +230,7 @@ TEST(FamResize, MultiPeAllocationResizeSuccess) {
     if (((*myPE % 2) == 0) && !isLastOddPE) {
         sprintf(testRegion, "Test_%d", *myPE);
         EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 16777216,
-                                                         0777, RAID1));
+                                                         0777, NULL));
         EXPECT_NE((void *)NULL, desc);
         int i = 0;
         while (1) {
@@ -285,7 +285,7 @@ TEST(FamResize, ResizeNoPerm) {
     const char *testRegion = get_uniq_str("test1", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0444, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0444, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Resizing the region

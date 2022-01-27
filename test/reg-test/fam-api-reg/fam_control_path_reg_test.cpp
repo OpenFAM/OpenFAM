@@ -60,7 +60,7 @@ TEST(FamControlPath, CreateDestroyRegion) {
         char regionInfo[NAME_BUFF_SIZE];
         sprintf(regionInfo, "%s_%d", testRegionLocal, i);
         EXPECT_NO_THROW(descLocal[i] = my_fam->fam_create_region(
-                            regionInfo, BLOCK_SIZE, 0777, RAID1));
+                            regionInfo, BLOCK_SIZE, 0777, NULL));
         EXPECT_NE((void *)NULL, descLocal[i]);
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
@@ -78,7 +78,7 @@ TEST(FamControlPath, FamAllocateDellocateMultiple1) {
     const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
 
     EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+                        testRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, descLocal);
 
     for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
@@ -111,7 +111,7 @@ TEST(FamControlPath, RegionChangePermission) {
         char regionInfo[NAME_BUFF_SIZE];
         sprintf(regionInfo, "%s_%d", testRegionLocal, i);
         EXPECT_NO_THROW(descLocal[i] = my_fam->fam_create_region(
-                            regionInfo, BLOCK_SIZE, 0777, RAID1));
+                            regionInfo, BLOCK_SIZE, 0777, NULL));
         EXPECT_NE((void *)NULL, descLocal[i]);
         perm = (mode_t)i;
         my_fam->fam_change_permissions(descLocal[i], perm);
@@ -132,7 +132,7 @@ TEST(FamControlPath, DataItemChangePermission) {
     const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
 
     EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+                        testRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, descLocal);
 
     mode_t perm;
@@ -160,7 +160,7 @@ TEST(FamControlPath, FamResizeRegion) {
     Fam_Region_Descriptor *descLocal;
     const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
     EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, RESIZE_REGION_SIZE, 0777, RAID1));
+                        testRegionLocal, RESIZE_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, descLocal);
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());

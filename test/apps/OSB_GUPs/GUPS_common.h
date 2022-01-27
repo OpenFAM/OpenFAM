@@ -100,7 +100,7 @@ Fam_Region_Descriptor *GUPS_fam_initialize(size_t size) {
     }
 
     try {
-        region = my_fam->fam_create_region(REGION_NAME, size, 0777, NONE);
+        region = my_fam->fam_create_region(REGION_NAME, size, 0777, NULL);
     } catch (Fam_Exception &e) {
         cout << "fam create region failed 3:" << e.fam_error_msg() << endl;
         exit(1);

@@ -549,7 +549,7 @@ int main(int argc, char **argv) {
 	uint64_t regionSize = gDataSize * NUM_DATAITEMS * *numPEs;
 	regionSize = regionSize < BIG_REGION_SIZE ? BIG_REGION_SIZE : regionSize;
 	EXPECT_NO_THROW(descLocal = 
-		  my_fam->fam_create_region("test0", regionSize , 0777, RAID1));
+		  my_fam->fam_create_region("test0", regionSize , 0777, NULL));
         EXPECT_NE((void *)NULL, descLocal);
     }
    

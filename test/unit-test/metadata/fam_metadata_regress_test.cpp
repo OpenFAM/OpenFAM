@@ -70,7 +70,7 @@ TEST(FamMetadata, RegionSuccess) {
     memset(regnode, 0, sizeof(Fam_Region_Metadata));
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     EXPECT_EQ(true, manager->metadata_find_region(testRegion, node));
@@ -141,13 +141,13 @@ TEST(FamMetadata, RegionFail) {
     memset(regnode, 0, sizeof(Fam_Region_Metadata));
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     EXPECT_NO_THROW(manager->metadata_find_region(testRegion, node));
 
     EXPECT_THROW(
-        my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1),
+        my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL),
         Fam_Exception);
 
     regionId = node.regionId;
@@ -214,7 +214,7 @@ TEST(FamMetadata, DataitemSuccess) {
     memset(datanode, 0, sizeof(Fam_DataItem_Metadata));
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     EXPECT_EQ(true, manager->metadata_find_region(testRegion, node));
@@ -307,7 +307,7 @@ TEST(FamMetadata, DataitemFail) {
     memset(datanode, 0, sizeof(Fam_DataItem_Metadata));
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     EXPECT_EQ(true, manager->metadata_find_region(testRegion, node));
