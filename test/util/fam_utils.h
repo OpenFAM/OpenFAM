@@ -40,7 +40,7 @@ using namespace chrono;
                       attributes)                                              \
     try {                                                                      \
         region =                                                               \
-            my_fam->fam_create_region(name, size, permission, NULL);     \
+            my_fam->fam_create_region(name, size, permission, attributes);     \
     } catch (Fam_Exception & e) {                                              \
         pass = false;                                                          \
         cout << "Exception caught" << endl;                                    \
