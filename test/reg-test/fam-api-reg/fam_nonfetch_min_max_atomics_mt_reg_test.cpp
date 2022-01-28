@@ -96,7 +96,7 @@ TEST(FamNonfetchMinMaxAtomicInt32, NonfetchMinMaxAtomicInt32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -163,7 +163,7 @@ TEST(FamNonfetchMinMaxAtomicInt64, NonfetchMinMaxAtomicInt64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -231,7 +231,7 @@ TEST(FamNonfetchMinMaxAtomicUint32, NonfetchMinMaxAtomicUint32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
     // Allocating data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_allocate(
@@ -298,7 +298,7 @@ TEST(FamNonfetchMinMaxAtomicUint64, NonfetchMinMaxAtomicUint64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -366,7 +366,7 @@ TEST(FamNonfetchMinMaxAtomicFloat, NonfetchMinMaxAtomicFloatSuccess) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -434,7 +434,7 @@ TEST(FamNonfetchMinMaxAtomicDouble, NonfetchMinMaxAtomicDoubleSuccess) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region

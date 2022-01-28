@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
         uint64_t regionId;
 
         desc[i] = my_fam->fam_create_region(to_string(i).c_str(),
-                                            16 * 1024 * 1024, 0744, RAID1);
+                                            16 * 1024 * 1024, 0744, NULL);
         if (desc[i] == NULL) {
             cout << "fam create region failed" << endl;
             exit(1);

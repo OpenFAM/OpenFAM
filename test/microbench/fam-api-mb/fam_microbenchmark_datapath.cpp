@@ -333,7 +333,7 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(myPE = (int *)my_fam->fam_get_option(strdup("PE_ID")));
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(
-                        testRegion, BIG_REGION_SIZE, 0777, RAID1));
+                        testRegion, BIG_REGION_SIZE, 0777, NULL));
 
     test_perm_mode = ALL_PERM;
     test_item_size = gDataSize * 4;

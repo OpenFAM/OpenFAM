@@ -69,7 +69,7 @@ int main() {
     }
 
     try {
-        desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
+        desc = my_fam->fam_create_region("test", 8192, 0777, NULL);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;

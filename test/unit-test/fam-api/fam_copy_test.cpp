@@ -58,7 +58,7 @@ int main() {
         exit(1);
     }
 
-    srcDesc = my_fam->fam_create_region("srcRegion", 8192, 0777, RAID1);
+    srcDesc = my_fam->fam_create_region("srcRegion", 8192, 0777, NULL);
     if (srcDesc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -70,7 +70,7 @@ int main() {
         exit(1);
     }
 
-    destDesc = my_fam->fam_create_region("destRegion", 8192, 0777, RAID1);
+    destDesc = my_fam->fam_create_region("destRegion", 8192, 0777, NULL);
     if (destDesc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);

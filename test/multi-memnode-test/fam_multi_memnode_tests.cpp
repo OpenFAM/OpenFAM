@@ -60,35 +60,35 @@ TEST(FamMultiMemNode, RandomNames) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc[0] = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc[0] = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     cout << "Region with name " << testRegion
          << " created in memory node : " << desc[0]->get_memserver_id() << endl;
 
     EXPECT_NO_THROW(
-        desc[1] = my_fam->fam_create_region(testRegion2, 8192, 0777, RAID1));
+        desc[1] = my_fam->fam_create_region(testRegion2, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     cout << "Region with name " << testRegion2
          << " created in memory node : " << desc[1]->get_memserver_id() << endl;
 
     EXPECT_NO_THROW(
-        desc[2] = my_fam->fam_create_region(testRegion3, 8192, 0777, RAID1));
+        desc[2] = my_fam->fam_create_region(testRegion3, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     cout << "Region with name " << testRegion3
          << " created in memory node : " << desc[2]->get_memserver_id() << endl;
 
     EXPECT_NO_THROW(
-        desc[3] = my_fam->fam_create_region(testRegion4, 8192, 0777, RAID1));
+        desc[3] = my_fam->fam_create_region(testRegion4, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     cout << "Region with name " << testRegion4
          << " created in memory node : " << desc[3]->get_memserver_id() << endl;
 
     EXPECT_NO_THROW(
-        desc[4] = my_fam->fam_create_region(testRegion5, 8192, 0777, RAID1));
+        desc[4] = my_fam->fam_create_region(testRegion5, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     cout << "Region with name " << testRegion5
@@ -133,7 +133,7 @@ TEST(FamMultiMemNode, SequentialSuffixName) {
         char regionInfo[NAME_BUFF_SIZE];
         sprintf(regionInfo, "%s_%d", testRegion, i);
         EXPECT_NO_THROW(
-            desc[i] = my_fam->fam_create_region(regionInfo, 8192, 0777, RAID1));
+            desc[i] = my_fam->fam_create_region(regionInfo, 8192, 0777, NULL));
         EXPECT_NE((void *)NULL, desc);
         cout << "Region with name " << regionInfo
              << " created in memory node : " << desc[i]->get_memserver_id()
@@ -158,7 +158,7 @@ TEST(FamMultiMemNode, RandomSuffixName) {
         char regionInfo[NAME_BUFF_SIZE];
         sprintf(regionInfo, "%s_%ld", testRegion, random());
         EXPECT_NO_THROW(
-            desc[i] = my_fam->fam_create_region(regionInfo, 8192, 0777, RAID1));
+            desc[i] = my_fam->fam_create_region(regionInfo, 8192, 0777, NULL));
         EXPECT_NE((void *)NULL, desc);
         cout << "Region with name " << regionInfo
              << " created in memory node : " << desc[i]->get_memserver_id()

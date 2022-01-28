@@ -67,7 +67,7 @@ TEST(FamShmTests, PutGetSuccess) {
 
     if (*myPE == 0) {
         EXPECT_NO_THROW(
-            desc = my_fam->fam_create_region("test", 8192, 0777, RAID1));
+            desc = my_fam->fam_create_region("test", 8192, 0777, NULL));
         EXPECT_NE((void *)NULL, desc);
     }
 
@@ -130,7 +130,7 @@ TEST(FamShmTests, ChangePermSuccess) {
 
     if (*myPE == 0) {
         EXPECT_NO_THROW(
-            desc = my_fam->fam_create_region("test", 8192, 0777, RAID1));
+            desc = my_fam->fam_create_region("test", 8192, 0777, NULL));
         EXPECT_NE((void *)NULL, desc);
     }
 
@@ -189,7 +189,7 @@ TEST(FamShmTests, UserDescriptorSuccess) {
 
     if (*myPE == 0) {
         EXPECT_NO_THROW(
-            desc = my_fam->fam_create_region("test", 8192, 0777, RAID1));
+            desc = my_fam->fam_create_region("test", 8192, 0777, NULL));
         EXPECT_NE((void *)NULL, desc);
     }
 

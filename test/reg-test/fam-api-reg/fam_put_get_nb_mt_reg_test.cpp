@@ -183,13 +183,13 @@ TEST(FamPutGetMT, NonblockingPutGetMTMultipleRegionDataItem) {
     const char *region3 = get_uniq_str("test113", my_fam);
 
     EXPECT_NO_THROW(desc1 = my_fam->fam_create_region(
-                        region1, (8192 * NUM_THREADS), 0777, RAID1));
+                        region1, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, desc1);
     EXPECT_NO_THROW(desc2 = my_fam->fam_create_region(
-                        region2, (8192 * NUM_THREADS), 0777, RAID1));
+                        region2, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, desc2);
     EXPECT_NO_THROW(desc3 = my_fam->fam_create_region(
-                        region3, (8192 * NUM_THREADS), 0777, RAID1));
+                        region3, (8192 * NUM_THREADS), 0777, NULL));
     EXPECT_NE((void *)NULL, desc3);
 
     //    item = (Fam_Descriptor *)malloc(sizeof(Fam_Descriptor) * 3);
@@ -419,7 +419,7 @@ int main(int argc, char **argv) {
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
     testRegionStr = get_uniq_str("test", my_fam);
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, REGION_PERM, RAID1));
+                        testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     ret = RUN_ALL_TESTS();

@@ -144,7 +144,7 @@ int main(int argc, char **argv) {
         sprintf(itemStr, "%s_%d", firstItem, i);
         EXPECT_NO_THROW(
             testRegionDesc[i] = my_fam->fam_create_region(
-                regionStr, REGION_SIZE + 1048576, REGION_PERM, RAID1));
+                regionStr, REGION_SIZE + 1048576, REGION_PERM, NULL));
         EXPECT_NE((void *)NULL, testRegionDesc[i]);
         cout << "Region with name " << regionStr << " created in memory node : "
              << testRegionDesc[i]->get_memserver_id() <<  endl;

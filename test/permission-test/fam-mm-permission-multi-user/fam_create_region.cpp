@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
     }
 
     try {
-	my_fam->fam_create_region(argv[1], atoi(argv[2]), (mode_t)strtol(argv[3], NULL, 8), RAID1);
+	my_fam->fam_create_region(argv[1], atoi(argv[2]), (mode_t)strtol(argv[3], NULL, 8), NULL);
     }
     catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;

@@ -79,7 +79,7 @@ int main() {
         return TEST_SKIP_STATUS;
     }
 
-    desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
+    desc = my_fam->fam_create_region("test", 8192, 0777, NULL);
     if (desc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);

@@ -54,7 +54,7 @@ int main() {
         exit(1);
     }
 
-    desc = my_fam->fam_create_region("test1", 8192, 0777, RAID1);
+    desc = my_fam->fam_create_region("test1", 8192, 0777, NULL);
     if (desc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -92,7 +92,7 @@ int main() {
         my_fam->fam_destroy_region(desc);
 
     // Create region with read-only perm
-    desc = my_fam->fam_create_region("test1", 8192, 0444, RAID1);
+    desc = my_fam->fam_create_region("test1", 8192, 0444, NULL);
     if (desc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);

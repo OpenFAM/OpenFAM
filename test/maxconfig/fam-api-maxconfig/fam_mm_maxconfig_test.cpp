@@ -50,7 +50,7 @@ TEST(FamMMTest, FamCreateRegionMaxSizeSuccess) {
     const char *testRegion = get_uniq_str("mmtest", my_fam);
 
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, REG_MAX_SIZE,
-                                                     0777, RAID1));
+                                                     0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
     delete desc;
@@ -61,7 +61,7 @@ TEST(FamMMNegativeTest, FamCreateRegionGreaterMaxSizeFailure) {
     const char *testRegion = get_uniq_str("mm_negative_test", my_fam);
 
     EXPECT_THROW(
-        my_fam->fam_create_region(testRegion, 2199023255552, 0777, RAID1),
+        my_fam->fam_create_region(testRegion, 2199023255552, 0777, NULL),
         Fam_Exception);
     free((void *)testRegion);
 }
@@ -73,7 +73,7 @@ TEST(FamMMTest, FamAllocateMaxSizeSuccess) {
     const char *dataItem = get_uniq_str("mm_data", my_fam);
 
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, REG_MAX_SIZE,
-                                                     0777, RAID1));
+                                                     0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(
         item = my_fam->fam_allocate(dataItem, 549755813888, 0444, desc));
@@ -93,7 +93,7 @@ TEST(FamMMNegativeTest, FamAllocateGreaterMaxSizeFailure) {
     const char *dataItem = get_uniq_str("mm_data", my_fam);
 
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, REG_MAX_SIZE,
-                                                     0777, RAID1));
+                                                     0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_THROW(my_fam->fam_allocate(dataItem, 824633720832, 0444, desc),
                  Fam_Exception);
