@@ -1,6 +1,6 @@
 /*
  * api_fam_context_open.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2022 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -54,7 +54,7 @@ int main(void) {
         // so we must terminate with the same value
         return -1;
     }
-    fam_ctx *ctx = myFam->fam_context_open();
+    fam_context *ctx = myFam->fam_context_open();
     
     try {
         // create a 100 MB region with 0777 permissions 

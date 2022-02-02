@@ -94,7 +94,6 @@ namespace openfam {
  * Internal implementation of fam
  */
 class fam::Impl_ {
-//class fam::Impl_ : public std::enable_shared_from_this<Impl_> {
   public:
     Impl_() {
         uid = getuid();
@@ -136,22 +135,22 @@ class fam::Impl_ {
 
     ~Impl_() {
         if (ctxId == FAM_DEFAULT_CTX_ID) {
-        if (groupName)
-            free(groupName);
-        if (famOps)
-            delete (famOps);
-        if (famAllocator)
-            delete famAllocator;
-        if (famRuntime)
-            delete famRuntime;
+            if (groupName)
+                free(groupName);
+            if (famOps)
+                delete (famOps);
+            if (famAllocator)
+                delete famAllocator;
+            if (famRuntime)
+                delete famRuntime;
         }
     }
 
     void fam_initialize(const char *groupName, Fam_Options *options);
 
     void fam_finalize(const char *groupName);
-    fam_ctx *fam_context_open();
-    void fam_context_close(fam_ctx *ctx);
+    fam_context *fam_context_open();
+    void fam_context_close(fam_context *ctx);
 
     //void *fam_internal_ctx_open();
     //void fam_internal_ctx_close(void *internal_ctx);
@@ -433,7 +432,7 @@ class fam::Impl_ {
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Runtime *famRuntime;
-    std::list<fam_ctx*> *ctxList;
+    std::list<fam_context*> *ctxList;
     uint64_t ctxId;
 
 #ifdef FAM_PROFILE
@@ -672,8 +671,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     // Initialize Options
     //
     optValueMap = new std::map<std::string, const void *>();
-    ctxList = new std::list<fam_ctx*>();
- 
+    ctxList = new std::list<fam_context*>();
+
     optValueMap->insert({supportedOptionList[VERSION], strdup(OPENFAM_VERSION)});
 
     // Look for options information from config file.
@@ -911,9 +910,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
              config_file_fam_options.count("runtime") > 0)
         famOptions.runtime =
             strdup(config_file_fam_options["runtime"].c_str());
-    else 
+    else
         famOptions.runtime = strdup("PMIX");
-    
+
     if ((strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMI2_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMIX_STR) != 0)) {
@@ -933,23 +932,20 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     return ret;
 }
 
-fam_ctx* fam::Impl_::fam_context_open() {
-    fam_ctx *ctx = new fam_ctx((void *)this);
+fam_context* fam::Impl_::fam_context_open() {
+    fam_context *ctx = new fam_context((void *)this);
     ctxList->push_back(ctx);
     return ctx;
 }
 
-void fam::Impl_::fam_context_close(fam_ctx *ctx) {
+void fam::Impl_::fam_context_close(fam_context *ctx) {
     auto it = std::find(ctxList->begin(),ctxList->end(),ctx);
     if (it != ctxList->end()) {
         uint64_t contextId = ctx->pimpl_->ctxId;
         famOps->context_close(contextId);
-        ctxList->erase(it);
+        //Delete this list during fam_finalize
+        //ctxList->erase(it);
     }
-
-    std::cout<<"At Impl_::fam_context_close deleting ctx: "<<ctx<<" uid "<<uid<<" famAllocator "<<famAllocator<<std::endl;
-    delete ctx;
-    std::cout<<"At Impl_::fam_context_close"<<std::endl;
 }
 
 
@@ -4039,7 +4035,6 @@ uint64_t fam::Impl_::fam_progress() {
 void fam::fam_initialize(const char *groupName, Fam_Options *options) {
     TRY_CATCH_BEGIN
     pimpl_->fam_initialize(groupName, options);
-    //ctxId = 0;
     RETURN_WITH_FAM_EXCEPTION
 }
 
@@ -5531,7 +5526,7 @@ void fam::fam_reset_profile() {
 }
 #endif
 
-fam_ctx* fam::fam_context_open() {
+fam_context* fam::fam_context_open() {
     // Open context and return to user
     // Do we need id to track context ?
     // In case of fam_finalize we will have to close all fam contexts,
@@ -5539,11 +5534,11 @@ fam_ctx* fam::fam_context_open() {
     //
     // TODO: Take lock
 
-    fam_ctx *ctx = (fam_ctx*)pimpl_->fam_context_open();    
+    fam_context *ctx = (fam_context*)pimpl_->fam_context_open();
     return ctx;
 }
 
-void fam::fam_context_close(fam_ctx *ctx) {
+void fam::fam_context_close(fam_context *ctx) {
     pimpl_->fam_context_close(ctx);
     return;
 }
@@ -5561,12 +5556,12 @@ fam::~fam() {
         delete pimpl_;
 }
 
-fam_ctx::fam_ctx(void *inp_fam_impl) {
+fam_context::fam_context(void *inp_fam_impl) {
     pimpl_ = new Impl_((Impl_ *)inp_fam_impl);
     return;
 }
 
-fam_ctx::~fam_ctx() {
+fam_context::~fam_context() {
 }
 
 } // namespace openfam

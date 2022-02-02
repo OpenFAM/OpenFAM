@@ -299,7 +299,7 @@ typedef struct {
 
 
 //class fam;
-class fam_ctx;
+class fam_context;
 
 class fam {
   public:
@@ -1179,8 +1179,8 @@ class fam {
      * @return - none
      */
     void fam_quiet(void);
-    fam_ctx* fam_context_open();
-    void fam_context_close(fam_ctx*);
+    fam_context* fam_context_open();
+    void fam_context_close(fam_context*);
 
     /**
      * fam_progress - returns number of pending FAM
@@ -1204,10 +1204,10 @@ class fam {
     Impl_ *pimpl_;
 };
 
-class fam_ctx: public fam {
+class fam_context: public fam {
 public:
-    fam_ctx(void *inp_fam_impl);
-    ~fam_ctx();
+    fam_context(void *inp_fam_impl);
+    ~fam_context();
 };
 
 } // namespace openfam
