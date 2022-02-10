@@ -105,17 +105,11 @@ my_parser.add_argument(
 )
 
 my_parser.add_argument(
-    "--memserverlist",
-    action="store",
-    type=str,
-    help="Memory server address list(comma seperated) eg : 0:0.0.0.0:1234,1:1.1.1.1:5678",
-)
-
-my_parser.add_argument(
     "--memservers",
     action="append",
+    metavar=" id:{comma seperated attributes}",
     type=str,
-    help="Memory server attributes list(comma seperated) eg : 0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0};1:{memory_type:persistent,fam_path:/dev/shm/per/,rpc_interface:127.0.0.1,rpc_port:8796,libfabric_port:7501,if_device:eth1}",
+    help="Add a new memory server, eg : 0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0}"
 )
 
 my_parser.add_argument(
@@ -298,12 +292,11 @@ Memservers:
    libfabric_port: 7501
    if_device: eth1 
 
-The input to it is passed to this script as :
+The input to this script is passed as :
 
 --memservers=0:{memory_type:volatile,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0}
 --memservers=1:{memory_type:persistent,fam_path:/dev/shm/per/,rpc_interface:127.0.0.1,rpc_port:8796,if_device:eth1}
 
-Here rpc_interface and rpc_port are mandatory arguments - Rest can be omitted. 
 The below code converts this input to the format given in config file
 
 '''
