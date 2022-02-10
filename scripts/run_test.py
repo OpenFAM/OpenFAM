@@ -105,17 +105,11 @@ my_parser.add_argument(
 )
 
 my_parser.add_argument(
-    "--memserverlist",
-    action="store",
-    type=str,
-    help="Memory server address list(comma seperated) eg : 0:0.0.0.0:1234,1:1.1.1.1:5678",
-)
-
-my_parser.add_argument(
     "--memservers",
-    action="store",
+    action="append",
+    metavar=" id:{comma seperated attributes}",
     type=str,
-    help="Memory server attributes list(comma seperated) eg : 0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0};1:{memory_type:persistent,fam_path:/dev/shm/per/,rpc_interface:127.0.0.1,rpc_port:8796,libfabric_port:7501,if_device:eth1}",
+    help="Add a new memory server, eg : 0:{memory_type:volatile,fam_path:/dev/shm/vol/,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0}"
 )
 
 my_parser.add_argument(
@@ -280,25 +274,54 @@ if args.atlqsize is not None:
     memservice_config_doc["ATL_queue_size"] = args.atlqsize
 if args.atldatasize is not None:
     memservice_config_doc["ATL_data_size"] = args.atldatasize
+'''
+In config file the memory server details are stored as given below (as map of map): 
+
+Memservers:
+ 0:
+   memory_type: volatile
+   fam_path: /dev/shm/vol/
+   rpc_interface: 127.0.0.1:8789
+   libfabric_port: 7500
+   if_device: eth0 
+
+ 1:
+   memory_type: persistent
+   fam_path: /dev/shm/per/
+   rpc_interface: 127.0.0.1:8788
+   libfabric_port: 7501
+   if_device: eth1 
+
+The input to this script is passed as :
+
+--memservers=0:{memory_type:volatile,rpc_interface:127.0.0.1,rpc_port:8795,libfabric_port:7500,if_device:eth0}
+--memservers=1:{memory_type:persistent,fam_path:/dev/shm/per/,rpc_interface:127.0.0.1,rpc_port:8796,if_device:eth1}
+
+The below code converts this input to the format given in config file
+
+'''
 memserver_map = {}
 memserver_id_list = []
+default_memory_type='volatile'
 if args.memservers is not None:
-    memservers_list=args.memservers.split(";")
+    memservers_list=args.memservers
     for m in memservers_list:
-        m_id=int(m.split('{')[0].split(':')[0])
-        m_value=m.split('{')[1].split('}')[0]
-        value_list=m_value.split(',')
-        value_map={}
+        m_id = int(m.split('{')[0].split(':')[0])
+        m_value = m.split('{')[1].split('}')[0]
+        value_list = m_value.split(',')
+        value_map = {}
         for value in value_list:
             v=value.split(':')
             if v[1].isnumeric():
-               v[1]=int(v[1])
-            if v[0]=='rpc_port':
-               rpc_interface=value_map['rpc_interface']
-               value_map['rpc_interface']=rpc_interface+':'+str(v[1])
+               v[1] = int(v[1])
+            if v[0] == 'rpc_port':
+               rpc_interface = value_map['rpc_interface']
+               value_map['rpc_interface'] = rpc_interface+':'+str(v[1])
                memserver_id_list.append(str(m_id)+':'+rpc_interface+':'+str(v[1]))
             else:
-               value_map[v[0]]=v[1]
+               value_map[v[0]] = v[1]
+        if 'memory_type' not in value_map:
+            value_map['memory_type'] = default_memory_type
         memserver_map[m_id]=value_map
 
     memservice_config_doc["Memservers"]=memserver_map
