@@ -303,9 +303,6 @@ The below code converts this input to the format given in config file
 memserver_map = {}
 memserver_id_list = []
 default_memory_type='volatile'
-default_fam_path_volatile='/dev/shm/vol'
-default_fam_path_persist='/dev/shm/per'
-default_libfabric_port=7500
 if args.memservers is not None:
     memservers_list=args.memservers
     for m in memservers_list:
@@ -325,13 +322,6 @@ if args.memservers is not None:
                value_map[v[0]] = v[1]
         if 'memory_type' not in value_map:
             value_map['memory_type'] = default_memory_type
-        if 'fam_path' not in value_map:            
-            if value_map['memory_type'] == 'volatile':
-               value_map['fam_path'] = default_fam_path_volatile
-            if value_map['memory_type'] == 'persistent':
-               value_map['fam_path'] = default_fam_path_persist
-        if 'libfabric_port' not in value_map:
-            value_map['libfabric_port'] = default_libfabric_port
         memserver_map[m_id]=value_map
 
     memservice_config_doc["Memservers"]=memserver_map
