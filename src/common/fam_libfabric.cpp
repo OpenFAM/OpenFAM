@@ -340,7 +340,7 @@ int fabric_initialize(const char *name, const char *service, bool source,
     if (ret < 0) {
         // print_fierr("getinfo", ret);
         FI_CALL_NO_RETURN(fi_freeinfo, hints);
-        return -1;
+        return ret;
     }
 
     // Get the fabric_ initialized
@@ -350,7 +350,7 @@ int fabric_initialize(const char *name, const char *service, bool source,
         FI_CALL_NO_RETURN(fi_freeinfo, hints);
         FI_CALL_NO_RETURN(fi_freeinfo, *fi);
         *fi = NULL;
-        return -1;
+        return ret;
     }
 
     // Initialize  and open event queue
@@ -366,7 +366,7 @@ int fabric_initialize(const char *name, const char *service, bool source,
         *fi = NULL;
         FI_CALL_NO_RETURN(fi_close, &(*fabric)->fid);
         *fabric = NULL;
-        return -1;
+        return ret;
     }
 
     // Create a domain from fabric and fi
@@ -380,7 +380,7 @@ int fabric_initialize(const char *name, const char *service, bool source,
         *fabric = NULL;
         FI_CALL_NO_RETURN(fi_close, &(*eq)->fid);
         *eq = NULL;
-        return -1;
+        return ret;
     }
 
     FI_CALL_NO_RETURN(fi_freeinfo, hints);
