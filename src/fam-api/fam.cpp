@@ -149,11 +149,10 @@ class fam::Impl_ {
     void fam_initialize(const char *groupName, Fam_Options *options);
 
     void fam_finalize(const char *groupName);
-    fam_context *fam_context_open();
-    void fam_context_close(fam_context *ctx);
 
-    //void *fam_internal_ctx_open();
-    //void fam_internal_ctx_close(void *internal_ctx);
+    fam_context *fam_context_open();
+
+    void fam_context_close(fam_context *ctx);
 
     void fam_abort(int status);
 
@@ -416,7 +415,6 @@ class fam::Impl_ {
     void clean_fam_options();
     int validate_item(Fam_Descriptor *descriptor);
     configFileParams get_info_from_config_file(std::string filename);
-
 #ifdef FAM_PROFILE
     void fam_reset_profile();
 #endif
@@ -947,7 +945,6 @@ void fam::Impl_::fam_context_close(fam_context *ctx) {
         //ctxList->erase(it);
     }
 }
-
 
 /**
  * Clean Fam_Options
@@ -5556,12 +5553,112 @@ fam::~fam() {
         delete pimpl_;
 }
 
+/**
+ * fam_context() - constructor for fam_context class
+ */
 fam_context::fam_context(void *inp_fam_impl) {
     pimpl_ = new Impl_((Impl_ *)inp_fam_impl);
     return;
 }
 
+/**
+ * ~fam_context() - destructor for fam_context class
+ */
 fam_context::~fam_context() {
 }
+
+/**
+ * fam_initialize() - destructor for fam_context class
+ */
+void fam_context::fam_initialize(const char *groupName, Fam_Options *options) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_initialze cannot be invoked from fam_context object");
+}
+void fam_context::fam_finalize(const char *groupName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_finalize cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_abort(int status) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_abort cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_barrier_all() {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_barrier_all cannot be invoked from fam_context object");
+}
+
+const char **fam_context::fam_list_options(void) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_list_options cannot be invoked from fam_context object");
+}
+
+const void *fam_context::fam_get_option(char *optionName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_get_option cannot be invoked from fam_context object");
+}
+
+Fam_Region_Descriptor *fam_context::fam_lookup_region(const char *name) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_lookup_region cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_lookup(const char *itemName, const char *regionName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_lookup cannot be invoked from fam_context object");
+}
+
+Fam_Region_Descriptor *
+fam_context::fam_create_region(const char *name, uint64_t size, mode_t permissions,
+                  Fam_Region_Attributes *regionAttributes) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_create_region cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_destroy_region(Fam_Region_Descriptor *descriptor) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_destroy_region cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_resize_region cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_allocate(uint64_t nbytes, mode_t accessPermissions,
+                             Fam_Region_Descriptor *region) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_allocate cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_allocate(const char *name, uint64_t nbytes,
+                             mode_t accessPermissions,
+                             Fam_Region_Descriptor *region) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_allocate cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_deallocate(Fam_Descriptor *descriptor) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_deallocate cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_change_permissions(Fam_Descriptor *descriptor,
+                            mode_t accessPermissions) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_change_permission cannot be invoked from fam_context object");
+}
+
+fam_context* fam_context_open() {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_context_open cannot be invoked from fam_context object");
+}
+
+void fam_context_close(fam_context*) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_context_close cannot be invoked from fam_context object");
+}
+
 
 } // namespace openfam

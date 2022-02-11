@@ -1826,10 +1826,14 @@ int128_t Fam_Ops_Libfabric::atomic_fetch_int128(Fam_Descriptor *descriptor,
 
 void Fam_Ops_Libfabric::context_open(uint64_t contextId) {
     // Create a new fam_context
+    std::ostringstream message;
     Fam_Context *ctx = new Fam_Context(fi, domain, famThreadModel);
     int ret = fabric_enable_bind_ep(fi, av, eq, ctx->get_ep());
-    if (ret < 0)
-       return;
+    if (ret < 0) {
+        message << "Fam libfabric fabric_enable_bind_ep failed: "
+                << fabric_strerror(ret);
+        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+    }
 
     // ctx mutex lock
     (void)pthread_mutex_lock(&ctxLock);
