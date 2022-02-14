@@ -297,6 +297,8 @@ typedef struct {
     char *runtime;
 } Fam_Options;
 
+class fam_context;
+
 class fam {
   public:
     // INITIALIZE group
@@ -1175,6 +1177,8 @@ class fam {
      * @return - none
      */
     void fam_quiet(void);
+    fam_context *fam_context_open();
+    void fam_context_close(fam_context *);
 
     /**
      * fam_progress - returns number of pending FAM
@@ -1193,10 +1197,41 @@ class fam {
      */
     ~fam();
 
-  private:
+  protected:
     class Impl_;
     Impl_ *pimpl_;
 };
+
+class fam_context : public fam {
+  public:
+    fam_context(void *inp_fam_impl);
+    ~fam_context();
+    void fam_initialize(const char *groupName, Fam_Options *options);
+    void fam_finalize(const char *groupName);
+    void fam_abort(int status);
+    void fam_barrier_all();
+    const char **fam_list_options(void);
+    const void *fam_get_option(char *optionName);
+    Fam_Region_Descriptor *fam_lookup_region(const char *name);
+    Fam_Descriptor *fam_lookup(const char *itemName, const char *regionName);
+
+    Fam_Region_Descriptor *
+    fam_create_region(const char *name, uint64_t size, mode_t permissions,
+                      Fam_Region_Attributes *regionAttributes);
+    void fam_destroy_region(Fam_Region_Descriptor *descriptor);
+    void fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
+    Fam_Descriptor *fam_allocate(uint64_t nbytes, mode_t accessPermissions,
+                                 Fam_Region_Descriptor *region);
+    Fam_Descriptor *fam_allocate(const char *name, uint64_t nbytes,
+                                 mode_t accessPermissions,
+                                 Fam_Region_Descriptor *region);
+    void fam_deallocate(Fam_Descriptor *descriptor);
+    void fam_change_permissions(Fam_Descriptor *descriptor,
+                                mode_t accessPermissions);
+    fam_context *fam_context_open();
+    void fam_context_close(fam_context *);
+};
+
 } // namespace openfam
 
 #endif /* end of C/C11 Headers */

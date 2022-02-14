@@ -105,22 +105,56 @@ class fam::Impl_ {
         famAllocator = NULL;
         famRuntime = NULL;
         memset((void *)&famOptions, 0, sizeof(Fam_Options));
+        ctxId = FAM_DEFAULT_CTX_ID;
+        ctxList = NULL;
+    }
+
+    Impl_(Impl_ *pimpl) {
+        uid = pimpl->uid;
+        gid = pimpl->gid;
+
+        optValueMap = pimpl->optValueMap;
+        groupName = pimpl->groupName;
+
+        if (strcmp((pimpl->famOptions).openFamModel, FAM_OPTIONS_SHM_STR) ==
+            0) {
+            famOps = pimpl->famOps;
+            ctxId = FAM_DEFAULT_CTX_ID;
+        } else {
+            famOps = new Fam_Ops_Libfabric((Fam_Ops_Libfabric *)pimpl->famOps);
+            ctxId = famOps->get_context_id();
+            famOps->context_open(ctxId);
+        }
+        famAllocator = pimpl->famAllocator;
+        famRuntime = pimpl->famRuntime;
+        memset((void *)&famOptions, 0, sizeof(Fam_Options));
+        memcpy((void *)&famOptions, (void *)&pimpl->famOptions,
+               sizeof(Fam_Options));
+        ctxList = pimpl->ctxList;
+        famThreadModel = pimpl->famThreadModel;
+        famContextModel = pimpl->famContextModel;
     }
 
     ~Impl_() {
-        if (groupName)
-            free(groupName);
-        if (famOps)
-            delete (famOps);
-        if (famAllocator)
-            delete famAllocator;
-        if (famRuntime)
-            delete famRuntime;
+        if (ctxId == FAM_DEFAULT_CTX_ID) {
+            if (groupName)
+                free(groupName);
+            if (famOps)
+                delete (famOps);
+            if (famAllocator)
+                delete famAllocator;
+            if (famRuntime)
+                delete famRuntime;
+        }
     }
 
     void fam_initialize(const char *groupName, Fam_Options *options);
 
     void fam_finalize(const char *groupName);
+
+    fam_context *fam_context_open();
+
+    void fam_context_close(fam_context *ctx);
 
     void fam_abort(int status);
 
@@ -398,6 +432,8 @@ class fam::Impl_ {
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Runtime *famRuntime;
+    std::list<fam_context *> *ctxList;
+    uint64_t ctxId;
 
 #ifdef FAM_PROFILE
     Fam_Counter_St profileData[fam_counter_max][FAM_CNTR_TYPE_MAX];
@@ -635,6 +671,7 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     // Initialize Options
     //
     optValueMap = new std::map<std::string, const void *>();
+    ctxList = new std::list<fam_context *>();
 
     optValueMap->insert({supportedOptionList[VERSION], strdup(OPENFAM_VERSION)});
 
@@ -873,9 +910,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
              config_file_fam_options.count("runtime") > 0)
         famOptions.runtime =
             strdup(config_file_fam_options["runtime"].c_str());
-    else 
+    else
         famOptions.runtime = strdup("PMIX");
-    
+
     if ((strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMI2_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMIX_STR) != 0)) {
@@ -893,6 +930,22 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
         {supportedOptionList[NUM_CONSUMER], famOptions.numConsumer});
 
     return ret;
+}
+
+fam_context *fam::Impl_::fam_context_open() {
+    fam_context *ctx = new fam_context((void *)this);
+    ctxList->push_back(ctx);
+    return ctx;
+}
+
+void fam::Impl_::fam_context_close(fam_context *ctx) {
+    auto it = std::find(ctxList->begin(), ctxList->end(), ctx);
+    if (it != ctxList->end()) {
+        uint64_t contextId = ctx->pimpl_->ctxId;
+        famOps->context_close(contextId);
+        // Delete this list during fam_finalize
+        // ctxList->erase(it);
+    }
 }
 
 /**
@@ -5472,6 +5525,23 @@ void fam::fam_reset_profile() {
 }
 #endif
 
+fam_context *fam::fam_context_open() {
+    // Open context and return to user
+    // Do we need id to track context ?
+    // In case of fam_finalize we will have to close all fam contexts,
+    // So, fam_context needs to be stored somwhere.
+    //
+    // TODO: Take lock
+
+    fam_context *ctx = (fam_context *)pimpl_->fam_context_open();
+    return ctx;
+}
+
+void fam::fam_context_close(fam_context *ctx) {
+    pimpl_->fam_context_close(ctx);
+    return;
+}
+
 /**
  * fam() - constructor for fam class
  */
@@ -5483,6 +5553,125 @@ fam::fam() { pimpl_ = new Impl_; }
 fam::~fam() {
     if (pimpl_)
         delete pimpl_;
+}
+
+/**
+ * fam_context() - constructor for fam_context class
+ */
+fam_context::fam_context(void *inp_fam_impl) {
+    pimpl_ = new Impl_((Impl_ *)inp_fam_impl);
+    return;
+}
+
+/**
+ * ~fam_context() - destructor for fam_context class
+ */
+fam_context::~fam_context() {}
+
+/**
+ * fam_initialize() - destructor for fam_context class
+ */
+void fam_context::fam_initialize(const char *groupName, Fam_Options *options) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_initialze cannot be invoked from fam_context object");
+}
+void fam_context::fam_finalize(const char *groupName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_finalize cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_abort(int status) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_abort cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_barrier_all() {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_barrier_all cannot be invoked from fam_context object");
+}
+
+const char **fam_context::fam_list_options(void) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_list_options cannot be invoked from fam_context object");
+}
+
+const void *fam_context::fam_get_option(char *optionName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_get_option cannot be invoked from fam_context object");
+}
+
+Fam_Region_Descriptor *fam_context::fam_lookup_region(const char *name) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_lookup_region cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_lookup(const char *itemName,
+                                        const char *regionName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_lookup cannot be invoked from fam_context object");
+}
+
+Fam_Region_Descriptor *
+fam_context::fam_create_region(const char *name, uint64_t size,
+                               mode_t permissions,
+                               Fam_Region_Attributes *regionAttributes) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_create_region cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_destroy_region(Fam_Region_Descriptor *descriptor) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_destroy_region cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_resize_region(Fam_Region_Descriptor *descriptor,
+                                    uint64_t nbytes) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_resize_region cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_allocate(uint64_t nbytes,
+                                          mode_t accessPermissions,
+                                          Fam_Region_Descriptor *region) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_allocate cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_allocate(const char *name, uint64_t nbytes,
+                                          mode_t accessPermissions,
+                                          Fam_Region_Descriptor *region) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_allocate cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_deallocate(Fam_Descriptor *descriptor) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_deallocate cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_change_permissions(Fam_Descriptor *descriptor,
+                                         mode_t accessPermissions) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_change_permission cannot be invoked from fam_context object");
+}
+
+fam_context *fam_context_open() {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_context_open cannot be invoked from fam_context object");
+}
+
+void fam_context_close(fam_context *) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_context_close cannot be invoked from fam_context object");
 }
 
 } // namespace openfam

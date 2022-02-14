@@ -89,6 +89,8 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     av = NULL;
     serverAddrNameLen = 0;
     serverAddrName = NULL;
+    ctxId = FAM_DEFAULT_CTX_ID;
+    nextCtxId = ctxId + 1;
 
     numMemoryNodes = 0;
     if (!isSource && famAllocator == NULL) {
@@ -127,6 +129,8 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     av = NULL;
     serverAddrNameLen = 0;
     serverAddrName = NULL;
+    ctxId = FAM_DEFAULT_CTX_ID;
+    nextCtxId = ctxId + 1;
 
     numMemoryNodes = 0;
     if (!isSource && famAllocator == NULL) {
@@ -134,6 +138,36 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
                 << famContextModel;
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
+}
+
+Fam_Ops_Libfabric::Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps) {
+
+    memoryServerName = famOps->memoryServerName;
+    service = famOps->service;
+    provider = famOps->provider;
+    isSource = famOps->isSource;
+    famThreadModel = famOps->famThreadModel;
+    famContextModel = famOps->famContextModel;
+    famAllocator = famOps->famAllocator;
+
+    fiAddrs = famOps->fiAddrs;
+    memServerAddrs = famOps->memServerAddrs;
+    fiMemsrvMap = famOps->fiMemsrvMap;
+    fiMrs = famOps->fiMrs;
+    contexts = famOps->contexts;
+    defContexts = famOps->defContexts;
+
+    fi = famOps->fi;
+    fabric = famOps->fabric;
+    eq = famOps->eq;
+    domain = famOps->domain;
+    av = famOps->av;
+    serverAddrNameLen = famOps->serverAddrNameLen;
+    serverAddrName = famOps->serverAddrName;
+    ctxId = famOps->get_next_ctxId(1);
+    nextCtxId = ctxId + 1;
+
+    numMemoryNodes = famOps->numMemoryNodes;
 }
 
 int Fam_Ops_Libfabric::initialize() {
@@ -147,8 +181,7 @@ int Fam_Ops_Libfabric::initialize() {
     (void)pthread_rwlock_init(&fiMemsrvAddrLock, NULL);
 
     // Initialize the mutex lock
-    if (famContextModel == FAM_CONTEXT_REGION)
-        (void)pthread_mutex_init(&ctxLock, NULL);
+    (void)pthread_mutex_init(&ctxLock, NULL);
 
     if ((ret = fabric_initialize(memoryServerName, service, isSource, provider,
                                  &fi, &fabric, &eq, &domain, famThreadModel)) <
@@ -209,18 +242,6 @@ int Fam_Ops_Libfabric::initialize() {
                 memServerAddrs->insert(
                     {nodeId, std::make_pair(nodeAddr, addrSize)});
 
-                // Initialize defaultCtx
-                if (famContextModel == FAM_CONTEXT_DEFAULT) {
-                    Fam_Context *defaultCtx =
-                        new Fam_Context(fi, domain, famThreadModel);
-                    defContexts->insert({nodeId, defaultCtx});
-                    ret =
-                        fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
-                    if (ret < 0) {
-                        // TODO: Log error
-                        return ret;
-                    }
-                }
                 std::vector<fi_addr_t> tmpAddrV;
                 ret = fabric_insert_av((char *)nodeAddr, av, &tmpAddrV);
 
@@ -237,6 +258,18 @@ int Fam_Ops_Libfabric::initialize() {
                     fiAddrsSize = fiAddrs->size();
                 }
                 fiAddrs->at(nodeId) = tmpAddrV[0];
+            }
+
+            // Initialize defaultCtx
+            if (famContextModel == FAM_CONTEXT_DEFAULT) {
+                Fam_Context *defaultCtx =
+                    new Fam_Context(fi, domain, famThreadModel);
+                defContexts->insert({FAM_DEFAULT_CTX_ID, defaultCtx});
+                ret = fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
+                if (ret < 0) {
+                    // TODO: Log error
+                    return ret;
+                }
             }
         }
     } else {
@@ -267,7 +300,7 @@ int Fam_Ops_Libfabric::initialize() {
         }
 
         // Save this context to defContexts on memoryserver
-        defContexts->insert({0, tmpCtx});
+        defContexts->insert({FAM_DEFAULT_CTX_ID, tmpCtx});
     }
     fabric_iov_limit = fi->tx_attr->rma_iov_limit;
 
@@ -278,41 +311,7 @@ Fam_Context *Fam_Ops_Libfabric::get_context(Fam_Descriptor *descriptor) {
     std::ostringstream message;
     // Case - FAM_CONTEXT_DEFAULT
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-        uint64_t nodeId = descriptor->get_memserver_id();
-        return get_defaultCtx(nodeId);
-    } else if (famContextModel == FAM_CONTEXT_REGION) {
-        // Case - FAM_CONTEXT_REGION
-        Fam_Context *ctx = (Fam_Context *)descriptor->get_context();
-        if (ctx)
-            return ctx;
-
-        Fam_Global_Descriptor global = descriptor->get_global_descriptor();
-        uint64_t regionId = global.regionId;
-        int ret = 0;
-
-        // ctx mutex lock
-        (void)pthread_mutex_lock(&ctxLock);
-
-        auto ctxObj = contexts->find(regionId);
-        if (ctxObj == contexts->end()) {
-            ctx = new Fam_Context(fi, domain, famThreadModel);
-            contexts->insert({regionId, ctx});
-            ret = fabric_enable_bind_ep(fi, av, eq, ctx->get_ep());
-            if (ret < 0) {
-                // ctx mutex unlock
-                (void)pthread_mutex_unlock(&ctxLock);
-                message << "Fam libfabric fabric_enable_bind_ep failed: "
-                        << fabric_strerror(ret);
-                THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
-            }
-        } else {
-            ctx = ctxObj->second;
-        }
-        descriptor->set_context(ctx);
-
-        // ctx mutex unlock
-        (void)pthread_mutex_unlock(&ctxLock);
-        return ctx;
+        return get_defaultCtx(get_context_id());
     } else {
         message << "Fam Invalid Option FAM_CONTEXT_MODEL: " << famContextModel;
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
@@ -609,44 +608,10 @@ void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {
 
     uint64_t nodeId = 0;
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-        for (auto fam_ctx : *defContexts) {
-            nodeId = fam_ctx.first;
-            fabric_fence((*fiAddr)[nodeId], fam_ctx.second);
+        for (auto memServers : *memServerAddrs) {
+            nodeId = memServers.first;
+            fabric_fence((*fiAddr)[nodeId], get_context(NULL));
         }
-    } else if (famContextModel == FAM_CONTEXT_REGION) {
-        // ctx mutex lock
-        (void)pthread_mutex_lock(&ctxLock);
-
-        try {
-            if (descriptor) {
-                nodeId = descriptor->get_memserver_id();
-                Fam_Context *ctx = (Fam_Context *)descriptor->get_context();
-                if (ctx) {
-                    fabric_fence((*fiAddr)[nodeId], ctx);
-                } else {
-                    Fam_Global_Descriptor global =
-                        descriptor->get_global_descriptor();
-                    uint64_t regionId = global.regionId;
-                    auto ctxObj = contexts->find(regionId);
-                    if (ctxObj != contexts->end()) {
-                        descriptor->set_context(ctxObj->second);
-                        fabric_fence((*fiAddr)[nodeId], ctxObj->second);
-                    }
-                }
-            } else {
-                for (auto fam_ctx : *contexts) {
-                    fabric_fence(
-                        (*fiAddr)[(fam_ctx.first) >> MEMSERVERID_SHIFT],
-                        fam_ctx.second);
-                }
-            }
-        } catch (...) {
-            // ctx mutex unlock
-            (void)pthread_mutex_unlock(&ctxLock);
-            throw;
-        }
-        // ctx mutex unlock
-        (void)pthread_mutex_unlock(&ctxLock);
     }
 }
 
@@ -663,7 +628,7 @@ void Fam_Ops_Libfabric::check_progress(Fam_Region_Descriptor *descriptor) {
 }
 
 void Fam_Ops_Libfabric::quiet_context(Fam_Context *context = NULL) {
-    if (famContextModel == FAM_CONTEXT_DEFAULT) {
+    if (famContextModel == FAM_CONTEXT_DEFAULT && context == NULL) {
         std::list<std::shared_future<void>> resultList;
         int err = 0;
         std::string errmsg;
@@ -689,7 +654,7 @@ void Fam_Ops_Libfabric::quiet_context(Fam_Context *context = NULL) {
             THROW_ERRNO_MSG(Fam_Datapath_Exception, get_fam_error(err), errmsg);
         }
 
-    } else if (famContextModel == FAM_CONTEXT_REGION) {
+    } else if (famContextModel == FAM_CONTEXT_DEFAULT && context != NULL) {
         fabric_quiet(context);
     }
     return;
@@ -697,37 +662,8 @@ void Fam_Ops_Libfabric::quiet_context(Fam_Context *context = NULL) {
 
 void Fam_Ops_Libfabric::quiet(Fam_Region_Descriptor *descriptor) {
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-        quiet_context();
+        quiet_context(get_defaultCtx(get_context_id()));
         return;
-    } else if (famContextModel == FAM_CONTEXT_REGION) {
-        // ctx mutex lock
-        (void)pthread_mutex_lock(&ctxLock);
-        try {
-            if (descriptor) {
-                Fam_Context *ctx = (Fam_Context *)descriptor->get_context();
-                if (ctx) {
-                    quiet_context(ctx);
-                } else {
-                    Fam_Global_Descriptor global =
-                        descriptor->get_global_descriptor();
-                    uint64_t regionId = global.regionId;
-                    auto ctxObj = contexts->find(regionId);
-                    if (ctxObj != contexts->end()) {
-                        descriptor->set_context(ctxObj->second);
-                        quiet_context(ctxObj->second);
-                    }
-                }
-            } else {
-                for (auto fam_ctx : *contexts)
-                    quiet_context(fam_ctx.second);
-            }
-        } catch (...) {
-            // ctx mutex unlock
-            (void)pthread_mutex_unlock(&ctxLock);
-            throw;
-        }
-        // ctx mutex unlock
-        (void)pthread_mutex_unlock(&ctxLock);
     }
 }
 
@@ -1851,6 +1787,46 @@ int128_t Fam_Ops_Libfabric::atomic_fetch_int128(Fam_Descriptor *descriptor,
     }
     famAllocator->release_CAS_lock(descriptor);
     return local;
+}
+
+void Fam_Ops_Libfabric::context_open(uint64_t contextId) {
+    // Create a new fam_context
+    std::ostringstream message;
+    Fam_Context *ctx = new Fam_Context(fi, domain, famThreadModel);
+    int ret = fabric_enable_bind_ep(fi, av, eq, ctx->get_ep());
+    if (ret < 0) {
+        message << "Fam libfabric fabric_enable_bind_ep failed: "
+                << fabric_strerror(ret);
+        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+    }
+
+    // ctx mutex lock
+    (void)pthread_mutex_lock(&ctxLock);
+    // Add it in the context map with unique contextId
+    defContexts->insert({contextId, ctx});
+    // ctx mutex unlock
+    (void)pthread_mutex_unlock(&ctxLock);
+    return;
+}
+
+void Fam_Ops_Libfabric::context_close(uint64_t contextId) {
+    // ctx mutex lock
+    (void)pthread_mutex_lock(&ctxLock);
+    // Remove context from defContexts map
+    auto obj = defContexts->find(get_context_id());
+    if (obj == defContexts->end()) {
+        // ctx mutex unlock
+        (void)pthread_mutex_unlock(&ctxLock);
+        THROW_ERR_MSG(Fam_Datapath_Exception, "Context not found");
+    } else {
+        // Delete context : Need to validate this task.
+        delete obj->second;
+        // Remove item from map
+        defContexts->erase(obj);
+        // ctx mutex unlock
+        (void)pthread_mutex_unlock(&ctxLock);
+    }
+    return;
 }
 
 } // namespace openfam

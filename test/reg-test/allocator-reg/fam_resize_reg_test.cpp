@@ -84,8 +84,8 @@ TEST(FamResize, ResizeSuccess) {
 // Test case 2 - Let allocation exaust memory in the region, then resize the
 // region and check allocation succeeds
 TEST(FamResize, MultiAllocationMultiResizeSuccess) {
-    Fam_Region_Descriptor *desc;
-    Fam_Descriptor *item[128];
+    Fam_Region_Descriptor *desc = NULL;
+    Fam_Descriptor *item[128] = {NULL};
     const char *testRegion = get_uniq_str("test2", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
@@ -101,7 +101,7 @@ TEST(FamResize, MultiAllocationMultiResizeSuccess) {
 
     uint32_t iCount = 0;
     uint32_t resizeCount = 2;
-    while (resizeCount < 127) {
+    while (iCount < 127) {
         char itemInfo[NAME_BUFF_SIZE];
         sprintf(itemInfo, "%s_%d", firstItem, iCount);
         try {
@@ -121,7 +121,7 @@ TEST(FamResize, MultiAllocationMultiResizeSuccess) {
     }
 
     for (uint32_t i = 0; i < iCount; i++) {
-        if (!item[i]) {
+        if (item[i]) {
             EXPECT_NO_THROW(my_fam->fam_deallocate(item[i]));
         }
     }
@@ -136,8 +136,8 @@ TEST(FamResize, MultiAllocationMultiResizeSuccess) {
 #if 0
 // Test case 3 - The max. no. of resize is 127, it fails beyond that
 TEST(FamResize, MultiAllocationMultiResizeFail) {
-    Fam_Region_Descriptor *desc;
-    Fam_Descriptor *item[128];
+    Fam_Region_Descriptor *desc = NULL;
+    Fam_Descriptor *item[128] = {NULL};
     const char *testRegion = get_uniq_str("test2", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
@@ -153,7 +153,7 @@ TEST(FamResize, MultiAllocationMultiResizeFail) {
 
     uint32_t iCount = 0;
     uint32_t resizeCount = 2;
-    while (resizeCount <= 128) {
+    while (iCount < 128) {
         char itemInfo[NAME_BUFF_SIZE];
         sprintf(itemInfo, "%s_%d", firstItem, iCount);
         try {
@@ -177,7 +177,7 @@ TEST(FamResize, MultiAllocationMultiResizeFail) {
     }
 
     for (uint32_t i = 0; i < iCount; i++) {
-        if (!item[i]) {
+        if (item[i]) {
             EXPECT_NO_THROW(my_fam->fam_deallocate(item[i]));
         }
     }

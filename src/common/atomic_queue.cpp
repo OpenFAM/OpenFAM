@@ -548,7 +548,7 @@ void *process_queue(void *arg) {
                     ret = fabric_write(
                         msgPointer->key, localPointerD, msgPointer->size,
                         msgPointer->srcBaseAddr, fiAddr,
-                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                        famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID));
                 } catch (...) {
                     retStatus = FABRICWRITEERROR;
                 }
@@ -559,7 +559,7 @@ void *process_queue(void *arg) {
             try {
                 fabric_send_response(
                     &retStatus, fiAddr,
-                    famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                    famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID),
                     sizeof(retStatus));
             } catch (...) {
                 ret = SENDTOCLIENTERROR;
@@ -647,11 +647,12 @@ void *process_queue(void *arg) {
                             ATOMIC_REGION_ID, offsetB);
                         // Read from Client's memory into buffer
                         try {
-                            retStatus = fabric_read(
-                                msgPointer->key, localPointerB,
-                                msgPointer->size, msgPointer->srcBaseAddr,
-                                fiAddr,
-                                famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                            retStatus =
+                                fabric_read(msgPointer->key, localPointerB,
+                                            msgPointer->size,
+                                            msgPointer->srcBaseAddr, fiAddr,
+                                            famOpsLibfabricQ->get_defaultCtx(
+                                                FAM_DEFAULT_CTX_ID));
                             try {
                                 openfam_persist(localPointerB,
                                                 msgPointer->size);
@@ -675,7 +676,7 @@ void *process_queue(void *arg) {
                 try {
                     fabric_send_response(
                         &retStatus, fiAddr,
-                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                        famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID),
                         sizeof(retStatus));
                 } catch (...) {
                     ret = SENDTOCLIENTERROR;
@@ -768,7 +769,8 @@ void *process_queue(void *arg) {
                             retStatus = fabric_read(
                                 msgPointer->key, localPointerB, bufferSize,
                                 msgPointer->srcBaseAddr, fiAddr,
-                                famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                                famOpsLibfabricQ->get_defaultCtx(
+                                    FAM_DEFAULT_CTX_ID));
                             // Set the flag to indicate write is in progress
                             msgPointer->flag |= ATOMIC_WRITE_IN_PROGRESS;
                             try {
@@ -791,7 +793,7 @@ void *process_queue(void *arg) {
                 try {
                     fabric_send_response(
                         &retStatus, fiAddr,
-                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                        famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID),
                         sizeof(retStatus));
                 } catch (...) {
                     ret = SENDTOCLIENTERROR;
@@ -907,7 +909,8 @@ void *process_queue(void *arg) {
                             retStatus = fabric_read(
                                 msgPointer->key, localPointerB, bufferSize,
                                 msgPointer->srcBaseAddr, fiAddr,
-                                famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                                famOpsLibfabricQ->get_defaultCtx(
+                                    FAM_DEFAULT_CTX_ID));
                             try {
                                 openfam_persist(localPointerB, bufferSize);
                                 // Set the flag to indicate write is in progress
@@ -930,7 +933,7 @@ void *process_queue(void *arg) {
                 try {
                     fabric_send_response(
                         &retStatus, fiAddr,
-                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                        famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID),
                         sizeof(retStatus));
                 } catch (...) {
                     retStatus = SENDTOCLIENTERROR;
@@ -1014,7 +1017,7 @@ void *process_queue(void *arg) {
                     retStatus = fabric_write(
                         msgPointer->key, bufferPtr, bufferSize,
                         msgPointer->srcBaseAddr, fiAddr,
-                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                        famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID));
                 } catch (...) {
                     retStatus = FABRICWRITEERROR;
                 }
@@ -1025,7 +1028,7 @@ void *process_queue(void *arg) {
             try {
                 fabric_send_response(
                     &retStatus, fiAddr,
-                    famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                    famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID),
                     sizeof(retStatus));
             } catch (...) {
                 ret = SENDTOCLIENTERROR;
@@ -1062,7 +1065,7 @@ void *process_queue(void *arg) {
                     retStatus = fabric_write(
                         msgPointer->key, bufferPtr, bufferSize,
                         msgPointer->srcBaseAddr, fiAddr,
-                        famOpsLibfabricQ->get_defaultCtx(uint64_t(0)));
+                        famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID));
                 } catch (...) {
                     retStatus = FABRICWRITEERROR;
                 }
@@ -1073,7 +1076,7 @@ void *process_queue(void *arg) {
             try {
                 fabric_send_response(
                     &retStatus, fiAddr,
-                    famOpsLibfabricQ->get_defaultCtx(uint64_t(0)),
+                    famOpsLibfabricQ->get_defaultCtx(FAM_DEFAULT_CTX_ID),
                     sizeof(retStatus));
             } catch (...) {
                 ret = SENDTOCLIENTERROR;

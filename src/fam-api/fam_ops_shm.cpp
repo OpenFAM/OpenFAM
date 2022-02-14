@@ -2266,4 +2266,11 @@ uint64_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
     uint64_t *oldValue = (uint64_t *)result;
     return *oldValue;
 }
+
+void Fam_Ops_SHM::context_open(uint64_t contextId) { return; }
+
+void Fam_Ops_SHM::context_close(uint64_t contextId) { return; }
+
+uint64_t Fam_Ops_SHM::get_context_id() { return (uint64_t)0; }
+
 } // end namespace openfam

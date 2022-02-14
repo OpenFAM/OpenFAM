@@ -364,7 +364,8 @@ void Fam_Memory_Service_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         // do mem copy - read directly to the destination location.
         void *destPtr = allocator->get_local_pointer(destRegionId, destOffset);
         if (fabric_read(srcKey, destPtr, size, (srcCopyStart + srcBaseAddr),
-                        srcFiAddr, famOps->get_defaultCtx(uint64_t(0))) != 0) {
+                        srcFiAddr,
+                        famOps->get_defaultCtx(FAM_DEFAULT_CTX_ID)) != 0) {
             // raise exception
             message << "fabric_read failed: libfabric error";
             THROW_ERRNO_MSG(Memory_Service_Exception, LIBFABRIC_ERROR,

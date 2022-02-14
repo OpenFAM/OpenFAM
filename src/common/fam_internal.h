@@ -132,6 +132,9 @@ namespace openfam {
         }                                                                      \
     }
 
+#define FAM_DEFAULT_CTX_ID (uint64_t(0))
+#define FAM_CTX_ID_UNINITIALIZED ((uint64_t)-1)
+
 using Server_Map = std::map<uint64_t, std::pair<std::string, uint64_t>>;
 
 /**
