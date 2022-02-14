@@ -107,7 +107,7 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(uint64_t memserver_id,
     }
 
     std::string memType = config_options["Memservers:memory_type"];
-    fam_path = config_options["Memservers:fam_path"];
+    fam_path = (char *)strdup(config_options["Memservers:fam_path"].c_str());
     // default case??
     if (strcmp(memType.c_str(), "volatile") == 0) {
         memServermemType = VOLATILE;
@@ -121,19 +121,19 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(uint64_t memserver_id,
     }
 
     (void)memory_server_id;
-    libfabricPort = config_options["Memservers:libfabric_port"];
+    libfabricPort = (char *)strdup(config_options["Memservers:libfabric_port"].c_str());
 
-    rpc_interface = config_options["Memservers:rpc_interface"];
+    rpc_interface = (char *)strdup(config_options["Memservers:rpc_interface"].c_str());
     std::string addr = rpc_interface.substr(0, rpc_interface.find(':'));
-    if_device = config_options["Memservers:if_device"];
-    libfabricProvider = config_options["provider"];
+    if_device = (char *)strdup(config_options["Memservers:if_device"].c_str());
+    libfabricProvider = (char *)strdup(config_options["provider"].c_str());
 
     int num_delayed_free_Threads =
         atoi(config_options["delayed_free_threads"].c_str());
 
     allocator =
         new Memserver_Allocator(num_delayed_free_Threads, fam_path.c_str());
-    fam_backup_path = config_options["fam_backup_path"];
+    fam_backup_path = (char *)strdup(config_options["fam_backup_path"].c_str());
     struct stat info;
     if (stat(fam_backup_path.c_str(), &info) == -1) {
         if ((errno == ENOENT) || (errno == ENOTDIR))

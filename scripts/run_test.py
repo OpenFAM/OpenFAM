@@ -456,6 +456,7 @@ if (
     i = 0
     for server in cis_config_doc["memsrv_list"]:
         memory_server_id = server.split(":")[0]
+        memory_server_addr = server.split(":")[1]
         if args.launcher == "mpi":
             cmd = (
                 ssh_cmd
@@ -472,7 +473,7 @@ if (
             cmd = (
                 srun_cmd
                 + memory_server_addr
-                + " --mpi=" + mpitype
+                + " --mpi=" + mpitype  + " "
                 + args.buildpath
                 + "/src/memory_server -m "
                 + memory_server_id
@@ -515,7 +516,7 @@ if (
             cmd = (
                 srun_cmd
                 + metadata_server_addr
-                + " --mpi=" + mpitype
+                + " --mpi=" + mpitype  + " "
                 + args.buildpath
                 + "/src/metadata_server -a "
                 + metadata_server_addr
@@ -562,7 +563,7 @@ if (
         cmd = (
             srun_cmd
             + cis_addr
-            + " --mpi=" + mpitype
+            + " --mpi=" + mpitype + " "
             + args.buildpath
             + "/src/cis_server -a "
             + cis_addr
