@@ -30,8 +30,8 @@
 
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
-#include <string.h>
 #include <iostream>
+#include <string.h>
 using namespace std;
 using namespace openfam;
 
@@ -55,7 +55,7 @@ int main(void) {
         return -1;
     }
     fam_context *ctx = myFam->fam_context_open();
-    
+
     try {
         // create a 100 MB region with 0777 permissions
         Fam_Region_Descriptor *rd = myFam->fam_create_region(
@@ -65,7 +65,7 @@ int main(void) {
             printf("fam_create_region successfull\n");
         descriptor = myFam->fam_allocate("myItem", (uint64_t)(50 * sizeof(int)),
                                          0600, rd);
-        std::cout<<"Calling IO operations"<<std::endl;
+        std::cout << "Calling IO operations" << std::endl;
         ctx->fam_or(descriptor, 0, (uint32_t)1);
         ctx->fam_or(descriptor, 0, (uint32_t)2);
         ctx->fam_or(descriptor, 0, (uint32_t)3);
@@ -74,7 +74,7 @@ int main(void) {
         myFam->fam_or(descriptor, 0, (uint32_t)4);
         ctx->fam_quiet();
         myFam->fam_quiet();
-        std::cout<<"Quiet completed"<<std::endl;
+        std::cout << "Quiet completed" << std::endl;
         // ... continuation code here
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(rd);
@@ -82,13 +82,13 @@ int main(void) {
 
     } catch (Fam_Exception &e) {
         printf("Create/Destroy region failed: %d: %s\n", e.fam_error(),
-               e.fam_error_msg());        
+               e.fam_error_msg());
         Fam_Region_Descriptor *rd = myFam->fam_lookup_region("myRegion");
         myFam->fam_destroy_region(rd);
         ret = -1;
     }
 
-    myFam->fam_context_close(ctx);    
+    myFam->fam_context_close(ctx);
     try {
         myFam->fam_finalize("myApplication");
         printf("FAM finalized\n");

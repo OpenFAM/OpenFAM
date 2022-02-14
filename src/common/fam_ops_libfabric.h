@@ -342,7 +342,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
             return obj->second;
     }
 
-    //TODO: Lets not use this two varients of get_defautlCtx
+    // TODO: Lets not use this two varients of get_defautlCtx
     //      To be deleted.
     Fam_Context *get_defaultCtx(Fam_Region_Descriptor *descriptor) {
         auto obj = defContexts->find(get_context_id());
@@ -361,9 +361,9 @@ class Fam_Ops_Libfabric : public Fam_Ops {
             return obj->second;
     };
 
-    uint64_t get_context_id(){ return ctxId; };
+    uint64_t get_context_id() { return ctxId; };
 
-    void set_context_id(uint64_t contextID){ ctxId = contextID; };
+    void set_context_id(uint64_t contextID) { ctxId = contextID; };
 
     pthread_rwlock_t *get_mr_lock() { return &fiMrLock; };
 

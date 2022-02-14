@@ -152,7 +152,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps) {
 
     fiAddrs = famOps->fiAddrs;
     memServerAddrs = famOps->memServerAddrs;
-    fiMemsrvMap =  famOps->fiMemsrvMap;
+    fiMemsrvMap = famOps->fiMemsrvMap;
     fiMrs = famOps->fiMrs;
     contexts = famOps->contexts;
     defContexts = famOps->defContexts;
@@ -169,7 +169,6 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps) {
 
     numMemoryNodes = famOps->numMemoryNodes;
 }
-
 
 int Fam_Ops_Libfabric::initialize() {
     std::ostringstream message;
@@ -243,7 +242,7 @@ int Fam_Ops_Libfabric::initialize() {
                 memServerAddrs->insert(
                     {nodeId, std::make_pair(nodeAddr, addrSize)});
 
-               std::vector<fi_addr_t> tmpAddrV;
+                std::vector<fi_addr_t> tmpAddrV;
                 ret = fabric_insert_av((char *)nodeAddr, av, &tmpAddrV);
 
                 if (ret < 0) {
@@ -259,7 +258,6 @@ int Fam_Ops_Libfabric::initialize() {
                     fiAddrsSize = fiAddrs->size();
                 }
                 fiAddrs->at(nodeId) = tmpAddrV[0];
-
             }
 
             // Initialize defaultCtx
@@ -267,8 +265,7 @@ int Fam_Ops_Libfabric::initialize() {
                 Fam_Context *defaultCtx =
                     new Fam_Context(fi, domain, famThreadModel);
                 defContexts->insert({FAM_DEFAULT_CTX_ID, defaultCtx});
-                ret =
-                    fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
+                ret = fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
                 if (ret < 0) {
                     // TODO: Log error
                     return ret;
@@ -611,7 +608,7 @@ void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {
 
     uint64_t nodeId = 0;
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-        for (auto memServers: *memServerAddrs) {
+        for (auto memServers : *memServerAddrs) {
             nodeId = memServers.first;
             fabric_fence((*fiAddr)[nodeId], get_context(NULL));
         }
@@ -668,38 +665,6 @@ void Fam_Ops_Libfabric::quiet(Fam_Region_Descriptor *descriptor) {
         quiet_context(get_defaultCtx(get_context_id()));
         return;
     }
-/*
-else if (famContextModel == FAM_CONTEXT_REGION) {
-        // ctx mutex lock
-        (void)pthread_mutex_lock(&ctxLock);
-        try {
-            if (descriptor) {
-                Fam_Context *ctx = (Fam_Context *)descriptor->get_context();
-                if (ctx) {
-                    quiet_context(ctx);
-                } else {
-                    Fam_Global_Descriptor global =
-                        descriptor->get_global_descriptor();
-                    uint64_t regionId = global.regionId;
-                    auto ctxObj = contexts->find(regionId);
-                    if (ctxObj != contexts->end()) {
-                        descriptor->set_context(ctxObj->second);
-                        quiet_context(ctxObj->second);
-                    }
-                }
-            } else {
-                for (auto fam_ctx : *contexts)
-                    quiet_context(fam_ctx.second);
-            }
-        } catch (...) {
-            // ctx mutex unlock
-            (void)pthread_mutex_unlock(&ctxLock);
-            throw;
-        }
-        // ctx mutex unlock
-        (void)pthread_mutex_unlock(&ctxLock);
-    }
-*/
 }
 
 uint64_t Fam_Ops_Libfabric::progress_context() {
@@ -1847,13 +1812,12 @@ void Fam_Ops_Libfabric::context_open(uint64_t contextId) {
 void Fam_Ops_Libfabric::context_close(uint64_t contextId) {
     // ctx mutex lock
     (void)pthread_mutex_lock(&ctxLock);
-    //Remove context from defContexts map
+    // Remove context from defContexts map
     auto obj = defContexts->find(get_context_id());
     if (obj == defContexts->end()) {
         // ctx mutex unlock
         (void)pthread_mutex_unlock(&ctxLock);
-        THROW_ERR_MSG(Fam_Datapath_Exception,
-                      "Context not found");
+        THROW_ERR_MSG(Fam_Datapath_Exception, "Context not found");
     } else {
         // Delete context : Need to validate this task.
         delete obj->second;
@@ -1864,6 +1828,5 @@ void Fam_Ops_Libfabric::context_close(uint64_t contextId) {
     }
     return;
 }
-
 
 } // namespace openfam

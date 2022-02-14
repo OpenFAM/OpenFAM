@@ -1177,8 +1177,8 @@ class fam {
      * @return - none
      */
     void fam_quiet(void);
-    fam_context* fam_context_open();
-    void fam_context_close(fam_context*);
+    fam_context *fam_context_open();
+    void fam_context_close(fam_context *);
 
     /**
      * fam_progress - returns number of pending FAM
@@ -1202,8 +1202,8 @@ class fam {
     Impl_ *pimpl_;
 };
 
-class fam_context: public fam {
-public:
+class fam_context : public fam {
+  public:
     fam_context(void *inp_fam_impl);
     ~fam_context();
     void fam_initialize(const char *groupName, Fam_Options *options);
@@ -1228,8 +1228,8 @@ public:
     void fam_deallocate(Fam_Descriptor *descriptor);
     void fam_change_permissions(Fam_Descriptor *descriptor,
                                 mode_t accessPermissions);
-    fam_context* fam_context_open();
-    void fam_context_close(fam_context*);
+    fam_context *fam_context_open();
+    void fam_context_close(fam_context *);
 };
 
 } // namespace openfam
