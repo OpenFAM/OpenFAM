@@ -150,8 +150,14 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
             std::pair<std::string, uint64_t> service = obj->second;
             Fam_Memory_Service *memoryService = new Fam_Memory_Service_Client(
                 (service.first).c_str(), service.second);
-            memoryServers->insert({ obj->first, memoryService });
+            if (memoryServers->find(obj->first) != memoryServers->end()) {
+                message << "CIS:Duplicate memory server id! ";
+                std::cout << message << std::endl;
+                THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                              message.str().c_str());
+            }
 
+            memoryServers->insert({obj->first, memoryService});
             size_t addrSize = get_addr_size(obj->first);
             Fam_Memory_Type memory_type = memoryService->get_memtype();
             if (memory_type == PERSISTENT) {
