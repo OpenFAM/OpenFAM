@@ -269,13 +269,19 @@ void libfabric_dump_profile_summary(void) {
  * @return - {true(0), false(1), errNo(<0)}
  */
 int fabric_initialize(const char *name, const char *service, bool source,
-                      char *provider, struct fi_info **fi,
+                      char *provider, char *if_device, struct fi_info **fi,
                       struct fid_fabric **fabric, struct fid_eq **eq,
                       struct fid_domain **domain, Fam_Thread_Model famTM) {
     struct fi_info *hints;
 
     LIBFABRIC_PROFILE_INIT();
     LIBFABRIC_PROFILE_START_TIME();
+
+    if (if_device != NULL && (strcmp(if_device, "") != 0)) {
+        if ((strncmp(provider, "verbs", 5) == 0)) {
+            setenv("FI_VERBS_IFACE", if_device, 0);
+        }
+    }
 
     // Get the hints and initialize configuration
     FI_CALL(hints, fi_allocinfo);

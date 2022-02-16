@@ -19,6 +19,10 @@ runtime: PMIX
 # client_interface_type value of direct implies communication happens via function calls.
 client_interface_type: rpc
 
+# Device interface for communication for OpenFAM client.
+# Please note this parameter is valid only for for verbs provider
+#if_device: ib0 
+
 # Address of Client Interface Service - It can be hostname (fully qualified domain name)/ipv4 address.
 # Applicable only if client_interface_type is rpc.
 fam_client_interface_service_address: 127.0.0.1:8787

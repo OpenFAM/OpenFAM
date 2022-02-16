@@ -144,7 +144,8 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(uint64_t memserver_id,
         memoryRegistration = new Fam_Memory_Registration_SHM();
     } else {
         memoryRegistration = new Fam_Memory_Registration_Libfabric(
-            addr.c_str(), libfabricPort.c_str(), libfabricProvider.c_str());
+            addr.c_str(), libfabricPort.c_str(), libfabricProvider.c_str(),
+            if_device.c_str());
     }
 
     for (int i = 0; i < CAS_LOCK_CNT; i++) {
@@ -589,7 +590,7 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
                     .c_str());
         } catch (Fam_InvalidOption_Exception e) {
             // If parameter is not present, then set the default.
-            options["Memservers:if_device"] = (char *)strdup("ib0");
+            options["Memservers:if_device"] = (char *)strdup("");
         }
     }
     return options;

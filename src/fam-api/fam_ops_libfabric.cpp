@@ -63,6 +63,7 @@ Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
 }
 
 Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
+                                     const char *if_device,
                                      Fam_Thread_Model famTM,
                                      Fam_Allocator_Client *famAlloc,
                                      Fam_Context_Model famCM) {
@@ -70,6 +71,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     memoryServerName = NULL;
     service = NULL;
     provider = strdup(libfabricProvider);
+    if_device = strdup(if_device);
     isSource = source;
     famThreadModel = famTM;
     famContextModel = famCM;
@@ -101,6 +103,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
 }
 
 Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
+                                     const char *if_device_str,
                                      Fam_Thread_Model famTM,
                                      Fam_Allocator_Client *famAlloc,
                                      Fam_Context_Model famCM,
@@ -110,6 +113,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     memoryServerName = strdup(memServerName);
     service = strdup(libfabricPort);
     provider = strdup(libfabricProvider);
+    if_device = strdup(if_device_str);
     isSource = source;
     famThreadModel = famTM;
     famContextModel = famCM;
@@ -184,8 +188,8 @@ int Fam_Ops_Libfabric::initialize() {
     (void)pthread_mutex_init(&ctxLock, NULL);
 
     if ((ret = fabric_initialize(memoryServerName, service, isSource, provider,
-                                 &fi, &fabric, &eq, &domain, famThreadModel)) <
-        0) {
+                                 if_device, &fi, &fabric, &eq, &domain,
+                                 famThreadModel)) < 0) {
         return ret;
     }
     // Initialize address vector
