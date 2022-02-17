@@ -54,7 +54,8 @@ Fam_CIS_Client::Fam_CIS_Client(const char *name, uint64_t port) {
     /** sending a start signal to server **/
     ::grpc::Status status = stub->signal_start(&ctx, req, &res);
     if (!status.ok()) {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        message << "Fam CIS Client: Connect failed : "<<name_s;
+        throw CIS_Exception(FAM_ERR_RPC, message.str().c_str());
     }
 
     copycq = new ::grpc::CompletionQueue();
