@@ -1813,7 +1813,7 @@ void Fam_Ops_Libfabric::context_close(uint64_t contextId) {
     // ctx mutex lock
     (void)pthread_mutex_lock(&ctxLock);
     // Remove context from defContexts map
-    auto obj = defContexts->find(get_context_id());
+    auto obj = defContexts->find(contextId);
     if (obj == defContexts->end()) {
         // ctx mutex unlock
         (void)pthread_mutex_unlock(&ctxLock);
