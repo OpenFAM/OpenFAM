@@ -489,6 +489,7 @@ void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
     // Prepare metadata for backup file
     string metafile = BackupName + ".info";
     char metainfo[BACKUP_META_SIZE];
+    memset(metainfo, 0, BACKUP_META_SIZE);
     time_t now = time(0);
     tm *ltm = localtime(&now);
     char backupTime[MIN_INFO_SIZE];
@@ -497,8 +498,8 @@ void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
              ltm->tm_year + 1900, ltm->tm_mon + 1, ltm->tm_mday, ltm->tm_hour,
              ltm->tm_min, ltm->tm_sec);
     snprintf(metainfo, BACKUP_META_SIZE,
-             "backupName: %s\ndataitemName: %s\ndataitemSize: %lu\nBackupTime: "
-             "%s\nuid: %u\ngid: %u\nmode: %u\n",
+             "backupName:%s\ndataitemName:%s\ndataitemSize:%lu\nBackupTime:"
+             "%s\nuid:%u\ngid:%u\nmode:%u\n",
              BackupName.c_str(), dataitemName.c_str(), size, backupTime, uid,
              gid, mode);
 
@@ -558,6 +559,7 @@ Fam_Backup_Info Memserver_Allocator::get_backup_info(const string BackupName,
                         "Backup doesnt exist.");
     }
     char *backup_meta = (char *)malloc(sb.st_size);
+    memset(backup_meta, 0, sb.st_size);
     FILE *restore_fp;
     restore_fp = fopen((char *)metafile.c_str(), "r");
     if (restore_fp == NULL) {
@@ -575,7 +577,6 @@ Fam_Backup_Info Memserver_Allocator::get_backup_info(const string BackupName,
     std::stringstream buffer;
     std::string dataitemName;
     buffer.str(backup_meta);
-
     for (std::string token; std::getline(buffer, token);) {
         size_t pos = token.find(":");
         std::string attribute;
@@ -584,24 +585,30 @@ Fam_Backup_Info Memserver_Allocator::get_backup_info(const string BackupName,
             attribute = token.substr(0, pos);
             value = token.substr(pos + 1, token.length());
         }
-        if (attribute.compare("dataitemName") == 0)
-            info.dname = value;
-        if (attribute.compare("dataitemSize") == 0) {
-            info.size = std::stol(value);
+        try {
+            if (attribute.compare("dataitemName") == 0)
+                info.dname = value;
+            if (attribute.compare("dataitemSize") == 0) {
+                info.size = std::stol(value);
+            }
+
+            if (attribute.compare("BackupTime") == 0) {
+                info.backupTime = value;
+            }
+            if (attribute.compare("uid") == 0)
+                info.uid = std::stoi(value);
+
+            if (attribute.compare("gid") == 0)
+                info.gid = std::stoi(value);
+
+            if (attribute.compare("mode") == 0)
+                info.mode = std::stoi(value);
+        } catch (...) {
+            THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_DATA_INVALID,
+                            "Invalid data related to backup.");
         }
-
-        if (attribute.compare("BackupTime") == 0) {
-            info.backupTime = value;
-        }
-        if (attribute.compare("uid") == 0)
-            info.uid = std::stoi(value);
-
-        if (attribute.compare("gid") == 0)
-            info.gid = std::stoi(value);
-
-        if (attribute.compare("mode") == 0)
-            info.mode = std::stoi(value);
     }
+
     bool status = validate_backup(info, uid, gid, mode);
     if (status == false) {
         THROW_ERRNO_MSG(Memory_Service_Exception, NO_PERMISSION,

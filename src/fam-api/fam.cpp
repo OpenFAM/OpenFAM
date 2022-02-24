@@ -416,6 +416,7 @@ class fam::Impl_ {
                              configFileParams config_file_fam_options);
     void clean_fam_options();
     int validate_item(Fam_Descriptor *descriptor);
+    int contains_nonutf(const char *name);
     configFileParams get_info_from_config_file(std::string filename);
 #ifdef FAM_PROFILE
     void fam_reset_profile();
@@ -2012,11 +2013,32 @@ void fam::Impl_::fam_copy_wait(void *waitObj) {
     return;
 }
 
+int fam::Impl_::contains_nonutf(const char *name) {
+
+    int ret = 0;
+    int i = 0;
+    while (name[i]) {
+        if (!(isprint(name[i]))) {
+            ret = 1;
+            break;
+        }
+        i++;
+    }
+
+    return ret;
+}
+
 void *fam::Impl_::fam_backup(Fam_Descriptor *src, const char *BackupName,
                              Fam_Backup_Options *backupOptions) {
     void *result = NULL;
     FAM_CNTR_INC_API(fam_backup);
     FAM_PROFILE_START_ALLOCATOR(fam_backup);
+
+    if ((src == NULL) || (BackupName == NULL) ||
+        (contains_nonutf(BackupName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
     int retS = validate_item(src);
     FAM_PROFILE_END_ALLOCATOR(fam_backup);
     FAM_PROFILE_START_OPS(fam_backup);
@@ -2032,6 +2054,12 @@ void *fam::Impl_::fam_restore(const char *BackupName, Fam_Descriptor *dest) {
     void *result = NULL;
     FAM_CNTR_INC_API(fam_restore);
     FAM_PROFILE_START_ALLOCATOR(fam_restore);
+
+    if ((dest == NULL) || (BackupName == NULL) ||
+        (contains_nonutf(BackupName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
     int retD = validate_item(dest);
     if (retD == 0) {
         FAM_PROFILE_END_ALLOCATOR(fam_restore);
@@ -2050,6 +2078,12 @@ void *fam::Impl_::fam_restore(const char *BackupName,
     void *result = NULL;
     FAM_CNTR_INC_API(fam_restore);
     FAM_PROFILE_START_ALLOCATOR(fam_restore);
+
+    if ((destRegion == NULL) || (BackupName == NULL) ||
+        (contains_nonutf(BackupName)) || (dataitemName == NULL) ||
+        (contains_nonutf(dataitemName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
 
     Fam_Backup_Info info =
         famAllocator->get_backup_info(BackupName, destRegion);
@@ -2074,6 +2108,10 @@ void *fam::Impl_::fam_delete_backup(const char *BackupName) {
     FAM_PROFILE_START_ALLOCATOR(fam_delete_backup);
     FAM_PROFILE_END_ALLOCATOR(fam_delete_backup);
     FAM_PROFILE_START_OPS(fam_delete_backup);
+    if ((BackupName == NULL) || (contains_nonutf(BackupName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
     void *result = famAllocator->delete_backup(BackupName);
     FAM_PROFILE_END_OPS(fam_delete_backup);
     return result;
@@ -2118,6 +2156,9 @@ void fam::Impl_::fam_restore_wait(void *waitObj) {
 }
 
 char *fam::Impl_::fam_list_backup(const char *BackupName) {
+    if ((BackupName == NULL) || (contains_nonutf(BackupName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
     return (famAllocator->list_backup(BackupName));
 }
 

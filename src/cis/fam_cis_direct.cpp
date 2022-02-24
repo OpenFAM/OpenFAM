@@ -1246,7 +1246,6 @@ void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
                               uint64_t destMemoryServerId, string BackupName,
                               uint32_t uid, uint32_t gid) {
     ostringstream message;
-    message << "Error While restoring dataitem : ";
     Fam_DataItem_Metadata destDataitem;
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
@@ -1276,8 +1275,14 @@ void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
     try {
         info =
             memoryService->get_backup_info(BackupName, uid, gid, BACKUP_READ);
+
     } catch (Fam_Exception &e) {
         throw;
+    }
+    if (destDataitem.size < (uint64_t)info.size) {
+        message << "data item size is smaller than backup ";
+        THROW_ERRNO_MSG(CIS_Exception, BACKUP_SIZE_TOO_LONG,
+                        message.str().c_str());
     }
 
     if (useAsyncCopy) {

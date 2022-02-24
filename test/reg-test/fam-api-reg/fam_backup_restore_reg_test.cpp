@@ -64,7 +64,7 @@ TEST(FamBackupRestore, BackupSuccess) {
     EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
     EXPECT_NE((void *)NULL, desc);
 
-    // Allocating data items in the created region
+    // Lookup data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_lookup(firstItem, testRegion));
     EXPECT_NE((void *)NULL, item);
     char *backupName = (char *)malloc(FILE_MAX_LEN);
@@ -72,13 +72,35 @@ TEST(FamBackupRestore, BackupSuccess) {
     sprintf(backupName, "%s.%s.%ld", testRegion, firstItem, backup_time);
     void *waitobj = my_fam->fam_backup(item, backupName, backupOptions);
     my_fam->fam_backup_wait(waitobj);
+
     free((char *)backupName);
     free((void *)testRegion);
     free((void *)firstItem);
     free((Fam_Backup_Options *)backupOptions);
 }
 
-TEST(FamBackupRestore, BackupFailure) {
+TEST(FamBackupRestore, BackupFailureInvDataItem) {
+    Fam_Descriptor *item = NULL;
+    const char *testRegion = get_uniq_str("test_backup", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+    Fam_Backup_Options *backupOptions =
+        (Fam_Backup_Options *)malloc(sizeof(Fam_Backup_Options));
+
+    char *backupName = (char *)malloc(FILE_MAX_LEN);
+    try {
+        sprintf(backupName, "%s.%s", testRegion, firstItem);
+        void *waitobj1 = my_fam->fam_backup(item, backupName, backupOptions);
+        my_fam->fam_backup_wait(waitobj1);
+    } catch (Fam_Exception &e) {
+        cout << "fam_backup exception: " << e.fam_error_msg() << endl;
+    }
+    free((char *)backupName);
+    free((void *)testRegion);
+    free((void *)firstItem);
+    free((Fam_Backup_Options *)backupOptions);
+}
+
+TEST(FamBackupRestore, BackupFailureInvBackupName) {
     Fam_Region_Descriptor *desc;
     Fam_Descriptor *item;
     Fam_Backup_Options *backupOptions =
@@ -87,17 +109,16 @@ TEST(FamBackupRestore, BackupFailure) {
     const char *firstItem = get_uniq_str("first", my_fam);
     EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
     EXPECT_NE((void *)NULL, desc);
-
-    // Allocating data items in the created region
+    // Lookup for existing data item in the created region
     EXPECT_NO_THROW(item = my_fam->fam_lookup(firstItem, testRegion));
     EXPECT_NE((void *)NULL, item);
+
     char *backupName = (char *)malloc(FILE_MAX_LEN);
     try {
-        sprintf(backupName, "%s.%s", testRegion, firstItem);
         void *waitobj1 = my_fam->fam_backup(item, backupName, backupOptions);
         my_fam->fam_backup_wait(waitobj1);
     } catch (Fam_Exception &e) {
-        cout << "fam_backup: " << e.fam_error_msg() << endl;
+        cout << "fam_backup exception: " << e.fam_error_msg() << endl;
     }
     free((char *)backupName);
     free((void *)testRegion);
@@ -141,8 +162,8 @@ TEST(FamBackupRestore, RestoreSuccess) {
     }
 
     EXPECT_STREQ(local, local2);
-    free(local2);
 
+    free(local2);
     free((void *)testRegion);
     free((void *)firstItem);
     free((void *)secondItem);
@@ -167,16 +188,14 @@ TEST(FamBackupRestore, CreateDataitemRestoreSuccess) {
 
         my_fam->fam_restore_wait(waitobj);
     } catch (Fam_Exception &e) {
-        cout << "fam_restore: " << e.fam_error_msg() << endl;
+        cout << "fam_restore Exception: " << e.fam_error_msg() << endl;
         return;
     }
     char *local2 = (char *)malloc(DATAITEM_SIZE);
-    try {
-        my_fam->fam_get_blocking(local2, item, 0, DATAITEM_SIZE);
-    } catch (Fam_Exception &e) {
-        cout << "fam_get_blocking: " << e.fam_error_msg() << endl;
-    }
+
+    EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, item, 0, DATAITEM_SIZE));
     EXPECT_STREQ(local, local2);
+
     free(local);
     free(local2);
     free((void *)testRegion);
@@ -184,7 +203,7 @@ TEST(FamBackupRestore, CreateDataitemRestoreSuccess) {
     free((void *)firstItem);
 }
 
-TEST(FamBackupRestore, RestoreFailure) {
+TEST(FamBackupRestore, RestoreFailureNonExistentBackup) {
     Fam_Region_Descriptor *desc;
     Fam_Descriptor *item;
     const char *testRegion = get_uniq_str("test_backup", my_fam);
@@ -195,11 +214,11 @@ TEST(FamBackupRestore, RestoreFailure) {
 
     EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
     EXPECT_NE((void *)NULL, desc);
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(secondItem, 2 * DATAITEM_SIZE, 0777, desc));
+    EXPECT_NE((void *)NULL, item);
     try {
-        // Allocating data items in the created region
-        EXPECT_NO_THROW(item = my_fam->fam_allocate(
-                            secondItem, 2 * DATAITEM_SIZE, 0777, desc));
-        EXPECT_NE((void *)NULL, item);
 
         // Start Restore
         void *waitobj = my_fam->fam_restore(backupName, item);
@@ -208,16 +227,66 @@ TEST(FamBackupRestore, RestoreFailure) {
     } catch (Fam_Exception &e) {
         cout << "fam_restore Exception: " << e.fam_error_msg() << endl;
     }
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     free((void *)testRegion);
     free((void *)firstItem);
     free((void *)secondItem);
 }
 
+TEST(FamBackupRestore, RestoreFailureInsufficientDataSize) {
+    Fam_Region_Descriptor *desc;
+    Fam_Descriptor *src;
+    Fam_Descriptor *item;
+    const char *testRegion = get_uniq_str("test_backup", my_fam);
+    const char *firstItem = get_uniq_str("source", my_fam);
+    const char *secondItem = get_uniq_str("fourth", my_fam);
+    char *backupName = (char *)malloc(FILE_MAX_LEN);
+    Fam_Backup_Options *backupOptions =
+        (Fam_Backup_Options *)malloc(sizeof(Fam_Backup_Options));
+
+    char *local = (char *)malloc(2 * DATAITEM_SIZE);
+    memset(local, 0, 2 * DATAITEM_SIZE);
+
+    EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegion));
+    EXPECT_NE((void *)NULL, desc);
+    // Allocate a data item of two times DATAITEM_SIZE
+    EXPECT_NO_THROW(
+        src = my_fam->fam_allocate(firstItem, 2 * DATAITEM_SIZE, 0777, desc));
+    EXPECT_NE((void *)NULL, src);
+    my_fam->fam_put_blocking(local, src, 0, 2 * DATAITEM_SIZE);
+
+    // Create backup of given data item.
+    sprintf(backupName, "%s.%s.%ld", testRegion, firstItem, backup_time);
+    void *waitobj1 = my_fam->fam_backup(src, backupName, backupOptions);
+    my_fam->fam_backup_wait(waitobj1);
+
+    // Allocating data item in the created region of size DATAITEM_SIZE/2
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(secondItem, DATAITEM_SIZE / 2, 0777, desc));
+    EXPECT_NE((void *)NULL, item);
+
+    try {
+        // Start Restoring in dat item of insufficient data size.
+        void *waitobj = my_fam->fam_restore(backupName, item);
+        my_fam->fam_restore_wait(waitobj);
+
+    } catch (Fam_Exception &e) {
+        cout << "fam_restore Exception: " << e.fam_error_msg() << endl;
+    }
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_deallocate(src));
+
+    free(local);
+    free((void *)testRegion);
+    free((void *)firstItem);
+    free((void *)secondItem);
+    free((Fam_Backup_Options *)backupOptions);
+}
+
 TEST(FamBackupRestore, ListBackupSuccess) {
     const char *testRegion = get_uniq_str("test_backup", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
-    cout << "ListBackupSuccess" << endl;
     char *binfo;
     char *backupName = (char *)malloc(FILE_MAX_LEN);
 
@@ -231,6 +300,9 @@ TEST(FamBackupRestore, ListBackupSuccess) {
 
     cout << "Backup list of " << backupName << " : " << endl;
     cout << binfo << endl;
+    free((void *)testRegion);
+    free((void *)firstItem);
+    free(backupName);
 }
 
 TEST(FamBackupRestore, ListBackupAllSuccess) {
@@ -246,6 +318,20 @@ TEST(FamBackupRestore, ListBackupAllSuccess) {
     cout << binfo << endl;
 }
 
+TEST(FamBackupRestore, ListBackupFailure) {
+    char *backupName = (char *)malloc(FILE_MAX_LEN);
+    char *binfo;
+
+    try {
+        binfo = my_fam->fam_list_backup(backupName);
+    } catch (Fam_Exception &e) {
+        cout << "fam_list_backup: " << e.fam_error_msg() << endl;
+        return;
+    }
+    cout << binfo << endl;
+    free(backupName);
+}
+
 TEST(FamBackupRestore, DeleteBackupSuccess) {
 
     const char *testRegion = get_uniq_str("test_backup", my_fam);
@@ -254,12 +340,10 @@ TEST(FamBackupRestore, DeleteBackupSuccess) {
         (Fam_Backup_Options *)malloc(sizeof(Fam_Backup_Options));
 
     char *backupName = (char *)malloc(FILE_MAX_LEN);
+    sprintf(backupName, "%s.%s.%lu_delete", testRegion, firstItem, backup_time);
     try {
-        sprintf(backupName, "%s.%s.%lu_delete", testRegion, firstItem,
-                backup_time);
         void *waitobj = my_fam->fam_backup(item, backupName, backupOptions);
-
-        EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
+        my_fam->fam_backup_wait(waitobj);
     } catch (Fam_Exception &e) {
         cout << "fam_backup: " << e.fam_error_msg() << endl;
     }
@@ -270,7 +354,7 @@ TEST(FamBackupRestore, DeleteBackupSuccess) {
         cout << "fam_list_backup: " << e.fam_error_msg() << endl;
     }
 
-    cout << "Listing Backup before delete operation: " << endl;
+    cout << "Backup info before delete operation: " << endl;
     cout << before_delete << endl;
     try {
         void *delwaitobj = my_fam->fam_delete_backup(backupName);
@@ -282,7 +366,7 @@ TEST(FamBackupRestore, DeleteBackupSuccess) {
     char *after_delete;
     after_delete = my_fam->fam_list_backup(backupName);
 
-    cout << "Backup list after delete operation : " << endl;
+    cout << "Backup info after delete operation : " << endl;
     cout << after_delete << endl;
 
     free(backupName);
@@ -315,17 +399,18 @@ int main(int argc, char **argv) {
     const char *testRegion = get_uniq_str("test_backup", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
-    EXPECT_NE((void *)NULL, desc);
+    try {
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL);
+        EXPECT_NE((void *)NULL, desc);
+        item = my_fam->fam_allocate(firstItem, DATAITEM_SIZE, 0777, desc);
+        EXPECT_NE((void *)NULL, item);
+    } catch (Fam_Exception &e) {
 
+        cout << "Create_region Exception/Allocate exception" << endl;
+    }
     // Allocating data items in the created region
-    EXPECT_NO_THROW(
-        item = my_fam->fam_allocate(firstItem, DATAITEM_SIZE, 0777, desc));
-    EXPECT_NE((void *)NULL, item);
 
     char *local = strdup("Test message");
-
     my_fam->fam_put_blocking(local, item, 0, strlen(local));
     Fam_Stat famInfo;
     my_fam->fam_stat(item, &famInfo);

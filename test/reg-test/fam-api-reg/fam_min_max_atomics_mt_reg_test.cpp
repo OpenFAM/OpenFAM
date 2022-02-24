@@ -62,7 +62,7 @@ int rc;
 #define REGION_SIZE (32 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
 
-#define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
+//#define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
 
 typedef struct {
     Fam_Descriptor *item;

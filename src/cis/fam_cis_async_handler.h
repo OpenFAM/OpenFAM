@@ -226,7 +226,7 @@ class Fam_CIS_Async_Handler {
                             copyrequest.src_memserver_id(),
                             copyrequest.dest_memserver_id(), copyrequest.uid(),
                             copyrequest.gid());
-                        delete (Fam_Copy_Tag *)waitObj;
+                        delete (Fam_Copy_Wait_Object *)waitObj;
                         break;
                     case RT_BACKUP:
                         waitObj = famCIS->backup(
@@ -234,7 +234,7 @@ class Fam_CIS_Async_Handler {
                             backuprequest.memserver_id(), backuprequest.bname(),
                             backuprequest.uid(), backuprequest.gid(),
                             backuprequest.size());
-                        delete (Fam_Backup_Tag *)waitObj;
+                        delete (Fam_Backup_Wait_Object *)waitObj;
 
                         break;
                     case RT_RESTORE:
@@ -243,14 +243,14 @@ class Fam_CIS_Async_Handler {
                             restorerequest.memserver_id(),
                             restorerequest.bname(), restorerequest.uid(),
                             restorerequest.gid());
-                        delete (Fam_Restore_Tag *)waitObj;
+                        delete (Fam_Restore_Wait_Object *)waitObj;
                         break;
                     case RT_DELETE_BACKUP:
                         waitObj = famCIS->delete_backup(
                             delbackuprequest.bname().c_str(),
                             delbackuprequest.memserver_id(),
                             delbackuprequest.uid(), delbackuprequest.gid());
-                        delete (Fam_Delete_Backup_Tag *)waitObj;
+                        delete (Fam_Delete_Backup_Wait_Object *)waitObj;
 
                         break;
                     }
