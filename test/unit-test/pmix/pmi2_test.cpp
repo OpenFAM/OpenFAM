@@ -39,7 +39,7 @@ int main() {
     int rc;
 
     int localrank;
-    if (PMIX_SUCCESS != (rc = obj.runtime_init())) {
+    if (PMI2_SUCCESS != (rc = obj.runtime_init())) {
         printf("runtime_init failed (%d)\n", rc);
         return rc;
     }
