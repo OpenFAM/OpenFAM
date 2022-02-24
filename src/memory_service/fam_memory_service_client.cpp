@@ -102,7 +102,7 @@ Fam_Memory_Service_Client::Fam_Memory_Service_Client(const char *name,
     /** sending a start signal to server **/
     ::grpc::Status status = stub->signal_start(&ctx, req, &res);
     if (!status.ok()) {
-        message << "Fam Memory Service: Connect failed : "<<name_s;
+        message << "Fam Memory Service: "<<status.error_message().c_str()<<":"<<name_s;
         throw  Memory_Service_Exception(FAM_ERR_RPC, message.str().c_str());
 
     }

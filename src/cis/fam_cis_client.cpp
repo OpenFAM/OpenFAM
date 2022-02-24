@@ -54,7 +54,7 @@ Fam_CIS_Client::Fam_CIS_Client(const char *name, uint64_t port) {
     /** sending a start signal to server **/
     ::grpc::Status status = stub->signal_start(&ctx, req, &res);
     if (!status.ok()) {
-        message << "Fam CIS Client: Connect failed : "<<name_s;
+        message << "Fam CIS Client: "<<status.error_message().c_str()<<":"<<name_s;
         throw CIS_Exception(FAM_ERR_RPC, message.str().c_str());
     }
 
