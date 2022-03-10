@@ -120,12 +120,11 @@ TEST(FamContext, FamContextOpenCloseWithIOOperationStressTest) {
         EXPECT_NO_THROW(ctx->fam_quiet());
         EXPECT_NO_THROW(my_fam->fam_quiet());
 
-        // We are done with the operations. Destroy the region and everything in
-        // it
-        EXPECT_NO_THROW(my_fam->fam_destroy_region(rd));
-
         EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
     }
+    // We are done with the operations. Destroy the region and everything in
+    // it
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(rd));
 }
 // Test case 4 - FamContextSimultaneousOpenCloseStressTest
 TEST(FamContext, FamContextSimultaneousOpenCloseStressTest) {
