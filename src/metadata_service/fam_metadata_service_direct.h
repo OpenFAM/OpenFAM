@@ -63,7 +63,7 @@ namespace metadata {
 class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
   public:
     void Start(bool use_meta_reg, bool enable_region_spanning,
-               size_t size_per_memoryserver);
+               size_t size_per_memoryserver, const char *metadata_path);
     void Stop();
 
     void reset_profile();
