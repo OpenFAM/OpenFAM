@@ -2735,10 +2735,8 @@ void Fam_Metadata_Service_Direct::Start(
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
-    if (metadata_path == NULL || (strcmp(metadata_path, "") == 0))
-        StartNVMM();
-    else
-        StartNVMM(metadata_path);
+    
+    StartNVMM(metadata_path);
 
     pimpl_ = new Impl_;
     assert(pimpl_);
@@ -2976,6 +2974,7 @@ configFileParams
 Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
     configFileParams options;
     config_info *info = NULL;
+    ostringstream message;
     if (filename.find("fam_metadata_config.yaml") != std::string::npos) {
         info = new yaml_config_info(filename);
         try {
@@ -2992,9 +2991,10 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
                 (char *)strdup((info->get_key_value("metadata_path")).c_str());
         }
         catch (Fam_InvalidOption_Exception e) {
-            // If parameter is not present, then set the default.
-            options["metadata_path"] = (char *)strdup("");
+            message << "metadata_path option in the config file is invalid.";
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());        
         }
+
         try {
             options["enable_region_spanning"] = (char *)strdup(
                 (info->get_key_value("enable_region_spanning")).c_str());
