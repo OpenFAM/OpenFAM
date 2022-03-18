@@ -176,6 +176,14 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                 copyCond.wait(lk);
             }
         }
+        if (tag->err) {
+            Fam_Error errCode = tag->err->get_error_code();
+            string errMsg = tag->err->get_error_msg();
+            delete tag->err;
+            delete tag;
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode, errMsg.c_str());
+        }
+        delete tag;
         return;
     }
 
@@ -187,6 +195,15 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                 backupCond.wait(lk);
             }
         }
+        if (tag->err) {
+            Fam_Error errCode = tag->err->get_error_code();
+            string errMsg = tag->err->get_error_msg();
+            delete tag->err;
+            delete tag;
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode, errMsg.c_str());
+        }
+
+        delete tag;
         return;
     }
 
@@ -198,6 +215,14 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                 restoreCond.wait(lk);
             }
         }
+        if (tag->err) {
+            Fam_Error errCode = tag->err->get_error_code();
+            string errMsg = tag->err->get_error_msg();
+            delete tag->err;
+            delete tag;
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode, errMsg.c_str());
+        }
+        delete tag;
         return;
     }
 
@@ -210,6 +235,14 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                 deletebackupCond.wait(lk);
             }
         }
+        if (tag->err) {
+            Fam_Error errCode = tag->err->get_error_code();
+            string errMsg = tag->err->get_error_msg();
+            delete tag->err;
+            delete tag;
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode, errMsg.c_str());
+        }
+        delete tag;
         return;
     }
 
@@ -326,11 +359,19 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
     void copy_handler(void *src, void *dest, uint64_t nbytes,
                       Fam_Copy_Tag *tag) {
         if (tag->memoryService)
-            tag->memoryService->copy(
-                tag->srcRegionId, tag->srcOffset, tag->srcKey,
-                tag->srcCopyStart, tag->srcBaseAddr, tag->srcAddr,
-                tag->srcAddrLen, tag->destRegionId, tag->destOffset, tag->size,
-                tag->srcMemserverId, tag->destMemserverId);
+            try {
+                tag->memoryService->copy(
+                    tag->srcRegionId, tag->srcOffset, tag->srcKey,
+                    tag->srcCopyStart, tag->srcBaseAddr, tag->srcAddr,
+                    tag->srcAddrLen, tag->destRegionId, tag->destOffset,
+                    tag->size, tag->srcMemserverId, tag->destMemserverId);
+            }
+        catch (Fam_Exception &e) {
+            Fam_Async_Err *err = new Fam_Async_Err();
+            err->set_error_code((Fam_Error)e.fam_error());
+            err->set_error_msg(e.fam_error_msg());
+            tag->err = err;
+        }
         else {
             memcpy(dest, src, nbytes);
             openfam_persist(dest, nbytes);
@@ -346,9 +387,18 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
     void backup_handler(void *src, void *dest, uint64_t nbytes,
                       Fam_Backup_Tag *tag) {
         if (tag->memoryService) {
-            tag->memoryService->backup(tag->srcRegionId, tag->srcOffset,
-                                       tag->BackupName, tag->size, tag->uid,
-                                       tag->gid, tag->mode, tag->dataitemName);
+            try {
+                tag->memoryService->backup(tag->srcRegionId, tag->srcOffset,
+                                           tag->BackupName, tag->size, tag->uid,
+                                           tag->gid, tag->mode,
+                                           tag->dataitemName);
+            }
+            catch (Fam_Exception &e) {
+                Fam_Async_Err *err = new Fam_Async_Err();
+                err->set_error_code((Fam_Error)e.fam_error());
+                err->set_error_msg(e.fam_error_msg());
+                tag->err = err;
+            }
         }
         {
             AQUIRE_MUTEX(backupMtx)
@@ -361,8 +411,16 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
     void restore_handler(void *src, void *dest, uint64_t nbytes,
                       Fam_Restore_Tag *tag) {
         if (tag->memoryService) {
-            tag->memoryService->restore(tag->destRegionId, tag->destOffset,
-                                        tag->BackupName, tag->size);
+            try {
+                tag->memoryService->restore(tag->destRegionId, tag->destOffset,
+                                            tag->BackupName, tag->size);
+            }
+            catch (Fam_Exception &e) {
+                Fam_Async_Err *err = new Fam_Async_Err();
+                err->set_error_code((Fam_Error)e.fam_error());
+                err->set_error_msg(e.fam_error_msg());
+                tag->err = err;
+            }
         }
         {
             AQUIRE_MUTEX(restoreMtx)
@@ -376,7 +434,15 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
     void delete_backup_handler(void *src, void *dest, uint64_t nbytes,
                                Fam_Delete_Backup_Tag *tag) {
         if (tag->memoryService) {
-            tag->memoryService->delete_backup(tag->BackupName);
+            try {
+                tag->memoryService->delete_backup(tag->BackupName);
+            }
+            catch (Fam_Exception &e) {
+                Fam_Async_Err *err = new Fam_Async_Err();
+                err->set_error_code((Fam_Error)e.fam_error());
+                err->set_error_msg(e.fam_error_msg());
+                tag->err = err;
+            }
         }
         {
             AQUIRE_MUTEX(deletebackupMtx)

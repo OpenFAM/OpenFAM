@@ -564,12 +564,12 @@ Fam_Backup_Info Memserver_Allocator::get_backup_info(const string BackupName,
     restore_fp = fopen((char *)metafile.c_str(), "r");
     if (restore_fp == NULL) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
-                        "Opening of Backup meta failed.");
+                        "Opening of Backup metadata failed.");
     }
     size_t size = fread(backup_meta, sizeof(char), sb.st_size, restore_fp);
     if ((unsigned)size < sb.st_size) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
-                        "Reading of Backup meta failed.");
+                        "Reading of Backup metadata failed.");
     }
 
     fclose(restore_fp);
@@ -604,7 +604,7 @@ Fam_Backup_Info Memserver_Allocator::get_backup_info(const string BackupName,
             if (attribute.compare("mode") == 0)
                 info.mode = std::stoi(value);
         } catch (...) {
-            THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_DATA_INVALID,
+            THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_METADATA_INVALID,
                             "Invalid data related to backup.");
         }
     }

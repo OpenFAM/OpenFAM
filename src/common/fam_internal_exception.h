@@ -112,6 +112,7 @@ enum Internal_Error {
     BACKUP_FILE_NOT_FOUND,
     BACKUP_SIZE_TOO_LONG,
     BACKUP_DATA_INVALID,
+    BACKUP_METADATA_INVALID,
     DATAITEM_SIZE_TOO_LONG,
     REQUESTED_MEMORY_TYPE_NOT_AVAILABLE
 };
@@ -143,6 +144,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
 
     case OUT_OF_RANGE:
     case BACKUP_DATA_INVALID:
+    case BACKUP_METADATA_INVALID:
         return FAM_ERR_OUTOFRANGE;
 
     case NULL_POINTER_ACCESS:

@@ -2061,12 +2061,12 @@ void *fam::Impl_::fam_restore(const char *BackupName, Fam_Descriptor *dest) {
     }
 
     int retD = validate_item(dest);
+    FAM_PROFILE_END_ALLOCATOR(fam_restore);
+    FAM_PROFILE_START_OPS(fam_restore);
     if (retD == 0) {
-        FAM_PROFILE_END_ALLOCATOR(fam_restore);
-        FAM_PROFILE_START_OPS(fam_restore);
         result = famOps->restore(BackupName, dest);
-        FAM_PROFILE_END_OPS(fam_restore);
     }
+    FAM_PROFILE_END_OPS(fam_restore);
     return result;
 }
 
