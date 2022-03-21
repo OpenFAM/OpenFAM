@@ -110,10 +110,9 @@ enum Internal_Error {
     LIBFABRIC_ERROR,
     BACKUP_FILE_EXIST,
     BACKUP_FILE_NOT_FOUND,
-    BACKUP_SIZE_TOO_LONG,
+    BACKUP_SIZE_TOO_LARGE,
     BACKUP_DATA_INVALID,
     BACKUP_METADATA_INVALID,
-    DATAITEM_SIZE_TOO_LONG,
     REQUESTED_MEMORY_TYPE_NOT_AVAILABLE
 };
 
@@ -192,8 +191,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case FENCE_DEREG_FAILED:
     case ITEM_REGISTRATION_FAILED:
     case ITEM_DEREGISTRATION_FAILED:
-    case DATAITEM_SIZE_TOO_LONG:
-    case BACKUP_SIZE_TOO_LONG:
+    case BACKUP_SIZE_TOO_LARGE:
         return FAM_ERR_MEMORY;
     default:
         return FAM_ERR_RESOURCE;

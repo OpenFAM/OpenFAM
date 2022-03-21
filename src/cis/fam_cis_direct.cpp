@@ -1281,7 +1281,7 @@ void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
     }
     if (destDataitem.size < (uint64_t)info.size) {
         message << "data item size is smaller than backup ";
-        THROW_ERRNO_MSG(CIS_Exception, BACKUP_SIZE_TOO_LONG,
+        THROW_ERRNO_MSG(CIS_Exception, BACKUP_SIZE_TOO_LARGE,
                         message.str().c_str());
     }
 
