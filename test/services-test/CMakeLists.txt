@@ -31,23 +31,14 @@ function (add_fam_test_script script_file_name)
     add_test(NAME ${script_file_name} COMMAND  ${PROJECT_SOURCE_DIR}/third-party/build/bin/mpirun --allow-run-as-root -np 1 ${CMAKE_CURRENT_BINARY_DIR}/${script_file_name}.sh)
 endfunction()
 
-function (create_text_files)
-    file(READ ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_volatile.txt.in CONTENTS)
-    file(WRITE ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_volatile.txt "")
-    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_volatile.txt "${CONTENTS}")
-    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_volatile.txt "${PROJECT_SOURCE_DIR}/\n")
-    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_volatile.txt "${PROJECT_SOURCE_DIR}/build/test/config_files/services-test/volatile-multi-mem/\n")
-    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_volatile.txt "${PROJECT_SOURCE_DIR}/build/\n")
-    install (FILES "${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_volatile.txt" PERMISSIONS OWNER_READ OWNER_WRITE
-        OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-        DESTINATION ${PROJECT_BINARY_DIR}/test/services-test/)
-    file(READ ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_persistent.txt.in CONTENTS)
-    file(WRITE ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_persistent.txt "")
-    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_persistent.txt "${CONTENTS}")
-    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_persistent.txt "${PROJECT_SOURCE_DIR}/\n")
-    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_persistent.txt "${PROJECT_SOURCE_DIR}/build/test/config_files/services-test/persistent-multi-mem/\n")
-    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_persistent.txt "${PROJECT_SOURCE_DIR}/build/\n")
-    install (FILES "${PROJECT_SOURCE_DIR}/test/services-test/multi_mem_persistent.txt" PERMISSIONS OWNER_READ OWNER_WRITE
+function (create_text_files file_name)
+    file(READ ${PROJECT_SOURCE_DIR}/test/services-test/${file_name}.txt.in CONTENTS)
+    file(WRITE ${PROJECT_SOURCE_DIR}/test/services-test/${file_name}.txt "")
+    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/${file_name}.txt "${CONTENTS}")
+    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/${file_name}.txt "${PROJECT_SOURCE_DIR}/\n")
+    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/${file_name}.txt "${PROJECT_SOURCE_DIR}/build/test/config_files/services-test/${file_name}/\n")
+    file(APPEND ${PROJECT_SOURCE_DIR}/test/services-test/${file_name}.txt "${PROJECT_SOURCE_DIR}/build/\n")
+    install (FILES "${PROJECT_SOURCE_DIR}/test/services-test/${file_name}.txt" PERMISSIONS OWNER_READ OWNER_WRITE
         OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
         DESTINATION ${PROJECT_BINARY_DIR}/test/services-test/)
 endfunction()
@@ -61,4 +52,5 @@ add_fam_exe(test_fam_create_region)
 
 #add testscripts
 add_fam_test_script(region_create_volatile_persistent)
-create_text_files()
+create_text_files(multi_mem_volatile)
+create_text_files(multi_mem_persistent)
