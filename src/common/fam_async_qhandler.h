@@ -55,6 +55,19 @@ typedef enum {
     DELETE_BACKUP
 } Fam_Ops_Type;
 
+class Fam_Async_Err {
+  public:
+    Fam_Async_Err() : errorCode(FAM_NO_ERROR) {}
+    void set_error_code(enum Fam_Error code) { errorCode = code; }
+    void set_error_msg(const char *msg) { errorMsg = msg; }
+    Fam_Error get_error_code() { return errorCode; }
+    char const *get_error_msg() { return errorMsg.c_str(); }
+
+  private:
+    enum Fam_Error errorCode;
+    string errorMsg;
+};
+
 typedef struct {
     boost::atomic<bool> copyDone;
     Fam_Memory_Service *memoryService;
@@ -70,6 +83,7 @@ typedef struct {
     uint32_t srcAddrLen;
     uint64_t srcMemserverId;
     uint64_t destMemserverId;
+    Fam_Async_Err *err;
 } Fam_Copy_Tag;
 
 typedef struct {
@@ -84,6 +98,7 @@ typedef struct {
     mode_t mode;
     string dataitemName;
     string BackupName;
+    Fam_Async_Err *err;
 } Fam_Backup_Tag;
 
 typedef struct {
@@ -94,6 +109,7 @@ typedef struct {
     uint64_t destMemserverId;
     uint64_t destOffset;
     uint64_t destRegionId;
+    Fam_Async_Err *err;
 } Fam_Restore_Tag;
 
 typedef struct {
@@ -108,6 +124,7 @@ typedef struct {
     uid_t uid;
     gid_t gid;
     mode_t mode;
+    Fam_Async_Err *err;
 } Fam_Delete_Backup_Tag;
 
 typedef struct {
@@ -121,19 +138,6 @@ typedef struct {
     uint64_t itemSize;
     void *tag;
 } Fam_Ops_Info;
-
-class Fam_Async_Err {
-  public:
-    Fam_Async_Err() : errorCode(FAM_NO_ERROR) {}
-    void set_error_code(enum Fam_Error code) { errorCode = code; }
-    void set_error_msg(const char *msg) { errorMsg = msg; }
-    Fam_Error get_error_code() { return errorCode; }
-    char const *get_error_msg() { return errorMsg.c_str(); }
-
-  private:
-    enum Fam_Error errorCode;
-    string errorMsg;
-};
 
 class Fam_Async_QHandler {
   public:

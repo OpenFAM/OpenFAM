@@ -157,15 +157,26 @@ typedef struct {
      */
     uint64_t offset;
 } Fam_Global_Descriptor;
-
+/*
+ * Fam_Stat structure gives info for region and/or data item.
+ */
 typedef struct {
+    /*Key associated with data item.*/
     uint64_t key;
+    /*Size of Region and/or Data item*/
     uint64_t size;
+    /*Permission bits associated with given region or data item.*/
     mode_t perm;
+    /* Name of region and/or data item.*/
     char *name;
 } Fam_Stat;
 
+/*
+ * Fam_Backup_Options gives information backup options to be used while backing
+ * up a data item.
+ * */
 typedef struct {
+    /* As of now, this field is  reserved for future use.*/
     uint32_t backup_option_reserved;
 } Fam_Backup_Options;
 /**

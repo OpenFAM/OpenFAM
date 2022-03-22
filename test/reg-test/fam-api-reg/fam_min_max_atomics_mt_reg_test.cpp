@@ -62,7 +62,9 @@ int rc;
 #define REGION_SIZE (32 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
 
+#ifdef ENABLE_KNOWN_ISSUES
 #define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
+#endif
 
 typedef struct {
     Fam_Descriptor *item;
@@ -797,7 +799,7 @@ TEST(FamMinMaxAtomics, MinMaxDoubleBlock) {
     delete item;
     free((void *)dataItem);
 }
-#if 0
+#ifdef ENABLE_KNOWN_ISSUES
 // Test case 13 - Min Max Negative test case with invalid permissions
 void *thrd_min_max_inv_perms(void *arg) {
 
