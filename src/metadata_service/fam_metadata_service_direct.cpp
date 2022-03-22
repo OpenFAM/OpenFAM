@@ -2628,13 +2628,13 @@ std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
         memoryServerCount = (int)memoryServerVolatileList.size();
     }
 
-    unsigned int id = (int)(hashVal % memoryServerCount);
     if (memoryServerCount == 0) {
         message << "Create region error : Requested Memory type not available.";
         THROW_ERRNO_MSG(Metadata_Service_Exception,
                         REQUESTED_MEMORY_TYPE_NOT_AVAILABLE,
                         message.str().c_str());
     }
+    unsigned int id = (int)(hashVal % memoryServerCount);
     if (enable_region_spanning == 1) {
         if (size <= region_span_size_per_memoryserver) {
             // Size is smaller than region_span_size_per_memoryserver and hence
@@ -2690,6 +2690,7 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     std::string config_file_path;
     configFileParams config_options;
     bool enable_region_spanning;
+    const char *metadata_path;
     size_t region_span_size_per_memoryserver;
 
     // Check for config file in or in path mentioned
@@ -2709,12 +2710,14 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
     } else {
         enable_region_spanning = 0;
     }
+
+    metadata_path = (const char *)(config_options["metadata_path"].c_str());
     region_span_size_per_memoryserver =
         atoi((const char *)(config_options["region_span_size_per_memoryserver"]
                                 .c_str()));
 
     Start(use_meta_reg, enable_region_spanning,
-          region_span_size_per_memoryserver);
+          region_span_size_per_memoryserver, metadata_path);
 }
 
 Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() { Stop(); }
@@ -2726,14 +2729,15 @@ void Fam_Metadata_Service_Direct::Stop() {
         delete pimpl_;
 }
 
-void
-Fam_Metadata_Service_Direct::Start(bool use_meta_reg,
-                                   bool enable_region_spanning,
-                                   size_t region_span_size_per_memoryserver) {
+void Fam_Metadata_Service_Direct::Start(
+    bool use_meta_reg, bool enable_region_spanning,
+    size_t region_span_size_per_memoryserver, const char *metadata_path) {
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
-    StartNVMM();
+    
+    StartNVMM(metadata_path);
+
     pimpl_ = new Impl_;
     assert(pimpl_);
     int ret = pimpl_->Init(use_meta_reg, enable_region_spanning,
@@ -2970,6 +2974,7 @@ configFileParams
 Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
     configFileParams options;
     config_info *info = NULL;
+    ostringstream message;
     if (filename.find("fam_metadata_config.yaml") != std::string::npos) {
         info = new yaml_config_info(filename);
         try {
@@ -2986,9 +2991,10 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
                 (char *)strdup((info->get_key_value("metadata_path")).c_str());
         }
         catch (Fam_InvalidOption_Exception e) {
-            // If parameter is not present, then set the default.
-            options["metadata_path"] = (char *)strdup("/dev/shm");
+            message << "metadata_path option in the config file is invalid.";
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());        
         }
+
         try {
             options["enable_region_spanning"] = (char *)strdup(
                 (info->get_key_value("enable_region_spanning")).c_str());

@@ -1236,45 +1236,81 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
             regionAttributesParam->interleaveEnable = DISABLE;
             if (!(famOptions.fam_default_memory_type) ||
                 (strcmp(famOptions.fam_default_memory_type, "") == 0) ||
-                (strcmp(famOptions.fam_default_memory_type, "volatile") == 0))
+                (strcmp(famOptions.fam_default_memory_type, "volatile") == 0)) {
+
                 regionAttributesParam->memoryType = VOLATILE;
-            else if (strcmp(famOptions.fam_default_memory_type, "persistent") ==
-                     0)
+            } else if (strcmp(famOptions.fam_default_memory_type,
+                              "persistent") == 0) {
                 regionAttributesParam->memoryType = PERSISTENT;
+            }
 
             else {
-                message
-                    << "Memory Type option provided in config file is not valid"
-                    << endl;
+
+                message << "Default Memory Type option provided in config file "
+                           "is not valid"
+                        << endl;
                 THROW_ERR_MSG(Fam_InvalidOption_Exception,
                               message.str().c_str());
             }
 
         } else {
-            regionAttributesParam->redundancyLevel =
-                regionAttributes->redundancyLevel;
-            regionAttributesParam->memoryType = regionAttributes->memoryType;
-            regionAttributesParam->interleaveEnable =
-                regionAttributes->interleaveEnable;
             if (regionAttributes->redundancyLevel == REDUNDANCY_LEVEL_DEFAULT)
                 regionAttributesParam->redundancyLevel = NONE;
+            else {
+                if (!(regionAttributes->redundancyLevel == NONE ||
+                      regionAttributes->redundancyLevel == RAID1 ||
+                      regionAttributes->redundancyLevel == RAID5)) {
+                    message << "Redundancy Level option provided is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+
+                regionAttributesParam->redundancyLevel =
+                    regionAttributes->redundancyLevel;
+            }
             if (regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT)
                 regionAttributesParam->interleaveEnable = DISABLE;
-            if ((regionAttributes->memoryType == MEMORY_TYPE_DEFAULT) &&
-                (!(famOptions.fam_default_memory_type) ||
-                 (strcmp(famOptions.fam_default_memory_type, "") == 0) ||
-                 (strcmp(famOptions.fam_default_memory_type, "volatile") == 0)))
-                regionAttributesParam->memoryType = VOLATILE;
-            else if ((regionAttributes->memoryType == MEMORY_TYPE_DEFAULT) &&
-                     (strcmp(famOptions.fam_default_memory_type,
-                             "persistent") == 0))
-                regionAttributesParam->memoryType = PERSISTENT;
             else {
-                message
-                    << "Memory Type option provided in config file is not valid"
-                    << endl;
-                THROW_ERR_MSG(Fam_InvalidOption_Exception,
-                              message.str().c_str());
+                if (!(regionAttributes->interleaveEnable == ENABLE ||
+                      regionAttributes->interleaveEnable == DISABLE)) {
+                    std::ostringstream message;
+                    message << "InterleaveEnable option provided is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+
+                regionAttributesParam->interleaveEnable =
+                    regionAttributes->interleaveEnable;
+            }
+            if (regionAttributes->memoryType == MEMORY_TYPE_DEFAULT) {
+                if (!(famOptions.fam_default_memory_type) ||
+                    (strcmp(famOptions.fam_default_memory_type, "") == 0) ||
+                    (strcmp(famOptions.fam_default_memory_type, "volatile") ==
+                     0)) {
+                    regionAttributesParam->memoryType = VOLATILE;
+                } else if ((strcmp(famOptions.fam_default_memory_type,
+                                   "persistent") == 0)) {
+                    regionAttributesParam->memoryType = PERSISTENT;
+                } else {
+                    message << "Default Memory Type option provided in config "
+                               "file is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+            } else {
+                if (!(regionAttributes->memoryType == VOLATILE ||
+                      regionAttributes->memoryType == PERSISTENT)) {
+                    std::ostringstream message;
+                    message << "Memory Type option provided is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+                regionAttributesParam->memoryType =
+                    regionAttributes->memoryType;
             }
         }
         region = famAllocator->create_region(name, size, permissions,

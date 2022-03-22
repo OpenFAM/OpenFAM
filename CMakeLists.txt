@@ -190,6 +190,7 @@ add_subdirectory(test/coverage)
 add_subdirectory(test/microbench)
 add_subdirectory(test/apps)
 add_subdirectory(test/permission-test)
+add_subdirectory(test/services-test)
 add_subdirectory(examples/api)
 
 file(READ ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt.in CONTENTS)
