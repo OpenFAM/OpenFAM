@@ -149,6 +149,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps) {
     memoryServerName = famOps->memoryServerName;
     service = famOps->service;
     provider = famOps->provider;
+    if_device = famOps->if_device;
     isSource = famOps->isSource;
     famThreadModel = famOps->famThreadModel;
     famContextModel = famOps->famContextModel;
