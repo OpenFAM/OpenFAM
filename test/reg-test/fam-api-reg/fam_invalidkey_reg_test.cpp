@@ -58,6 +58,7 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
     char *name = (char *)my_fam->fam_get_option(strdup("CIS_SERVER"));
     char *provider =
         (char *)my_fam->fam_get_option(strdup("LIBFABRIC_PROVIDER"));
+    char *if_device = (char *)my_fam->fam_get_option(strdup("IF_DEVICE"));
     char *cisInterfaceType =
         (char *)my_fam->fam_get_option(strdup("CIS_INTERFACE_TYPE"));
     char *rpcPort = (char *)my_fam->fam_get_option(strdup("GRPC_PORT"));
@@ -68,7 +69,7 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
         famAllocator = new Fam_Allocator_Client();
     }
     Fam_Ops_Libfabric *famOps =
-        new Fam_Ops_Libfabric(false, provider, FAM_THREAD_MULTIPLE,
+        new Fam_Ops_Libfabric(false, provider, if_device, FAM_THREAD_MULTIPLE,
                               famAllocator, FAM_CONTEXT_DEFAULT);
 
     EXPECT_NO_THROW(famOps->initialize());

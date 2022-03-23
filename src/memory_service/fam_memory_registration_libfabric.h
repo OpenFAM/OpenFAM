@@ -56,7 +56,8 @@ struct Fam_Region_Map_t;
 class Fam_Memory_Registration_Libfabric : public Fam_Memory_Registration {
   public:
     Fam_Memory_Registration_Libfabric(const char *name, const char *service,
-                                  const char *provider);
+                                      const char *provider,
+                                      const char *if_device);
 
     ~Fam_Memory_Registration_Libfabric();
 

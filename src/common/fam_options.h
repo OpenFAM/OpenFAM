@@ -52,6 +52,8 @@ typedef enum {
     /** Libfabric provider to be used by OpenFam libfabric datapath operations;
         "sockets" by default */
     LIBFABRIC_PROVIDER,
+    /** Interface device used in the pe side for communication */
+    IF_DEVICE,
     /** Fam thread model */
     FAM_THREAD_MODEL,
     /** CIS interface to be used, default is RPC, Support Direct also */

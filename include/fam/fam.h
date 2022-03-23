@@ -293,6 +293,8 @@ typedef struct {
     /** Libfabric provider to be used by OpenFam libfabric datapath operations;
      * "sockets" by default */
     char *libfabricProvider;
+    /** Interface device used in client for communication */
+    char *if_device;
     /** FAM thread model */
     char *famThreadModel;
     /** CIS interface to be used, Default is RPC, Supports Direct calls too */

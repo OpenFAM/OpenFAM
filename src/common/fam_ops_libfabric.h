@@ -80,12 +80,13 @@ class Fam_Ops_Libfabric : public Fam_Ops {
      */
 
     Fam_Ops_Libfabric(bool is_source, const char *provider,
-                      Fam_Thread_Model famTM, Fam_Allocator_Client *famAlloc,
+                      const char *if_device, Fam_Thread_Model famTM,
+                      Fam_Allocator_Client *famAlloc,
                       Fam_Context_Model famCM = FAM_CONTEXT_DEFAULT);
     Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
-                      Fam_Thread_Model famTM, Fam_Allocator_Client *famAlloc,
-                      Fam_Context_Model famCM, const char *memServerName,
-                      const char *libfabricPort);
+                      const char *if_device, Fam_Thread_Model famTM,
+                      Fam_Allocator_Client *famAlloc, Fam_Context_Model famCM,
+                      const char *memServerName, const char *libfabricPort);
     Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps);
     /**
      * Initialize the libfabric library. This method is required to be the first
@@ -404,6 +405,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     char *memoryServerName;
     char *service;
     char *provider;
+    char *if_device;
     bool isSource;
     uint64_t numMemoryNodes;
     struct fi_info *fi;

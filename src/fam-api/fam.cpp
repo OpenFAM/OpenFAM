@@ -78,15 +78,16 @@ const char *supportedOptionList[] = {
     "CIS_SERVER",          // index #2
     "GRPC_PORT",           // index #3
     "LIBFABRIC_PROVIDER",  // index #4
-    "FAM_THREAD_MODEL",    // index #5
-    "CIS_INTERFACE_TYPE",  // index #6
-    "OPENFAM_MODEL",       // index #7
-    "FAM_CONTEXT_MODEL",   // index #8
-    "PE_COUNT",            // index #9
-    "PE_ID",               // index #10
-    "RUNTIME",             // index #11
-    "NUM_CONSUMER",        // index #12
-    NULL                   // index #13
+    "IF_DEVICE",           // index #5
+    "FAM_THREAD_MODEL",    // index #6
+    "CIS_INTERFACE_TYPE",  // index #7
+    "OPENFAM_MODEL",       // index #8
+    "FAM_CONTEXT_MODEL",   // index #9
+    "PE_COUNT",            // index #10
+    "PE_ID",               // index #11
+    "RUNTIME",             // index #12
+    "NUM_CONSUMER",        // index #13
+    NULL                   // index #14
 };
 
 namespace openfam {
@@ -754,8 +755,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             famAllocator = new Fam_Allocator_Client();
         }
         famOps = new Fam_Ops_Libfabric(false, famOptions.libfabricProvider,
-                                       famThreadModel, famAllocator,
-                                       famContextModel);
+                                       famOptions.if_device, famThreadModel,
+                                       famAllocator, famContextModel);
         ret = famOps->initialize();
         if (ret < 0) {
             message << "Fam libfabric initialization failed: "
@@ -824,6 +825,17 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
 
     optValueMap->insert({supportedOptionList[LIBFABRIC_PROVIDER],
                          famOptions.libfabricProvider});
+
+    if (options && options->if_device)
+        famOptions.if_device = strdup(options->if_device);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("if_device") > 0)
+        famOptions.if_device =
+            strdup(config_file_fam_options["if_device"].c_str());
+    else
+        famOptions.if_device = strdup("");
+
+    optValueMap->insert({supportedOptionList[IF_DEVICE], famOptions.if_device});
 
     if (options && options->famThreadModel)
         famOptions.famThreadModel = strdup(options->famThreadModel);
@@ -1025,6 +1037,12 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
             // the exception. This parameter will be obtained from
             // validate_fam_options function.
         }
+        try {
+            options["if_device"] =
+                (char *)strdup((info->get_key_value("if_device")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+        }
+
         try {
             std::string famThreadModel = info->get_key_value("FamThreadModel");
             options["famThreadModel"] = ((famThreadModel.compare("single") == 0)
