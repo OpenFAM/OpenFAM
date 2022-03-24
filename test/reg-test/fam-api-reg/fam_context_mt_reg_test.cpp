@@ -55,8 +55,8 @@ int rc;
 #define NUM_ITERATIONS 100
 #define NUM_IO_ITERATIONS 5
 
-// To increase the number of contexts, we need to increase open
-// files limit for the process
+// To increase the number of contexts, we need to increase
+// the open files limit for the process
 #define NUM_CONTEXTS 7
 
 typedef struct {
