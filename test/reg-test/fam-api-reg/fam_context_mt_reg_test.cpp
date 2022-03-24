@@ -54,7 +54,9 @@ int rc;
 #define REGION_PERM 0777
 #define NUM_ITERATIONS 100
 #define NUM_IO_ITERATIONS 5
-#define NUM_CONTEXTS 7
+#define NUM_CONTEXTS                                                           \
+    7 // to increase the number of contexts, we need to increase the number of
+      // open files
 typedef struct {
     Fam_Descriptor *item;
     uint64_t offset;
