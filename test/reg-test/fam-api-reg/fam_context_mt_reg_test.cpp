@@ -49,12 +49,16 @@ Fam_Options fam_opts;
 Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 int rc;
-#define NUM_THREADS 10
+#define NUM_THREADS 7
 #define REGION_SIZE (32 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
 #define NUM_ITERATIONS 100
 #define NUM_IO_ITERATIONS 5
-#define NUM_CONTEXTS 256
+
+// To increase the number of contexts, we need to increase
+// the open files limit for the process
+#define NUM_CONTEXTS 7
+
 typedef struct {
     Fam_Descriptor *item;
     uint64_t offset;

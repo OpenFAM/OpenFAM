@@ -49,7 +49,11 @@ Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 #define NUM_ITERATIONS 100
 #define NUM_IO_ITERATIONS 5
-#define NUM_CONTEXTS 256
+
+// To increase the number of contexts, we need to increase
+// the open files limit for the process
+#define NUM_CONTEXTS 50
+
 typedef struct {
     Fam_Descriptor *item;
     uint64_t offset;

@@ -674,9 +674,7 @@ void Fam_Ops_Libfabric::quiet(Fam_Region_Descriptor *descriptor) {
 
 uint64_t Fam_Ops_Libfabric::progress_context() {
     uint64_t pending = 0;
-    for (auto fam_ctx : *defContexts) {
-        pending += fabric_progress(fam_ctx.second);
-    }
+    pending = fabric_progress(get_defaultCtx(get_context_id()));
     return pending;
 }
 
