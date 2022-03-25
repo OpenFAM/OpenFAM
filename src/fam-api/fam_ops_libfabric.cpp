@@ -60,6 +60,7 @@ Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
     free(service);
     free(provider);
     free(serverAddrName);
+    free(if_device);
 }
 
 Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
