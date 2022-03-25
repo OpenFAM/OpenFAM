@@ -60,10 +60,11 @@ Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
     free(service);
     free(provider);
     free(serverAddrName);
+    free(if_device);
 }
 
 Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
-                                     const char *if_device,
+                                     const char *if_device_str,
                                      Fam_Thread_Model famTM,
                                      Fam_Allocator_Client *famAlloc,
                                      Fam_Context_Model famCM) {
@@ -71,7 +72,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     memoryServerName = NULL;
     service = NULL;
     provider = strdup(libfabricProvider);
-    if_device = strdup(if_device);
+    if_device = strdup(if_device_str);
     isSource = source;
     famThreadModel = famTM;
     famContextModel = famCM;

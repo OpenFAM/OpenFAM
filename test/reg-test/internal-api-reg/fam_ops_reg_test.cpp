@@ -52,7 +52,7 @@ TEST(FamOpsLibfabricInternal, FamUnimplemented) {
     const char *name = "127.0.0.1";
     const char *service = "1500";
     char *provider = strdup("sockets");
-    char *if_device = NULL;
+    char *if_device = strdup("");
 
     famOps =
         new Fam_Ops_Libfabric(true, provider, if_device, FAM_THREAD_MULTIPLE,
