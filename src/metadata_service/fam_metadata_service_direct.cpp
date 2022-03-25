@@ -2736,7 +2736,9 @@ void Fam_Metadata_Service_Direct::Start(
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
     
-    StartNVMM(metadata_path);
+    /* ToDo: address the cases shared_memory and meta, mem direct for passing 
+ 	metadata path to NVMM */ 	
+    StartNVMM();
 
     pimpl_ = new Impl_;
     assert(pimpl_);
