@@ -63,7 +63,8 @@ namespace metadata {
 class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
   public:
     void Start(bool use_meta_reg, bool enable_region_spanning,
-               size_t size_per_memoryserver, const char *metadata_path);
+               size_t size_per_memoryserver, const char *metadata_path,
+               bool use_fam_path);
     void Stop();
 
     void reset_profile();
@@ -181,7 +182,7 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
 
     std::list<int> get_memory_server_list(uint64_t regionId);
 
-    Fam_Metadata_Service_Direct(bool use_meta_reg = 0);
+    Fam_Metadata_Service_Direct(bool use_fam_path, bool use_meta_reg = 0);
     void metadata_reset_bitmap(uint64_t regionID);
     ~Fam_Metadata_Service_Direct();
 

@@ -72,7 +72,7 @@ void metadata_server_profile_dump() {
 Fam_Metadata_Service_Server::Fam_Metadata_Service_Server(uint64_t rpcPort,
                                                          char *name)
     : serverAddress(name), port(rpcPort) {
-    metadataService = new Fam_Metadata_Service_Direct();
+    metadataService = new Fam_Metadata_Service_Direct(false);
     numClients = 0;
     MEMSERVER_PROFILE_INIT(METADATA_SERVER)
     MEMSERVER_PROFILE_START_TIME(METADATA_SERVER)
