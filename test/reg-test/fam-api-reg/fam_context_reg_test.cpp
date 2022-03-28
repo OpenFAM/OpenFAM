@@ -142,6 +142,33 @@ TEST(FamContext, FamContextSimultaneousOpenCloseStressTest) {
     }
 }
 
+// Test case 5- FamContextNegativeTest
+TEST(FamContextModel, FamContextNegativeTest) {
+    fam_context *ctx;
+    Fam_Descriptor *item;
+    EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
+    EXPECT_THROW(ctx->fam_initialize("myApplication", &fam_opts),
+                 Fam_Exception);
+    EXPECT_THROW(ctx->fam_finalize("myApplication"), Fam_Exception);
+    EXPECT_THROW(ctx->fam_abort(-1), Fam_Exception);
+    EXPECT_THROW(ctx->fam_barrier_all(), Fam_Exception);
+    EXPECT_THROW(ctx->fam_list_options(), Fam_Exception);
+    EXPECT_THROW(ctx->fam_get_option(strdup("PE_ID")), Fam_Exception);
+    EXPECT_THROW(ctx->fam_lookup_region("myRegion"), Fam_Exception);
+    EXPECT_THROW(ctx->fam_lookup("myItem", ("myRegion")), Fam_Exception);
+    EXPECT_THROW(ctx->fam_create_region("myRegion", (uint64_t)1000, 0777, NULL),
+                 Fam_Exception);
+    EXPECT_THROW(ctx->fam_destroy_region(testRegionDesc), Fam_Exception);
+    EXPECT_THROW(ctx->fam_resize_region(testRegionDesc, 1024), Fam_Exception);
+    EXPECT_THROW(ctx->fam_allocate(1024, 0444, testRegionDesc), Fam_Exception);
+    EXPECT_THROW(ctx->fam_allocate("myItem", 1024, 0444, testRegionDesc),
+                 Fam_Exception);
+    EXPECT_THROW(ctx->fam_deallocate(item), Fam_Exception);
+    EXPECT_THROW(ctx->fam_change_permissions(item, 0777), Fam_Exception);
+    EXPECT_THROW(ctx->fam_context_open(), Fam_Exception);
+    EXPECT_THROW(ctx->fam_context_close(ctx), Fam_Exception);
+    EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
+}
 int main(int argc, char **argv) {
     int ret = 0;
     ::testing::InitGoogleTest(&argc, argv);
