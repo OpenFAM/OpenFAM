@@ -223,7 +223,7 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
     // later it will be selected based on some strategy
     if (isSharedMemory) {
         Fam_Metadata_Service *metadataService =
-            new Fam_Metadata_Service_Direct();
+            new Fam_Metadata_Service_Direct(true);
         metadataServers->insert({ 0, metadataService });
         memoryServerCount = memoryServers->size();
 
@@ -253,8 +253,13 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
         }
     } else if (strcmp(config_options["metadata_interface_type"].c_str(),
                       FAM_OPTIONS_DIRECT_STR) == 0) {
-        Fam_Metadata_Service *metadataService =
-            new Fam_Metadata_Service_Direct();
+        Fam_Metadata_Service *metadataService;
+        if (strcmp(config_options["memsrv_interface_type"].c_str(),
+                   FAM_OPTIONS_DIRECT_STR) == 0) {
+            metadataService = new Fam_Metadata_Service_Direct(true);
+        } else {
+            metadataService = new Fam_Metadata_Service_Direct(false);
+        }
         metadataServers->insert({ 0, metadataService });
         memoryServerCount = memoryServers->size();
         // TODO: This code needs to be revisited. Currently memoryserverCount

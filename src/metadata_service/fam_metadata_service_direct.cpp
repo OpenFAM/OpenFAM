@@ -2684,7 +2684,8 @@ Fam_Metadata_Service_Direct::Impl_::get_memory_server_list(uint64_t regionId) {
     return memsrv_list;
 }
 
-Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
+Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_fam_path,
+                                                         bool use_meta_reg) {
     // Look for options information from config file.
     // Use config file options only if NULL is passed.
     std::string config_file_path;
@@ -2717,7 +2718,7 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_meta_reg) {
                                 .c_str()));
 
     Start(use_meta_reg, enable_region_spanning,
-          region_span_size_per_memoryserver, metadata_path);
+          region_span_size_per_memoryserver, metadata_path, use_fam_path);
 }
 
 Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() { Stop(); }
@@ -2731,14 +2732,17 @@ void Fam_Metadata_Service_Direct::Stop() {
 
 void Fam_Metadata_Service_Direct::Start(
     bool use_meta_reg, bool enable_region_spanning,
-    size_t region_span_size_per_memoryserver, const char *metadata_path) {
+    size_t region_span_size_per_memoryserver, const char *metadata_path,
+    bool use_fam_path) {
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
-    
-    // TODO: Create metadata path at metadata_path. 
-    // Removed this for now because of issues in shared_memory model. 	
-    StartNVMM();
+
+    if (use_fam_path == true) {
+        StartNVMM();
+    } else {
+        StartNVMM(metadata_path);
+    }
 
     pimpl_ = new Impl_;
     assert(pimpl_);
