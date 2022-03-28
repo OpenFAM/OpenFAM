@@ -5757,13 +5757,13 @@ void fam_context::fam_change_permissions(Fam_Descriptor *descriptor,
         "fam_change_permission cannot be invoked from fam_context object");
 }
 
-fam_context *fam_context_open() {
+fam_context *fam_context::fam_context_open() {
     THROW_ERRNO_MSG(
         Fam_Exception, FAM_ERR_NOPERM,
         "fam_context_open cannot be invoked from fam_context object");
 }
 
-void fam_context_close(fam_context *) {
+void fam_context::fam_context_close(fam_context *) {
     THROW_ERRNO_MSG(
         Fam_Exception, FAM_ERR_NOPERM,
         "fam_context_close cannot be invoked from fam_context object");
