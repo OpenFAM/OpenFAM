@@ -98,10 +98,11 @@ int main(int argc, char *argv[]) {
     }
 
 	if(initFlag) {
+	std::string userName = getlogin();
         if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
             StartNVMM();
         } else
-            StartNVMM(fam_path);
+            StartNVMM(fam_path, userName);
         exit(0);
 	}
 
