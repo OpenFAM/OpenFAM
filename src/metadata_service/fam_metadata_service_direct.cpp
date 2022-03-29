@@ -2738,10 +2738,11 @@ void Fam_Metadata_Service_Direct::Start(
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
 
+    std::string userName = getlogin();
     if (use_fam_path == true) {
         StartNVMM();
     } else {
-        StartNVMM(metadata_path);
+        StartNVMM(metadata_path, userName);
     }
 
     pimpl_ = new Impl_;
