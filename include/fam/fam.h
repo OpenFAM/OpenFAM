@@ -305,9 +305,9 @@ typedef struct {
     char *numConsumer;
     /** FAM runtime - Default, pmix*/
     char *runtime;
-    /** Default memory type(persistent/volatile) for creating region **/
+    /** Default memory type(Persistent/Volatile) for creating region **/
     char *fam_default_memory_type;
-    /** Interface device used in client for communication */
+    /** Interface device used by the PE for communication */
     char *if_device;
 } Fam_Options;
 
