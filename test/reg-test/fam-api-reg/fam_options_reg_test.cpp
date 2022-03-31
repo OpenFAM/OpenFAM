@@ -61,14 +61,16 @@ TEST(FamOption, GetDefaultOptionList) {
         EXPECT_STREQ(optList[2], "CIS_SERVER");
         EXPECT_STREQ(optList[3], "GRPC_PORT");
         EXPECT_STREQ(optList[4], "LIBFABRIC_PROVIDER");
-        EXPECT_STREQ(optList[5], "IF_DEVICE");
-        EXPECT_STREQ(optList[6], "FAM_THREAD_MODEL");
-        EXPECT_STREQ(optList[7], "CIS_INTERFACE_TYPE");
-        EXPECT_STREQ(optList[8], "OPENFAM_MODEL");
-        EXPECT_STREQ(optList[9], "FAM_CONTEXT_MODEL");
-        EXPECT_STREQ(optList[10], "PE_COUNT");
-        EXPECT_STREQ(optList[11], "PE_ID");
-        EXPECT_STREQ(optList[12], "RUNTIME");
+        EXPECT_STREQ(optList[5], "FAM_THREAD_MODEL");
+        EXPECT_STREQ(optList[6], "CIS_INTERFACE_TYPE");
+        EXPECT_STREQ(optList[7], "OPENFAM_MODEL");
+        EXPECT_STREQ(optList[8], "FAM_CONTEXT_MODEL");
+        EXPECT_STREQ(optList[9], "PE_COUNT");
+        EXPECT_STREQ(optList[10], "PE_ID");
+        EXPECT_STREQ(optList[11], "RUNTIME");
+        EXPECT_STREQ(optList[12], "NUM_CONSUMER");
+        EXPECT_STREQ(optList[13], "FAM_DEFAULT_MEMORY_TYPE");
+        EXPECT_STREQ(optList[14], "IF_DEVICE");
     }
 }
 
