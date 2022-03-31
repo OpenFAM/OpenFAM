@@ -941,8 +941,8 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
             strdup(config_file_fam_options["if_device"].c_str());
     else
         famOptions.if_device = strdup("");
-
     optValueMap->insert({supportedOptionList[IF_DEVICE], famOptions.if_device});
+    
     if (options && options->fam_default_memory_type)
         famOptions.fam_default_memory_type = strdup(options->fam_default_memory_type);
     else if (!config_file_fam_options.empty() &&
@@ -950,9 +950,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
         famOptions.fam_default_memory_type =
             strdup(config_file_fam_options["fam_default_memory_type"].c_str());
     else
-        famOptions.if_device = strdup("");
+        famOptions.fam_default_memory_type = strdup("");
 
-    optValueMap->insert({supportedOptionList[FAM_DEFAULT_MEMORY_TYPE], famOptions.if_device});
+    optValueMap->insert({supportedOptionList[FAM_DEFAULT_MEMORY_TYPE], famOptions.fam_default_memory_type});
     return ret;
 }
 
