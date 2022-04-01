@@ -78,16 +78,17 @@ const char *supportedOptionList[] = {
     "CIS_SERVER",          // index #2
     "GRPC_PORT",           // index #3
     "LIBFABRIC_PROVIDER",  // index #4
-    "IF_DEVICE",           // index #5
-    "FAM_THREAD_MODEL",    // index #6
-    "CIS_INTERFACE_TYPE",  // index #7
-    "OPENFAM_MODEL",       // index #8
-    "FAM_CONTEXT_MODEL",   // index #9
-    "PE_COUNT",            // index #10
-    "PE_ID",               // index #11
-    "RUNTIME",             // index #12
-    "NUM_CONSUMER",        // index #13
-    NULL                   // index #14
+    "FAM_THREAD_MODEL",    // index #5
+    "CIS_INTERFACE_TYPE",  // index #6
+    "OPENFAM_MODEL",       // index #7
+    "FAM_CONTEXT_MODEL",   // index #8
+    "PE_COUNT",            // index #9
+    "PE_ID",               // index #10
+    "RUNTIME",             // index #11
+    "NUM_CONSUMER",        // index #12
+    "FAM_DEFAULT_MEMORY_TYPE", // index #13
+    "IF_DEVICE",           // index #14
+    NULL                   // index #15
 };
 
 namespace openfam {
@@ -826,16 +827,6 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     optValueMap->insert({supportedOptionList[LIBFABRIC_PROVIDER],
                          famOptions.libfabricProvider});
 
-    if (options && options->if_device)
-        famOptions.if_device = strdup(options->if_device);
-    else if (!config_file_fam_options.empty() &&
-             config_file_fam_options.count("if_device") > 0)
-        famOptions.if_device =
-            strdup(config_file_fam_options["if_device"].c_str());
-    else
-        famOptions.if_device = strdup("");
-
-    optValueMap->insert({supportedOptionList[IF_DEVICE], famOptions.if_device});
 
     if (options && options->famThreadModel)
         famOptions.famThreadModel = strdup(options->famThreadModel);
@@ -942,6 +933,26 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     optValueMap->insert(
         {supportedOptionList[NUM_CONSUMER], famOptions.numConsumer});
 
+    if (options && options->if_device)
+        famOptions.if_device = strdup(options->if_device);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("if_device") > 0)
+        famOptions.if_device =
+            strdup(config_file_fam_options["if_device"].c_str());
+    else
+        famOptions.if_device = strdup("");
+    optValueMap->insert({supportedOptionList[IF_DEVICE], famOptions.if_device});
+    
+    if (options && options->fam_default_memory_type)
+        famOptions.fam_default_memory_type = strdup(options->fam_default_memory_type);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("fam_default_memory_type") > 0)
+        famOptions.fam_default_memory_type =
+            strdup(config_file_fam_options["fam_default_memory_type"].c_str());
+    else
+        famOptions.fam_default_memory_type = strdup("");
+
+    optValueMap->insert({supportedOptionList[FAM_DEFAULT_MEMORY_TYPE], famOptions.fam_default_memory_type});
     return ret;
 }
 

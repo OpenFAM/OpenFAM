@@ -288,13 +288,10 @@ typedef struct {
     /** CIS servers to be used by OpenFam PEs */
     char *cisServer;
     /** Port to be used by OpenFam for CIS server RPC connection */
-    char *fam_default_memory_type;
     char *grpcPort;
     /** Libfabric provider to be used by OpenFam libfabric datapath operations;
      * "sockets" by default */
     char *libfabricProvider;
-    /** Interface device used in client for communication */
-    char *if_device;
     /** FAM thread model */
     char *famThreadModel;
     /** CIS interface to be used, Default is RPC, Supports Direct calls too */
@@ -308,6 +305,10 @@ typedef struct {
     char *numConsumer;
     /** FAM runtime - Default, pmix*/
     char *runtime;
+    /** Default memory type(Persistent/Volatile) for creating region **/
+    char *fam_default_memory_type;
+    /** Interface device used by the PE for communication */
+    char *if_device;
 } Fam_Options;
 
 class fam_context;
