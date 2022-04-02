@@ -59,6 +59,12 @@
 #include "fam/fam_exception.h"
 
 namespace openfam {
+
+struct fam_fi_context {
+    struct fi_context2;
+    void *fam_internal[8];
+};
+
 int fabric_initialize(const char *name, const char *service, bool source,
                       char *provider, char *if_device, struct fi_info **fi,
                       struct fid_fabric **fabric, struct fid_eq **eq,

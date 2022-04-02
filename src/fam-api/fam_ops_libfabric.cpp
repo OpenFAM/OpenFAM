@@ -192,12 +192,17 @@ int Fam_Ops_Libfabric::initialize() {
     if ((ret = fabric_initialize(memoryServerName, service, isSource, provider,
                                  if_device, &fi, &fabric, &eq, &domain,
                                  famThreadModel)) < 0) {
-        return ret;
+        message << "Fam libfabric fabric_initialize failed: "
+                << fabric_strerror(ret);
+        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
     }
+
     // Initialize address vector
     if (fi->ep_attr->type == FI_EP_RDM) {
         if ((ret = fabric_initialize_av(fi, domain, eq, &av)) < 0) {
-            return ret;
+            message << "Fam libfabric fabric_initialize_av failed: "
+                    << fabric_strerror(ret);
+            THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
         }
     }
 
@@ -252,8 +257,10 @@ int Fam_Ops_Libfabric::initialize() {
                 ret = fabric_insert_av((char *)nodeAddr, av, &tmpAddrV);
 
                 if (ret < 0) {
-                    // TODO: Log error
-                    return ret;
+                    message << "Fam libfabric fabric_insert_av failed: "
+                            << fabric_strerror(ret);
+                    THROW_ERR_MSG(Fam_Datapath_Exception,
+                                  message.str().c_str());
                 }
 
                 // Place the fi_addr_t at nodeId index of fiAddrs vector.
@@ -273,8 +280,10 @@ int Fam_Ops_Libfabric::initialize() {
                 defContexts->insert({FAM_DEFAULT_CTX_ID, defaultCtx});
                 ret = fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
                 if (ret < 0) {
-                    // TODO: Log error
-                    return ret;
+                    message << "Fam libfabric fabric_enable_bind_ep failed: "
+                            << fabric_strerror(ret);
+                    THROW_ERR_MSG(Fam_Datapath_Exception,
+                                  message.str().c_str());
                 }
             }
         }

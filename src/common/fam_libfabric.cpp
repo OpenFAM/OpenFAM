@@ -590,7 +590,7 @@ int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
     return 0;
 }
 // ioType: Send (0), Recv (1)
-int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx, int ioType) {
+int fabric_completion_wait(Fam_Context *famCtx, fi_context *fiCtx, int ioType) {
 
     LIBFABRIC_PROFILE_START_OPS()
     ssize_t ret = 0;
@@ -598,25 +598,27 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx, int ioType) {
     int timeout_retry_cnt = 0;
     int timeout_wait_retry_cnt = 0;
     struct fid_cq *cq = NULL;
+    struct fam_fi_context *ctx = (struct fam_fi_context *)fiCtx;
+
     if (ioType == 0)
         cq = famCtx->get_txcq();
     else if (ioType == 1)
         cq = famCtx->get_rxcq();
     uint64_t success, failure, reqcnt;
     do {
-        success = (uint64_t)ctx->internal[0];
-        failure = (uint64_t)ctx->internal[1];
-        reqcnt = (uint64_t)ctx->internal[2];
+        success = (uint64_t)ctx->fam_internal[0];
+        failure = (uint64_t)ctx->fam_internal[1];
+        reqcnt = (uint64_t)ctx->fam_internal[2];
         if (success == reqcnt) {
             return 0;
         }
         if (failure > 0) {
             struct fi_cq_err_entry *errptr =
-                (struct fi_cq_err_entry *)ctx->internal[3];
+                (struct fi_cq_err_entry *)ctx->fam_internal[3];
             const char *errmsg = fi_cq_strerror(cq, errptr->prov_errno,
                                                 errptr->err_data, NULL, 0);
             int err = errptr->err;
-            free(ctx->internal[3]);
+            free(ctx->fam_internal[3]);
 
             THROW_ERRNO_MSG(Fam_Datapath_Exception, get_fam_error(err), errmsg);
         }
@@ -626,8 +628,8 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx, int ioType) {
         if (ret > 0) {
             if ((fi_context *)entry.op_context != (void *)NULL) {
                 __sync_fetch_and_add(
-                    ((uint64_t *)&((fi_context *)entry.op_context)
-                         ->internal[0]),
+                    ((uint64_t *)&((fam_fi_context *)entry.op_context)
+                         ->fam_internal[0]),
                     one);
             }
         }
@@ -654,8 +656,8 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx, int ioType) {
                     const char *errmsg = fi_cq_strerror(cq, err.prov_errno,
                                                         err.err_data, NULL, 0);
                     __sync_fetch_and_add(
-                        (uint64_t *)&((fi_context *)err.op_context)
-                            ->internal[1],
+                        (uint64_t *)&((fam_fi_context *)err.op_context)
+                            ->fam_internal[1],
                         one);
 
                     THROW_ERRNO_MSG(Fam_Datapath_Exception,
@@ -663,8 +665,8 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx, int ioType) {
                 } else {
                     if ((fi_context *)err.op_context != NULL) {
                         __sync_fetch_and_add(
-                            (uint64_t *)&((fi_context *)err.op_context)
-                                ->internal[1],
+                            (uint64_t *)&((fam_fi_context *)err.op_context)
+                                ->fam_internal[1],
                             one);
                         struct fi_cq_err_entry *errptr =
                             (struct fi_cq_err_entry *)malloc(
@@ -672,7 +674,8 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx, int ioType) {
                         memcpy((struct fi_cq_err_entry *)errptr, &err,
                                sizeof(struct fi_cq_err_entry));
                         if ((__sync_val_compare_and_swap(
-                                &(((fi_context *)err.op_context)->internal[3]),
+                                &(((fam_fi_context *)err.op_context)
+                                      ->fam_internal[3]),
                                 NULL, errptr)) != NULL) {
                             free(errptr);
                         }
@@ -689,60 +692,6 @@ int fabric_completion_wait(Fam_Context *famCtx, fi_context *ctx, int ioType) {
     LIBFABRIC_PROFILE_END_OPS(fabric_completion_wait)
     return 0;
 }
-
-/*
-int fabric_completion_wait_multictx(Fam_Context *famCtx, fi_context *ctx,
-                                    int64_t count) {
-    LIBFABRIC_PROFILE_START_OPS()
-    ssize_t ret = 0;
-    struct fi_cq_data_entry entry;
-    int timeout_retry_cnt = 0;
-    int64_t completion = 0;
-    int timeout_wait_retry_cnt = 0;
-
-    do {
-        memset(&entry, 0, sizeof(entry));
-        FI_CALL(ret, fi_cq_read, famCtx->get_txcq(), &entry, 1);
-        if (ret == -FI_ETIMEDOUT || ret == -FI_EAGAIN) {
-            if (timeout_retry_cnt < TIMEOUT_RETRY) {
-                timeout_retry_cnt++;
-                continue;
-            } else if (timeout_wait_retry_cnt < TIMEOUT_WAIT_RETRY) {
-                timeout_wait_retry_cnt++;
-                usleep(FABRIC_TIMEOUT * 1000);
-                continue;
-            } else {
-                throw Fam_Timeout_Exception(
-                    "fi_cq_read timeout retry count exceeded INT_MAX");
-            }
-        }
-        if (ret < 0) {
-            struct fi_cq_err_entry err;
-
-            FI_CALL(ret, fi_cq_readerr, famCtx->get_txcq(), &err, 0);
-
-            if (ret == 1) {
-                const char *errmsg = fi_cq_strerror(
-                    famCtx->get_txcq(), err.prov_errno, err.err_data, NULL, 0);
-                throw Fam_Datapath_Exception(get_fam_error(err.err), errmsg);
-            } else if (ret == -FI_EAGAIN) {
-                continue;
-            } else if (ret) {
-                throw Fam_Datapath_Exception("Reading from fabric CQ failed");
-            }
-        }
-
-        // validate the completion context against the ctx at that index
-        uint64_t idx = (uint64_t)((fi_context *)entry.op_context)->internal[0];
-        if (&ctx[idx] == entry.op_context) {
-            completion++;
-        }
-    } while (completion < count);
-
-    LIBFABRIC_PROFILE_END_OPS(fabric_completion_wait_multictx)
-    return 0;
-}
-*/
 
 /*
  * fabric write message blocking
@@ -762,9 +711,9 @@ int fabric_write(uint64_t key, const void *local, size_t nbytes,
 
     struct fi_rma_iov rma_iov = {.addr = offset, .len = nbytes, .key = key};
 
-    struct fi_context *ctx = new struct fi_context();
-    memset(ctx, 0, sizeof(struct fi_context));
-    ctx->internal[2] = (void *)1;
+    struct fam_fi_context *ctx = new struct fam_fi_context();
+    memset(ctx, 0, sizeof(struct fam_fi_context));
+    ctx->fam_internal[2] = (void *)1;
 
     struct fi_msg_rma msg = {.msg_iov = &iov,
                              .desc = 0,
@@ -772,7 +721,7 @@ int fabric_write(uint64_t key, const void *local, size_t nbytes,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
                              .rma_iov_count = 1,
-                             .context = ctx,
+                             .context = (struct fi_context *)ctx,
                              .data = 0};
 
     ssize_t ret;
@@ -790,7 +739,7 @@ int fabric_write(uint64_t key, const void *local, size_t nbytes,
 
         famCtx->inc_num_tx_ops();
         incr++;
-        ret = fabric_completion_wait(famCtx, ctx, 0);
+        ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
     } catch (...) {
         famCtx->inc_num_tx_fail_cnt(incr);
         // Release Fam_Context read lock
@@ -823,9 +772,9 @@ int fabric_read(uint64_t key, const void *local, size_t nbytes, uint64_t offset,
 
     struct fi_rma_iov rma_iov = {.addr = offset, .len = nbytes, .key = key};
 
-    struct fi_context *ctx = new struct fi_context();
-    memset(ctx, 0, sizeof(struct fi_context));
-    ctx->internal[2] = (void *)1;
+    struct fam_fi_context *ctx = new struct fam_fi_context();
+    memset(ctx, 0, sizeof(struct fam_fi_context));
+    ctx->fam_internal[2] = (void *)1;
 
     struct fi_msg_rma msg = {.msg_iov = &iov,
                              .desc = 0,
@@ -833,7 +782,7 @@ int fabric_read(uint64_t key, const void *local, size_t nbytes, uint64_t offset,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
                              .rma_iov_count = 1,
-                             .context = ctx,
+                             .context = (struct fi_context *)ctx,
                              .data = 0};
 
     ssize_t ret;
@@ -850,7 +799,7 @@ int fabric_read(uint64_t key, const void *local, size_t nbytes, uint64_t offset,
 
         famCtx->inc_num_rx_ops();
         incr++;
-        ret = fabric_completion_wait(famCtx, ctx, 0);
+        ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
     } catch (...) {
         famCtx->inc_num_rx_fail_cnt(incr);
         // Release Fam_Context read lock
@@ -879,10 +828,10 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
     flags = (block ? FI_COMPLETION : 0);
     flags |= ((block && write) ? FI_DELIVERY_COMPLETE : 0);
 
-    struct fi_context *ctx = (block ? new struct fi_context() : NULL);
+    struct fam_fi_context *ctx = (block ? new struct fam_fi_context() : NULL);
     if (block) {
-        memset(ctx, 0, sizeof(struct fi_context));
-        ctx->internal[2] = (void *)iteration;
+        memset(ctx, 0, sizeof(struct fam_fi_context));
+        ctx->fam_internal[2] = (void *)iteration;
     }
 
     // Take Fam_Context read lock
@@ -896,7 +845,8 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
                                  .addr = fiAddr,
                                  .rma_iov = &rma_iov[j * iov_limit],
                                  .rma_iov_count = MIN(iov_limit, count_remain),
-                                 .context = (block ? ctx : NULL),
+                                 .context =
+                                     (block ? (struct fi_context *)ctx : NULL),
                                  .data = 0};
 
         uint32_t retry_cnt = 0;
@@ -924,7 +874,7 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
 
     if (block) {
         try {
-            ret = fabric_completion_wait(famCtx, ctx, 0);
+            ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
         } catch (...) {
             if (write)
                 famCtx->inc_num_tx_fail_cnt(1l);
@@ -1601,7 +1551,6 @@ void fabric_atomic(uint64_t key, void *value, uint64_t offset, enum fi_op op,
 
     struct fi_rma_ioc rma_iov = {.addr = offset, .count = 1, .key = key};
 
-    struct fi_context *ctx = new struct fi_context();
     struct fi_msg_atomic msg = {.msg_iov = &iov,
                                 .desc = 0,
                                 .iov_count = 1,
@@ -1610,7 +1559,7 @@ void fabric_atomic(uint64_t key, void *value, uint64_t offset, enum fi_op op,
                                 .rma_iov_count = 1,
                                 .datatype = datatype,
                                 .op = op,
-                                .context = ctx,
+                                .context = NULL,
                                 .data = 0};
 
     ssize_t ret;
@@ -1646,9 +1595,9 @@ void fabric_fetch_atomic(uint64_t key, void *value, void *result,
 
     struct fi_ioc result_iov = {.addr = result, .count = 1};
 
-    struct fi_context *ctx = new struct fi_context();
-    memset(ctx, 0, sizeof(struct fi_context));
-    ctx->internal[2] = (void *)1;
+    struct fam_fi_context *ctx = new struct fam_fi_context();
+    memset(ctx, 0, sizeof(struct fam_fi_context));
+    ctx->fam_internal[2] = (void *)1;
 
     struct fi_msg_atomic msg = {.msg_iov = &iov,
                                 .desc = 0,
@@ -1658,7 +1607,7 @@ void fabric_fetch_atomic(uint64_t key, void *value, void *result,
                                 .rma_iov_count = 1,
                                 .datatype = datatype,
                                 .op = op,
-                                .context = ctx,
+                                .context = (struct fi_context *)ctx,
                                 .data = 0};
 
     ssize_t ret;
@@ -1675,7 +1624,7 @@ void fabric_fetch_atomic(uint64_t key, void *value, void *result,
         } while (fabric_retry(famCtx, ret, &retry_cnt));
         famCtx->inc_num_rx_ops();
         incr++;
-        ret = fabric_completion_wait(famCtx, ctx, 0);
+        ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
     } catch (...) {
         famCtx->inc_num_rx_fail_cnt(incr);
         // Release Fam_Context read lock
@@ -1703,9 +1652,9 @@ void fabric_compare_atomic(uint64_t key, void *compare, void *result,
 
     struct fi_ioc compare_iov = {.addr = compare, .count = 1};
 
-    struct fi_context *ctx = new struct fi_context();
-    memset(ctx, 0, sizeof(struct fi_context));
-    ctx->internal[2] = (void *)1;
+    struct fam_fi_context *ctx = new struct fam_fi_context();
+    memset(ctx, 0, sizeof(struct fam_fi_context));
+    ctx->fam_internal[2] = (void *)1;
 
     struct fi_msg_atomic msg = {.msg_iov = &iov,
                                 .desc = 0,
@@ -1715,7 +1664,7 @@ void fabric_compare_atomic(uint64_t key, void *compare, void *result,
                                 .rma_iov_count = 1,
                                 .datatype = datatype,
                                 .op = op,
-                                .context = ctx,
+                                .context = (struct fi_context *)ctx,
                                 .data = 0};
 
     ssize_t ret;
@@ -1733,7 +1682,7 @@ void fabric_compare_atomic(uint64_t key, void *compare, void *result,
         } while (fabric_retry(famCtx, ret, &retry_cnt));
         famCtx->inc_num_rx_ops();
         incr++;
-        ret = fabric_completion_wait(famCtx, ctx, 0);
+        ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
     } catch (...) {
         famCtx->inc_num_rx_fail_cnt(incr);
         // Release Fam_Context read lock
@@ -1788,15 +1737,15 @@ void fabric_send_response(void *retStatus, fi_addr_t fiAddr,
                           Fam_Context *famCtx, size_t nbytes) {
     struct iovec iov = {.iov_base = (void *)retStatus, .iov_len = nbytes};
 
-    struct fi_context *ctx = new struct fi_context();
-    memset(ctx, 0, sizeof(struct fi_context));
-    ctx->internal[2] = (void *)1;
+    struct fam_fi_context *ctx = new struct fam_fi_context();
+    memset(ctx, 0, sizeof(struct fam_fi_context));
+    ctx->fam_internal[2] = (void *)1;
 
     struct fi_msg msg = {.msg_iov = &iov,
                          .desc = 0,
                          .iov_count = 1,
                          .addr = fiAddr,
-                         .context = ctx,
+                         .context = (struct fi_context *)ctx,
                          .data = 0};
 
     ssize_t ret;
@@ -1813,7 +1762,7 @@ void fabric_send_response(void *retStatus, fi_addr_t fiAddr,
 
         famCtx->inc_num_tx_ops();
         incr++;
-        ret = fabric_completion_wait(famCtx, ctx, 0);
+        ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
     } catch (...) {
         famCtx->inc_num_tx_fail_cnt(incr);
         // Release Fam_Context read lock
@@ -1836,14 +1785,14 @@ fi_context *fabric_post_response_buff(void *retStatus, fi_addr_t fiAddr,
                                       Fam_Context *famCtx, size_t nbytes) {
     struct iovec iov = {.iov_base = retStatus, .iov_len = nbytes};
 
-    struct fi_context *ctx = new struct fi_context();
-    memset(ctx, 0, sizeof(struct fi_context));
-    ctx->internal[2] = (void *)1;
+    struct fam_fi_context *ctx = new struct fam_fi_context();
+    memset(ctx, 0, sizeof(struct fam_fi_context));
+    ctx->fam_internal[2] = (void *)1;
     struct fi_msg msg = {.msg_iov = &iov,
                          .desc = 0,
                          .iov_count = 1,
                          .addr = fiAddr,
-                         .context = ctx,
+                         .context = (struct fi_context *)ctx,
                          .data = 0};
 
     ssize_t ret;
@@ -1867,7 +1816,7 @@ fi_context *fabric_post_response_buff(void *retStatus, fi_addr_t fiAddr,
         throw;
     }
     famCtx->release_lock();
-    return ctx;
+    return (struct fi_context *)ctx;
 }
 
 } // namespace openfam

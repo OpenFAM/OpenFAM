@@ -97,14 +97,15 @@ int main(int argc, char *argv[]) {
         }
     }
 
-	if(initFlag) {
-	std::string userName = getlogin();
-        if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
+    if(initFlag) {
+        char *userName = getlogin();
+        if (fam_path == NULL || (strcmp(fam_path, "") == 0) ||
+            userName == NULL || (strcmp(userName, "") == 0)) {
             StartNVMM();
         } else
-            StartNVMM(fam_path, userName);
+            StartNVMM(fam_path, strdup(userName));
         exit(0);
-	}
+    }
 
 #ifdef COVERAGE
     signal(SIGINT, signal_handler);
