@@ -36,6 +36,8 @@
 #include "common/fam_internal_exception.h"
 #include <iostream>
 #include <map>
+#include <pwd.h>
+#include <string.h>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -73,6 +75,8 @@ class yaml_config_info : public config_info {
     YAML::Node config;
 };
 
+// Miscellaneous functions
+
 /*
  * find_config_file - Look for configuration file in path specified by
  * OPENFAM_ROOT environment variable or in /opt/OpenFAM.
@@ -109,4 +113,26 @@ inline std::string find_config_file(char *config_file) {
     return config_filename;
 }
 
+/*
+ * login_username - fetch the login username
+ * On Success, return loginname. Else returns NULL
+ */
+inline std::string login_username(void) {
+    struct passwd *loginPwName;
+    uid_t loginUid;
+    char *loginName;
+
+    loginName = getlogin();
+
+    if (loginName != NULL)
+        return std::string(strdup(loginName));
+
+    loginUid = getuid();
+    loginPwName = getpwuid(loginUid);
+
+    if (loginPwName != NULL)
+        return std::string(strdup(loginPwName->pw_name));
+    else
+        return std::string(strdup(""));
+}
 #endif

@@ -78,13 +78,12 @@ Memserver_Allocator::Memserver_Allocator(uint64_t delayed_free_threads,
     MEMSERVER_PROFILE_INIT(NVMM)
     MEMSERVER_PROFILE_START_TIME(NVMM)
 
-    char *userName = getlogin();
+    std::string userName = login_username();
 
-    if (fam_path == NULL || (strcmp(fam_path, "") == 0) ||
-        userName == NULL || (strcmp(userName, "") == 0))
+    if (fam_path == NULL || (strcmp(fam_path, "") == 0))
         StartNVMM();
     else
-        StartNVMM(fam_path, strdup(userName));
+        StartNVMM(fam_path, userName);
 
     num_delayed_free_threads = delayed_free_threads;
     heapMap = new HeapMap();
