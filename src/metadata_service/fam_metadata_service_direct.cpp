@@ -2738,7 +2738,8 @@ void Fam_Metadata_Service_Direct::Start(
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
 
-    std::string userName = getlogin();
+    std::string userName = login_username();
+
     if (use_fam_path == true) {
         StartNVMM();
     } else {

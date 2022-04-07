@@ -5639,13 +5639,17 @@ fam_context *fam::fam_context_open() {
     //
     // TODO: Take lock
 
+    TRY_CATCH_BEGIN
     fam_context *ctx = (fam_context *)pimpl_->fam_context_open();
     return ctx;
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 void fam::fam_context_close(fam_context *ctx) {
+    TRY_CATCH_BEGIN
     pimpl_->fam_context_close(ctx);
     return;
+    RETURN_WITH_FAM_EXCEPTION
 }
 
 /**

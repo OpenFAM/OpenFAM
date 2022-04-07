@@ -77,8 +77,8 @@ Memserver_Allocator::Memserver_Allocator(uint64_t delayed_free_threads,
                                          const char *fam_path = "") {
     MEMSERVER_PROFILE_INIT(NVMM)
     MEMSERVER_PROFILE_START_TIME(NVMM)
-   
-    std::string userName = getlogin();
+
+    std::string userName = login_username();
 
     if (fam_path == NULL || (strcmp(fam_path, "") == 0))
         StartNVMM();
