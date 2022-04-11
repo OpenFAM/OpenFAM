@@ -1,8 +1,9 @@
 /*
  * fam_cas_atomics_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -72,7 +73,7 @@ TEST(FamCASAtomics, CASInt32) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(int32_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(int32_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -123,7 +124,7 @@ TEST(FamCASAtomics, CASUInt32) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint32_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint32_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -178,7 +179,7 @@ TEST(FamCASAtomics, CASInt64) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(int64_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -233,7 +234,7 @@ TEST(FamCASAtomics, CASUInt64) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint64_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
