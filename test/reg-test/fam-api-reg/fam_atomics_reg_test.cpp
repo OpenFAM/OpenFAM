@@ -101,7 +101,7 @@ TEST(FamGeneriAtomics, AddSubInt32NonBlock) {
 
     int32_t baseValue = 100;
     int32_t resValue = 80;
-    uint64_t testOffset = (test_item_size - sizeof(int32_t) - 1);
+    uint64_t testOffset = (test_item_size - 2 * sizeof(int32_t));
 #define NT 2
     pthread_t nThread[NT];
     int32_t result;
@@ -154,7 +154,7 @@ TEST(FamGeneriAtomics, AddInt32NonBlock) {
 
     int32_t baseValue = 100;
     int32_t resValue = 1100;
-    uint64_t testOffset = (test_item_size - sizeof(int32_t) - 1);
+    uint64_t testOffset = (test_item_size - 2 * sizeof(int32_t));
 #define NT 10
     pthread_t nThread[NT];
     int32_t result;
@@ -205,7 +205,7 @@ TEST(FamGeneriAtomics, SubInt32NonBlock) {
 
     int32_t baseValue = 1100;
     int32_t resValue = 100;
-    uint64_t testOffset = (test_item_size - sizeof(int32_t) - 1);
+    uint64_t testOffset = (test_item_size - 2 * sizeof(int32_t));
 #define NT 10
     pthread_t nThread[NT];
     int32_t result;
