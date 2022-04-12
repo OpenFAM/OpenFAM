@@ -2739,13 +2739,21 @@ void Fam_Metadata_Service_Direct::Start(
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
 
     std::string userName = login_username();
-
+    ostringstream message;
+    int startNvmmStatus;
     if (use_fam_path == true) {
-        StartNVMM();
+        startNvmmStatus = StartNVMM();
     } else {
-        StartNVMM(metadata_path, userName);
+        startNvmmStatus = StartNVMM(metadata_path, userName);
     }
+    if ((startNvmmStatus == 0) || (startNvmmStatus == 2)) {
 
+        std::cout << "Memory server started successfully " << std::endl;
+    } else {
+        message << "Starting of memory server failed in metadata";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, MEM_SERVER_START_FAILED,
+                        message.str().c_str());
+    }
     pimpl_ = new Impl_;
     assert(pimpl_);
     int ret = pimpl_->Init(use_meta_reg, enable_region_spanning,

@@ -80,10 +80,17 @@ Memserver_Allocator::Memserver_Allocator(uint64_t delayed_free_threads,
 
     std::string userName = login_username();
 
-    if (fam_path == NULL || (strcmp(fam_path, "") == 0))
-        StartNVMM();
-    else
-        StartNVMM(fam_path, userName);
+    int startNvmmStatus = 0;
+    if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
+        startNvmmStatus = StartNVMM();
+    } else {
+        startNvmmStatus = StartNVMM(fam_path);
+    }
+    if ((startNvmmStatus == 0) || (startNvmmStatus == 2)) {
+        std::cout << "Memory server started successfully " << std::endl;
+    } else {
+        std::cout << "Starting of memory server failed 1 " << std::endl;
+    }
 
     num_delayed_free_threads = delayed_free_threads;
     heapMap = new HeapMap();

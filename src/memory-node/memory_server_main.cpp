@@ -98,11 +98,22 @@ int main(int argc, char *argv[]) {
     }
 
     if(initFlag) {
+        int startNvmmStatus;
         std::string userName = login_username();
         if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
-            StartNVMM();
-        } else
-            StartNVMM(fam_path, userName);
+                     startNvmmStatus =  StartNVMM();
+         } else {
+             startNvmmStatus = StartNVMM(fam_path);
+         }
+         std::cout<<" startNvmmStatus "<<startNvmmStatus<<std::endl;
+ 
+         if ((startNvmmStatus == 0)  || (startNvmmStatus == 2))
+ 	{
+ 	   std::cout<<"Memory server started successfully "<<std::endl;
+ 	} else {
+            std::cout<<"Starting of memory server failed2 "<<std::endl;
+         }
+      
         exit(0);
     }
 
