@@ -1509,9 +1509,9 @@ uint64_t fabric_put_progress(Fam_Context *famCtx) {
     uint64_t txsuccess = 0;
     uint64_t txfail = 0;
     uint64_t txcnt = 0;
-    txcnt = famCtx->get_num_tx_ops();
     FI_CALL(txsuccess, fi_cntr_read, famCtx->get_txCntr());
     FI_CALL(txfail, fi_cntr_readerr, famCtx->get_txCntr());
+    txcnt = famCtx->get_num_tx_ops();
     return (txcnt - (txsuccess + txfail));
 }
 
@@ -1519,9 +1519,9 @@ uint64_t fabric_get_progress(Fam_Context *famCtx) {
     uint64_t rxsuccess = 0;
     uint64_t rxfail = 0;
     uint64_t rxcnt = 0;
-    rxcnt = famCtx->get_num_rx_ops();
     FI_CALL(rxsuccess, fi_cntr_read, famCtx->get_rxCntr());
     FI_CALL(rxfail, fi_cntr_readerr, famCtx->get_rxCntr());
+    rxcnt = famCtx->get_num_rx_ops();
     return (rxcnt - (rxsuccess + rxfail));
 }
 
