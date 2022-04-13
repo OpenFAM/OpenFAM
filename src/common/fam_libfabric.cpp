@@ -1511,7 +1511,7 @@ uint64_t fabric_put_progress(Fam_Context *famCtx) {
     uint64_t txcnt = 0;
 
     /* There is a possibility that multiple threads are queueing I/O's in
-     * parallel. Such a situation will will lead to txcnt being less than
+     * parallel. Such a situation will lead to txcnt being less than
      * (txsuccess + txfail). Therefore, calculating txcnt  needs to be done
      * after the libfabric wrapper calls, so that the calculation does not
      * return negative values. Please note that fam_progress may not return
@@ -1531,7 +1531,7 @@ uint64_t fabric_get_progress(Fam_Context *famCtx) {
     uint64_t rxcnt = 0;
 
     /* There is a possibility that multiple threads are queueing I/O's in
-     * parallel. Such a situation will will lead to txcnt being less than
+     * parallel. Such a situation will lead to txcnt being less than
      * (txsuccess + txfail). Therefore, calculating txcnt  needs to be done
      * after the libfabric wrapper calls, so that the calculation does not
      * return negative values. Please note that fam_progress may not return
