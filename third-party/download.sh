@@ -67,11 +67,11 @@ cp -fr googletest_v1_10_x/googletest .
 rm -fr googletest_v1_10_x
 
 #NVMM
-#TODO: Replace with master branch NVMM before release
+#TODO: Replace with right NVMM branch before release
 cd $CURRENT_DIR
 echo "Downloading NVMM source"
 #git clone https://github.com/HewlettPackard/gull.git nvmm
-git clone -b devel https://github.com/mashoodk/gull.git nvmm
+git clone -b devel https://github.com/HewlettPackard/gull.git nvmm
 cd nvmm
 #git fetch --all --tags --prune
 #git checkout tags/v0.1 -b openfam
