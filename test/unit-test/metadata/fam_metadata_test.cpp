@@ -82,8 +82,8 @@ int main(int argc, char *argv[]) {
 
     Fam_DataItem_Metadata dinode;
     Fam_DataItem_Metadata *datanode = new Fam_DataItem_Metadata();
-    memset(regnode, 0, sizeof(Fam_Region_Metadata));
-    memset(datanode, 0, sizeof(Fam_DataItem_Metadata));
+    memset((void *)regnode, 0, sizeof(Fam_Region_Metadata));
+    memset((void *)datanode, 0, sizeof(Fam_DataItem_Metadata));
 
     uint64_t i = 0, j = 5000;
 
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 
         name = node.name;
         regionId = node.regionId;
-        memcpy(regnode, &node, sizeof(Fam_Region_Metadata));
+        memcpy((void *)regnode, &node, sizeof(Fam_Region_Metadata));
 
         try {
             manager->metadata_insert_region(regionId, name.c_str(), regnode);

@@ -105,7 +105,7 @@ message Fam_Metadata_Region_Request {
     optional uint64 memsrv_cnt = 13;
     repeated uint64 memsrv_list = 14;
     optional uint64 memsrv_id = 15;
-    optional int32 op = 16;
+    optional uint32 op = 16;
     optional uint32 redundancylevel = 17;
     optional uint32 memorytype = 18;
     optional uint32 interleaveenable = 19;
@@ -121,7 +121,7 @@ message Fam_Metadata_Region_Response {
     optional uint64 size = 7;
     optional uint64 maxkeylen = 8;
     optional bool isfound = 9;
-    optional int32 errorcode = 10;
+    optional uint32 errorcode = 10;
     optional string errormsg = 11;
     optional uint64 memsrv_id = 12;
     repeated uint64 memsrv_list = 13;
@@ -146,7 +146,7 @@ message Fam_Metadata_Request {
     optional uint64 size = 11;
     optional uint32 user_policy = 12;
     optional uint64 memsrv_id = 13;
-    optional int32 op = 14;
+    optional uint32 op = 14;
     optional uint32 redundancylevel = 15;
     optional uint32 memorytype = 16;
     optional uint32 interleaveenable = 17;
@@ -163,7 +163,7 @@ message Fam_Metadata_Response {
     optional uint64 size = 7;
     optional uint64 maxkeylen = 8;
     optional bool isfound = 9;
-    optional int32 errorcode = 10;
+    optional uint32 errorcode = 10;
     optional string errormsg = 11;
     optional uint64 memsrv_id = 12;
 }
@@ -180,12 +180,12 @@ message Fam_Permission_Request {
     optional uint64 perm = 3;
     optional uint32 uid_in = 4;
     optional uint32 gid_in = 5;
-    optional meta_ops ops = 6;
+    optional uint32 ops = 6;
 }
 
 message Fam_Permission_Response {
     optional bool is_permitted = 1;
-    optional int32 errorcode = 2;
+    optional uint32 errorcode = 2;
     optional string errormsg = 3;
 }
 
@@ -199,7 +199,7 @@ message Fam_Memservcnt_Request {
 message Fam_Metadata_Region_Info_Response {
     optional uint64 region_id = 1;
     repeated uint32 memserv_list = 2;
-    optional int32 errorcode = 3;
+    optional uint32 errorcode = 3;
     optional string errormsg = 4;
     optional uint64 memsrv_id = 5;
 }

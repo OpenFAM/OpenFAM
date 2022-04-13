@@ -495,10 +495,8 @@ TEST(FamCopy, FamCopyAndWait) {
         EXPECT_NO_THROW(my_fam->fam_put_blocking(
             local, src[i], (i * 20) % (DATA_ITEM_SIZE - 20), 20));
     }
-
     const char *secondItemLocal = get_uniq_str("firstLocal", my_fam);
     const char *secondRegionLocal = get_uniq_str("secondRegionLocal", my_fam);
-
     EXPECT_NO_THROW(destRegion = my_fam->fam_create_region(
                         secondRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, destRegion);
@@ -527,7 +525,8 @@ TEST(FamCopy, FamCopyAndWait) {
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     GENERATE_PROFILE();
-    for (int i = NUM_MM_ITERATIONS - 1; i >= 0; i--) {
+
+    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(src[i]));
         EXPECT_NO_THROW(my_fam->fam_deallocate(dest[i]));
     }

@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -116,6 +116,7 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
 # library directories
 #
 link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib) # third-party libraries
+link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib64) # third-party libraries
 
 #
 # default system include and link directories
@@ -128,18 +129,21 @@ include_directories(/usr/local/include)
 #
 # Set openFAM options to be used only by test. Some individual test cases might override these options.
 # To use the following OpenFAM options set USE_FAM_OPTION flag
-set( TEST_RUNTIME "PMIX" )
 set( TEST_NPE 1 ) #Number of pe used with mpirun
-set( TEST_DEFAULT_REGION "Default" )
-set( TEST_CIS_SERVER "127.0.0.1" )
-set( TEST_GRPC_PORT "8787" )
-set( TEST_LIBFABRIC_PROVIDER "sockets" )
-set( TEST_FAM_THREAD_MODEL "FAM_THREAD_SERIALIZE" )
-set( TEST_FAM_CONTEXT_MODEL "FAM_CONTEXT_DEFAULT" )
-set( TEST_NUM_CONSUMER "1" )
+set( TEST_RUNTIME "PMIX" )
 
-if (USE_CONFIG_OPTION)
-	add_definitions(-DUSE_CONFIG_OPTION)	
+if (SET_FAM_OPTION)
+       set( TEST_DEFAULT_REGION "Default" )
+       set( TEST_CIS_SERVER "127.0.0.1" )
+       set( TEST_GRPC_PORT "8787" )
+       set( TEST_LIBFABRIC_PROVIDER "sockets" )
+       set( TEST_FAM_THREAD_MODEL "FAM_THREAD_SERIALIZE" )
+       set( TEST_FAM_CONTEXT_MODEL "FAM_CONTEXT_DEFAULT" )
+       set( TEST_NUM_CONSUMER "1" )
+       message(STATUS "Using pre-defined test configuratin")
+else()
+       set (USE_CONFIG_OPTIONS "1")
+       message(STATUS "Tests use Fam options/config files")
 endif()
 	
 IF (${CMAKE_MAJOR_VERSION} GREATER 2)

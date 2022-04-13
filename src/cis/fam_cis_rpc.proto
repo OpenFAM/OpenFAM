@@ -101,7 +101,7 @@ message Fam_Request { uint64 memserver_id = 1; }
  */
 message Fam_Response {
     uint64 num_memory_server = 1;
-    int32 errorcode = 2;
+    uint32 errorcode = 2;
     string errormsg = 3;
 }
 
@@ -118,7 +118,7 @@ message Fam_Address_Request { uint64 memserver_id = 1; }
 message Fam_Address_Response {
     repeated fixed32 addrname = 1;
     uint64 addrnamelen = 2;
-    int32 errorcode = 3;
+    uint32 errorcode = 3;
     string errormsg = 4;
 }
 
@@ -130,7 +130,7 @@ message Fam_Address_Response {
 message Fam_Memserverinfo_Response {
     uint64 memserverinfo_size = 1;
     bytes memserverinfo = 2;
-    int32 errorcode = 3;
+    uint32 errorcode = 3;
     string errormsg = 4;
 }
 
@@ -162,7 +162,7 @@ message Fam_Region_Response {
     uint64 regionid = 1;
     uint64 offset = 2;
     uint64 size = 3;
-    int32 errorcode = 4;
+    uint32 errorcode = 4;
     string errormsg = 5;
     string name = 6;
     uint64 maxnamelen = 7;
@@ -204,7 +204,7 @@ message Fam_Dataitem_Response {
     uint64 size = 3;
     uint64 key = 4;
     uint64 base = 5;
-    int32 errorcode = 6;
+    uint32 errorcode = 6;
     string errormsg = 7;
     string name = 8;
     uint64 maxnamelen = 9;
@@ -231,7 +231,7 @@ message Fam_Copy_Request {
 }
 
 message Fam_Copy_Response {
-    int32 errorcode = 1;
+    uint32 errorcode = 1;
     string errormsg = 2;
 }
 
@@ -251,7 +251,7 @@ message Fam_Backup_Restore_Request {
 }
 
 message Fam_Backup_Restore_Response {
-    int32 errorcode = 1;
+    uint32 errorcode = 1;
     string errormsg = 2;
 }
 
@@ -285,7 +285,7 @@ message Fam_Atomic_Put_Request {
 }
 
 message Fam_Atomic_Response {
-    int32 errorcode = 1;
+    uint32 errorcode = 1;
     string errormsg = 2;
 }
 
@@ -330,7 +330,7 @@ message Fam_Backup_Info_Request {
 
 message Fam_Backup_Info_Response {
     int64 size = 1;
-    int32 errorcode = 2;
+    uint32 errorcode = 2;
     string errormsg = 3;
     uint32 uid = 4;
     uint32 gid = 5;
@@ -348,7 +348,7 @@ message Fam_Backup_List_Request {
 
 message Fam_Backup_List_Response {
     string contents = 1;
-    int32 errorcode = 2;
+    uint32 errorcode = 2;
     string errormsg = 3;
 
 }

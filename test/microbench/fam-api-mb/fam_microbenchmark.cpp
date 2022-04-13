@@ -686,7 +686,7 @@ TEST(FamCopy, FamCopyAndWait) {
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     GENERATE_PROFILE();
-    for (int i = NUM_MM_ITERATIONS - 1; i >= 0; i--) {
+    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(src[i]));
         EXPECT_NO_THROW(my_fam->fam_deallocate(dest[i]));
     }

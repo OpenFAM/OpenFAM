@@ -440,7 +440,9 @@ env_cmd = (
     + args.rootpath
     + "/third-party/build/bin/:$PATH;export LD_LIBRARY_PATH="
     + args.rootpath
-    + "/third-party/build/lib:$LD_LIBRARY_PATH;"
+    + "/third-party/build/lib:"
+    + args.rootpath
+    + "/third-party/build/lib64:$LD_LIBRARY_PATH;"
 )
 os.system(env_cmd)
 
@@ -465,7 +467,7 @@ if (
                 + env_cmd
                 + "nohup "
                 + args.buildpath
-                + "/src/memory_server -m "
+                + "/bin/memory_server -m "
                 + memory_server_id
                 + "> /dev/null 2>&1 &'\""
             )
@@ -475,7 +477,7 @@ if (
                 + memory_server_addr
                 + " --mpi=" + mpitype  + " "
                 + args.buildpath
-                + "/src/memory_server -m "
+                + "/bin/memory_server -m "
                 + memory_server_id
                 + " &"
             )
@@ -483,7 +485,7 @@ if (
             cmd = (
                 env_cmd
                 + args.buildpath
-                + "/src/memory_server -m "
+                + "/bin/memory_server -m "
                 + memory_server_id
                 + " &"
             )
@@ -506,7 +508,7 @@ if (
                 + env_cmd
                 + "nohup "
                 + args.buildpath
-                + "/src/metadata_server -a "
+                + "/bin/metadata_server -a "
                 + metadata_server_addr
                 + " -r "
                 + str(metadata_server_rpc_port)
@@ -518,7 +520,7 @@ if (
                 + metadata_server_addr
                 + " --mpi=" + mpitype  + " "
                 + args.buildpath
-                + "/src/metadata_server -a "
+                + "/bin/metadata_server -a "
                 + metadata_server_addr
                 + " -r "
                 + str(metadata_server_rpc_port)
@@ -528,7 +530,7 @@ if (
             cmd = (
                 env_cmd
                 + args.buildpath
-                + "/src/metadata_server -a "
+                + "/bin/metadata_server -a "
                 + metadata_server_addr
                 + " -r "
                 + str(metadata_server_rpc_port)
@@ -553,7 +555,7 @@ if (
             + env_cmd
             + "nohup "
             + args.buildpath
-            + "/src/cis_server -a "
+            + "/bin/cis_server -a "
             + cis_addr
             + " -r "
             + str(cis_rpc_port)
@@ -565,7 +567,7 @@ if (
             + cis_addr
             + " --mpi=" + mpitype + " "
             + args.buildpath
-            + "/src/cis_server -a "
+            + "/bin/cis_server -a "
             + cis_addr
             + " -r "
             + str(cis_rpc_port)
@@ -575,7 +577,7 @@ if (
         cmd = (
             env_cmd
             + args.buildpath
-            + "/src/cis_server -a "
+            + "/bin/cis_server -a "
             + cis_addr
             + " -r "
             + str(cis_rpc_port)
@@ -596,7 +598,7 @@ def terminate_services():
             for server in cis_config_doc["memsrv_list"]:
                 memory_server_addr = server.split(":")[1]
                 memory_server_rpc_port = server.split(":")[2]
-                cmd = ssh_cmd + memory_server_addr + " \"sh -c 'pkill memory_server'\""
+                cmd = ssh_cmd + memory_server_addr + " \"sh -c 'pkill -9 memory_server'\""
         elif args.launcher == "slurm":
             cmd = "scancel --quiet -n memory_server > /dev/null 2>&1"
         else:
@@ -613,7 +615,7 @@ def terminate_services():
                 cmd = (
                     ssh_cmd
                     + metadata_server_addr
-                    + " \"sh -c 'pkill metadata_server'\""
+                    + " \"sh -c 'pkill -9 metadata_server'\""
                 )
         elif args.launcher == "slurm":
             cmd = "scancel --quiet -n metadata_server > /dev/null 2>&1"
@@ -625,7 +627,7 @@ def terminate_services():
         and pe_config_doc["client_interface_type"] == "rpc"
     ):
         if args.launcher == "mpi":
-            cmd = ssh_cmd + cis_addr + " \"sh -c 'pkill cis_server'\""
+            cmd = ssh_cmd + cis_addr + " \"sh -c 'pkill -9 cis_server'\""
         elif args.launcher == "slurm":
             cmd = "scancel --quiet -n cis_server > /dev/null 2>&1"
         else:

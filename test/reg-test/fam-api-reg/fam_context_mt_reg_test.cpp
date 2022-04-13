@@ -52,7 +52,7 @@ int rc;
 #define NUM_THREADS 7
 #define REGION_SIZE (32 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
-#define NUM_ITERATIONS 100
+#define NUM_ITERATIONS 5
 #define NUM_IO_ITERATIONS 5
 
 // To increase the number of contexts, we need to increase
@@ -67,14 +67,14 @@ typedef struct {
 } ValueInfo;
 
 void *thrd_fam_context_mt(void *arg) {
-    fam_context *ctx;
+    fam_context *ctx = NULL;
     EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
     EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
     pthread_exit(NULL);
 }
 
 void *thrd_fam_context_mt_stress(void *arg) {
-    fam_context *ctx;
+    fam_context *ctx = NULL;
     for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
         EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
@@ -86,7 +86,7 @@ void *thrd_fam_context_mt_with_io(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    fam_context *ctx;
+    fam_context *ctx = NULL;
     EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
     EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)1));
     EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)2));
@@ -102,7 +102,7 @@ void *thrd_fam_context_mt_with_io(void *arg) {
 void *thrd_fam_context_mt_with_io_stress(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    fam_context *ctx;
+    fam_context *ctx = NULL;
     for (int i = 0; i < NUM_IO_ITERATIONS; i++) {
         EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
         EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)1));

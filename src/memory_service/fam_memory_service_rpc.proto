@@ -129,7 +129,7 @@ message Fam_Memory_Service_Response {
     uint64 offset = 2;
     uint64 key = 3;
     uint64 base = 4;
-    int32 errorcode = 5;
+    uint32 errorcode = 5;
     string errormsg = 6;
 }
 
@@ -149,7 +149,7 @@ message Fam_Memory_Copy_Request {
 }
 
 message Fam_Memory_Copy_Response {
-    int32 errorcode = 1;
+    uint32 errorcode = 1;
     string errormsg = 2;
 }
 
@@ -169,7 +169,7 @@ message Fam_Memory_Backup_Restore_Request {
 }
 
 message Fam_Memory_Backup_Restore_Response {
-    int32 errorcode = 1;
+    uint32 errorcode = 1;
     string errormsg = 2;
 }
 
@@ -197,7 +197,7 @@ message Fam_Memory_Atomic_Put_Request {
 }
 
 message Fam_Memory_Atomic_Response {
-    int32 errorcode = 1;
+    uint32 errorcode = 1;
     string errormsg = 2;
 }
 
@@ -234,7 +234,7 @@ message Fam_Memory_Backup_Info_Request {
 }
 message Fam_Memory_Backup_Info_Response {
     uint64 size = 1;
-    int32 errorcode = 2;
+    uint32 errorcode = 2;
     string errormsg = 3;
     uint32 uid = 4;
     uint32 gid = 5;
@@ -252,6 +252,6 @@ message Fam_Memory_Backup_List_Request {
 
 message Fam_Memory_Backup_List_Response {
     string contents = 1;
-    int32 errorcode = 2;
+    uint32 errorcode = 2;
     string errormsg = 3;
 }

@@ -1027,7 +1027,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
             options["cisServer"] = temp.substr(0, temp.find(':'));
             options["grpcPort"] = temp.substr(temp.find(':') + 1);
 
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter cis_ip is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -1035,7 +1035,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
             options["client_interface_type"] = (char *)strdup(
                 (info->get_key_value("client_interface_type")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter client_interface_type is not present, then
             // ignore the exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -1043,7 +1043,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
             options["libfabricProvider"] =
                 (char *)strdup((info->get_key_value("provider")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter libfabricProvider is not present, then ignore
             // the exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -1051,7 +1051,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
             options["if_device"] =
                 (char *)strdup((info->get_key_value("if_device")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
         }
 
         try {
@@ -1059,7 +1059,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
             options["famThreadModel"] = ((famThreadModel.compare("single") == 0)
                                              ? strdup(FAM_THREAD_SERIALIZE_STR)
                                              : strdup(FAM_THREAD_MULTIPLE_STR));
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter famThreadModel is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -1067,7 +1067,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
 
             options["openfam_model"] = info->get_key_value("openfam_model");
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter allocator is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -1075,7 +1075,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
             options["runtime"] =
                 (char *)strdup((info->get_key_value("runtime")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter runtime is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -1083,7 +1083,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
             options["default_memory_type"] = (char *)strdup(
                 (info->get_key_value("default_memory_type")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter runtime is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -1156,7 +1156,7 @@ const char **fam::Impl_::fam_list_options(void) {
     ndx = 0;
     while (supportedOptionList[ndx]) {
         size_t optLen = strlen(supportedOptionList[ndx]);
-        strncpy(next, supportedOptionList[ndx], optLen);
+        memcpy((void *)next, (void *)supportedOptionList[ndx], optLen);
         next[optLen] = '\0';
         buf[ndx++] = next;
         next = next + optLen + 1;
