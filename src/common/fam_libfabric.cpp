@@ -841,10 +841,10 @@ int fabric_read_write_multi_msg(uint64_t count, size_t iov_limit,
 
         struct fi_msg_rma msg = {.msg_iov = &iov[j * iov_limit],
                                  .desc = 0,
-                                 .iov_count = MIN(iov_limit, count_remain),
+                                 .iov_count = std::min<size_t>(iov_limit, count_remain),
                                  .addr = fiAddr,
                                  .rma_iov = &rma_iov[j * iov_limit],
-                                 .rma_iov_count = MIN(iov_limit, count_remain),
+                                 .rma_iov_count = std::min<size_t>(iov_limit, count_remain),
                                  .context =
                                      (block ? (struct fi_context *)ctx : NULL),
                                  .data = 0};

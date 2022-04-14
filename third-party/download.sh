@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # download.sh
-# Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+# Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All rights
 # reserved. Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 # 1. Redistributions of source code must retain the above copyright notice,
@@ -30,28 +30,28 @@
 
 CURRENT_DIR=`pwd`
 
-#GRPC v1.17.0
+#GRPC v1.39.0
 echo "Downloading GRPC source"
 git clone https://github.com/grpc/grpc.git
 cd grpc
 git fetch --all --tags --prune
-git checkout tags/v1.17.0 -b openfam
+git checkout tags/v1.39.0 -b openfam
 
-#LIBFABRIC v1.7.2 
+#LIBFABRIC v1.14.0
 cd $CURRENT_DIR
 echo "Downloading LIBFABRIC source"
 git clone https://github.com/ofiwg/libfabric.git
 cd libfabric
 git fetch --all --tags --prune
-git checkout tags/v1.9.1rc1 -b openfam
+git checkout tags/v1.14.0 -b openfam
 
 #PMIX v3.0.2
 cd $CURRENT_DIR
 echo "Downloading PMIX source"
-git clone https://github.com/openpmix/openpmix.git pmix-3.0.2
-cd pmix-3.0.2 
+git clone https://github.com/openpmix/openpmix.git pmix-3.1.2
+cd pmix-3.1.2
 git fetch --all --tags --prune
-git checkout tags/v3.0.2 -b openfam
+git checkout tags/v3.1.2 -b openfam
 
 #OPENMPI v4.0.1
 cd $CURRENT_DIR
@@ -67,12 +67,14 @@ cp -fr googletest_v1_10_x/googletest .
 rm -fr googletest_v1_10_x
 
 #NVMM
+#TODO: Replace with right NVMM branch before release
 cd $CURRENT_DIR
 echo "Downloading NVMM source"
-git clone https://github.com/HewlettPackard/gull.git nvmm
+#git clone https://github.com/HewlettPackard/gull.git nvmm
+git clone -b devel https://github.com/HewlettPackard/gull.git nvmm
 cd nvmm
-git fetch --all --tags --prune
-git checkout tags/v0.1 -b openfam
+#git fetch --all --tags --prune
+#git checkout tags/v0.1 -b openfam
 
 #Radixtree
 cd $CURRENT_DIR

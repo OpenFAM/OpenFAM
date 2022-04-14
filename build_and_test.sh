@@ -84,6 +84,7 @@ then
         echo "OpenFAM test with cis-rpc-meta-rpc-mem-rpc configuration failed. exit..."
         exit 1
 fi
+
 sleep 5
 
 echo "=============================================================="
@@ -99,6 +100,7 @@ then
 fi
 
 sleep 5
+
 echo "==========================================================="
 echo "Test OpenFAM with cis-direct-meta-rpc-mem-rpc configuration"
 echo "==========================================================="

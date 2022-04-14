@@ -11,6 +11,7 @@ third-party/pmix-3.1.2/
 third-party/prrte/
 third-party/openmpi-4.0.1/
 third-party/pmix-3.0.2/
+third-party/pmix-3.1.0/
 third-party/googletest/
 third-party/radixtree/
 third-party/release-2.1.6-beta.tar.gz
@@ -26,3 +27,5 @@ src/metadata_service/fam_metadata_rpc.grpc.pb.h
 src/metadata_service/fam_metadata_rpc.pb.h
 scripts/multi-mem-test-arg.txt
 test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt
+test/services-test/multi_mem_persistent.txt
+test/services-test/multi_mem_volatile.txt

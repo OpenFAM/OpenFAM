@@ -46,7 +46,7 @@ using namespace std;
 using namespace openfam;
 
 #define NUM_THREADS 10
-#define MSG_SIZE 20
+#define MSG_SIZE 30
 #define REGION_SIZE (1024 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
 

@@ -63,7 +63,7 @@ typedef struct {
 
 // Test case 1 - FamContextOpenCloseStressTest
 TEST(FamContext, FamContextOpenCloseStressTest) {
-    fam_context *ctx;
+    fam_context *ctx = NULL;
     for (int i = 0; i < NUM_ITERATIONS; i++) {
         EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
         EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
@@ -73,7 +73,7 @@ TEST(FamContext, FamContextOpenCloseStressTest) {
 TEST(FamContext, FamContextOpenCloseWithIOOperation) {
     Fam_Region_Descriptor *rd = NULL;
     Fam_Descriptor *descriptor = NULL;
-    fam_context *ctx;
+    fam_context *ctx = NULL;
     EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
 
     // create a 100 MB region with 0777 permissions
@@ -94,7 +94,6 @@ TEST(FamContext, FamContextOpenCloseWithIOOperation) {
 
     // We are done with the operations. Destroy the region and everything in it
     EXPECT_NO_THROW(my_fam->fam_destroy_region(rd));
-
     EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
 }
 
@@ -102,7 +101,7 @@ TEST(FamContext, FamContextOpenCloseWithIOOperation) {
 TEST(FamContext, FamContextOpenCloseWithIOOperationStressTest) {
     Fam_Region_Descriptor *rd = NULL;
     Fam_Descriptor *descriptor = NULL;
-    fam_context *ctx;
+    fam_context *ctx = NULL;
 
     // create a 100 MB region with 0777 permissions
     EXPECT_NO_THROW(rd = my_fam->fam_create_region(
@@ -123,7 +122,6 @@ TEST(FamContext, FamContextOpenCloseWithIOOperationStressTest) {
         EXPECT_NO_THROW(my_fam->fam_or(descriptor, 0, (uint32_t)4));
         EXPECT_NO_THROW(ctx->fam_quiet());
         EXPECT_NO_THROW(my_fam->fam_quiet());
-
         EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
     }
     // We are done with the operations. Destroy the region and everything in
@@ -144,8 +142,8 @@ TEST(FamContext, FamContextSimultaneousOpenCloseStressTest) {
 
 // Test case 5- FamContextNegativeTest
 TEST(FamContextModel, FamContextNegativeTest) {
-    fam_context *ctx;
-    Fam_Descriptor *item;
+    fam_context *ctx = NULL;
+    Fam_Descriptor *item = NULL;
     EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
     EXPECT_THROW(ctx->fam_initialize("myApplication", &fam_opts),
                  Fam_Exception);

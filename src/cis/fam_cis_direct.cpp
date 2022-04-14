@@ -458,7 +458,9 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     std::vector<int> create_region_failed_list;
     // Wait for region creation to complete.
     int id = 0;
-    Fam_Exception ex;
+    std::string create_ErrMsg = "Unknown error";
+    enum Fam_Error create_famErr = FAM_ERR_UNKNOWN;
+
     for (auto result : resultList) {
         try {
             result.get();
@@ -466,7 +468,8 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
         }
         catch (Fam_Exception &e) {
             create_region_failed_list.push_back(id++);
-            ex = e;
+            create_ErrMsg = e.fam_error_msg();
+            create_famErr = (Fam_Error)e.fam_error();
         }
         catch (...) {
             create_region_failed_list.push_back(id++);
@@ -481,8 +484,7 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
             metadataService->metadata_reset_bitmap(regionId);
         }
         if (create_region_failed_list.size() == 1) {
-            THROW_ERRNO_MSG(CIS_Exception, (Fam_Error)ex.fam_error(),
-                            ex.fam_error_msg());
+            THROW_ERRNO_MSG(CIS_Exception, create_famErr, create_ErrMsg);
         } else {
             message << "Multiple memory servers failed to create region";
             THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_CREATED,
@@ -1458,8 +1460,7 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
         try {
             options["memsrv_interface_type"] = (char *)strdup(
                 (info->get_key_value("memsrv_interface_type")).c_str());
-        }
-        catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["memsrv_interface_type"] = (char *)strdup("rpc");
         }
@@ -1467,8 +1468,7 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
         try {
             options["metadata_interface_type"] = (char *)strdup(
                 (info->get_key_value("metadata_interface_type")).c_str());
-        }
-        catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["metadata_interface_type"] = (char *)strdup("rpc");
         }
@@ -1481,8 +1481,7 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
                 memsrvList << item << ",";
 
             options["memsrv_list"] = (char *)strdup(memsrvList.str().c_str());
-        }
-        catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["memsrv_list"] = (char *)strdup("0:127.0.0.1:8787");
         }
@@ -1497,8 +1496,7 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
 
             options["metadata_list"] =
                 (char *)strdup(metasrvList.str().c_str());
-        }
-        catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["metadata_list"] = (char *)strdup("0:127.0.0.1:8787");
         }

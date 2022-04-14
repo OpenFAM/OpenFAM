@@ -2988,8 +2988,7 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
         try {
             options["metadata_manager"] = (char *)strdup(
                 (info->get_key_value("metadata_manager")).c_str());
-        }
-        catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["metadata_manager"] = (char *)strdup("radixtree");
         }
@@ -2997,8 +2996,7 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
         try {
             options["metadata_path"] =
                 (char *)strdup((info->get_key_value("metadata_path")).c_str());
-        }
-        catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             message << "metadata_path option in the config file is invalid.";
             THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());        
         }
@@ -3006,8 +3004,7 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
         try {
             options["enable_region_spanning"] = (char *)strdup(
                 (info->get_key_value("enable_region_spanning")).c_str());
-        }
-        catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["enable_region_spanning"] = (char *)strdup("true");
         }
@@ -3015,8 +3012,7 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
             options["region_span_size_per_memoryserver"] = (char *)strdup(
                 (info->get_key_value("region_span_size_per_memoryserver"))
                     .c_str());
-        }
-        catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["region_span_size_per_memoryserver"] =
                 (char *)strdup("1073741824");

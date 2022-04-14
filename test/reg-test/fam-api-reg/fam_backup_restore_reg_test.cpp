@@ -69,7 +69,7 @@ TEST(FamBackupRestore, BackupSuccess) {
     backup_time = time(NULL);
     sprintf(backupName, "%s.%s.%ld", regionName, firstItemName, backup_time);
 
-    void *waitobj;
+    void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
@@ -125,7 +125,7 @@ TEST(FamBackupRestore, RestoreSuccess) {
     EXPECT_NE((void *)NULL, item);
 
     // Take a backup
-    void *bckwaitobj;
+    void *bckwaitobj = NULL;
     EXPECT_NO_THROW(bckwaitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
     EXPECT_NO_THROW(my_fam->fam_backup_wait(bckwaitobj));
@@ -136,7 +136,7 @@ TEST(FamBackupRestore, RestoreSuccess) {
     EXPECT_NE((void *)NULL, item2);
 
     // Start Restore
-    void *waitobj;
+    void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj = my_fam->fam_restore(backupName, item2));
     EXPECT_NO_THROW(my_fam->fam_restore_wait(waitobj));
 
@@ -171,15 +171,16 @@ TEST(FamBackupRestore, CreateDataitemRestoreSuccess) {
     EXPECT_NE((void *)NULL, item);
 
     // Take a backup
-    void *bckwaitobj;
+    void *bckwaitobj = NULL;
     EXPECT_NO_THROW(bckwaitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
     EXPECT_NO_THROW(my_fam->fam_backup_wait(bckwaitobj));
 
-    void *waitobj;
+    void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj = my_fam->fam_restore(
                         backupName, desc, (char *)secondItem, 0777, &item2));
 
+    EXPECT_NE((void *)NULL, waitobj);
     EXPECT_NO_THROW(my_fam->fam_restore_wait(waitobj));
     char *local2 = (char *)calloc(1, DATAITEM_SIZE);
 
@@ -249,9 +250,10 @@ TEST(FamBackupRestore, RestoreFailureInsufficientDataSize) {
     my_fam->fam_put_blocking(local, src, 0, 2 * DATAITEM_SIZE);
 
     // Create backup of given data item.
-    void *waitobj1;
+    void *waitobj1 = NULL;
     EXPECT_NO_THROW(waitobj1 =
                         my_fam->fam_backup(src, backupName, backupOptions));
+    EXPECT_NE((void *)NULL, waitobj1);
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj1));
 
     // Allocating data item in the created region of size DATAITEM_SIZE/2
@@ -259,7 +261,7 @@ TEST(FamBackupRestore, RestoreFailureInsufficientDataSize) {
         item = my_fam->fam_allocate(secondItem, DATAITEM_SIZE / 2, 0777, desc));
     EXPECT_NE((void *)NULL, item);
 
-    void *waitobj;
+    void *waitobj = NULL;
     bool exception_raised = 0;
     try {
 
@@ -291,7 +293,7 @@ TEST(FamBackupRestore, ListBackupSuccess) {
     EXPECT_NE((void *)NULL, item);
 
     // Take a backup
-    void *waitobj;
+    void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
@@ -316,7 +318,7 @@ TEST(FamBackupRestore, ListBackupAllSuccess) {
     EXPECT_NE((void *)NULL, item);
 
     // Take a backup
-    void *waitobj;
+    void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
@@ -345,12 +347,12 @@ TEST(FamBackupRestore, DeleteBackupSuccess) {
     EXPECT_NE((void *)NULL, item);
 
     // Take a backup
-    void *waitobj;
+    void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
 
-    void *delwaitobj;
+    void *delwaitobj = NULL;
     EXPECT_NO_THROW(delwaitobj = my_fam->fam_delete_backup(backupName));
     EXPECT_NO_THROW(my_fam->fam_delete_backup_wait(delwaitobj));
 
@@ -366,8 +368,8 @@ TEST(FamBackupRestore, DeleteBackupFailure) {
 
 int main(int argc, char **argv) {
     int ret;
-    Fam_Region_Descriptor *desc;
-    Fam_Descriptor *item;
+    Fam_Region_Descriptor *desc = NULL;
+    Fam_Descriptor *item = NULL;
     ::testing::InitGoogleTest(&argc, argv);
     my_fam = new fam();
     init_fam_options(&fam_opts);
