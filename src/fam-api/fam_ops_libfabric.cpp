@@ -174,6 +174,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps) {
     nextCtxId = ctxId + 1;
 
     numMemoryNodes = famOps->numMemoryNodes;
+    fabric_iov_limit = famOps->fabric_iov_limit;
 }
 
 int Fam_Ops_Libfabric::initialize() {
