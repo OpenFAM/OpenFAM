@@ -1509,9 +1509,19 @@ uint64_t fabric_put_progress(Fam_Context *famCtx) {
     uint64_t txsuccess = 0;
     uint64_t txfail = 0;
     uint64_t txcnt = 0;
-    txcnt = famCtx->get_num_tx_ops();
+
+    /* There is a possibility that multiple threads are queueing I/O's in
+     * parallel. Such a situation will lead to txcnt being less than
+     * (txsuccess + txfail). Therefore, calculating txcnt  needs to be done
+     * after the libfabric wrapper calls, so that the calculation does not
+     * return negative values. Please note that fam_progress may not return
+     * accurate values as there could be new incoming I/O's from other threads.
+     * Consider the values returned by fam_progress as only approximate
+     * values. */
+
     FI_CALL(txsuccess, fi_cntr_read, famCtx->get_txCntr());
     FI_CALL(txfail, fi_cntr_readerr, famCtx->get_txCntr());
+    txcnt = famCtx->get_num_tx_ops();
     return (txcnt - (txsuccess + txfail));
 }
 
@@ -1519,9 +1529,19 @@ uint64_t fabric_get_progress(Fam_Context *famCtx) {
     uint64_t rxsuccess = 0;
     uint64_t rxfail = 0;
     uint64_t rxcnt = 0;
-    rxcnt = famCtx->get_num_rx_ops();
+
+    /* There is a possibility that multiple threads are queueing I/O's in
+     * parallel. Such a situation will lead to txcnt being less than
+     * (txsuccess + txfail). Therefore, calculating txcnt  needs to be done
+     * after the libfabric wrapper calls, so that the calculation does not
+     * return negative values. Please note that fam_progress may not return
+     * accurate values as there could be new incoming I/O's from other threads.
+     * Consider the values returned by fam_progress as only approximate
+     * values. */
+
     FI_CALL(rxsuccess, fi_cntr_read, famCtx->get_rxCntr());
     FI_CALL(rxfail, fi_cntr_readerr, famCtx->get_rxCntr());
+    rxcnt = famCtx->get_num_rx_ops();
     return (rxcnt - (rxsuccess + rxfail));
 }
 
