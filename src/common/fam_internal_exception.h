@@ -113,7 +113,9 @@ enum Internal_Error {
     BACKUP_SIZE_TOO_LARGE,
     BACKUP_DATA_INVALID,
     BACKUP_METADATA_INVALID,
-    REQUESTED_MEMORY_TYPE_NOT_AVAILABLE
+    REQUESTED_MEMORY_TYPE_NOT_AVAILABLE,
+    MEMORY_SERVER_START_FAILED,
+    METADATA_SERVER_START_FAILED
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -192,6 +194,8 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case ITEM_REGISTRATION_FAILED:
     case ITEM_DEREGISTRATION_FAILED:
     case BACKUP_SIZE_TOO_LARGE:
+    case MEMORY_SERVER_START_FAILED:
+    case METADATA_SERVER_START_FAILED:
         return FAM_ERR_MEMORY;
     default:
         return FAM_ERR_RESOURCE;

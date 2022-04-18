@@ -77,13 +77,20 @@ Memserver_Allocator::Memserver_Allocator(uint64_t delayed_free_threads,
                                          const char *fam_path = "") {
     MEMSERVER_PROFILE_INIT(NVMM)
     MEMSERVER_PROFILE_START_TIME(NVMM)
+    ostringstream message;
+    int startNvmmStatus = 0;
 
     std::string userName = login_username();
 
     if (fam_path == NULL || (strcmp(fam_path, "") == 0))
-        StartNVMM();
+        startNvmmStatus = StartNVMM();
     else
-        StartNVMM(fam_path, userName);
+        startNvmmStatus = StartNVMM(fam_path, userName);
+    if (startNvmmStatus != 0) {
+        message << "Starting of memory server failed";
+        THROW_ERRNO_MSG(Memory_Service_Exception, MEMORY_SERVER_START_FAILED,
+                        message.str().c_str());
+    }
 
     num_delayed_free_threads = delayed_free_threads;
     heapMap = new HeapMap();

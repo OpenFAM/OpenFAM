@@ -58,7 +58,9 @@ int main(int argc, char *argv[]) {
     uint64_t memserver_id = 0;
     // char *name = strdup("127.0.0.1");
     char *fam_path = NULL;
-	bool initFlag = false;
+    bool initFlag = false;
+    ostringstream message;
+    int startNvmmStatus = 0;
 
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
@@ -100,9 +102,16 @@ int main(int argc, char *argv[]) {
     if(initFlag) {
         std::string userName = login_username();
         if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
-            StartNVMM();
-        } else
-            StartNVMM(fam_path, userName);
+            startNvmmStatus = StartNVMM();
+        } else {
+            startNvmmStatus = StartNVMM(fam_path, userName);
+        }
+        if (startNvmmStatus != 0) {
+            message << "Starting of metadata server failed";
+            THROW_ERRNO_MSG(Memory_Service_Exception,
+                            MEMORY_SERVER_START_FAILED, message.str().c_str());
+        }
+
         exit(0);
     }
 

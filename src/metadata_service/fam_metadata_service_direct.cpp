@@ -2737,13 +2737,20 @@ void Fam_Metadata_Service_Direct::Start(
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
+    int startNvmmStatus = 0;
+    ostringstream message;
 
     std::string userName = login_username();
 
     if (use_fam_path == true) {
-        StartNVMM();
+        startNvmmStatus = StartNVMM();
     } else {
-        StartNVMM(metadata_path, userName);
+        startNvmmStatus = StartNVMM(metadata_path, userName);
+    }
+    if (startNvmmStatus != 0) {
+        message << "Starting of metadata server failed";
+        THROW_ERRNO_MSG(Metadata_Service_Exception,
+                        METADATA_SERVER_START_FAILED, message.str().c_str());
     }
 
     pimpl_ = new Impl_;
@@ -2784,9 +2791,8 @@ void Fam_Metadata_Service_Direct::metadata_delete_region(
     METADATA_DIRECT_PROFILE_END_OPS(direct_metadata_delete_region);
 }
 
-bool
-Fam_Metadata_Service_Direct::metadata_find_region(const std::string regionName,
-                                                  Fam_Region_Metadata &region) {
+bool Fam_Metadata_Service_Direct::metadata_find_region(
+    const std::string regionName, Fam_Region_Metadata &region) {
     bool ret;
     METADATA_DIRECT_PROFILE_START_OPS()
     ret = pimpl_->metadata_find_region(regionName, region);
