@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
             startNvmmStatus = StartNVMM(fam_path, userName);
         }
         if (startNvmmStatus != 0) {
-            message << "Starting of metadata server failed";
+            message << "Starting of memory server failed";
             THROW_ERRNO_MSG(Memory_Service_Exception,
                             MEMORY_SERVER_START_FAILED, message.str().c_str());
         }

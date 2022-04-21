@@ -171,6 +171,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case REGION_NOT_REMOVED:
     case DATAITEM_NOT_REMOVED:
     case METADATA_ERROR:
+    case METADATA_SERVER_START_FAILED:
         return FAM_ERR_METADATA;
     case REGION_NAME_TOO_LONG:
     case DATAITEM_NAME_TOO_LONG:
@@ -195,7 +196,6 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case ITEM_DEREGISTRATION_FAILED:
     case BACKUP_SIZE_TOO_LARGE:
     case MEMORY_SERVER_START_FAILED:
-    case METADATA_SERVER_START_FAILED:
         return FAM_ERR_MEMORY;
     default:
         return FAM_ERR_RESOURCE;
