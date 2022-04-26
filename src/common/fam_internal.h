@@ -103,6 +103,7 @@ namespace openfam {
 #define FAM_FENCE_KEY ((uint64_t)-4)
 #define INVALID_OFFSET ((uint64_t)-1)
 #define FAM_INVALID_REGION ((uint64_t)-1)
+#define MAX_MEMORY_SERVERS_CNT 256
 /*
  * Region id 5-15 are reserved for MODC
  * Region id 16-20 are reserved for OpenFAM
@@ -119,6 +120,14 @@ namespace openfam {
 #define DATAITEMID_SHIFT 1
 
 #define ADDR_SIZE 20
+
+#define FAM_UNIMPLEMENTED_MEMSRVMODEL()                                        \
+    {                                                                          \
+        std::ostringstream message;                                            \
+        message << __func__                                                    \
+                << " is Not Yet Implemented for memory server model !!!";      \
+        throw Fam_Unimplemented_Exception(message.str().c_str());              \
+    }
 
 #define STATUS_CHECK(exception)                                                \
     {                                                                          \
@@ -144,15 +153,22 @@ typedef struct {
     uint64_t regionId;
     uint64_t offset;
     uint64_t key;
+    uint64_t keys[MAX_MEMORY_SERVERS_CNT];
     uint64_t size;
+    uint32_t uid;
+    uint32_t gid;
     mode_t perm;
     Fam_Redundancy_Level redundancyLevel;
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
     void *base;
+    void *baseAddressList[MAX_MEMORY_SERVERS_CNT];
     char name[RadixTree::MAX_KEY_LEN];
-    uint64_t memoryServerId;
+    // uint64_t memoryServerId;
+    uint64_t used_memsrv_cnt;
+    uint64_t memoryServerIds[MAX_MEMORY_SERVERS_CNT];
     size_t maxNameLen;
+    uint64_t interleaveSize;
 } Fam_Region_Item_Info;
 
 typedef struct {

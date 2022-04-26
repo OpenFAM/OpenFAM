@@ -116,7 +116,9 @@ enum Internal_Error {
     BACKUP_METADATA_INVALID,
     REQUESTED_MEMORY_TYPE_NOT_AVAILABLE,
     MEMORY_SERVER_START_FAILED,
-    METADATA_SERVER_START_FAILED
+    METADATA_SERVER_START_FAILED,
+    ADDRVEC_POPULATION_FAILED,
+    MEMSERVER_LIST_CREATE_FAILED
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -166,6 +168,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
         return FAM_ERR_ATL_NOT_ENABLED;
 
     case LIBFABRIC_ERROR:
+    case ADDRVEC_POPULATION_FAILED:
         return FAM_ERR_LIBFABRIC;
 
     case REGION_NOT_INSERTED:
@@ -174,6 +177,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case DATAITEM_NOT_REMOVED:
     case METADATA_ERROR:
     case METADATA_SERVER_START_FAILED:
+    case MEMSERVER_LIST_CREATE_FAILED:
         return FAM_ERR_METADATA;
     case REGION_NAME_TOO_LONG:
     case DATAITEM_NAME_TOO_LONG:

@@ -97,7 +97,7 @@ void metadata_direct_profile_dump() {
 
 KeyValueStore::IndexType const KVSTYPE = KeyValueStore::RADIX_TREE;
 
-size_t const max_val_len = 4096;
+size_t const max_val_len = 8192;
 
 inline void ResetBuf(char *buf, size_t &len, size_t const max_len) {
     memset(buf, 0, max_len);
@@ -114,7 +114,8 @@ class Fam_Metadata_Service_Direct::Impl_ {
     ~Impl_() {}
 
     int Init(bool use_meta_reg, bool enable_region_spanning,
-             size_t region_span_size_per_memoryserver);
+             size_t region_span_size_per_memoryserver,
+             size_t dataitem_interleave_size);
 
     int Final();
 
@@ -209,14 +210,14 @@ class Fam_Metadata_Service_Direct::Impl_ {
     metadata_validate_and_destroy_region(const uint64_t regionId, uint32_t uid,
                                          uint32_t gid,
                                          std::list<int> *memory_server_list);
-    void metadata_validate_and_allocate_dataitem(const std::string dataitemName,
-                                                 const uint64_t regionId,
-                                                 uint32_t uid, uint32_t gid,
-                                                 uint64_t *memoryServerId);
+    void metadata_validate_and_allocate_dataitem(
+        const std::string dataitemName, const uint64_t regionId, uint32_t uid,
+        uint32_t gid, size_t size, std::list<int> *memory_server_list,
+        size_t *interleveSize, int user_policy);
 
-    void metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
-                                                   const uint64_t dataitemId,
-                                                   uint32_t uid, uint32_t gid);
+    void metadata_validate_and_deallocate_dataitem(
+        const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
+        uint32_t gid, Fam_DataItem_Metadata &dataitem);
     size_t metadata_maxkeylen();
     void metadata_update_memoryserver(
         int nmemServersPersistent,
@@ -264,6 +265,7 @@ class Fam_Metadata_Service_Direct::Impl_ {
     MemoryManager *memoryManager;
     bool enable_region_spanning;
     size_t region_span_size_per_memoryserver;
+    size_t dataitem_interleave_size;
 
     GlobalPtr create_metadata_kvs_tree(size_t heap_size = METADATA_HEAP_SIZE,
                                        nvmm::PoolId heap_id = METADATA_HEAP_ID);
@@ -288,12 +290,17 @@ class Fam_Metadata_Service_Direct::Impl_ {
                                          std::string &regionId);
     void init_poolid_bmap();
 
-    std::list<int> find_memory_server_list(const std::string regionName,
-                                           size_t size,
-                                           Fam_Memory_Type memoryType,
-                                           int user_policy);
+    std::list<int> find_memory_server_list_region(const std::string regionName,
+                                                  size_t size,
+                                                  Fam_Memory_Type memoryType,
+                                                  int user_policy);
 
-    std::list<int> find_memory_server_list(Fam_Region_Metadata region);
+    std::list<int> find_memory_server_list_item(const std::string regionName,
+                                                size_t size, int user_policy,
+                                                bool itemInterleaveEnable,
+                                                size_t itemInterleaveSize,
+                                                uint64_t *regionServerList,
+                                                uint64_t used_memsrv_cnt);
 
     int get_regionid_from_bitmap(uint64_t *regionID);
     bool create_heap_for_dataitem_metadata_KVS(const uint64_t regionId,
@@ -305,12 +312,15 @@ class Fam_Metadata_Service_Direct::Impl_ {
 /*
  * Initialize the FAM metadata manager
  */
-int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg, bool flag,
-                                             size_t size) {
+int Fam_Metadata_Service_Direct::Impl_::Init(bool use_meta_reg,
+                                             bool enableRegionSpanning,
+                                             size_t regionSpanSize,
+                                             size_t itemSpanSize) {
 
     memoryManager = MemoryManager::GetInstance();
-    enable_region_spanning = flag;
-    region_span_size_per_memoryserver = size;
+    enable_region_spanning = enableRegionSpanning;
+    region_span_size_per_memoryserver = regionSpanSize;
+    dataitem_interleave_size = itemSpanSize;
     metadataKvsMap = new KvsMap();
     pthread_rwlock_init(&kvsMapLock, NULL);
     pthread_mutex_init(&memserverListLock, NULL);
@@ -708,6 +718,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
 
     std::string regionKey = std::to_string(regionId);
 
+    if (region->interleaveEnable == ENABLE) {
+        region->interleaveSize = dataitem_interleave_size;
+    } else {
+        region->interleaveSize = 0;
+    }
     // Insert region name -> region id mapping in regionDataKVS
     ret = insert_in_regionname_kvs(regionName, regionKey);
 
@@ -2353,7 +2368,7 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_create_region(
                         message.str().c_str());
     }
     // Call find_memory_server for the size asked for and for user policy
-    *memory_server_list = find_memory_server_list(
+    *memory_server_list = find_memory_server_list_region(
         regionname, size, regionAttributes->memoryType, user_policy);
     if ((*memory_server_list).size() == 0) {
         message << "Create region error : Requested Memory type not available.";
@@ -2419,10 +2434,11 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_destroy_region(
     }
 }
 
-void
-Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_allocate_dataitem(
-    const std::string dataitemName, const uint64_t regionId, uint32_t uid,
-    uint32_t gid, uint64_t *memoryServerId) {
+void Fam_Metadata_Service_Direct::Impl_::
+    metadata_validate_and_allocate_dataitem(
+        const std::string dataitemName, const uint64_t regionId, uint32_t uid,
+        uint32_t gid, size_t size, std::list<int> *memory_server_list,
+        size_t *interleaveSize, int user_policy = 0) {
     ostringstream message;
     bool ret;
     // Check if the name size is bigger than MAX_KEY_LEN supported
@@ -2440,6 +2456,7 @@ Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_allocate_dataitem(
         THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NOT_FOUND,
                         message.str().c_str());
     }
+
     // Check if calling PE user is owner. If not, check with
     // metadata service if the calling PE has the write
     // permission to create dataitem in that region, if not return error
@@ -2466,24 +2483,35 @@ Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_allocate_dataitem(
                             message.str().c_str());
         }
     }
-    uint64_t id =  0;
-    if (!dataitemName.empty()) {
-	id = (std::hash<std::string>{}(dataitemName) % region.used_memsrv_cnt);
-    } else {
-	id = rand() % region.used_memsrv_cnt;
-    }
-	*memoryServerId = region.memServerIds[id];
 
+    *interleaveSize = region.interleaveSize;
+    bool isInterleaveEnabled;
+    if (region.interleaveEnable == ENABLE) {
+        isInterleaveEnabled = true;
+    } else {
+        isInterleaveEnabled = false;
+    }
+
+    *memory_server_list = find_memory_server_list_item(
+        dataitemName, size, user_policy, isInterleaveEnabled,
+        region.interleaveSize, region.memServerIds, region.used_memsrv_cnt);
+    if ((*memory_server_list).size() == 0) {
+        message << "Allocate Dataitem error : failed to create a memory server "
+                   "list for the allocation requested";
+        THROW_ERRNO_MSG(Metadata_Service_Exception,
+                        MEMSERVER_LIST_CREATE_FAILED, message.str().c_str());
+    }
 }
 
-void
-Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_deallocate_dataitem(
-    const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
-    uint32_t gid) {
+void Fam_Metadata_Service_Direct::Impl_::
+    metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
+                                              const uint64_t dataitemId,
+                                              uint32_t uid, uint32_t gid,
+                                              Fam_DataItem_Metadata &dataitem) {
     ostringstream message;
     // Check with metadata service if data item with the requested name
     // is already exist, if not return error
-    Fam_DataItem_Metadata dataitem;
+    // Fam_DataItem_Metadata dataitem;
     bool ret = metadata_find_dataitem(dataitemId, regionId, dataitem);
     if (ret == 0) {
         message << "Deallocate Dataitem error : Dataitem does not exist";
@@ -2607,7 +2635,8 @@ void Fam_Metadata_Service_Direct::Impl_::
     }
 }
 
-std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
+std::list<int>
+Fam_Metadata_Service_Direct::Impl_::find_memory_server_list_region(
     const std::string regionname, size_t size, Fam_Memory_Type memoryType,
     int user_policy) {
     std::list<int> memsrv_list;
@@ -2668,6 +2697,52 @@ std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list(
     return memsrv_list;
 }
 
+std::list<int> Fam_Metadata_Service_Direct::Impl_::find_memory_server_list_item(
+    const std::string name, size_t size, int user_policy,
+    bool itemInterleaveEnable, size_t itemInterleaveSize,
+    uint64_t *regionServerList, uint64_t used_memsrv_cnt) {
+
+    std::list<int> memsrv_list;
+    uint64_t id;
+    if (!name.empty()) {
+        id = (std::hash<std::string>{}(name) % used_memsrv_cnt);
+    } else {
+        id = rand() % used_memsrv_cnt;
+    }
+    unsigned int i = 0;
+    uint64_t aligned_size = align_to_address(size, 64);
+    size = (aligned_size > size ? aligned_size : size);
+    if (itemInterleaveEnable == 1) {
+        if (size <= itemInterleaveSize) {
+            // Size is smaller than region_span_size_per_memoryserver and hence
+            // using single memory server.
+            memsrv_list.push_back((int)regionServerList[id]);
+        } else {
+            if ((size / (itemInterleaveSize * used_memsrv_cnt) < 1)) {
+                unsigned int numServers =
+                    ((unsigned int)(size / itemInterleaveSize)) +
+                    ((size % itemInterleaveSize) == 0 ? 0 : 1);
+                while (i < numServers) {
+                    memsrv_list.push_back(
+                        (int)regionServerList[id % used_memsrv_cnt]);
+                    i++;
+                    id++;
+                }
+            } else {
+                while (i < (unsigned int)used_memsrv_cnt) {
+                    memsrv_list.push_back(
+                        (int)regionServerList[id % used_memsrv_cnt]);
+                    i++;
+                    id++;
+                }
+            }
+        }
+    } else {
+        memsrv_list.push_back((int)regionServerList[id]);
+    }
+    return memsrv_list;
+}
+
 std::list<int>
 Fam_Metadata_Service_Direct::Impl_::get_memory_server_list(uint64_t regionId) {
     ostringstream message;
@@ -2692,7 +2767,7 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_fam_path,
     configFileParams config_options;
     bool enable_region_spanning;
     const char *metadata_path;
-    size_t region_span_size_per_memoryserver;
+    size_t region_span_size_per_memoryserver, dataitem_interleave_size;
 
     // Check for config file in or in path mentioned
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
@@ -2717,8 +2792,12 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_fam_path,
         atoi((const char *)(config_options["region_span_size_per_memoryserver"]
                                 .c_str()));
 
+    dataitem_interleave_size = atoi(
+        (const char *)(config_options["dataitem_interleave_size"].c_str()));
+
     Start(use_meta_reg, enable_region_spanning,
-          region_span_size_per_memoryserver, metadata_path, use_fam_path);
+          region_span_size_per_memoryserver, dataitem_interleave_size,
+          metadata_path, use_fam_path);
 }
 
 Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() { Stop(); }
@@ -2732,8 +2811,8 @@ void Fam_Metadata_Service_Direct::Stop() {
 
 void Fam_Metadata_Service_Direct::Start(
     bool use_meta_reg, bool enable_region_spanning,
-    size_t region_span_size_per_memoryserver, const char *metadata_path,
-    bool use_fam_path) {
+    size_t region_span_size_per_memoryserver, size_t dataitem_interleave_size,
+    const char *metadata_path, bool use_fam_path) {
 
     MEMSERVER_PROFILE_INIT(METADATA_DIRECT)
     MEMSERVER_PROFILE_START_TIME(METADATA_DIRECT)
@@ -2756,7 +2835,8 @@ void Fam_Metadata_Service_Direct::Start(
     pimpl_ = new Impl_;
     assert(pimpl_);
     int ret = pimpl_->Init(use_meta_reg, enable_region_spanning,
-                           region_span_size_per_memoryserver);
+                           region_span_size_per_memoryserver,
+                           dataitem_interleave_size);
     assert(ret == META_NO_ERROR);
 }
 
@@ -3023,6 +3103,13 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
             options["region_span_size_per_memoryserver"] =
                 (char *)strdup("1073741824");
         }
+        try {
+            options["dataitem_interleave_size"] = (char *)strdup(
+                (info->get_key_value("dataitem_interleave_size")).c_str());
+        } catch (Fam_InvalidOption_Exception e) {
+            // If parameter is not present, then set the default.
+            options["dataitem_interleave_size"] = (char *)strdup("1048576");
+        }
     }
     return options;
 }
@@ -3066,20 +3153,22 @@ void Fam_Metadata_Service_Direct::metadata_validate_and_destroy_region(
 
 void Fam_Metadata_Service_Direct::metadata_validate_and_allocate_dataitem(
     const std::string dataitemName, const uint64_t regionId, uint32_t uid,
-    uint32_t gid, uint64_t *memoryServerId) {
+    uint32_t gid, size_t size, std::list<int> *memory_server_list,
+    size_t *interleaveSize, int user_policy) {
     METADATA_DIRECT_PROFILE_START_OPS()
-    pimpl_->metadata_validate_and_allocate_dataitem(dataitemName, regionId, uid,
-                                                    gid, memoryServerId);
+    pimpl_->metadata_validate_and_allocate_dataitem(
+        dataitemName, regionId, uid, gid, size, memory_server_list,
+        interleaveSize, user_policy);
     METADATA_DIRECT_PROFILE_END_OPS(
         direct_metadata_validate_and_allocate_dataitem);
 }
 
 void Fam_Metadata_Service_Direct::metadata_validate_and_deallocate_dataitem(
     const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
-    uint32_t gid) {
+    uint32_t gid, Fam_DataItem_Metadata &dataitem) {
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_validate_and_deallocate_dataitem(regionId, dataitemId, uid,
-                                                      gid);
+                                                      gid, dataitem);
     METADATA_DIRECT_PROFILE_END_OPS(
         direct_metadata_validate_and_deallocate_dataitem);
 }

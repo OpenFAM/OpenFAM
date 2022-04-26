@@ -62,7 +62,19 @@ class Fam_Ops_SHM : public Fam_Ops {
 
     void finalize();
 
+    void reset_profile() {}
+
+    void dump_profile() {}
+
     void abort(int status);
+
+    void populate_address_vector(void *memServerInfoBuffer = NULL,
+                                 size_t memServerInfoSize = 0,
+                                 uint64_t numMemNodes = 0, uint64_t myId = 0) {
+        return;
+    }
+
+    size_t get_fabric_iov_limit() { return 0; }
 
     Fam_Context *get_context(Fam_Descriptor *descriptor);
     int put_blocking(void *local, Fam_Descriptor *descriptor, uint64_t offset,

@@ -538,7 +538,8 @@ int main(int argc, char **argv) {
                 EXPECT_NO_THROW(itemLocal[i] = my_fam->fam_allocate(
                                     itemInfo, gDataSize * 1, 0777, descLocal));
                 EXPECT_NE((void *)NULL, itemLocal[i]);
-              cout << "PE" <<  *myPE << "," << itemInfo << "," << itemLocal[i]->get_memserver_id() << endl;
+                // cout << "PE" <<  *myPE << "," << itemInfo << "," <<
+                // itemLocal[i]->get_memserver_id() << endl;
         }
 
     } else if ( config_type.compare("specific") == 0 ) {
@@ -551,7 +552,8 @@ int main(int argc, char **argv) {
                 EXPECT_NO_THROW(itemLocal[i] = my_fam->fam_allocate(
                                     itemInfo, gDataSize * 1 , 0777, descLocal));
                 EXPECT_NE((void *)NULL, itemLocal[i]);
-              cout << "PE" <<  *myPE << "," << itemInfo << "," << itemLocal[i]->get_memserver_id() << endl;
+                // cout << "PE" <<  *myPE << "," << itemInfo << "," <<
+                // itemLocal[i]->get_memserver_id() << endl;
             }
 
     } else {
@@ -564,7 +566,8 @@ int main(int argc, char **argv) {
                 EXPECT_NO_THROW(itemLocal[i] = my_fam->fam_allocate(
                                     itemInfo, gDataSize * 1, 0777, descLocal));
                 EXPECT_NE((void *)NULL, itemLocal[i]);
-              cout << "PE" <<  *myPE << "," << itemInfo << "," << itemLocal[i]->get_memserver_id() << endl;
+                // cout << "PE" <<  *myPE << "," << itemInfo << "," <<
+                // itemLocal[i]->get_memserver_id() << endl;
             }
 
 

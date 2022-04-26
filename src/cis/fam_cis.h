@@ -327,20 +327,20 @@ class Fam_CIS {
      * @param gid - gid of user
      **/
     virtual void *
-    copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcCopyStart,
-         uint64_t srcKey, uint64_t srcBaseAddr, const char *srcAddr,
-         uint32_t srcAddrLen, uint64_t destRegionId, uint64_t destOffset,
-         uint64_t destCopyStar, uint64_t nbytes, uint64_t srcMemoryServerId,
-         uint64_t destMemoryServerId, uint32_t uid, uint32_t gid) = 0;
-
+    copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcUsedMemsrvCnt,
+         uint64_t srcCopyStart, uint64_t *srcKeys, uint64_t *srcBaseAddrList,
+         uint64_t destRegionId, uint64_t destOffset, uint64_t destCopyStart,
+         uint64_t size, uint64_t firstSrcMemserverId,
+         uint64_t firstDestMemserverId, uint32_t uid, uint32_t gid) = 0;
     /**
      * wait for particular copy issued earlier corresponding to wait object
      * @param waitObj - wait object
      **/
     virtual void wait_for_copy(void *waitObj) = 0;
+
     virtual void *backup(uint64_t srcRegionId, uint64_t srcOffset,
                          uint64_t srcMemoryServerId, string BackupName,
-                         uint32_t uid, uint32_t gid, uint64_t size) = 0;
+                         uint32_t uid, uint32_t gid) = 0;
     virtual void *restore(uint64_t destRegionId, uint64_t destOffset,
                           uint64_t destMemoryServerId, string BackupName,
                           uint32_t uid, uint32_t gid) = 0;

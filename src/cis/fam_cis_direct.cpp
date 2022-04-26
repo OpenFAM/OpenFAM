@@ -41,7 +41,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
 #define MIN_REGION_SIZE (1UL << 20)
+#define MIN_OBJ_SIZE 128
+
 using namespace std;
 using namespace chrono;
 namespace openfam {
@@ -219,6 +222,13 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
         }
     }
 
+    for (auto obj = memoryServers->begin(); obj != memoryServers->end();
+         ++obj) {
+        Fam_Memory_Service *memoryService = obj->second;
+        memoryService->update_memserver_addrlist(
+            memServerInfoBuffer, memServerInfoSize, memoryServers->size());
+    }
+
     // TODO: In current implementation metadata server id is 0.
     // later it will be selected based on some strategy
     if (isSharedMemory) {
@@ -226,7 +236,6 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
             new Fam_Metadata_Service_Direct(true);
         metadataServers->insert({ 0, metadataService });
         memoryServerCount = memoryServers->size();
-
         // TODO: This code needs to be revisited. Currently memoryserverCount
         // will be updated to all metadata servers.
         metadataService->metadata_update_memoryserver(
@@ -394,6 +403,33 @@ inline int Fam_CIS_Direct::create_region_failure_cleanup(
     }
     return destroy_failed;
 }
+
+inline int Fam_CIS_Direct::allocate_failure_cleanup(
+    std::vector<int> allocate_success_list,
+    std::vector<Fam_Memory_Service *> memoryServiceList, uint64_t regionId,
+    uint64_t *offsets) {
+
+    std::list<std::shared_future<void>> deallocateList;
+    int deallocate_failed = 0;
+    int idx = 0;
+    for (int n : allocate_success_list) {
+        Fam_Memory_Service *memoryService = memoryServiceList[n];
+        std::future<void> deallocate_result(std::async(
+            std::launch::async, &openfam::Fam_Memory_Service::deallocate,
+            memoryService, regionId, offsets[idx++]));
+        deallocateList.push_back(deallocate_result.share());
+    }
+    for (auto result : deallocateList) {
+        // Wait for deallocate in other memory servers to complete.
+        try {
+            result.get();
+        } catch (...) {
+            deallocate_failed++;
+        }
+    }
+    return deallocate_failed;
+}
+
 Fam_Region_Item_Info
 Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
                               Fam_Region_Attributes *regionAttributes,
@@ -518,8 +554,7 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     }
     info.regionId = regionId;
     info.offset = INVALID_OFFSET;
-    info.memoryServerId = 0; // TODO: This may or may not be required as regions
-                             // span across multiple memory servers.
+
     free(memServerIds);
     CIS_DIRECT_PROFILE_END_OPS(cis_create_region);
     return info;
@@ -636,57 +671,116 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
 
-    uint64_t id = 0;
+    // uint64_t id = 0;
     uint64_t metadataServiceId = 0;
+
+    uint64_t *memServerIds;
+    int used_memsrv_cnt = 0;
+    int user_policy = 0;
+    size_t interleaveSize;
+    // uint64_t interleaveSize;
+    std::list<int> memory_server_list;
+    std::vector<Fam_Memory_Service *> memoryServiceList;
+
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
     // Check with metadata service if the given data item can be allocated.
-    metadataService->metadata_validate_and_allocate_dataitem(name, regionId,
-                                                             uid, gid, &id);
-    Fam_Memory_Service *memoryService = get_memory_service((uint64_t)id);
+    metadataService->metadata_validate_and_allocate_dataitem(
+        name, regionId, uid, gid, nbytes, &memory_server_list, &interleaveSize,
+        user_policy);
+
+    memServerIds =
+        (uint64_t *)malloc(sizeof(uint64_t) * memory_server_list.size());
+    for (auto it = memory_server_list.begin(); it != memory_server_list.end();
+         ++it) {
+        memoryServiceList.push_back(get_memory_service(*it));
+        memServerIds[used_memsrv_cnt] = *it;
+        used_memsrv_cnt++;
+    }
+
     Fam_DataItem_Metadata dataitem;
 
-    bool rwFlag, allocateSuccess = true;
-    try {
-        info = memoryService->allocate(regionId, nbytes);
+    // info = new Fam_Region_Item_Info[used_memsrv_cnt];
+    size_t blocks = 0, numBlocksPerServer = 0, extraBlocks = 0;
+    if (interleaveSize) {
+        blocks = nbytes / interleaveSize;
+        if (nbytes % interleaveSize)
+            blocks++;
+        numBlocksPerServer = blocks / used_memsrv_cnt;
+        extraBlocks = blocks % used_memsrv_cnt;
     }
-    catch (...) {
-        std::list<int> memserverList =
-            metadataService->get_memory_server_list(regionId);
-        allocateSuccess = false;
-        for (const auto &item : memserverList) {
-            if ((uint64_t)item == id) {
-                continue;
+
+    std::list<std::shared_future<Fam_Region_Item_Info>> resultList;
+    for (auto memsrv : memoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        size_t size;
+        if ((interleaveSize != 0) && (nbytes > interleaveSize)) {
+            size = numBlocksPerServer * interleaveSize;
+            if (extraBlocks) {
+                size += interleaveSize;
+                extraBlocks--;
             }
-            try {
-                memoryService = get_memory_service((uint64_t)item);
-                info = memoryService->allocate(regionId, nbytes);
-            }
-            catch (...) {
-                continue;
-            }
-            allocateSuccess = true;
-            id = (uint64_t)item;
-            break;
+        } else {
+            size = nbytes;
+        }
+        size_t aligned_size =
+            align_to_address(size, 64); // align the size to a 64-bit boundary.
+        size = (aligned_size > size ? aligned_size : size);
+        if (size < MIN_OBJ_SIZE)
+            size = MIN_OBJ_SIZE;
+
+        std::future<Fam_Region_Item_Info> result(std::async(
+            std::launch::async, &openfam::Fam_Memory_Service::allocate,
+            memoryService, regionId, size));
+        resultList.push_back(result.share());
+    }
+
+    std::vector<int> allocate_success_list;
+    std::vector<int> allocate_failed_list;
+    // Wait for region creation to complete.
+    int id = 0;
+    Fam_Exception ex;
+    for (auto result : resultList) {
+        try {
+            Fam_Region_Item_Info itemInfo = result.get();
+            // info.offsets[id] = itemInfo.offset;
+            dataitem.offsets[id] = itemInfo.offset;
+            info.baseAddressList[id] = itemInfo.base;
+            allocate_success_list.push_back(id++);
+        } catch (Fam_Exception &e) {
+            allocate_failed_list.push_back(id++);
+            ex = e;
+        } catch (...) {
+            allocate_failed_list.push_back(id++);
         }
     }
 
-    if (!allocateSuccess) {
-        message << "Failed to allocate dataitem in any memory server";
-        THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_CREATED,
-                        message.str().c_str());
+    if (allocate_failed_list.size() > 0) {
+        ostringstream message;
+        allocate_failure_cleanup(allocate_success_list, memoryServiceList,
+                                 regionId, dataitem.offsets);
+        if (allocate_failed_list.size() == 1) {
+            THROW_ERRNO_MSG(CIS_Exception, (Fam_Error)ex.fam_error(),
+                            ex.fam_error_msg());
+        } else {
+            message << "Multiple memory servers failed to allocate dataitem";
+            THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_CREATED,
+                            message.str().c_str());
+        }
     }
-
-    uint64_t dataitemId = get_dataitem_id(info.offset, id);
+    info.offset = dataitem.offsets[0];
+    uint64_t dataitemId = get_dataitem_id(info.offset, memServerIds[0]);
 
     dataitem.regionId = regionId;
     strncpy(dataitem.name, name.c_str(), metadataMaxKeyLen);
-    dataitem.offset = info.offset;
     dataitem.perm = permission;
     dataitem.gid = gid;
     dataitem.uid = uid;
     dataitem.size = nbytes;
-    dataitem.memoryServerId = id;
+    dataitem.used_memsrv_cnt = used_memsrv_cnt;
+    dataitem.interleaveSize = interleaveSize;
+    memcpy(dataitem.memoryServerIds, memServerIds,
+           used_memsrv_cnt * sizeof(uint64_t));
     if (name == "") {
         metadataService->metadata_insert_dataitem(dataitemId, regionId,
                                                   &dataitem);
@@ -694,6 +788,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         metadataService->metadata_insert_dataitem(dataitemId, regionId,
                                                   &dataitem, name);
     }
+    bool rwFlag;
     if (check_dataitem_permission(dataitem, 1, metadataServiceId, uid, gid)) {
         rwFlag = 1;
     } else if (check_dataitem_permission(dataitem, 0, metadataServiceId, uid,
@@ -703,12 +798,72 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         message << "Not permitted to use this dataitem";
         THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
     }
-    uint64_t key =
-        memoryService->get_key(regionId, info.offset, nbytes, rwFlag);
-    info.key = key;
+    std::list<std::shared_future<uint64_t>> resultRegList;
+    int idx = 0;
+    if (interleaveSize) {
+        extraBlocks = blocks % used_memsrv_cnt;
+    }
+    for (auto memsrv : memoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        size_t size;
+        if ((interleaveSize != 0) && (nbytes > interleaveSize)) {
+            size = numBlocksPerServer * interleaveSize;
+            if (extraBlocks) {
+                size += interleaveSize;
+                extraBlocks--;
+            }
+        } else {
+            size = nbytes;
+        }
+        size_t aligned_size =
+            align_to_address(size, 64); // align the size to a 64-bit boundary.
+        size = (aligned_size > size ? aligned_size : size);
+        if (size < MIN_OBJ_SIZE)
+            size = MIN_OBJ_SIZE;
+        std::future<uint64_t> result(std::async(
+            std::launch::async, &openfam::Fam_Memory_Service::get_key,
+            memoryService, regionId, dataitem.offsets[idx], size, rwFlag));
+        resultRegList.push_back(result.share());
+        idx++;
+    }
+
+    id = 0;
+    allocate_success_list.clear();
+    allocate_failed_list.clear();
+    for (auto result : resultRegList) {
+        try {
+            info.keys[id] = result.get();
+            allocate_success_list.push_back(id++);
+        } catch (Fam_Exception &e) {
+            allocate_failed_list.push_back(id++);
+            ex = e;
+        } catch (...) {
+            allocate_failed_list.push_back(id++);
+        }
+    }
+
+    if (allocate_failed_list.size() > 0) {
+        ostringstream message;
+        allocate_failure_cleanup(allocate_success_list, memoryServiceList,
+                                 regionId, dataitem.offsets);
+        if (allocate_failed_list.size() == 1) {
+            THROW_ERRNO_MSG(CIS_Exception, (Fam_Error)ex.fam_error(),
+                            ex.fam_error_msg());
+        } else {
+            message
+                << "Multiple memory servers failed to register the dataitem";
+            THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_CREATED,
+                            message.str().c_str());
+        }
+    }
+
     info.regionId = regionId;
-    info.memoryServerId = id;
+    info.used_memsrv_cnt = used_memsrv_cnt;
+    info.interleaveSize = interleaveSize;
+    memcpy(info.memoryServerIds, memServerIds,
+           used_memsrv_cnt * sizeof(uint64_t));
     info.size = nbytes;
+    free(memServerIds);
     CIS_DIRECT_PROFILE_END_OPS(cis_allocate);
     return info;
 }
@@ -719,16 +874,37 @@ void Fam_CIS_Direct::deallocate(uint64_t regionId, uint64_t offset,
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     uint64_t metadataServiceId = 0;
+    std::list<Fam_Memory_Service *> memoryServiceList;
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
     // Check with metadata service if data item with the requested name can be
     // deallocated.
     uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
+    Fam_DataItem_Metadata dataitem;
     metadataService->metadata_validate_and_deallocate_dataitem(
-        regionId, dataitemId, uid, gid);
-    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+        regionId, dataitemId, uid, gid, dataitem);
+    for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+        memoryServiceList.push_back(
+            get_memory_service(dataitem.memoryServerIds[i]));
+    }
+    std::list<std::shared_future<void>> resultList;
+    int idx = 0;
+    for (auto memsrv : memoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        std::future<void> result(std::async(
+            std::launch::async, &openfam::Fam_Memory_Service::deallocate,
+            memoryService, regionId, dataitem.offsets[idx++]));
+        resultList.push_back(result.share());
+    }
 
-    memoryService->deallocate(regionId, offset);
+    // Wait for region destroy to complete.
+    try {
+        for (auto result : resultList) {
+            result.get();
+        }
+    } catch (...) {
+        throw;
+    }
 
     CIS_DIRECT_PROFILE_END_OPS(cis_deallocate);
 
@@ -910,12 +1086,17 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
     }
 
     info.regionId = dataitem.regionId;
-    info.offset = dataitem.offset;
+    info.offset = dataitem.offsets[0];
     info.size = dataitem.size;
     info.perm = dataitem.perm;
+    info.uid = dataitem.uid;
+    info.gid = dataitem.gid;
     strncpy(info.name, dataitem.name, metadataMaxKeyLen);
-    info.memoryServerId = dataitem.memoryServerId;
+    info.used_memsrv_cnt = dataitem.used_memsrv_cnt;
+    memcpy(info.memoryServerIds, dataitem.memoryServerIds,
+           dataitem.used_memsrv_cnt * sizeof(uint64_t));
     info.maxNameLen = metadataMaxKeyLen;
+    info.interleaveSize = dataitem.interleaveSize;
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup);
     return info;
 }
@@ -948,6 +1129,15 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     info.perm = region.perm;
     strncpy(info.name, region.name, metadataMaxKeyLen);
     info.maxNameLen = metadataMaxKeyLen;
+    info.redundancyLevel = region.redundancyLevel;
+    info.memoryType = region.memoryType;
+    info.interleaveEnable = region.interleaveEnable;
+    info.interleaveSize = region.interleaveSize;
+    info.used_memsrv_cnt = region.used_memsrv_cnt;
+    info.uid = region.uid;
+    info.gid = region.gid;
+    memcpy(info.memoryServerIds, region.memServerIds,
+           region.used_memsrv_cnt * sizeof(uint64_t));
     CIS_DIRECT_PROFILE_END_OPS(cis_check_permission_get_region_info);
     return info;
 }
@@ -960,9 +1150,9 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
+    std::list<Fam_Memory_Service *> memoryServiceList;
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
-    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     Fam_DataItem_Metadata dataitem;
     message << "Error While locating dataitem : ";
     uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
@@ -985,18 +1175,79 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
         THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
     }
 
-    uint64_t key =
-        memoryService->get_key(regionId, offset, dataitem.size, rwFlag);
+    for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+        memoryServiceList.push_back(
+            get_memory_service(dataitem.memoryServerIds[i]));
+    }
+    std::list<std::shared_future<uint64_t>> keyResultList;
+    std::list<std::shared_future<void *>> baseResultList;
+    int idx = 0;
+    size_t blocks = 0, numBlocksPerServer = 0, extraBlocks = 0;
+    if (dataitem.interleaveSize) {
+        blocks = dataitem.size / dataitem.interleaveSize;
+        if (dataitem.size % dataitem.interleaveSize)
+            blocks++;
+        numBlocksPerServer = blocks / dataitem.used_memsrv_cnt;
+        extraBlocks = blocks % dataitem.used_memsrv_cnt;
+    }
+    for (auto memsrv : memoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        size_t size;
+        if ((dataitem.interleaveSize != 0) &&
+            (dataitem.size > dataitem.interleaveSize)) {
+            size = numBlocksPerServer * dataitem.interleaveSize;
+            if (extraBlocks) {
+                size += dataitem.interleaveSize;
+                extraBlocks--;
+            }
+        } else {
+            size = dataitem.size;
+        }
+        size_t aligned_size =
+            align_to_address(size, 64); // align the size to a 64-bit boundary.
+        size = (aligned_size > size ? aligned_size : size);
+        if (size < MIN_OBJ_SIZE)
+            size = MIN_OBJ_SIZE;
+        std::future<uint64_t> keyResult(std::async(
+            std::launch::async, &openfam::Fam_Memory_Service::get_key,
+            memoryService, regionId, dataitem.offsets[idx], size, rwFlag));
+        std::future<void *> baseResult(std::async(
+            std::launch::async, &openfam::Fam_Memory_Service::get_local_pointer,
+            memoryService, regionId, dataitem.offsets[idx]));
+        idx++;
+        keyResultList.push_back(keyResult.share());
+        baseResultList.push_back(baseResult.share());
+    }
+
+    idx = 0;
+    uint64_t keys[MAX_MEMORY_SERVERS_CNT];
+    void *baseAddressList[MAX_MEMORY_SERVERS_CNT];
+    // Wait for region destroy to complete.
+    try {
+        for (auto result : keyResultList) {
+            keys[idx++] = result.get();
+        }
+        idx = 0;
+        for (auto result : baseResultList) {
+            baseAddressList[idx++] = result.get();
+        }
+    } catch (...) {
+        throw;
+    }
 
     info.regionId = dataitem.regionId;
-    info.offset = dataitem.offset;
+    info.used_memsrv_cnt = dataitem.used_memsrv_cnt;
+    info.offset = dataitem.offsets[0];
+    memcpy(info.keys, keys, dataitem.used_memsrv_cnt * sizeof(uint64_t));
     info.size = dataitem.size;
     info.perm = dataitem.perm;
     strncpy(info.name, dataitem.name, metadataMaxKeyLen);
     info.maxNameLen = metadataMaxKeyLen;
-    info.key = key;
-    info.base = get_local_pointer(regionId, offset, memoryServerId);
-    info.memoryServerId = dataitem.memoryServerId;
+    info.interleaveSize = dataitem.interleaveSize;
+    memcpy(info.baseAddressList, baseAddressList,
+           dataitem.used_memsrv_cnt * sizeof(void *));
+    memcpy(info.memoryServerIds, dataitem.memoryServerIds,
+           dataitem.used_memsrv_cnt * sizeof(uint64_t));
 
     CIS_DIRECT_PROFILE_END_OPS(cis_check_permission_get_item_info);
     return info;
@@ -1034,6 +1285,12 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     info.perm = dataitem.perm;
     strncpy(info.name, dataitem.name, metadataMaxKeyLen);
     info.maxNameLen = metadataMaxKeyLen;
+    info.uid = dataitem.uid;
+    info.gid = dataitem.gid;
+    info.interleaveSize = dataitem.interleaveSize;
+    info.used_memsrv_cnt = dataitem.used_memsrv_cnt;
+    memcpy(info.memoryServerIds, dataitem.memoryServerIds,
+           dataitem.used_memsrv_cnt * sizeof(uint64_t));
     CIS_DIRECT_PROFILE_END_OPS(cis_get_stat_info);
     return info;
 }
@@ -1080,12 +1337,12 @@ void Fam_CIS_Direct::fam_unmap(void *local, uint64_t regionId, uint64_t offset,
 }
 
 void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
-                           uint64_t srcCopyStart, uint64_t srcKey,
-                           uint64_t srcBaseAddr, const char *srcAddr,
-                           uint32_t srcAddrLen, uint64_t destRegionId,
-                           uint64_t destOffset, uint64_t destCopyStart,
-                           uint64_t nbytes, uint64_t srcMemoryServerId,
-                           uint64_t destMemoryServerId, uint32_t uid,
+                           uint64_t srcUsedMemsrvCnt, uint64_t srcCopyStart,
+                           uint64_t *srcKeys, uint64_t *srcBaseAddrList,
+                           uint64_t destRegionId, uint64_t destOffset,
+                           uint64_t destCopyStart, uint64_t size,
+                           uint64_t firstSrcMemserverId,
+                           uint64_t firstDestMemserverId, uint32_t uid,
                            uint32_t gid) {
     ostringstream message;
     message << "Error While copying from dataitem : ";
@@ -1094,15 +1351,14 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
     Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
-    Fam_Memory_Service *memoryService = get_memory_service(destMemoryServerId);
 
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
 
     // Permission check, data item out of bound check, already done on the
     // client side. This looks redundant, can be removed later.
-    uint64_t srcDataitemId = get_dataitem_id(srcOffset, srcMemoryServerId);
-    uint64_t destDataitemId = get_dataitem_id(destOffset, destMemoryServerId);
+    uint64_t srcDataitemId = get_dataitem_id(srcOffset, firstSrcMemserverId);
+    uint64_t destDataitemId = get_dataitem_id(destOffset, firstDestMemserverId);
 
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
@@ -1133,12 +1389,12 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
         throw;
     }
 
-    if (!((srcCopyStart + nbytes) < srcDataitem.size)) {
+    if (!((srcCopyStart + size) < srcDataitem.size)) {
         message << "Source offset or size is beyond dataitem boundary";
         THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
 
-    if (!((destCopyStart + nbytes) < destDataitem.size)) {
+    if (!((destCopyStart + size) < destDataitem.size)) {
         message << "Destination offset or size is beyond dataitem boundary";
         THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
@@ -1146,27 +1402,79 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
     if (useAsyncCopy) {
         Fam_Copy_Tag *tag = new Fam_Copy_Tag();
         tag->copyDone.store(false, boost::memory_order_seq_cst);
-        tag->memoryService = memoryService;
+        tag->memoryServiceMap = get_memory_service_map();
         tag->srcRegionId = srcRegionId;
-        tag->srcOffset = (srcOffset + srcCopyStart);
-        tag->srcBaseAddr = srcBaseAddr;
+        memcpy(tag->srcOffsets, srcDataitem.offsets,
+               srcDataitem.used_memsrv_cnt * sizeof(uint64_t));
+        tag->srcCopyStart = srcCopyStart;
+        tag->destCopyStart = destCopyStart;
+        memcpy(tag->srcBaseAddrList, srcBaseAddrList,
+               srcDataitem.used_memsrv_cnt * sizeof(uint64_t));
         tag->destRegionId = destRegionId;
-        tag->destOffset = (destOffset + destCopyStart);
-        tag->size = nbytes;
-        tag->srcKey = srcKey;
-        tag->srcAddr = (char *)calloc(1, srcAddrLen);
-        memcpy(tag->srcAddr, srcAddr, srcAddrLen);
-        tag->srcAddrLen = srcAddrLen;
-        tag->srcMemserverId = srcMemoryServerId;
-        tag->destMemserverId = destMemoryServerId;
+        memcpy(tag->destOffsets, destDataitem.offsets,
+               destDataitem.used_memsrv_cnt * sizeof(uint64_t));
+        tag->size = size;
+        memcpy(tag->srcKeys, srcKeys,
+               srcDataitem.used_memsrv_cnt * sizeof(uint64_t));
+        tag->srcInterleaveSize = srcDataitem.interleaveSize;
+        tag->destInterleaveSize = destDataitem.interleaveSize;
+        tag->srcUsedMemsrvCnt = srcDataitem.used_memsrv_cnt;
+        tag->destUsedMemsrvCnt = destDataitem.used_memsrv_cnt;
+        memcpy(tag->srcMemserverIds, srcDataitem.memoryServerIds,
+               srcDataitem.used_memsrv_cnt * sizeof(uint64_t));
+        memcpy(tag->destMemserverIds, destDataitem.memoryServerIds,
+               destDataitem.used_memsrv_cnt * sizeof(uint64_t));
         Fam_Ops_Info opsInfo = { COPY, NULL, NULL, 0, 0, 0, 0, 0, tag };
         asyncQHandler->initiate_operation(opsInfo);
         waitObj->tag = tag;
     } else {
-        memoryService->copy(srcRegionId, (srcOffset + srcCopyStart), srcKey,
-                            srcCopyStart, srcBaseAddr, srcAddr, srcAddrLen,
-                            destRegionId, (destOffset + destCopyStart), nbytes,
-                            srcMemoryServerId, destMemoryServerId);
+        uint64_t srcCopyEnd = srcCopyStart + size;
+        uint64_t destStartServerIdx =
+            (destDataitem.used_memsrv_cnt == 1)
+                ? 0
+                : (destCopyStart / destDataitem.interleaveSize) %
+                      destDataitem.used_memsrv_cnt;
+        uint64_t destFamPtr =
+            (destDataitem.used_memsrv_cnt == 1)
+                ? destCopyStart
+                : (((destCopyStart / destDataitem.interleaveSize) -
+                    destStartServerIdx) /
+                   destDataitem.used_memsrv_cnt) *
+                      destDataitem.interleaveSize;
+        uint64_t destDisplacement =
+            (destDataitem.used_memsrv_cnt == 1)
+                ? 0
+                : destCopyStart % destDataitem.interleaveSize;
+        std::list<std::shared_future<void>> resultList;
+        for (int i = 0; i < (int)destDataitem.used_memsrv_cnt; i++) {
+            int index = (i + (int)destStartServerIdx) %
+                        (int)destDataitem.used_memsrv_cnt;
+            uint64_t additionalOffset =
+                (index == (int)destStartServerIdx) ? destDisplacement : 0;
+            Fam_Memory_Service *memoryService =
+                get_memory_service(destDataitem.memoryServerIds[index]);
+            std::future<void> result(std::async(
+                std::launch::async, &openfam::Fam_Memory_Service::copy,
+                memoryService, srcRegionId, srcDataitem.offsets,
+                srcDataitem.used_memsrv_cnt, srcCopyStart, srcCopyEnd, srcKeys,
+                srcBaseAddrList, destRegionId,
+                destDataitem.offsets[index] + destFamPtr + additionalOffset,
+                destDataitem.used_memsrv_cnt, srcDataitem.memoryServerIds,
+                srcDataitem.interleaveSize, destDataitem.interleaveSize, size));
+            resultList.push_back(result.share());
+            if (index == (int)(destDataitem.used_memsrv_cnt - 1))
+                destFamPtr += destDataitem.interleaveSize;
+            srcCopyStart += (destDataitem.interleaveSize - additionalOffset);
+        }
+
+        // Wait for region destroy to complete.
+        try {
+            for (auto result : resultList) {
+                result.get();
+            }
+        } catch (...) {
+            throw;
+        }
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_copy);
     return (void *)waitObj;
@@ -1176,24 +1484,25 @@ void Fam_CIS_Direct::wait_for_copy(void *waitObj) {
     CIS_DIRECT_PROFILE_START_OPS()
     Fam_Copy_Wait_Object *obj = (Fam_Copy_Wait_Object *)waitObj;
     asyncQHandler->wait_for_copy((void *)(obj->tag));
+    if (obj)
+        delete obj;
     CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_copy);
 }
 
 void *Fam_CIS_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
-                             uint64_t srcMemoryServerId, string BackupName,
-                             uint32_t uid, uint32_t gid, uint64_t size) {
+                             uint64_t srcFirstMemoryServerId, string BackupName,
+                             uint32_t uid, uint32_t gid) {
     ostringstream message;
     Fam_DataItem_Metadata srcDataitem;
+    Fam_Backup_Wait_Object *waitObj = new Fam_Backup_Wait_Object();
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
-    Fam_Memory_Service *memoryService = get_memory_service(srcMemoryServerId);
-    Fam_Backup_Wait_Object *waitObj = new Fam_Backup_Wait_Object();
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
 
     // Permission check, data item out of bound check, already done on the
     // client side. This looks redundant, can be removed later.
-    uint64_t srcDataitemId = get_dataitem_id(srcOffset, srcMemoryServerId);
+    uint64_t srcDataitemId = get_dataitem_id(srcOffset, srcFirstMemoryServerId);
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
             META_REGION_ITEM_READ, srcDataitemId, srcRegionId, uid, gid,
@@ -1212,7 +1521,9 @@ void *Fam_CIS_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
     string dataitemName = std::string(srcDataitem.name);
     mode_t backup_mode = srcDataitem.perm;
 
-    // Now check if backup file already exists.
+    // Now check if backup file already exists from first memory server.
+    Fam_Memory_Service *memoryService =
+        get_memory_service(srcFirstMemoryServerId);
     Fam_Backup_Info info;
     try {
         info =
@@ -1226,13 +1537,41 @@ void *Fam_CIS_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
                         "Backup already exists.");
     }
 
+    size_t blocks = 1, numBlocksPerServer = 1, extraBlocks = 0;
+
+    uint64_t sizePerServer, chunkSize;
+
+    if ((srcDataitem.interleaveSize != 0) &&
+        (srcDataitem.size > srcDataitem.interleaveSize) &&
+        (srcDataitem.used_memsrv_cnt > 1)) {
+        blocks = srcDataitem.size / srcDataitem.interleaveSize;
+        if (srcDataitem.size % srcDataitem.interleaveSize)
+            blocks++;
+        numBlocksPerServer = (blocks > srcDataitem.used_memsrv_cnt)
+                                 ? blocks / srcDataitem.used_memsrv_cnt
+                                 : 1;
+        sizePerServer = numBlocksPerServer * srcDataitem.interleaveSize;
+        chunkSize = srcDataitem.interleaveSize;
+        extraBlocks = blocks % srcDataitem.used_memsrv_cnt;
+    } else {
+        sizePerServer = srcDataitem.size;
+        chunkSize = srcDataitem.size;
+    }
     if (useAsyncCopy) {
         Fam_Backup_Tag *tag = new Fam_Backup_Tag();
         tag->backupDone.store(false, boost::memory_order_seq_cst);
-        tag->memoryService = memoryService;
+        tag->memoryServiceMap = get_memory_service_map();
         tag->srcRegionId = srcRegionId;
-        tag->srcOffset = srcOffset ;
-        tag->size = size;
+        memcpy(tag->srcOffsets, srcDataitem.offsets,
+               srcDataitem.used_memsrv_cnt * sizeof(uint64_t));
+        memcpy(tag->srcMemserverIds, srcDataitem.memoryServerIds,
+               srcDataitem.used_memsrv_cnt * sizeof(uint64_t));
+        tag->usedMemserverCnt = srcDataitem.used_memsrv_cnt;
+        tag->srcInterleaveSize = srcDataitem.interleaveSize;
+        tag->srcItemSize = srcDataitem.size;
+        tag->sizePerServer = sizePerServer;
+        tag->chunkSize = chunkSize;
+        tag->extraBlocks = extraBlocks;
         tag->uid = uid;
         tag->gid = gid;
         tag->mode = backup_mode;
@@ -1242,29 +1581,57 @@ void *Fam_CIS_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
         asyncQHandler->initiate_operation(opsInfo);
         waitObj->tag = tag;
     } else {
-        memoryService->backup(srcRegionId, srcOffset, BackupName, size, uid,
-                              gid, backup_mode, dataitemName);
+        bool writeMetadata = true;
+        std::list<std::shared_future<void>> resultList;
+        for (int i = 0; i < (int)srcDataitem.used_memsrv_cnt; i++) {
+            Fam_Memory_Service *memoryService =
+                get_memory_service(srcDataitem.memoryServerIds[i]);
+            uint64_t size = sizePerServer;
+            if (extraBlocks) {
+                size += srcDataitem.interleaveSize;
+                extraBlocks--;
+            }
+
+            std::future<void> result(std::async(
+                std::launch::async, &openfam::Fam_Memory_Service::backup,
+                memoryService, srcRegionId, srcDataitem.offsets[i], size,
+                chunkSize, srcDataitem.used_memsrv_cnt, i, BackupName, uid, gid,
+                backup_mode, dataitemName, srcDataitem.size, writeMetadata));
+            resultList.push_back(result.share());
+            writeMetadata = false;
+        }
+
+        // Wait for region destroy to complete.
+        try {
+            for (auto result : resultList) {
+                result.get();
+            }
+        } catch (...) {
+            throw;
+        }
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_backup);
     return (void *)waitObj;
 }
 
 void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
-                              uint64_t destMemoryServerId, string BackupName,
-                              uint32_t uid, uint32_t gid) {
+                              uint64_t destFirstMemoryServerId,
+                              string BackupName, uint32_t uid, uint32_t gid) {
     ostringstream message;
     Fam_DataItem_Metadata destDataitem;
+    Fam_Restore_Wait_Object *waitObj = new Fam_Restore_Wait_Object();
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
-    Fam_Memory_Service *memoryService = get_memory_service(destMemoryServerId);
-    Fam_Restore_Wait_Object *waitObj = new Fam_Restore_Wait_Object();
+    Fam_Memory_Service *memoryService =
+        get_memory_service(destFirstMemoryServerId);
 
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
 
     // Permission check, data item out of bound check, already done on the
     // client side. This looks redundant, can be removed later.
-    uint64_t destDataitemId = get_dataitem_id(destOffset, destMemoryServerId);
+    uint64_t destDataitemId =
+        get_dataitem_id(destOffset, destFirstMemoryServerId);
 
     try {
         metadataService->metadata_find_dataitem_and_check_permissions(
@@ -1292,19 +1659,73 @@ void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
                         message.str().c_str());
     }
 
+    size_t blocks = 1, numBlocksPerServer = 1, extraBlocks = 0;
+    uint64_t sizePerServer, chunkSize;
+    if ((destDataitem.interleaveSize != 0) &&
+        ((uint64_t)info.size > destDataitem.interleaveSize) &&
+        (destDataitem.used_memsrv_cnt > 1)) {
+        blocks = info.size / destDataitem.interleaveSize;
+        if (info.size % destDataitem.interleaveSize)
+            blocks++;
+        numBlocksPerServer = (blocks > destDataitem.used_memsrv_cnt)
+                                 ? blocks / destDataitem.used_memsrv_cnt
+                                 : 1;
+        sizePerServer = numBlocksPerServer * destDataitem.interleaveSize;
+        chunkSize = destDataitem.interleaveSize;
+        extraBlocks = blocks % destDataitem.used_memsrv_cnt;
+    } else {
+        sizePerServer = info.size;
+        chunkSize = info.size;
+    }
+
+    uint64_t iterations = (blocks > destDataitem.used_memsrv_cnt)
+                              ? destDataitem.used_memsrv_cnt
+                              : blocks;
     if (useAsyncCopy) {
         Fam_Restore_Tag *tag = new Fam_Restore_Tag();
         tag->restoreDone.store(false, boost::memory_order_seq_cst);
-        tag->memoryService = memoryService;
+        tag->memoryServiceMap = get_memory_service_map();
         tag->destRegionId = destRegionId;
-        tag->destOffset = destOffset;
-        tag->size = info.size;
+        memcpy(tag->destOffsets, destDataitem.offsets,
+               destDataitem.used_memsrv_cnt * sizeof(uint64_t));
+        memcpy(tag->destMemserverIds, destDataitem.memoryServerIds,
+               destDataitem.used_memsrv_cnt * sizeof(uint64_t));
+        tag->usedMemserverCnt = destDataitem.used_memsrv_cnt;
+        tag->destInterleaveSize = destDataitem.interleaveSize;
+        tag->destItemSize = destDataitem.size;
+        tag->sizePerServer = sizePerServer;
+        tag->chunkSize = chunkSize;
+        tag->extraBlocks = extraBlocks;
+        tag->iterations = iterations;
         tag->BackupName = BackupName;
         Fam_Ops_Info opsInfo = { RESTORE, NULL, NULL, 0, 0, 0, 0, 0, tag };
         asyncQHandler->initiate_operation(opsInfo);
         waitObj->tag = tag;
     } else {
-        memoryService->restore(destRegionId, destOffset, BackupName, info.size);
+        std::list<std::shared_future<void>> resultList;
+        for (int i = 0; i < (int)iterations; i++) {
+            Fam_Memory_Service *memoryService =
+                get_memory_service(destDataitem.memoryServerIds[i]);
+            uint64_t size = sizePerServer;
+            if (extraBlocks) {
+                size += destDataitem.interleaveSize;
+                extraBlocks--;
+            }
+            std::future<void> result(std::async(
+                std::launch::async, &openfam::Fam_Memory_Service::restore,
+                memoryService, destRegionId, destDataitem.offsets[i], size,
+                chunkSize, destDataitem.used_memsrv_cnt, i, BackupName));
+            resultList.push_back(result.share());
+        }
+
+        // Wait for region destroy to complete.
+        try {
+            for (auto result : resultList) {
+                result.get();
+            }
+        } catch (...) {
+            throw;
+        }
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_restore);
     return (void *)waitObj;
@@ -1372,6 +1793,8 @@ void Fam_CIS_Direct::wait_for_backup(void *waitObj) {
     CIS_DIRECT_PROFILE_START_OPS()
     Fam_Backup_Wait_Object *obj = (Fam_Backup_Wait_Object *)waitObj;
     asyncQHandler->wait_for_backup((void *)(obj->tag));
+    if (obj)
+        delete obj;
     CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_backup);
 }
 
@@ -1379,6 +1802,8 @@ void Fam_CIS_Direct::wait_for_restore(void *waitObj) {
     CIS_DIRECT_PROFILE_START_OPS()
     Fam_Restore_Wait_Object *obj = (Fam_Restore_Wait_Object *)waitObj;
     asyncQHandler->wait_for_restore((void *)(obj->tag));
+    if (obj)
+        delete obj;
     CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_restore);
 }
 
@@ -1387,6 +1812,8 @@ void Fam_CIS_Direct::wait_for_delete_backup(void *waitObj) {
     Fam_Delete_Backup_Wait_Object *obj =
         (Fam_Delete_Backup_Wait_Object *)waitObj;
     asyncQHandler->wait_for_delete_backup((void *)(obj->tag));
+    if (obj)
+        delete obj;
     CIS_DIRECT_PROFILE_END_OPS(cis_wait_for_delete_backup);
 }
 

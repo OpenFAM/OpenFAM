@@ -169,7 +169,6 @@ class Fam_CIS_Async_Handler {
 
         void Proceed(RequestType type) {
             if (status == CREATE) {
-                CIS_ASYNC_PROFILE_START_OPS()
                 // Make this instance progress to the PROCESS state.
                 status = PROCESS;
                 // As part of the initial CREATE state, we *request* that the
@@ -180,21 +179,25 @@ class Fam_CIS_Async_Handler {
                 // this CallData instance.
                 switch (type) {
                 case RT_COPY:
+                    CIS_ASYNC_PROFILE_START_OPS()
                     service->Requestcopy(&ctx, &copyrequest, &copyresponder, cq,
                                          cq, this);
                     CIS_ASYNC_PROFILE_END_OPS(copy_create);
                     break;
                 case RT_BACKUP:
+                    CIS_ASYNC_PROFILE_START_OPS()
                     service->Requestbackup(&ctx, &backuprequest,
                                            &backupresponder, cq, cq, this);
                     CIS_ASYNC_PROFILE_END_OPS(backup_create);
                     break;
                 case RT_RESTORE:
+                    CIS_ASYNC_PROFILE_START_OPS()
                     service->Requestrestore(&ctx, &restorerequest,
                                             &restoreresponder, cq, cq, this);
                     CIS_ASYNC_PROFILE_END_OPS(restore_create);
                     break;
                 case RT_DELETE_BACKUP:
+                    CIS_ASYNC_PROFILE_START_OPS()
                     service->Requestdelete_backup(&ctx, &delbackuprequest,
                                                   &delbackupresponder, cq, cq,
                                                   this);
@@ -202,7 +205,6 @@ class Fam_CIS_Async_Handler {
                     break;
                 }
             } else if (status == PROCESS) {
-                CIS_ASYNC_PROFILE_START_OPS()
                 // Spawn a new CallData instance to serve new clients while we
                 // process the one for this CallData. The instance will
                 // deallocate itself as part of its FINISH state.
@@ -213,45 +215,62 @@ class Fam_CIS_Async_Handler {
                 try {
                     void *waitObj;
                     switch (type) {
-                    case RT_COPY:
+                    case RT_COPY: {
+                        CIS_ASYNC_PROFILE_START_OPS()
+                        uint64_t srcUsedMemsrvCnt = copyrequest.src_keys_size();
+                        uint64_t *srcKeys = (uint64_t *)malloc(
+                            sizeof(uint64_t) * srcUsedMemsrvCnt);
+                        uint64_t *srcBaseAddrList = (uint64_t *)malloc(
+                            sizeof(uint64_t) * srcUsedMemsrvCnt);
+
+                        for (uint64_t i = 0; i < srcUsedMemsrvCnt; i++) {
+                            srcKeys[i] = copyrequest.src_keys((int)i);
+                            srcBaseAddrList[i] =
+                                copyrequest.src_base_addr((int)i);
+                        }
+
                         waitObj = famCIS->copy(
-                            copyrequest.srcregionid(), copyrequest.srcoffset(),
-                            copyrequest.srccopystart(), copyrequest.srckey(),
-                            copyrequest.srcbaseaddr(),
-                            copyrequest.srcaddr().c_str(),
-                            copyrequest.srcaddrlen(),
-                            copyrequest.destregionid(),
-                            copyrequest.destoffset(),
-                            copyrequest.destcopystart(), copyrequest.copysize(),
-                            copyrequest.src_memserver_id(),
-                            copyrequest.dest_memserver_id(), copyrequest.uid(),
-                            copyrequest.gid());
+                            copyrequest.src_region_id(),
+                            copyrequest.src_offset(), srcUsedMemsrvCnt,
+                            copyrequest.src_copy_start(), srcKeys,
+                            srcBaseAddrList, copyrequest.dest_region_id(),
+                            copyrequest.dest_offset(),
+                            copyrequest.dest_copy_start(),
+                            copyrequest.copy_size(),
+                            copyrequest.first_src_memsrv_id(),
+                            copyrequest.first_dest_memsrv_id(),
+                            copyrequest.uid(), copyrequest.gid());
                         delete (Fam_Copy_Wait_Object *)waitObj;
+                        CIS_ASYNC_PROFILE_END_OPS(copy_finish);
                         break;
+                    }
                     case RT_BACKUP:
+                        CIS_ASYNC_PROFILE_START_OPS()
                         waitObj = famCIS->backup(
                             backuprequest.regionid(), backuprequest.offset(),
                             backuprequest.memserver_id(), backuprequest.bname(),
-                            backuprequest.uid(), backuprequest.gid(),
-                            backuprequest.size());
+                            backuprequest.uid(), backuprequest.gid());
                         delete (Fam_Backup_Wait_Object *)waitObj;
-
+                        CIS_ASYNC_PROFILE_END_OPS(backup_finish);
                         break;
                     case RT_RESTORE:
+                        CIS_ASYNC_PROFILE_START_OPS()
                         waitObj = famCIS->restore(
                             restorerequest.regionid(), restorerequest.offset(),
                             restorerequest.memserver_id(),
                             restorerequest.bname(), restorerequest.uid(),
                             restorerequest.gid());
                         delete (Fam_Restore_Wait_Object *)waitObj;
+                        CIS_ASYNC_PROFILE_END_OPS(restore_finish);
                         break;
                     case RT_DELETE_BACKUP:
+                        CIS_ASYNC_PROFILE_START_OPS()
                         waitObj = famCIS->delete_backup(
                             delbackuprequest.bname().c_str(),
                             delbackuprequest.memserver_id(),
                             delbackuprequest.uid(), delbackuprequest.gid());
                         delete (Fam_Delete_Backup_Wait_Object *)waitObj;
-
+                        CIS_ASYNC_PROFILE_END_OPS(delete_backup_finish);
                         break;
                     }
                 } catch (Memory_Service_Exception &e) {
@@ -260,7 +279,6 @@ class Fam_CIS_Async_Handler {
                         copyresponse.set_errorcode(e.fam_error());
                         copyresponse.set_errormsg(e.fam_error_msg());
                         break;
-
                     case RT_BACKUP:
                         backupresponse.set_errorcode(e.fam_error());
                         backupresponse.set_errormsg(e.fam_error_msg());
@@ -305,42 +323,22 @@ class Fam_CIS_Async_Handler {
                 switch (type) {
                 case RT_COPY:
                     copyresponder.Finish(copyresponse, grpcStatus, this);
-                    CIS_ASYNC_PROFILE_END_OPS(copy_process);
                     break;
                 case RT_BACKUP:
                     backupresponder.Finish(backupresponse, grpcStatus, this);
-                    CIS_ASYNC_PROFILE_END_OPS(backup_process);
                     break;
                 case RT_RESTORE:
                     restoreresponder.Finish(restoreresponse, grpcStatus, this);
-                    CIS_ASYNC_PROFILE_END_OPS(restore_process);
                     break;
                 case RT_DELETE_BACKUP:
                     delbackupresponder.Finish(delbackupresponse, grpcStatus,
                                               this);
-                    CIS_ASYNC_PROFILE_END_OPS(delete_backup_process);
                     break;
                 }
-
             } else {
-                CIS_ASYNC_PROFILE_START_OPS()
                 GPR_ASSERT(status == FINISH);
                 // Once in the FINISH state, deallocate ourselves (CallData).
                 delete this;
-                switch (type) {
-                case RT_COPY:
-                    CIS_ASYNC_PROFILE_END_OPS(copy_finish);
-                    break;
-                case RT_BACKUP:
-                    CIS_ASYNC_PROFILE_END_OPS(backup_finish);
-                    break;
-                case RT_RESTORE:
-                    CIS_ASYNC_PROFILE_END_OPS(restore_finish);
-                    break;
-                case RT_DELETE_BACKUP:
-                    CIS_ASYNC_PROFILE_END_OPS(delete_backup_finish);
-                    break;
-                }
             }
         }
 

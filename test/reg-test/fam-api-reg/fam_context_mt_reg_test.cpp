@@ -49,7 +49,7 @@ Fam_Options fam_opts;
 Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 int rc;
-#define NUM_THREADS 7
+#define NUM_THREADS 3
 #define REGION_SIZE (32 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
 #define NUM_ITERATIONS 5
@@ -116,7 +116,7 @@ void *thrd_fam_context_mt_with_io_stress(void *arg) {
 
 void *thrd_fam_context_simul_mt(void *arg) {
 
-    fam_context *ctx[NUM_CONTEXTS];
+    fam_context *ctx[NUM_CONTEXTS] = {NULL};
     for (int i = 0; i < NUM_CONTEXTS; i++) {
         EXPECT_NO_THROW(ctx[i] = my_fam->fam_context_open());
     }

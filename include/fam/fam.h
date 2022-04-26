@@ -161,14 +161,17 @@ typedef struct {
  * Fam_Stat structure gives info for region and/or data item.
  */
 typedef struct {
-    /*Key associated with data item.*/
-    uint64_t key;
-    /*Size of Region and/or Data item*/
     uint64_t size;
     /*Permission bits associated with given region or data item.*/
     mode_t perm;
     /* Name of region and/or data item.*/
     char *name;
+    uint32_t uid;
+    uint32_t gid;
+    Fam_Region_Attributes region_attributes;
+    uint64_t num_memservers;
+    uint64_t interleaveSize;
+    uint64_t memory_servers[256];
 } Fam_Stat;
 
 /*
@@ -198,15 +201,15 @@ class Fam_Descriptor {
     // return Global descriptor
     Fam_Global_Descriptor get_global_descriptor();
     // bind key.
-    void bind_key(uint64_t tempKey);
+    void bind_keys(uint64_t *tempKey, uint64_t cnt);
     // get keys
-    uint64_t get_key();
+    uint64_t *get_keys();
     // get context
     void *get_context();
     // set context
     void set_context(void *context);
-    void set_base_address(void *address);
-    void *get_base_address();
+    void set_base_address_list(void **addressList, uint64_t cnt);
+    void **get_base_address_list();
     // get status
     int get_desc_status();
     // put status
@@ -215,12 +218,23 @@ class Fam_Descriptor {
     void set_size(uint64_t itemSize);
     void set_perm(mode_t perm);
     void set_name(char *name);
+    void set_interleave_size(uint64_t interleaveSize_);
     // get size, perm and name.
     uint64_t get_size();
     mode_t get_perm();
     char *get_name();
+    uint64_t get_interleave_size();
     // get memory server id
-    uint64_t get_memserver_id();
+    // uint64_t get_memserver_id();
+    void set_used_memsrv_cnt(uint64_t cnt);
+    uint64_t get_used_memsrv_cnt();
+    void set_memserver_ids(uint64_t *ids);
+    uint64_t *get_memserver_ids();
+    uint64_t get_first_memserver_id();
+    uint32_t get_uid();
+    void set_uid(uint32_t uid_);
+    uint32_t get_gid();
+    void set_gid(uint32_t gid_);
 
   private:
     class FamDescriptorImpl_;
@@ -1200,6 +1214,10 @@ class fam {
      * @return - number of pending operations
      */
     uint64_t fam_progress(void);
+
+#ifdef FAM_PROFILE
+    void fam_reset_profile();
+#endif
 
     /**
      * fam() - constructor for fam class

@@ -109,6 +109,7 @@ message Fam_Metadata_Region_Request {
     optional uint32 redundancylevel = 17;
     optional uint32 memorytype = 18;
     optional uint32 interleaveenable = 19;
+    optional uint64 interleavesize = 20;
 }
 
 message Fam_Metadata_Region_Response {
@@ -126,6 +127,10 @@ message Fam_Metadata_Region_Response {
     optional uint64 memsrv_id = 12;
     repeated uint64 memsrv_list = 13;
     optional uint64 memsrv_cnt = 14;
+    optional uint32 redundancylevel = 15;
+    optional uint32 memorytype = 16;
+    optional uint32 interleaveenable = 17;
+    optional uint64 interleavesize = 18;
 }
 /*
  * Response message used by methods signal_start and signal_termination
@@ -139,7 +144,7 @@ message Fam_Metadata_Request {
     optional string key_dataitem_name = 4;
     optional uint64 region_id = 5;
     optional string name = 6;
-    optional uint64 offset = 7;
+    repeated uint64 offsets = 7;
     optional uint32 uid = 8;
     optional uint32 gid = 9;
     optional uint64 perm = 10;
@@ -150,13 +155,15 @@ message Fam_Metadata_Request {
     optional uint32 redundancylevel = 15;
     optional uint32 memorytype = 16;
     optional uint32 interleaveenable = 17;
-
+    optional uint64 interleave_size = 18;
+    repeated uint64 memsrv_list = 19;
+    optional uint64 memsrv_cnt = 20;
 }
 
 message Fam_Metadata_Response {
     optional uint64 region_id = 1;
     optional string name = 2;
-    optional uint64 offset = 3;
+    repeated uint64 offsets = 3;
     optional uint32 uid = 4;
     optional uint32 gid = 5;
     optional uint64 perm = 6;
@@ -166,6 +173,9 @@ message Fam_Metadata_Response {
     optional uint32 errorcode = 10;
     optional string errormsg = 11;
     optional uint64 memsrv_id = 12;
+    optional uint64 interleave_size = 13;
+    repeated uint64 memsrv_list = 14;
+    optional uint64 memsrv_cnt = 15;
 }
 
 message Fam_Permission_Request {
@@ -198,7 +208,7 @@ message Fam_Memservcnt_Request {
 
 message Fam_Metadata_Region_Info_Response {
     optional uint64 region_id = 1;
-    repeated uint32 memserv_list = 2;
+    repeated uint32 memsrv_list = 2;
     optional uint32 errorcode = 3;
     optional string errormsg = 4;
     optional uint64 memsrv_id = 5;

@@ -46,9 +46,6 @@ using namespace metadata;
 
 namespace openfam {
 
-using memoryServerMap = std::map<uint64_t, Fam_Memory_Service *>;
-using metadataServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
-
 class Fam_CIS_Direct : public Fam_CIS {
   public:
     Fam_CIS_Direct(char *cisName, bool useAsyncCopy_ = false,
@@ -109,21 +106,22 @@ class Fam_CIS_Direct : public Fam_CIS {
                                        uint64_t memoryServerId, uint32_t uid,
                                        uint32_t gid);
 
-    void *copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcCopyStart,
-               uint64_t srcKey, uint64_t srcBaseAddr, const char *srcAddr,
-               uint32_t srcAddrLen, uint64_t destRegionId, uint64_t destOffset,
-               uint64_t destCopyStar, uint64_t nbytes,
-               uint64_t srcMemoryServerId, uint64_t destMemoryServerId,
+    void *copy(uint64_t srcRegionId, uint64_t srcOffset,
+               uint64_t srcUsedMemsrvCnt, uint64_t srcCopyStart,
+               uint64_t *srcKeys, uint64_t *srcBaseAddrList,
+               uint64_t destRegionId, uint64_t destOffset,
+               uint64_t destCopyStart, uint64_t size,
+               uint64_t firstSrcMemserverId, uint64_t firstDestMemserverId,
                uint32_t uid, uint32_t gid);
 
     void wait_for_copy(void *waitObj);
+
     void *backup(uint64_t srcRegionId, uint64_t srcOffset,
                  uint64_t srcMemoryServerId, string BackupName, uint32_t uid,
-                 uint32_t gid, uint64_t size);
+                 uint32_t gid);
     void *restore(uint64_t destRegionId, uint64_t destOffset,
                   uint64_t destMemoryServerId, string BackupName, uint32_t uid,
                   uint32_t gid);
-
     string list_backup(std::string BackupName, uint64_t memoryServerId,
                        uint32_t uid, uint32_t gid);
     void *delete_backup(string BackupName, uint64_t memoryServerId,
@@ -195,6 +193,8 @@ class Fam_CIS_Direct : public Fam_CIS {
                               uint32_t nodeAddrSize, uint64_t memoryServerId,
                               uint32_t uid, uint32_t gid);
 
+    memoryServerMap *get_memory_service_map() { return memoryServers; }
+
   private:
     Fam_Async_QHandler *asyncQHandler;
     memoryServerMap *memoryServers;
@@ -202,6 +202,8 @@ class Fam_CIS_Direct : public Fam_CIS {
     configFileParams file_options;
     uint64_t memoryServerCount;
     uint64_t memServerInfoSize;
+    bool enableInterleaving;
+    size_t interleaveSize;
     std::vector<std::tuple<uint64_t, size_t, void *> > *memServerInfoV;
     void *memServerInfoBuffer;
     bool useAsyncCopy;
@@ -214,9 +216,15 @@ class Fam_CIS_Direct : public Fam_CIS {
         (name);
         return hashVal % memoryServerCount;
     }
+
     int create_region_failure_cleanup(
         std::vector<int> create_region_success_list,
         std::vector<Fam_Memory_Service *> memoryServiceList, uint64_t regionId);
+
+    int allocate_failure_cleanup(
+        std::vector<int> allocate_success_list,
+        std::vector<Fam_Memory_Service *> memoryServiceList, uint64_t regionId,
+        uint64_t *offsets);
 };
 
 } // namespace openfam

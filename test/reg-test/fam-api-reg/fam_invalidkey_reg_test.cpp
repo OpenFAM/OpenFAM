@@ -82,7 +82,8 @@ TEST(FamInvalidKey, InvalidKeySuccess) {
     EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024, 0777, desc));
     EXPECT_NE((void *)NULL, item);
 
-    uint64_t nodeId = item->get_memserver_id();
+    uint64_t nodeId = item->get_memserver_ids()[0];
+
     EXPECT_THROW(fabric_write(invalidKey, message, 25, 0,
                               (*famOps->get_fiAddrs())[nodeId],
                               famOps->get_defaultCtx(item)),

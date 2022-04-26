@@ -55,13 +55,19 @@ TEST(FamStat, FamStatSuccess) {
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
     cout << "Region Info  - Name : " << info->name << " Size: " << std::dec
-         << info->size << " Item perm: " << std::oct << info->perm << endl;
+         << info->size << " Item perm: " << std::oct << info->perm << std::dec
+         << " UID : " << info->uid << " GID : " << info->gid
+         << " Number of servers : " << info->num_memservers
+         << " Interleaving size : " << info->interleaveSize << endl;
     // Allocating data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024, 0777, desc));
     EXPECT_NE((void *)NULL, item);
     EXPECT_NO_THROW(my_fam->fam_stat(item, info));
     cout << "Item Info  - Name : " << info->name << " Size: " << std::dec
-         << info->size << " Item perm: " << std::oct << info->perm << endl;
+         << info->size << " Item perm: " << std::oct << info->perm << std::dec
+         << " UID : " << info->uid << " GID : " << info->gid
+         << " Number of servers : " << info->num_memservers
+         << " Interleaving size : " << info->interleaveSize << endl;
 
     free(info);
 

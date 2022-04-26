@@ -64,17 +64,23 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
     Fam_Region_Item_Info allocate(uint64_t regionId, size_t nbytes);
 
     void deallocate(uint64_t regionId, uint64_t offset);
+    void copy(uint64_t srcRegionId, uint64_t *srcOffsets,
+              uint64_t srcUsedMemsrvCnt, uint64_t srcCopyStart,
+              uint64_t srcCopyEnd, uint64_t *srcKeys, uint64_t *srcBaseAddrList,
+              uint64_t destRegionId, uint64_t destOffset,
+              uint64_t destUsedMemsrvCnt, uint64_t *srcMemserverIds,
+              uint64_t srcInterleaveSize, uint64_t destInterleaveSize,
+              uint64_t size);
 
-    void copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcKey,
-              uint64_t srcCopyStart, uint64_t srcBaseAddr, const char *srcAddr,
-              uint32_t srcAddrLen,uint64_t destRegionId, uint64_t destOffset,
-              uint64_t size, uint64_t srcMemserverId, uint64_t destMemserverId);
-    void backup(uint64_t srcRegionId, uint64_t srcOffset, string BackupName,
-                uint64_t size, uint32_t uid, uint32_t gid, mode_t mode,
-                string dataitemName);
-    void restore(uint64_t destRegionId, uint64_t destOffset, string BackupName,
-                 uint64_t size);
+    void backup(uint64_t srcRegionId, uint64_t srcOffset, uint64_t size,
+                uint64_t chunkSize, uint64_t usedMemserverCnt,
+                uint64_t fileStartPos, const string BackupName, uint32_t uid,
+                uint32_t gid, mode_t mode, const string dataitemName,
+                uint64_t itemSize, bool writeMetadata);
 
+    void restore(uint64_t destRegionId, uint64_t destOffset, uint64_t size,
+                 uint64_t chunkSize, uint64_t usedMemserverCnt,
+                 uint64_t fileStartPos, string BackupName);
     Fam_Backup_Info get_backup_info(std::string BackupName, uint32_t uid,
                                     uint32_t gid, uint32_t mode);
     std::string list_backup(std::string BackupName, uint32_t uid, uint32_t gid,
@@ -128,6 +134,10 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
                                uint64_t srcBaseAddr, const char *nodeAddr,
                                uint32_t nodeAddrSize);
 
+    void update_memserver_addrlist(void *memServerInfoBuffer,
+                                   size_t memServerInfoSize,
+                                   uint64_t memoryServerCount);
+
   private:
     Memserver_Allocator *allocator;
     pthread_mutex_t casLock[CAS_LOCK_CNT];
@@ -141,6 +151,7 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
     std::string port;
     std::string rpc_interface;
     std::string if_device;
+    std::vector<std::tuple<uint64_t, size_t, void *>> *memServerInfoV;
 };
 
 } // namespace openfam

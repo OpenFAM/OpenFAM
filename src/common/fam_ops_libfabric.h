@@ -88,6 +88,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                       Fam_Allocator_Client *famAlloc, Fam_Context_Model famCM,
                       const char *memServerName, const char *libfabricPort);
     Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps);
+    void reset_profile() {}
+    void dump_profile() {}
     /**
      * Initialize the libfabric library. This method is required to be the first
      * method called when a process uses the OpenFAM library.
@@ -100,6 +102,10 @@ class Fam_Ops_Libfabric : public Fam_Ops {
      * work, but it is disconnected from the OpenFAM library functions.
      */
     void finalize();
+
+    void populate_address_vector(void *memServerInfoBuffer = NULL,
+                                 size_t memServerInfoSize = 0,
+                                 uint64_t numMemNodes = 0, uint64_t myId = 0);
 
     void abort(int status);
 
@@ -145,6 +151,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                              uint64_t nElements, uint64_t *elementIndex,
                              uint64_t elementSize);
 
+    void quiet(Fam_Region_Descriptor *descriptor = NULL);
     void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
                uint64_t destOffset, uint64_t nbytes);
 
@@ -156,7 +163,6 @@ class Fam_Ops_Libfabric : public Fam_Ops {
 
     void fence(Fam_Region_Descriptor *descriptor = NULL);
 
-    void quiet(Fam_Region_Descriptor *descriptor = NULL);
     uint64_t progress();
     void check_progress(Fam_Region_Descriptor *descriptor = NULL);
 
@@ -168,6 +174,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                     uint64_t value);
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, float value);
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, double value);
+
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                     int128_t value);
 
@@ -255,8 +262,10 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                              int32_t value);
     int64_t atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                              int64_t value);
+
     uint32_t atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                               uint32_t value);
+
     uint64_t atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                               uint64_t value);
     float atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
@@ -353,6 +362,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         else
             return obj->second;
     };
+
     Fam_Context *get_defaultCtx(Fam_Descriptor *descriptor) {
         auto obj = defContexts->find(get_context_id());
         if (obj == defContexts->end())
@@ -399,6 +409,9 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         nextId = __sync_fetch_and_add(&nextCtxId, cnt);
         return nextId;
     }
+    std::map<uint64_t, Fam_Context *> *get_defcontexts() { return defContexts; }
+
+    size_t get_fabric_iov_limit() { return fabric_iov_limit; }
 
   protected:
     // Server_Map name;

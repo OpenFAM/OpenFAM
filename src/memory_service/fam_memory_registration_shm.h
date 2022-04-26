@@ -59,6 +59,10 @@ class Fam_Memory_Registration_SHM : public Fam_Memory_Registration {
 
     void dump_profile() {}
 
+    void update_memserver_addrlist(void *memServerInfoBuffer,
+                                   size_t memServerInfoSize,
+                                   uint64_t memoryServerCount, uint64_t myId) {}
+
     uint64_t generate_access_key(uint64_t regionId, uint64_t dataitemId,
                                  bool permission) {
         return 0;

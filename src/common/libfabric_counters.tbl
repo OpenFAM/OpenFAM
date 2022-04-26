@@ -30,4 +30,5 @@ LIBFABRIC_COUNTER(iprint)
 LIBFABRIC_COUNTER(vprint)
 LIBFABRIC_COUNTER(fabric_completion_wait)
 LIBFABRIC_COUNTER(fabric_completion_wait_multictx)
-
+LIBFABRIC_COUNTER(fabric_read_write_multi_msg)
+LIBFABRIC_COUNTER(IO_vector_array_creation)

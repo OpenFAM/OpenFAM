@@ -121,15 +121,15 @@ int main() {
     } else {
         global = item->get_global_descriptor();
         cout << " Fam_Descriptor { Region ID : 0x" << hex << uppercase
-             << global.regionId << ", Offset : 0x" << global.offset
-             << ", Key : 0x" << item->get_key() << " }" << endl;
+             << global.regionId << ", Offset : 0x" << global.offset << " }"
+             << endl;
     }
 
-    uint64_t nodeId = item->get_memserver_id();
+    uint64_t nodeId = item->get_memserver_ids()[0];
 
     // Write with valid key
     try {
-        ret = fabric_write(item->get_key(), message, 25, 0,
+        ret = fabric_write(item->get_keys()[0], message, 25, 0,
                            (*famOps->get_fiAddrs())[nodeId],
                            famOps->get_defaultCtx(item));
         if (ret < 0) {
@@ -145,7 +145,7 @@ int main() {
 
     // Read with valid key
     try {
-        ret = fabric_read(item->get_key(), buff, 25, 0,
+        ret = fabric_read(item->get_keys()[0], buff, 25, 0,
                           (*famOps->get_fiAddrs())[nodeId],
                           famOps->get_defaultCtx(item));
         if (ret < 0) {
@@ -160,7 +160,7 @@ int main() {
     }
 
     cout << "With valid key : " << endl;
-    cout << "key = " << item->get_key() << endl;
+    cout << "key = " << item->get_keys()[0] << endl;
     cout << "buffer = " << buff << endl;
     if (strncmp(message, buff, 25) == 0) {
         cout << "Data read is same is as written" << endl;

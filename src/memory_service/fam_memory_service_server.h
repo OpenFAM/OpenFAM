@@ -184,6 +184,11 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                           const ::Fam_Memory_Atomic_SG_Indexed_Request *request,
                           ::Fam_Memory_Atomic_Response *response) override;
 
+    ::grpc::Status update_memserver_addrlist(
+        ::grpc::ServerContext *context,
+        const ::Fam_Memory_Service_Addr_Info *request,
+        ::Fam_Memory_Service_General_Response *response) override;
+
   protected:
     int numClients;
     Fam_Memory_Service_Rpc::Service *service;

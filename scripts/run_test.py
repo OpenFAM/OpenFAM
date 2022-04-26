@@ -231,6 +231,7 @@ with open(
 # Assign values to config options if corresponding argument is set
 sleepsecs = args.sleep
 mpitype = args.mpi_type
+
 if args.partition is not None:
     slurm_partition = " -p " + args.partition
 else:
@@ -275,7 +276,7 @@ if args.atlqsize is not None:
 if args.atldatasize is not None:
     memservice_config_doc["ATL_data_size"] = args.atldatasize
 '''
-In config file the memory server details are stored as given below (as map of map): 
+In config file the memory server details are stored as given below (as map of map):
 
 Memservers:
  0:
@@ -283,14 +284,14 @@ Memservers:
    fam_path: /dev/shm/vol/
    rpc_interface: 127.0.0.1:8789
    libfabric_port: 7500
-   if_device: eth0 
+   if_device: eth0
 
  1:
    memory_type: persistent
    fam_path: /dev/shm/per/
    rpc_interface: 127.0.0.1:8788
    libfabric_port: 7501
-   if_device: eth1 
+   if_device: eth1
 
 The input to this script is passed as :
 

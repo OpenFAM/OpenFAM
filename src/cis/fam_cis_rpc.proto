@@ -171,6 +171,10 @@ message Fam_Region_Response {
     uint32 redundancylevel = 10;
     uint32 memorytype = 11;
     uint32 interleaveenable = 12;
+    uint64 interleavesize = 13;
+    uint32 uid = 14;
+    uint32 gid = 15;
+    repeated uint64 memsrv_list = 16;
 }
 
 /*
@@ -210,24 +214,29 @@ message Fam_Dataitem_Response {
     uint64 maxnamelen = 9;
     uint64 perm = 10;
     uint64 memserver_id = 11;
+    repeated uint64 keys = 12;
+    repeated uint64 base_addr_list = 13;
+    repeated uint64 memsrv_list = 14;
+    repeated uint64 memsrv_cnt = 15;
+    uint64 interleave_size = 16;
+    uint32 uid = 17;
+    uint32 gid = 18;
 }
 
 message Fam_Copy_Request {
-    uint64 srcregionid = 1;
-    uint64 destregionid = 2;
-    uint64 srcoffset = 3;
-    uint64 destoffset = 4;
-    uint64 srccopystart = 5;
-    uint64 destcopystart = 6;
+    uint64 src_region_id = 1;
+    uint64 dest_region_id = 2;
+    uint64 src_offset = 3;
+    uint64 dest_offset = 4;
+    uint64 src_copy_start = 5;
+    uint64 dest_copy_start = 6;
     uint32 uid = 7;
     uint32 gid = 8;
-    uint64 copysize = 9;
-    uint64 src_memserver_id = 10;
-    uint64 dest_memserver_id = 11;
-    uint64 srckey = 12;
-    bytes srcaddr = 13;
-    uint32 srcaddrlen = 14;
-    uint64 srcbaseaddr = 15;
+    uint64 copy_size = 9;
+    repeated uint64 src_keys = 10;
+    repeated uint64 src_base_addr = 11;
+    uint64 first_src_memsrv_id = 12;
+    uint64 first_dest_memsrv_id = 13;
 }
 
 message Fam_Copy_Response {

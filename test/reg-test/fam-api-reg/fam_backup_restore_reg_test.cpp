@@ -72,6 +72,7 @@ TEST(FamBackupRestore, BackupSuccess) {
     void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
+    EXPECT_NE((void *)NULL, waitobj);
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
 
     free((char *)backupName);
@@ -128,6 +129,7 @@ TEST(FamBackupRestore, RestoreSuccess) {
     void *bckwaitobj = NULL;
     EXPECT_NO_THROW(bckwaitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
+    EXPECT_NE((void *)NULL, bckwaitobj);
     EXPECT_NO_THROW(my_fam->fam_backup_wait(bckwaitobj));
 
     // Allocating data item2 in the created region
@@ -138,6 +140,7 @@ TEST(FamBackupRestore, RestoreSuccess) {
     // Start Restore
     void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj = my_fam->fam_restore(backupName, item2));
+    EXPECT_NE((void *)NULL, waitobj);
     EXPECT_NO_THROW(my_fam->fam_restore_wait(waitobj));
 
     // Restoring is complete. Now get the content of restored data item
@@ -174,6 +177,7 @@ TEST(FamBackupRestore, CreateDataitemRestoreSuccess) {
     void *bckwaitobj = NULL;
     EXPECT_NO_THROW(bckwaitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
+    EXPECT_NE((void *)NULL, bckwaitobj);
     EXPECT_NO_THROW(my_fam->fam_backup_wait(bckwaitobj));
 
     void *waitobj = NULL;
@@ -210,9 +214,8 @@ TEST(FamBackupRestore, RestoreFailureNonExistentBackup) {
 
     // Restore Invalid Backup Name.
     EXPECT_THROW(my_fam->fam_restore(NULL, item), Fam_Exception);
-
     // Start Restore
-    void *waitObj;
+    void *waitObj = NULL;
     bool exception_raised = 0;
     try {
         waitObj = my_fam->fam_restore(backupName, item);
@@ -265,7 +268,6 @@ TEST(FamBackupRestore, RestoreFailureInsufficientDataSize) {
     void *waitobj = NULL;
     bool exception_raised = 0;
     try {
-
         waitobj = my_fam->fam_restore(backupName, item);
         my_fam->fam_restore_wait(waitobj);
     } catch (Fam_Exception &e) {
@@ -297,6 +299,7 @@ TEST(FamBackupRestore, ListBackupSuccess) {
     void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
+    EXPECT_NE((void *)NULL, waitobj);
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
 
     EXPECT_NO_THROW(binfo = my_fam->fam_list_backup(backupName));
@@ -322,6 +325,7 @@ TEST(FamBackupRestore, ListBackupAllSuccess) {
     void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
+    EXPECT_NE((void *)NULL, waitobj);
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
 
     EXPECT_NO_THROW(binfo = my_fam->fam_list_backup(strdup("*")));
@@ -351,10 +355,12 @@ TEST(FamBackupRestore, DeleteBackupSuccess) {
     void *waitobj = NULL;
     EXPECT_NO_THROW(waitobj =
                         my_fam->fam_backup(item, backupName, backupOptions));
+    EXPECT_NE((void *)NULL, waitobj);
     EXPECT_NO_THROW(my_fam->fam_backup_wait(waitobj));
 
     void *delwaitobj = NULL;
     EXPECT_NO_THROW(delwaitobj = my_fam->fam_delete_backup(backupName));
+    EXPECT_NE((void *)NULL, delwaitobj);
     EXPECT_NO_THROW(my_fam->fam_delete_backup_wait(delwaitobj));
 
     free((void *)backupName);
@@ -383,17 +389,12 @@ int main(int argc, char **argv) {
     regionName = (char *)testRegion;
     firstItemName = (char *)firstItem;
 
-    try {
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL);
-        // EXPECT_NE((void *)NULL, desc);
-        item = my_fam->fam_allocate(firstItem, DATAITEM_SIZE, 0777, desc);
-        // EXPECT_NE((void *)NULL, item);
-    } catch (Fam_Exception &e) {
-
-        cout << "Create_region Exception/Allocate exception:"
-             << e.fam_error_msg() << endl;
-    }
-    // Allocating data items in the created region
+    EXPECT_NO_THROW(
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
+    EXPECT_NE((void *)NULL, desc);
+    EXPECT_NO_THROW(
+        item = my_fam->fam_allocate(firstItem, DATAITEM_SIZE, 0777, desc));
+    EXPECT_NE((void *)NULL, item);
 
     char *local = strdup("Test message");
     my_fam->fam_put_blocking(local, item, 0, strlen(local));
