@@ -50,12 +50,12 @@ Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
 int rc;
 
-#define NUM_THREADS 32
-#define TOTAL_NUM_THREADS 33
+#define NUM_THREADS 16
+#define TOTAL_NUM_THREADS 17
 #define REGION_SIZE (2000 * 1024 * NUM_THREADS)
 #define NUM_CONTEXTS 8
 #define REGION_PERM 0777
-#define NUM_IO_ITERATIONS 100
+#define NUM_IO_ITERATIONS 50
 fam_context *ctx[NUM_CONTEXTS];
 std::atomic<int> activethreads{NUM_THREADS};
 pthread_barrier_t barrier;
@@ -67,15 +67,17 @@ typedef struct {
 } ValueInfo;
 
 void *thr_check_fam_progress(void *arg) {
-    uint64_t progress = 0;
-    cpu_set_t cpuset;
+    // uint64_t progress = 0; //Commenting out printing of progress in normal
+    // execution of test
+    /* Commenting out cpu affinity code for the time being.  It can be used
+    later if needed. cpu_set_t cpuset;
     // the CPU we whant to use
     int cpu;
     cpu = 0;
 
     CPU_ZERO(&cpuset);     // clears the cpuset
     CPU_SET(cpu, &cpuset); // set CPU 2 on cpuset
-
+    */
     /*
      * cpu affinity for the calling thread
      * first parameter is the pid, 0 = calling thread
@@ -83,18 +85,18 @@ void *thr_check_fam_progress(void *arg) {
      * third param is the cpuset in which your thread will be
      * placed. Each bit represents a CPU
      */
-    sched_setaffinity(0, sizeof(cpuset), &cpuset);
+    // sched_setaffinity(0, sizeof(cpuset), &cpuset);
 
     pthread_barrier_wait(&barrier);
     while (activethreads != 0) {
         for (int i = 0; i < NUM_CONTEXTS; i++) {
             try {
-                progress = ctx[i]->fam_progress();
+                // progress = ctx[i]->fam_progress();
                 pthread_yield();
-                if (progress != 0) {
-                    cout << "I/Os in Progress for context" << i << " is "
+                /* if (progress != 0) {
+                  cout << "I/Os in Progress for context" << i << " is "
                          << progress << endl;
-                }
+                } */
             } catch (Fam_Exception &e) {
                 cout << "Exception caught while invoking fam_progress()"
                      << endl;
@@ -111,6 +113,9 @@ void *thrd_fam_context_mt_with_fam_progress(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     int i = 0;
+    /* Commenting out cpu affinity code for the time being.  It can be used
+    later if needed.
+
     cpu_set_t cpuset;
     int node0[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13,
                    14, 15, 16, 17, 18, 19, 40, 41, 42, 43, 44, 45, 46, 47,
@@ -126,7 +131,7 @@ void *thrd_fam_context_mt_with_fam_progress(void *arg) {
         cpu = node1[addInfo->tid];
 
     CPU_ZERO(&cpuset);     // clears the cpuset
-    CPU_SET(cpu, &cpuset); // set CPU 2 on cpuset
+    CPU_SET(cpu, &cpuset); // set CPU 2 on cpuset */
 
     /*
      * cpu affinity for the calling thread
@@ -135,7 +140,7 @@ void *thrd_fam_context_mt_with_fam_progress(void *arg) {
      * third param is the cpuset in which your thread will be
      * placed. Each bit represents a CPU
      */
-    sched_setaffinity(0, sizeof(cpuset), &cpuset);
+    // sched_setaffinity(0, sizeof(cpuset), &cpuset);
     i = addInfo->tid % NUM_CONTEXTS;
 
     pthread_barrier_wait(&barrier);
@@ -246,7 +251,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    for (int j = 0; j < 33; j++) {
+    for (int j = 0; j < TOTAL_NUM_THREADS; j++) {
         pthread_join(thr[j], NULL);
     }
 
