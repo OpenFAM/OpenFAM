@@ -91,7 +91,9 @@ void *thr_check_fam_progress(void *arg) {
     while (activethreads != 0) {
         for (int i = 0; i < NUM_CONTEXTS; i++) {
             try {
-                // progress = ctx[i]->fam_progress();
+                uint64_t progress = ctx[i]->fam_progress();
+                //#TODO: Compare fam_progress value with expected values
+                (void)progress;
                 pthread_yield();
                 /* if (progress != 0) {
                   cout << "I/Os in Progress for context" << i << " is "
