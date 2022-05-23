@@ -227,7 +227,7 @@ int main(int argc, char **argv) {
             ctx[i] = my_fam->fam_context_open();
         }
     } catch (Fam_Exception &e) {
-        printf("Create region failed: %d: %s\n", e.fam_error(),
+        printf("Fam context open failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());
         return -1;
     }
@@ -265,7 +265,7 @@ int main(int argc, char **argv) {
             my_fam->fam_context_close(ctx[i]);
         }
     } catch (Fam_Exception &e) {
-        printf("Create region failed: %d: %s\n", e.fam_error(),
+        printf("Fam context close failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());
         return -1;
     }
