@@ -1958,6 +1958,8 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_ATOMIC_WRITE, FI_INT32,
@@ -1999,6 +2001,8 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_ATOMIC_WRITE, FI_INT64,
@@ -2040,6 +2044,8 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_ATOMIC_WRITE, FI_UINT32,
@@ -2081,6 +2087,8 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_ATOMIC_WRITE, FI_UINT64,
@@ -2122,6 +2130,8 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_ATOMIC_WRITE, FI_FLOAT,
@@ -2163,6 +2173,8 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_ATOMIC_WRITE, FI_DOUBLE,
@@ -2203,6 +2215,8 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_SUM, FI_INT32, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2242,6 +2256,8 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_SUM, FI_INT64, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2281,6 +2297,8 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_SUM, FI_UINT32,
@@ -2321,6 +2339,8 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_SUM, FI_UINT64,
@@ -2361,6 +2381,8 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_SUM, FI_FLOAT, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2400,6 +2422,8 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_SUM, FI_DOUBLE,
@@ -2476,6 +2500,8 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MIN, FI_INT32, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2515,6 +2541,8 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MIN, FI_INT64, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2554,6 +2582,8 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MIN, FI_UINT32,
@@ -2594,6 +2624,8 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MIN, FI_UINT64,
@@ -2634,6 +2666,8 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MIN, FI_FLOAT, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2673,6 +2707,8 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MIN, FI_DOUBLE,
@@ -2713,6 +2749,8 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MAX, FI_INT32, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2752,6 +2790,8 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MAX, FI_INT64, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2791,6 +2831,8 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MAX, FI_UINT32,
@@ -2831,6 +2873,8 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MAX, FI_UINT64,
@@ -2871,6 +2915,8 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MAX, FI_FLOAT, (*fiAddr)[memServerIds[currentServerIndex]],
@@ -2910,6 +2956,8 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_MAX, FI_DOUBLE,
@@ -2950,6 +2998,8 @@ void Fam_Ops_Libfabric::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_BAND, FI_UINT32,
@@ -2990,6 +3040,8 @@ void Fam_Ops_Libfabric::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_BAND, FI_UINT64,
@@ -3030,6 +3082,8 @@ void Fam_Ops_Libfabric::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_BOR, FI_UINT32,
@@ -3070,6 +3124,8 @@ void Fam_Ops_Libfabric::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_BOR, FI_UINT64,
@@ -3110,6 +3166,8 @@ void Fam_Ops_Libfabric::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_BXOR, FI_UINT32,
@@ -3150,6 +3208,8 @@ void Fam_Ops_Libfabric::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_atomic(keys[currentServerIndex], (void *)&value, currentFamPtr,
                   FI_BXOR, FI_UINT64,
@@ -3192,6 +3252,8 @@ int32_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_ATOMIC_WRITE, FI_INT32,
@@ -3234,6 +3296,8 @@ int64_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_ATOMIC_WRITE, FI_INT64,
@@ -3276,6 +3340,8 @@ uint32_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_ATOMIC_WRITE, FI_UINT32,
@@ -3318,6 +3384,8 @@ uint64_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_ATOMIC_WRITE, FI_UINT64,
@@ -3360,6 +3428,8 @@ float Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_ATOMIC_WRITE, FI_FLOAT,
@@ -3402,6 +3472,8 @@ double Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_ATOMIC_WRITE, FI_DOUBLE,
@@ -3446,6 +3518,8 @@ int32_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_compare_atomic(
         keys[currentServerIndex], (void *)&oldValue, (void *)&old,
@@ -3490,6 +3564,8 @@ int64_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_compare_atomic(
         keys[currentServerIndex], (void *)&oldValue, (void *)&old,
@@ -3534,6 +3610,8 @@ uint32_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_compare_atomic(
         keys[currentServerIndex], (void *)&oldValue, (void *)&old,
@@ -3578,6 +3656,8 @@ uint64_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_compare_atomic(
         keys[currentServerIndex], (void *)&oldValue, (void *)&old,
@@ -3639,6 +3719,8 @@ int128_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     famAllocator->acquire_CAS_lock(descriptor,
                                    memServerIds[currentServerIndex]);
@@ -3703,6 +3785,8 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_int32(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&result,
                         (void *)&result, currentFamPtr, FI_ATOMIC_READ,
@@ -3745,6 +3829,8 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_int64(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&result,
                         (void *)&result, currentFamPtr, FI_ATOMIC_READ,
@@ -3787,6 +3873,8 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_uint32(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&result,
                         (void *)&result, currentFamPtr, FI_ATOMIC_READ,
@@ -3829,6 +3917,8 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_uint64(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&result,
                         (void *)&result, currentFamPtr, FI_ATOMIC_READ,
@@ -3871,6 +3961,8 @@ float Fam_Ops_Libfabric::atomic_fetch_float(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&result,
                         (void *)&result, currentFamPtr, FI_ATOMIC_READ,
@@ -3913,6 +4005,8 @@ double Fam_Ops_Libfabric::atomic_fetch_double(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&result,
                         (void *)&result, currentFamPtr, FI_ATOMIC_READ,
@@ -3955,6 +4049,8 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_SUM, FI_INT32,
@@ -3997,6 +4093,8 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_SUM, FI_INT64,
@@ -4039,6 +4137,8 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_SUM, FI_UINT32,
@@ -4081,6 +4181,8 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_SUM, FI_UINT64,
@@ -4123,6 +4225,8 @@ float Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_SUM, FI_FLOAT,
@@ -4165,6 +4269,8 @@ double Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_SUM, FI_DOUBLE,
@@ -4241,6 +4347,8 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MIN, FI_INT32,
@@ -4283,6 +4391,8 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MIN, FI_INT64,
@@ -4325,6 +4435,8 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MIN, FI_UINT32,
@@ -4367,6 +4479,8 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MIN, FI_UINT64,
@@ -4409,6 +4523,8 @@ float Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MIN, FI_FLOAT,
@@ -4451,6 +4567,8 @@ double Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MIN, FI_DOUBLE,
@@ -4493,6 +4611,8 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MAX, FI_INT32,
@@ -4535,6 +4655,8 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MAX, FI_INT64,
@@ -4577,6 +4699,8 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MAX, FI_UINT32,
@@ -4619,6 +4743,8 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MAX, FI_UINT64,
@@ -4661,6 +4787,8 @@ float Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MAX, FI_FLOAT,
@@ -4703,6 +4831,8 @@ double Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_MAX, FI_DOUBLE,
@@ -4745,6 +4875,8 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_and(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_BAND, FI_UINT32,
@@ -4787,6 +4919,8 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_and(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_BAND, FI_UINT64,
@@ -4829,6 +4963,8 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_or(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_BOR, FI_UINT32,
@@ -4871,6 +5007,8 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_or(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_BOR, FI_UINT64,
@@ -4913,6 +5051,8 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_xor(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_BXOR, FI_UINT32,
@@ -4955,6 +5095,8 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_xor(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     fabric_fetch_atomic(keys[currentServerIndex], (void *)&value, (void *)&old,
                         currentFamPtr, FI_BXOR, FI_UINT64,
@@ -5004,6 +5146,8 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     famAllocator->acquire_CAS_lock(descriptor,
                                    memServerIds[currentServerIndex]);
@@ -5060,6 +5204,8 @@ int128_t Fam_Ops_Libfabric::atomic_fetch_int128(Fam_Descriptor *descriptor,
     }
 
     currentFamPtr += (uint64_t)base_addr_list[currentServerIndex];
+    // Add displacement to remote FAM pointer
+    currentFamPtr += displacement;
 
     famAllocator->acquire_CAS_lock(descriptor,
                                    memServerIds[currentServerIndex]);
