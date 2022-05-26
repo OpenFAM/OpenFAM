@@ -63,14 +63,21 @@ typedef struct {
     int32_t deltaValue;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 void *thrd_cas_int32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
+    int tid = addInfo->tid;
     int32_t valueInt32 = 0xAAAAAAAA;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    uint64_t offset = tid * sizeof(int32_t);
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     int32_t oldValueInt32 = 0xAAAAAAAA;
     int32_t newValueInt32 = 0xBBBBBBBB;
@@ -110,17 +117,23 @@ TEST(FamCompareSwapInt32, CompareSwapInt32Success) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+    free(info);
 }
 
 void *thrd_cas_int64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     // Compare atomicas operation for int64
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     int64_t oldValueInt64 = 0xBBBBBBBBBBBBBBBB;
     int64_t newValueInt64 = 0xCCCCCCCCCCCCCCCC;
     EXPECT_NO_THROW(
@@ -159,16 +172,22 @@ TEST(FamCompareSwapInt64, CompareSwapInt64Success) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+    free(info);
 }
 void *thrd_cas_uint32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
     uint32_t valueUint32 = 0xBBBBBBBB;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
     // Compare atomic operations for uint32
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     uint32_t oldValueUint32 = 0xBBBBBBBB;
     uint32_t newValueUint32 = 0xCCCCCCCC;
     EXPECT_NO_THROW(
@@ -205,16 +224,22 @@ TEST(FamCompareSwapUint32, CompareSwapUint32Success) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+    free(info);
 }
 void *thrd_cas_uint64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     // Compare atomic operation for uint64
     uint64_t valueUint64 = 0xBBBBBBBBBBBBBBBB;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     uint64_t oldValueUint64 = 0xBBBBBBBBBBBBBBBB;
     uint64_t newValueUint64 = 0xCCCCCCCCCCCCCCCC;
     EXPECT_NO_THROW(
@@ -254,13 +279,15 @@ TEST(FamCompareSwapUint64, CompareSwapUint64Success) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+    free(info);
 }
 
 void *thrd_cas_int128(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t) * 2;
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t) * 2;
     //    offset = 0;
     // Compare atomics operation for int128
     union int128store {
@@ -283,7 +310,11 @@ void *thrd_cas_int128(void *arg) {
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt128.i64[0]));
     EXPECT_NO_THROW(
         my_fam->fam_set(item, offset + sizeof(int64_t), valueInt128.i64[1]));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueInt128.i64[0] = 0;
     valueInt128.i64[1] = 0;
@@ -332,17 +363,23 @@ TEST(FamCompareSwapInt128, CompareSwapInt128Success) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+    free(info);
 }
 
 void *thrd_cas_uint64_neg(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     // Failure test case
     uint64_t valueUint64 = 0xBBBBBBBBBBBBBBBB;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     uint64_t oldValueUint64 = 0xAAAAAAAAAAAAAAAA;
     uint64_t newValueUint64 = 0xCCCCCCCCCCCCCCCC;
     EXPECT_NO_THROW(
@@ -380,13 +417,15 @@ TEST(FamCompareSwapNegativeCase, CompareSwapNegativeCaseSuccess) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+    free(info);
 }
 
 void *thrd_cas_int128_neg(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t) * 2;
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t) * 2;
     // Compare atomics operation for int128
     union int128store {
         struct {
@@ -408,7 +447,11 @@ void *thrd_cas_int128_neg(void *arg) {
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt128.i64[0]));
     EXPECT_NO_THROW(
         my_fam->fam_set(item, offset + sizeof(int64_t), valueInt128.i64[1]));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueInt128.i64[0] = 0;
     valueInt128.i64[1] = 0;
@@ -457,6 +500,7 @@ TEST(FamCompareSwapNegativeCaseInt128, CompareSwapNegativeCaseInt128Success) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+    free(info);
 }
 int main(int argc, char **argv) {
     int ret;
@@ -474,7 +518,9 @@ int main(int argc, char **argv) {
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
                         testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));

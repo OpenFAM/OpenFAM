@@ -92,9 +92,7 @@ void *thrd_fam_context_mt_with_io(void *arg) {
     EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)2));
     EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)3));
     EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)4));
-    EXPECT_NO_THROW(my_fam->fam_or(item, 0, (uint32_t)4));
     EXPECT_NO_THROW(ctx->fam_quiet());
-    EXPECT_NO_THROW(my_fam->fam_quiet());
     EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
     pthread_exit(NULL);
 }
@@ -109,9 +107,7 @@ void *thrd_fam_context_mt_with_io_stress(void *arg) {
         EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)2));
         EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)3));
         EXPECT_NO_THROW(ctx->fam_or(item, 0, (uint32_t)4));
-        EXPECT_NO_THROW(my_fam->fam_or(item, 0, (uint32_t)4));
         EXPECT_NO_THROW(ctx->fam_quiet());
-        EXPECT_NO_THROW(my_fam->fam_quiet());
         EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
     }
 

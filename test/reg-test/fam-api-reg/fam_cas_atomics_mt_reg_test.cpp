@@ -64,11 +64,14 @@ typedef struct {
     int32_t deltaValue;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 void *thrd_cas_int32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
 
     int32_t oldValue = 0x1234;
     int32_t cmpValue = 0x1234;
@@ -77,7 +80,11 @@ void *thrd_cas_int32(void *arg) {
 
     int32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_compare_swap(item, offset, cmpValue, newValue));
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int32(item, offset));
     EXPECT_EQ(expValue, result);
@@ -123,7 +130,8 @@ void *thrd_cas_uint32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
     uint32_t oldValue = 0xefffffff;
     uint32_t cmpValue = 0x0;
     uint32_t newValue = 0x1;
@@ -131,7 +139,11 @@ void *thrd_cas_uint32(void *arg) {
 
     uint32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_compare_swap(item, offset, cmpValue, newValue));
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int32(item, offset));
     EXPECT_EQ(expValue, result);
@@ -176,7 +188,8 @@ void *thrd_cas_int64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     int64_t oldValue = 0x1111222233334444;
     int64_t cmpValue = 0x11112222ffff4321;
     int64_t newValue = 0x211122223333432;
@@ -184,7 +197,11 @@ void *thrd_cas_int64(void *arg) {
 
     int64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_compare_swap(item, offset, cmpValue, newValue));
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int64(item, offset));
     EXPECT_EQ(expValue, result);
@@ -231,7 +248,8 @@ void *thrd_cas_uint64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     uint64_t oldValue = 0x1111222233334444;
     uint64_t cmpValue = 0x11112222ffff4321;
     uint64_t newValue = 0x2111222233334321;
@@ -239,7 +257,11 @@ void *thrd_cas_uint64(void *arg) {
 
     uint64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_compare_swap(item, offset, cmpValue, newValue));
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint64(item, offset));
     EXPECT_EQ(expValue, result);
@@ -284,7 +306,8 @@ void *thrd_cas_int128(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * 2 * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * 2 * sizeof(int64_t);
 
     union int128store {
         struct {
@@ -304,7 +327,11 @@ void *thrd_cas_int128(void *arg) {
     int64_t result0, result1;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, oldValue.i64[0]));
     EXPECT_NO_THROW(my_fam->fam_set(item, offset + 8, oldValue.i64[1]));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(
         my_fam->fam_compare_swap(item, offset, cmpValue.i128, newValue.i128));
     EXPECT_NO_THROW(result0 = my_fam->fam_fetch_int64(item, offset));
@@ -355,8 +382,8 @@ int main(int argc, char **argv) {
 
     init_fam_options(&fam_opts);
 
-    EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
     fam_opts.famThreadModel = strdup("FAM_THREAD_MULTIPLE");
+    EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
     //    fam_opts.runtime = strdup("NONE");
     testRegionStr = get_uniq_str("test", my_fam);
 
@@ -364,7 +391,9 @@ int main(int argc, char **argv) {
                         testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
     delete testRegionDesc;

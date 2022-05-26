@@ -61,6 +61,8 @@ typedef struct {
     int32_t deltaValue;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 // Test case 1 - test that fetches the value in given offset in FAM, compares
 // with given value, place max/min value (based on API) in FAM at that offset
 // and returns old value
@@ -68,11 +70,16 @@ typedef struct {
 void *thrd_max_min_int32(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
     // Atomic min and max operations for int32
     int32_t valueInt32 = 0xBBBBBBBB;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueInt32 = 0xAAAAAAAA;
     EXPECT_NO_THROW(valueInt32 =
@@ -138,11 +145,16 @@ TEST(FamMinMaxAtomicInt32, MinMaxAtomicInt32Success) {
 void *thrd_max_min_int64(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     // Atomic min and max operations for int64
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueInt64 = 0xAAAAAAAAAAAAAAAA;
     EXPECT_NO_THROW(valueInt64 =
                         my_fam->fam_fetch_min(item, offset, valueInt64));
@@ -207,11 +219,16 @@ TEST(FamMinMaxAtomicInt64, MinMaxAtomicInt64Success) {
 void *thrd_max_min_uint32(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
     // Atomic min and max operations for uint32
     uint32_t valueUint32 = 0xBBBBBBBB;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueUint32 = 0x11111111;
     EXPECT_NO_THROW(valueUint32 =
                         my_fam->fam_fetch_min(item, offset, valueUint32));
@@ -276,11 +293,16 @@ TEST(FamMinMaxAtomicUint32, MinMaxAtomicUint32Success) {
 void *thrd_max_min_uint64(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     // Atomic min and max operations for uint64
     uint64_t valueUint64 = 0xAAAAAAAAAAAAAAAA;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueUint64 = 0x1111111111111111;
     EXPECT_NO_THROW(valueUint64 =
                         my_fam->fam_fetch_min(item, offset, valueUint64));
@@ -344,11 +366,16 @@ TEST(FamMinMaxAtomicUint64, MinMaxAtomicUint64Success) {
 void *thrd_max_min_float(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(float);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(float);
     // Atomic min and max operations for float
     float valueFloat = 3.3f;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueFloat));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueFloat = 1.2f;
     EXPECT_NO_THROW(valueFloat =
                         my_fam->fam_fetch_min(item, offset, valueFloat));
@@ -411,11 +438,16 @@ TEST(FamMinMaxAtomicFloat, MinMaxAtomicFloatSuccess) {
 void *thrd_max_min_double(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(double);
     // Atomic min and max operations for double
     double valueDouble = 3.3e+38;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueDouble));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueDouble = 1.2e+38;
     EXPECT_NO_THROW(valueDouble =
                         my_fam->fam_fetch_min(item, offset, valueDouble));
@@ -484,7 +516,9 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
     free((void *)testRegionStr);

@@ -69,6 +69,8 @@ typedef struct {
     int itemId;
 } ValueInfo2;
 
+pthread_barrier_t barrier;
+
 #define NUM_THREADS 64
 #define REGION_SIZE (1024 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
@@ -78,12 +80,17 @@ typedef struct {
 void *thrd_swap_int32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
     int32_t oldValue = 0x54321;
     int32_t newValue = 0x12345;
     int32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(addInfo->item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_swap(addInfo->item, offset, newValue));
     EXPECT_EQ(oldValue, result);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int32(addInfo->item, offset));
@@ -127,12 +134,17 @@ TEST(FamSwapAtomics, SwapInt32) {
 void *thrd_swap_uint32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
     uint32_t oldValue = 0x1234;
     uint32_t newValue = 0x4321;
     uint32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(addInfo->item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_swap(addInfo->item, offset, newValue));
     EXPECT_EQ(oldValue, result);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint32(addInfo->item, offset));
@@ -176,12 +188,17 @@ TEST(FamSwapAtomics, SwapUInt32) {
 void *thrd_swap_int64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     int64_t oldValue = 0x1111222233334444;
     int64_t newValue = 0x2111222233334321;
     int64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(addInfo->item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_swap(addInfo->item, offset, newValue));
     EXPECT_EQ(oldValue, result);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int64(addInfo->item, offset));
@@ -226,12 +243,17 @@ TEST(FamSwapAtomics, SwapInt64) {
 void *thrd_swap_uint64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     uint64_t oldValue = 0x7fffffffffffffff;
     uint64_t newValue = 0xefffffffffffffff;
     uint64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(addInfo->item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_swap(addInfo->item, offset, newValue));
     EXPECT_EQ(oldValue, result);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint64(addInfo->item, offset));
@@ -274,12 +296,17 @@ TEST(FamSwapAtomics, SwapUInt64) {
 // Test case 5 - Swap Float
 void *thrd_swap_float(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
-    uint64_t offset = addInfo->tid * sizeof(float);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(float);
     float oldValue = 1234.12f;
     float newValue = 2468.24f;
     float result;
     EXPECT_NO_THROW(my_fam->fam_set(addInfo->item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_swap(addInfo->item, offset, newValue));
     EXPECT_EQ(oldValue, result);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_float(addInfo->item, offset));
@@ -323,12 +350,17 @@ TEST(FamSwapAtomics, SwapFloat) {
 // Test case 6 - Swap Double
 void *thrd_swap_double(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     double oldValue = 2222555577778888.3333;
     double newValue = 3333444466669999.5555;
     double result;
     EXPECT_NO_THROW(my_fam->fam_set(addInfo->item, offset, oldValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_swap(addInfo->item, offset, newValue));
     EXPECT_EQ(oldValue, result);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_double(addInfo->item, offset));
@@ -387,7 +419,9 @@ int main(int argc, char **argv) {
                         testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
     delete testRegionDesc;
