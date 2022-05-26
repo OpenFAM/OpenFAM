@@ -64,6 +64,10 @@ typedef struct {
     int32_t tid;
     int32_t msg_size;
 } ValueInfo2;
+
+pthread_barrier_t barrier;
+pthread_barrier_t barrier_half;
+
 int rc;
 fam *my_fam;
 Fam_Options fam_opts;
@@ -75,17 +79,26 @@ Fam_Descriptor *items[NUM_THREADS];
 void *thr_func1(void *arg) {
     ValueInfo *valInfo = (ValueInfo *)arg;
     char *local = strdup("Test message");
-    uint64_t offset = valInfo->tid * valInfo->msg_size;
+    int tid = valInfo->tid;
+    uint64_t offset = tid * valInfo->msg_size;
     // Put nonblocking
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, valInfo->item, offset,
                                                 valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     // allocate local memory to receive 20 elements
     char *local2 = (char *)malloc(MSG_SIZE);
     // Get nonblocking
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, valInfo->item, offset,
                                                 valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_STREQ(local, local2);
     free(local);
     free(local2);
@@ -130,26 +143,43 @@ void *thr_func2(void *arg) {
     ValueInfo2 *valInfo = (ValueInfo2 *)arg;
     char *local = strdup("Test message");
     char *local2 = (char *)malloc(MSG_SIZE);
-    uint64_t offset = valInfo->tid * valInfo->msg_size;
+    int tid = valInfo->tid;
+    uint64_t offset = tid * valInfo->msg_size;
     // Put nonblocking
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, valInfo->item[0], offset,
                                                 valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     // allocate local memory to receive 20 elements
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, valInfo->item[0],
                                                 offset, valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_STREQ(local, local2);
 
     // Region 2
     // Put nonblocking
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, valInfo->item[1], offset,
                                                 valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     // allocate local memory to receive 20 elements
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, valInfo->item[1],
                                                 offset, valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_STREQ(local, local2);
 
     // Region 3
@@ -157,11 +187,19 @@ void *thr_func2(void *arg) {
     // Put nonblocking
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, valInfo->item[2], offset,
                                                 valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     // allocate local memory to receive 20 elements
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, valInfo->item[2],
                                                 offset, valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_STREQ(local, local2);
 
     free(local);
@@ -237,16 +275,20 @@ TEST(FamPutGetMT, NonblockingPutGetMTMultipleRegionDataItem) {
 void *thr_func3_put(void *arg) {
     ValueInfo *valInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = valInfo->item;
-    int msg_no = valInfo->tid;
-    uint64_t off = msg_no * valInfo->msg_size;
+    int tid = valInfo->tid;
+    uint64_t off = tid * valInfo->msg_size;
     char chararr[MSG_SIZE];
-    sprintf(chararr, "Test message %d", msg_no);
+    sprintf(chararr, "Test message %d", tid);
     char *local = strdup(chararr);
 
     // Put nonblocking
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, item, (uint64_t)off,
                                                 valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier_half);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier_half);
     free(local);
     pthread_exit(NULL);
 }
@@ -255,6 +297,7 @@ void *thr_func3_get(void *arg) {
     ValueInfo *valInfo = (ValueInfo *)arg;
     char chararr[MSG_SIZE];
     int tid = valInfo->tid;
+    // int msg_no = (NUM_THREADS / 2);
     int msg_no = (tid - NUM_THREADS / 2);
     uint64_t off;
     off = (uint64_t)(valInfo->msg_size * msg_no);
@@ -266,7 +309,11 @@ void *thr_func3_get(void *arg) {
 
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, item, (uint64_t)off,
                                                 valInfo->msg_size));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier_half);
+    if (tid == NUM_THREADS / 2) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier_half);
     EXPECT_STREQ(local, local2);
     free(local);
     free(local2);
@@ -325,12 +372,12 @@ TEST(FamPutGetMT, NonblockingPutGetMTSameRegionDataItemPutGet) {
 void *thr_func4_put(void *arg) {
     ValueInfo *valInfo = (ValueInfo *)arg;
     Fam_Descriptor *item;
-    int msg_no = valInfo->tid;
-    uint64_t off = msg_no * MSG_SIZE;
+    int tid = valInfo->tid;
+    uint64_t off = tid * MSG_SIZE;
     char chararr[MSG_SIZE];
-    sprintf(chararr, "Test message %d", msg_no);
+    sprintf(chararr, "Test message %d", tid);
     char data[20];
-    sprintf(data, "first_%d", msg_no);
+    sprintf(data, "first_%d", tid);
     const char *dataItem = get_uniq_str(data, my_fam);
     char *local = strdup(chararr);
     mode_t test_perm_mode = 0777;
@@ -340,12 +387,16 @@ void *thr_func4_put(void *arg) {
                         my_fam->fam_allocate(dataItem, test_item_size,
                                              test_perm_mode, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
-    items[msg_no] = item;
+    items[tid] = item;
     *valInfo = {item, 0, 0, 0};
     // Put nonblocking
-    EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, items[msg_no],
+    EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, items[tid],
                                                 (uint64_t)off, MSG_SIZE));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier_half);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier_half);
     free(local);
     free((void *)dataItem);
     pthread_exit(NULL);
@@ -368,7 +419,11 @@ void *thr_func4_get(void *arg) {
     sleep(1);
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, items[msg_no],
                                                 (uint64_t)off, MSG_SIZE));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier_half);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier_half);
     EXPECT_STREQ(local, local2);
     free(local);
     free(local2);
@@ -422,7 +477,11 @@ int main(int argc, char **argv) {
                         testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
+    pthread_barrier_init(&barrier_half, NULL, NUM_THREADS / 2);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
+    pthread_barrier_destroy(&barrier_half);
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
     delete testRegionDesc;
     free((void *)testRegionStr);

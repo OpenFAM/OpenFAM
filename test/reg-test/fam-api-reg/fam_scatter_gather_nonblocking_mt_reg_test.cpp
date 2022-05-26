@@ -56,21 +56,32 @@ typedef struct {
     int32_t deltaValue;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 void *thr_func_index(void *arg) {
     ValueInfo *valInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = valInfo->item;
+    int tid = valInfo->tid;
 
     // allocate an integer array and initialize it
     int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
     uint64_t indexes[] = {0, 7, 3, 5, 8};
     EXPECT_NO_THROW(my_fam->fam_scatter_nonblocking(newLocal, item, 5, indexes,
                                                     sizeof(int)));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     int *local2 = (int *)malloc(10 * sizeof(int));
 
     EXPECT_NO_THROW(
         my_fam->fam_gather_nonblocking(local2, item, 5, indexes, sizeof(int)));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     for (int i = 0; i < 5; i++) {
         EXPECT_EQ(local2[i], newLocal[i]);
@@ -81,18 +92,27 @@ void *thr_func_index(void *arg) {
 void *thr_func_stride(void *arg) {
     ValueInfo *valInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = valInfo->item;
+    int tid = valInfo->tid;
 
     int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
                       26, 27, 28, 29, 30, 31, 32, 33, 34, 35};
 
     EXPECT_NO_THROW(
         my_fam->fam_scatter_nonblocking(newLocal, item, 5, 2, 3, sizeof(int)));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     int *local2 = (int *)malloc(10 * sizeof(int));
 
     EXPECT_NO_THROW(
         my_fam->fam_gather_nonblocking(local2, item, 5, 2, 3, sizeof(int)));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     for (int i = 0; i < 5; i++) {
         EXPECT_EQ(local2[i], newLocal[i]);
     }
@@ -108,6 +128,8 @@ TEST(FamScatterGatherIndexNonblockMT, ScatterGatherIndexNonblockSuccess) {
     pthread_t thr[NUM_THREADS];
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
+    ValueInfo *info;
+    info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
                         testRegion, (8192 * NUM_THREADS), 0777, NULL));
@@ -118,10 +140,12 @@ TEST(FamScatterGatherIndexNonblockMT, ScatterGatherIndexNonblockSuccess) {
     EXPECT_NE((void *)NULL, item);
     my_fam->fam_barrier_all();
 
-    ValueInfo info = {item, 0, 0, 0};
 
     for (i = 0; i < NUM_THREADS; ++i) {
-        if ((rc = pthread_create(&thr[i], NULL, thr_func_index, &info))) {
+        info[i].item = item;
+        info[i].offset = (uint64_t)i;
+        info[i].tid = i;
+        if ((rc = pthread_create(&thr[i], NULL, thr_func_index, &info[i]))) {
             fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
             exit(1);
             //        return -1;
@@ -138,6 +162,7 @@ TEST(FamScatterGatherIndexNonblockMT, ScatterGatherIndexNonblockSuccess) {
     delete item;
     delete testRegionDesc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -149,6 +174,8 @@ TEST(FamScatterGatherStrideNonblockMT, ScatterGatherStrideNonblockSuccess) {
     pthread_t thr[NUM_THREADS];
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
+    ValueInfo *info;
+    info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
                         testRegion, (8192 * NUM_THREADS), 0777, NULL));
@@ -158,10 +185,12 @@ TEST(FamScatterGatherStrideNonblockMT, ScatterGatherStrideNonblockSuccess) {
     EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, (1024 * NUM_THREADS),
                                                 0777, testRegionDesc));
     EXPECT_NE((void *)NULL, item);
-    ValueInfo info = {item, 0, 0, 0};
 
     for (i = 0; i < NUM_THREADS; ++i) {
-        if ((rc = pthread_create(&thr[i], NULL, thr_func_stride, &info))) {
+        info[i].item = item;
+        info[i].offset = (uint64_t)i;
+        info[i].tid = i;
+        if ((rc = pthread_create(&thr[i], NULL, thr_func_stride, &info[i]))) {
             fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
             exit(1);
             //        return -1;
@@ -178,6 +207,7 @@ TEST(FamScatterGatherStrideNonblockMT, ScatterGatherStrideNonblockSuccess) {
     delete item;
     delete testRegionDesc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -193,7 +223,9 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
     delete my_fam;

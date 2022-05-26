@@ -73,13 +73,16 @@ typedef struct {
     int32_t msg_size;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 // Test case 1 - MinMaxInt32NonBlock
 
 void *thrd_min_max_int32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
     int32_t operand1Value = (int32_t)0x87654321;
     int32_t operand2Value = (int32_t)0xffffffff;
     int32_t operand3Value = 0x7fffffff;
@@ -88,13 +91,25 @@ void *thrd_min_max_int32(void *arg) {
 
     int32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_min(item, offset, operand2Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int32(item, offset));
     EXPECT_EQ(testMinExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_max(item, offset, operand3Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int32(item, offset));
     EXPECT_EQ(testMaxExpectedValue, result);
     pthread_exit(NULL);
@@ -129,6 +144,8 @@ TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 
@@ -137,7 +154,8 @@ void *thrd_min_max_uint32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
 
     uint32_t operand1Value = 0x7fffffff;
     uint32_t operand2Value = 0x0;
@@ -146,13 +164,25 @@ void *thrd_min_max_uint32(void *arg) {
     uint32_t testMaxExpectedValue = 0x1;
     uint32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_min(item, offset, operand2Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint32(item, offset));
     EXPECT_EQ(testMinExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_max(item, offset, operand3Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint32(item, offset));
     EXPECT_EQ(testMaxExpectedValue, result);
     pthread_exit(NULL);
@@ -188,6 +218,7 @@ TEST(FamMinMaxAtomics, MinMaxUInt32NonBlock) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     delete item;
 
+    free(info);
     free((void *)dataItem);
 }
 
@@ -197,7 +228,8 @@ void *thrd_min_max_int64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     int64_t operand1Value = (int64_t)0xfedcba9876543210;
     int64_t operand2Value = (int64_t)0xffffffffffffffff;
     int64_t operand3Value = 0x7fffffffffffffff;
@@ -206,13 +238,25 @@ void *thrd_min_max_int64(void *arg) {
 
     int64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_min(item, offset, operand2Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int64(item, offset));
     EXPECT_EQ(testMinExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_max(item, offset, operand3Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int64(item, offset));
     EXPECT_EQ(testMaxExpectedValue, result);
     pthread_exit(NULL);
@@ -249,6 +293,7 @@ TEST(FamMinMaxAtomics, MinMaxInt64NonBlock) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     delete item;
 
+    free(info);
     free((void *)dataItem);
 }
 
@@ -257,7 +302,8 @@ void *thrd_min_max_uint64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     uint64_t operand1Value = 0x54321;
     uint64_t operand2Value = 0x7fffffffffffffff;
     uint64_t operand3Value = 0x54321;
@@ -266,13 +312,25 @@ void *thrd_min_max_uint64(void *arg) {
 
     uint64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_min(item, offset, operand2Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int64(item, offset));
     EXPECT_EQ(testMinExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_max(item, offset, operand3Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int64(item, offset));
     EXPECT_EQ(testMaxExpectedValue, result);
     pthread_exit(NULL);
@@ -310,6 +368,8 @@ TEST(FamMinMaxAtomics, MinMaxUInt64NonBlock) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 
@@ -318,7 +378,8 @@ void *thrd_min_max_float(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(float);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(float);
     float operand1Value = 8888.33f;
     float operand2Value = 9999.22f;
     float operand3Value = 5432.10f;
@@ -326,13 +387,25 @@ void *thrd_min_max_float(void *arg) {
     float testMaxExpectedValue = 8888.33f;
     float result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_min(item, offset, operand2Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_float(item, offset));
     EXPECT_EQ(testMinExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_max(item, offset, operand3Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_float(item, offset));
     EXPECT_EQ(testMaxExpectedValue, result);
     pthread_exit(NULL);
@@ -368,6 +441,8 @@ TEST(FamMinMaxAtomics, MinMaxFloatNonBlock) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 
@@ -376,7 +451,8 @@ void *thrd_min_max_double(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(double);
     double operand1Value = (DBL_MAX - 1.0);
     double operand2Value = 1.0;
     double operand3Value = DBL_MAX - 1;
@@ -384,13 +460,25 @@ void *thrd_min_max_double(void *arg) {
     double testMaxExpectedValue = DBL_MAX - 1;
     double result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_min(item, offset, operand2Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_double(item, offset));
     EXPECT_EQ(testMinExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_max(item, offset, operand3Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_double(item, offset));
     EXPECT_EQ(testMaxExpectedValue, result);
     pthread_exit(NULL);
@@ -427,6 +515,8 @@ TEST(FamMinMaxAtomics, MinMaxDoubleNonBlock) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 // Test case 7 - MinMaxInt32Block
@@ -434,7 +524,8 @@ void *thrd_min_max_int32_block(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
 
     int32_t operand1Value = (int32_t)0x87654321;
     int32_t operand2Value = (int32_t)0xffffffff;
@@ -444,7 +535,11 @@ void *thrd_min_max_int32_block(void *arg) {
 
     int32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result =
                         my_fam->fam_fetch_min(item, offset, operand2Value));
     EXPECT_EQ(operand1Value, result);
@@ -488,6 +583,8 @@ TEST(FamMinMaxAtomics, MinMaxInt32Block) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 
@@ -496,7 +593,8 @@ void *thrd_min_max_uint32_block(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
     uint32_t operand1Value = 0x1234;
     uint32_t operand2Value = 0x1234;
     uint32_t operand3Value = 0xffff0000;
@@ -505,7 +603,11 @@ void *thrd_min_max_uint32_block(void *arg) {
 
     uint32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result =
                         my_fam->fam_fetch_min(item, offset, operand2Value));
     EXPECT_EQ(operand1Value, result);
@@ -550,6 +652,8 @@ TEST(FamMinMaxAtomics, MinMaxUInt32Block) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 
@@ -558,7 +662,8 @@ void *thrd_min_max_int64_block(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     int64_t operand1Value = (int64_t)0xfedcba9876543210;
     int64_t operand2Value = (int64_t)0xffffffffffffffff;
     int64_t operand3Value = 0x7fffffffffffffff;
@@ -566,7 +671,11 @@ void *thrd_min_max_int64_block(void *arg) {
     int64_t testMaxExpectedValue = 0x7fffffffffffffff;
     int64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result =
                         my_fam->fam_fetch_min(item, offset, operand2Value));
     EXPECT_EQ(operand1Value, result);
@@ -611,6 +720,8 @@ TEST(FamMinMaxAtomics, MinMaxInt64Block) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 
@@ -619,7 +730,8 @@ void *thrd_min_max_uint64_block(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     uint64_t operand1Value = 0xfedcba9876543210;
     uint64_t operand2Value = 0xffffffffffffffff;
     uint64_t operand3Value = 0x7fffffffffffffff;
@@ -627,7 +739,11 @@ void *thrd_min_max_uint64_block(void *arg) {
     uint64_t testMaxExpectedValue = 0xfedcba9876543210;
     uint64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result =
                         my_fam->fam_fetch_min(item, offset, operand2Value));
     EXPECT_EQ(operand1Value, result);
@@ -673,6 +789,8 @@ TEST(FamMinMaxAtomics, MinMaxUInt64Block) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 
@@ -681,7 +799,8 @@ void *thrd_min_max_float_block(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(float);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(float);
 
     float operand1Value = 99999.99f;
     float operand2Value = 0.01f;
@@ -691,7 +810,11 @@ void *thrd_min_max_float_block(void *arg) {
 
     float result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result =
                         my_fam->fam_fetch_min(item, offset, operand2Value));
     EXPECT_EQ(operand1Value, result);
@@ -735,6 +858,8 @@ TEST(FamMinMaxAtomics, MinMaxFloatBlock) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 
@@ -743,7 +868,8 @@ void *thrd_min_max_double_block(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(double);
     double operand1Value = 2222555577778888.3333;
     double operand2Value = 1111.2222;
     double operand3Value = 2222555577778888.3333;
@@ -751,7 +877,11 @@ void *thrd_min_max_double_block(void *arg) {
     double testMaxExpectedValue = 2222555577778888.3333;
     double result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, operand1Value));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result =
                         my_fam->fam_fetch_min(item, offset, operand2Value));
     EXPECT_EQ(operand1Value, result);
@@ -797,6 +927,8 @@ TEST(FamMinMaxAtomics, MinMaxDoubleBlock) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
     delete item;
+
+    free(info);
     free((void *)dataItem);
 }
 #ifdef ENABLE_KNOWN_ISSUES
@@ -805,7 +937,8 @@ void *thrd_min_max_inv_perms(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(double);
     int32_t operandInt32[2] = {0x1234, (int32_t)0xffffffff};
     uint32_t operandUint32[2] = {0x1234, 0xffffffff};
     int64_t operandInt64[2] = {0x12345678, (int32_t)0xffffffffffffffff};
@@ -820,8 +953,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_NO_THROW(my_fam->fam_quiet());
+            }
+            pthread_barrier_wait(&barrier);
 }
            EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt32[1]),
@@ -837,7 +973,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_NO_THROW(my_fam->fam_quiet());
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint32[1]),
@@ -852,7 +992,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_NO_THROW(my_fam->fam_quiet());
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt64[1]),
@@ -868,7 +1012,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_NO_THROW(my_fam->fam_quiet());
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint64[1]),
@@ -884,7 +1032,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_NO_THROW(my_fam->fam_quiet());
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandFloat[1]),
@@ -900,7 +1052,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_NO_THROW(my_fam->fam_quiet());
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandDouble[1]),
@@ -943,7 +1099,9 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockPerm) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     
         delete item;
-    free((void *)dataItem);
+
+        free(info);
+        free((void *)dataItem);
 }
 
 
@@ -952,7 +1110,8 @@ void *thrd_min_max_inv_perms2(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
     int32_t operandInt32[2] = {0x1234, (int32_t)0xffffffff};
     uint32_t operandUint32[2] = {0x1234, 0xffffffff};
     int64_t operandInt64[2] = {0x12345678, (int32_t)0xffffffffffffffff};
@@ -1023,63 +1182,135 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 }
 
     pthread_exit(NULL);
@@ -1116,14 +1347,17 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockPerm) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     
         delete item;
-    free((void *)dataItem);
+
+        free(info);
+        free((void *)dataItem);
 }
 // Test case 15 - Min Max Negative test case with invalid offset
 void *thrd_min_max_inv_offset(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = 2 * addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = 2 * tid * sizeof(double);
     int32_t operandInt32[2] = {0x1234, (int32_t)0xffffffff};
     uint32_t operandUint32[2] = {0x1234, 0xffffffff};
     int64_t operandInt64[2] = {0x12345678, (int32_t)0xffffffffffffffff};
@@ -1193,63 +1427,135 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandInt32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandUint32[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandInt64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandUint64[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandFloat[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_min(item, offset, operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
             EXPECT_NO_THROW(
                 my_fam->fam_max(item, offset, operandDouble[1]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 }
 
     pthread_exit(NULL);
@@ -1286,7 +1592,9 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     
         delete item;
-    free((void *)dataItem);
+
+        free(info);
+        free((void *)dataItem);
 }
 
 
@@ -1295,7 +1603,8 @@ void *thrd_min_max_inv_offset2(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = 2 * addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = 2 * tid * sizeof(double);
     int32_t operandInt32[2] = {0x1234, (int32_t)0xffffffff};
     uint32_t operandUint32[2] = {0x1234, 0xffffffff};
     int64_t operandInt64[2] = {0x12345678, (int32_t)0xffffffffffffffff};
@@ -1309,7 +1618,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt32[1]),
@@ -1325,7 +1638,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint32[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint32[1]),
@@ -1341,7 +1658,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandInt64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandInt64[1]),
@@ -1357,7 +1678,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandUint64[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandUint64[1]),
@@ -1373,7 +1698,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandFloat[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandFloat[1]),
@@ -1389,7 +1718,11 @@ if (SHM_CHECK) {
 } else {
             EXPECT_NO_THROW(
                 my_fam->fam_set(item, offset, operandDouble[0]));
-            EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            pthread_barrier_wait(&barrier);
+            if (tid == 0) {
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+            pthread_barrier_wait(&barrier);
 }
             EXPECT_THROW(
                 my_fam->fam_fetch_min(item, offset, operandDouble[1]),
@@ -1430,7 +1763,9 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     
         delete item;
-    free((void *)dataItem);
+
+        free(info);
+        free((void *)dataItem);
 }
 
 #endif
@@ -1452,7 +1787,9 @@ int main(int argc, char **argv) {
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
                         testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
     delete testRegionDesc;
