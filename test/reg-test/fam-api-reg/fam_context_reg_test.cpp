@@ -214,12 +214,12 @@ TEST(FamContextModel, FamContextAllDataPathOpsIOTest) {
 
     // fam get put with fam_context
 
-    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, item, 0, 13));
+    EXPECT_NO_THROW(ctx->fam_put_blocking(local, item, 0, 13));
 
     // allocate local memory to receive 20 elements
     char *local3 = (char *)malloc(20);
 
-    EXPECT_NO_THROW(my_fam->fam_get_blocking(local3, item, 0, 13));
+    EXPECT_NO_THROW(ctx->fam_get_blocking(local3, item, 0, 13));
 
     EXPECT_STREQ(local, local3);
 
@@ -256,17 +256,17 @@ TEST(FamContextModel, FamContextAllDataPathOpsIOTest) {
             destItem[i] = my_fam->fam_allocate(itemInfo, 128, 0777, destDesc));
         EXPECT_NE((void *)NULL, destItem[i]);
     }
-    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
+    EXPECT_NO_THROW(ctx->fam_put_blocking(local, srcItem, 0, 13));
 
     void *waitObj[MESSAGE_SIZE];
     for (int i = 0; i < MESSAGE_SIZE; i++) {
-        EXPECT_NO_THROW(
-            waitObj[i] = my_fam->fam_copy(srcItem, 0, destItem[i], 0, i + 1));
+        EXPECT_NO_THROW(waitObj[i] =
+                            ctx->fam_copy(srcItem, 0, destItem[i], 0, i + 1));
         EXPECT_NE((void *)NULL, waitObj[i]);
     }
 
     for (int i = MESSAGE_SIZE - 1; i >= 0; i--) {
-        EXPECT_NO_THROW(my_fam->fam_copy_wait(waitObj[i]));
+        EXPECT_NO_THROW(ctx->fam_copy_wait(waitObj[i]));
     }
 
     // allocate local memory to receive 20 elements
@@ -276,7 +276,7 @@ TEST(FamContextModel, FamContextAllDataPathOpsIOTest) {
     for (int i = 0; i < MESSAGE_SIZE; i++) {
         strncpy(tmpLocal, local, i + 1);
         tmpLocal[i + 1] = '\0';
-        EXPECT_NO_THROW(my_fam->fam_get_blocking(local4, destItem[i], 0, 13));
+        EXPECT_NO_THROW(ctx->fam_get_blocking(local4, destItem[i], 0, 13));
         EXPECT_STREQ(tmpLocal, local4);
     }
 
