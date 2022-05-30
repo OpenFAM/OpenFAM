@@ -1,6 +1,6 @@
 /*
  * fam/fam_internal_exception.h
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -108,6 +108,7 @@ enum Internal_Error {
     ATL_QUEUE_INSERT_ERROR,
     ATL_NOT_ENABLED,
     LIBFABRIC_ERROR,
+    BACKUP_PATH_NOT_EXIST,
     BACKUP_FILE_EXIST,
     BACKUP_FILE_NOT_FOUND,
     BACKUP_SIZE_TOO_LARGE,
@@ -132,6 +133,7 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case REGION_NOT_FOUND:
     case DATAITEM_NOT_FOUND:
     case BACKUP_FILE_NOT_FOUND:
+    case BACKUP_PATH_NOT_EXIST:
         return FAM_ERR_NOTFOUND;
 
     case DESTROY_REGION_NOT_PERMITTED:

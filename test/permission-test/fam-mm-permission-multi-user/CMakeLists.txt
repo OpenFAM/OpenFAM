@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -42,6 +42,9 @@ add_fam_exe(fam_lookup_region)
 add_fam_exe(fam_lookup_data)
 add_fam_exe(fam_get_data)
 add_fam_exe(fam_put_data)
+#add_fam_exe(fam_backup_data)
+#add_fam_exe(fam_restore_backup_data)
+#add_fam_exe(fam_delete_backup_data)
 
 #add testscripts
 add_fam_test_script(t_region_perm_000)
@@ -54,3 +57,8 @@ add_fam_test_script(t_data_perm_400)
 add_fam_test_script(t_data_perm_440)
 add_fam_test_script(t_data_perm_460)
 add_fam_test_script(t_data_perm_666)
+#add_fam_test_script(t_backup_perm_666)
+#add_fam_test_script(t_backup_perm_460)
+#add_fam_test_script(t_backup_perm_440)
+#add_fam_test_script(t_backup_perm_400)
+

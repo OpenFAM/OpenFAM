@@ -226,6 +226,7 @@ TEST(FamBackupRestore, RestoreFailureNonExistentBackup) {
     free((void *)backupName);
     free((void *)secondItem);
 }
+
 TEST(FamBackupRestore, RestoreFailureInsufficientDataSize) {
     Fam_Region_Descriptor *desc;
     Fam_Descriptor *src;
