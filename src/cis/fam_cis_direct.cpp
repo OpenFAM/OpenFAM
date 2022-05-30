@@ -1493,8 +1493,7 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
                     /* memsrvId contains currMemsrvId  ie; duplicate memory
                      * server id*/
                     ostringstream message;
-                    message << "CIS:Duplicate memory server id! ";
-                    std::cout << message.str().c_str() << std::endl;
+                    message << "Duplicate memory server id specified in fam config option memsrv_list: "<<currMemsrvId;
                     THROW_ERR_MSG(Fam_InvalidOption_Exception,
                                   message.str().c_str());
                 }
