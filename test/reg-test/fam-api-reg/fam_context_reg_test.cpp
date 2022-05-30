@@ -214,12 +214,12 @@ TEST(FamContextModel, FamContextAllDataPathOpsIOTest) {
 
     // fam get put with fam_context
 
-    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, item, 0, 13));
+    EXPECT_NO_THROW(ctx->fam_put_blocking(local, item, 0, 13));
 
     // allocate local memory to receive 20 elements
     char *local3 = (char *)malloc(20);
 
-    EXPECT_NO_THROW(my_fam->fam_get_blocking(local3, item, 0, 13));
+    EXPECT_NO_THROW(ctx->fam_get_blocking(local3, item, 0, 13));
 
     EXPECT_STREQ(local, local3);
 
@@ -256,17 +256,17 @@ TEST(FamContextModel, FamContextAllDataPathOpsIOTest) {
             destItem[i] = my_fam->fam_allocate(itemInfo, 128, 0777, destDesc));
         EXPECT_NE((void *)NULL, destItem[i]);
     }
-    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 13));
+    EXPECT_NO_THROW(ctx->fam_put_blocking(local, srcItem, 0, 13));
 
     void *waitObj[MESSAGE_SIZE];
     for (int i = 0; i < MESSAGE_SIZE; i++) {
-        EXPECT_NO_THROW(
-            waitObj[i] = my_fam->fam_copy(srcItem, 0, destItem[i], 0, i + 1));
+        EXPECT_NO_THROW(waitObj[i] =
+                            ctx->fam_copy(srcItem, 0, destItem[i], 0, i + 1));
         EXPECT_NE((void *)NULL, waitObj[i]);
     }
 
     for (int i = MESSAGE_SIZE - 1; i >= 0; i--) {
-        EXPECT_NO_THROW(my_fam->fam_copy_wait(waitObj[i]));
+        EXPECT_NO_THROW(ctx->fam_copy_wait(waitObj[i]));
     }
 
     // allocate local memory to receive 20 elements
@@ -276,7 +276,7 @@ TEST(FamContextModel, FamContextAllDataPathOpsIOTest) {
     for (int i = 0; i < MESSAGE_SIZE; i++) {
         strncpy(tmpLocal, local, i + 1);
         tmpLocal[i + 1] = '\0';
-        EXPECT_NO_THROW(my_fam->fam_get_blocking(local4, destItem[i], 0, 13));
+        EXPECT_NO_THROW(ctx->fam_get_blocking(local4, destItem[i], 0, 13));
         EXPECT_STREQ(tmpLocal, local4);
     }
 
@@ -355,12 +355,12 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
             for (i = 0; i < 5; i++) {
                 int64_t result;
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_add(
+                    ctx->fam_set(item, testOffset[ofs], baseValue[i]));
+                EXPECT_NO_THROW(result = ctx->fam_fetch_add(
                                     item, testOffset[ofs], testAddValue[i]));
 
                 EXPECT_EQ(baseValue[i], result);
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_subtract(
+                EXPECT_NO_THROW(result = ctx->fam_fetch_subtract(
                                     item, testOffset[ofs], testAddValue[i]));
                 EXPECT_EQ(testExpectedValue[i], result);
             }
@@ -370,19 +370,19 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
             for (i = 0; i < 5; i++) {
                 int64_t result;
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], baseValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_set(item, testOffset[ofs], baseValue[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
                 EXPECT_NO_THROW(
-                    my_fam->fam_add(item, testOffset[ofs], testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_add(item, testOffset[ofs], testAddValue[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_int64(item, testOffset[ofs]));
                 EXPECT_EQ(testExpectedValue[i], result);
-                EXPECT_NO_THROW(my_fam->fam_subtract(item, testOffset[ofs],
-                                                     testAddValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
+                    ctx->fam_subtract(item, testOffset[ofs], testAddValue[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
+                EXPECT_NO_THROW(
+                    result = ctx->fam_fetch_int64(item, testOffset[ofs]));
                 EXPECT_EQ(baseValue[i], result);
             }
         }
@@ -399,34 +399,34 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
 
     // Atomic min and max operations for uint32
     uint32_t valueUint32 = 0xBBBBBBBB;
-    EXPECT_NO_THROW(my_fam->fam_set(item, 0, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    EXPECT_NO_THROW(ctx->fam_set(item, 0, valueUint32));
+    EXPECT_NO_THROW(ctx->fam_quiet());
     valueUint32 = 0x11111111;
-    EXPECT_NO_THROW(my_fam->fam_min(item, 0, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
-    EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_uint32(item, 0));
+    EXPECT_NO_THROW(ctx->fam_min(item, 0, valueUint32));
+    EXPECT_NO_THROW(ctx->fam_quiet());
+    EXPECT_NO_THROW(valueUint32 = ctx->fam_fetch_uint32(item, 0));
     EXPECT_EQ(valueUint32, (uint32_t)0x11111111);
     valueUint32 = 0xCCCCCCCC;
-    EXPECT_NO_THROW(my_fam->fam_max(item, 0, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
-    EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_uint32(item, 0));
+    EXPECT_NO_THROW(ctx->fam_max(item, 0, valueUint32));
+    EXPECT_NO_THROW(ctx->fam_quiet());
+    EXPECT_NO_THROW(valueUint32 = ctx->fam_fetch_uint32(item, 0));
     EXPECT_EQ(valueUint32, (uint32_t)0xCCCCCCCC);
 
     // fam_fetch_min and fam_fetch_max
 
     // Atomic min and max operations for int64
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
-    EXPECT_NO_THROW(my_fam->fam_set(item, 0, valueInt64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    EXPECT_NO_THROW(ctx->fam_set(item, 0, valueInt64));
+    EXPECT_NO_THROW(ctx->fam_quiet());
     valueInt64 = 0xAAAAAAAAAAAAAAAA;
-    EXPECT_NO_THROW(valueInt64 = my_fam->fam_fetch_min(item, 0, valueInt64));
+    EXPECT_NO_THROW(valueInt64 = ctx->fam_fetch_min(item, 0, valueInt64));
     EXPECT_EQ(valueInt64, (int64_t)0xBBBBBBBBBBBBBBBB);
-    EXPECT_NO_THROW(valueInt64 = my_fam->fam_fetch_uint64(item, 0));
+    EXPECT_NO_THROW(valueInt64 = ctx->fam_fetch_uint64(item, 0));
     EXPECT_EQ(valueInt64, (int64_t)0xAAAAAAAAAAAAAAAA);
     valueInt64 = 0xCCCCCCCCCCCCCCCC;
-    EXPECT_NO_THROW(valueInt64 = my_fam->fam_fetch_max(item, 0, valueInt64));
+    EXPECT_NO_THROW(valueInt64 = ctx->fam_fetch_max(item, 0, valueInt64));
     EXPECT_EQ(valueInt64, (int64_t)0xAAAAAAAAAAAAAAAA);
-    EXPECT_NO_THROW(valueInt64 = my_fam->fam_fetch_uint64(item, 0));
+    EXPECT_NO_THROW(valueInt64 = ctx->fam_fetch_uint64(item, 0));
     EXPECT_EQ(valueInt64, (int64_t)0xCCCCCCCCCCCCCCCC);
 
     // fam_add and fam_or
@@ -457,39 +457,39 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
             for (i = 0; i < 5; i++) {
                 uint64_t result;
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_set(item, testOffset[ofs], operand1Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
                 EXPECT_NO_THROW(
-                    my_fam->fam_and(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_and(item, testOffset[ofs], operand2Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_uint64(item, testOffset[ofs]));
                 EXPECT_EQ(testAndExpectedValue[i], result);
 
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_set(item, testOffset[ofs], operand1Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
                 EXPECT_NO_THROW(
-                    my_fam->fam_or(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_or(item, testOffset[ofs], operand2Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_uint64(item, testOffset[ofs]));
                 EXPECT_EQ(testOrExpectedValue[i], result);
 
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_set(item, testOffset[ofs], operand1Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
                 EXPECT_NO_THROW(
-                    my_fam->fam_xor(item, testOffset[ofs], operand2Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_xor(item, testOffset[ofs], operand2Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_uint64(item, testOffset[ofs]));
                 EXPECT_EQ(testXorExpectedValue[i], result);
             }
         }
@@ -498,39 +498,39 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
             for (i = 0; i < 5; i++) {
                 uint64_t result;
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_set(item, testOffset[ofs], operand1Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_and(
+                EXPECT_NO_THROW(result = ctx->fam_fetch_and(
                                     item, testOffset[ofs], operand2Value[i]));
                 EXPECT_EQ(operand1Value[i], result);
 
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_uint64(item, testOffset[ofs]));
                 EXPECT_EQ(testAndExpectedValue[i], result);
 
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_set(item, testOffset[ofs], operand1Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_or(
+                EXPECT_NO_THROW(result = ctx->fam_fetch_or(
                                     item, testOffset[ofs], operand2Value[i]));
                 EXPECT_EQ(operand1Value[i], result);
 
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_uint64(item, testOffset[ofs]));
                 EXPECT_EQ(testOrExpectedValue[i], result);
 
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operand1Value[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
+                    ctx->fam_set(item, testOffset[ofs], operand1Value[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
 
-                EXPECT_NO_THROW(result = my_fam->fam_fetch_xor(
+                EXPECT_NO_THROW(result = ctx->fam_fetch_xor(
                                     item, testOffset[ofs], operand2Value[i]));
                 EXPECT_EQ(operand1Value[i], result);
 
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_uint64(item, testOffset[ofs]));
                 EXPECT_EQ(testXorExpectedValue[i], result);
             }
         }
@@ -561,13 +561,13 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
 
                 uint64_t result;
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(result = my_fam->fam_swap(item, testOffset[ofs],
-                                                          newValue[i]));
+                    ctx->fam_set(item, testOffset[ofs], oldValue[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
+                EXPECT_NO_THROW(
+                    result = ctx->fam_swap(item, testOffset[ofs], newValue[i]));
                 EXPECT_EQ(oldValue[i], result);
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_uint64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_uint64(item, testOffset[ofs]));
                 EXPECT_EQ(newValue[i], result);
             }
         }
@@ -602,12 +602,12 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
 
                 int64_t result;
                 EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], oldValue_cas[i]));
-                EXPECT_NO_THROW(my_fam->fam_quiet());
-                EXPECT_NO_THROW(my_fam->fam_compare_swap(
+                    ctx->fam_set(item, testOffset[ofs], oldValue_cas[i]));
+                EXPECT_NO_THROW(ctx->fam_quiet());
+                EXPECT_NO_THROW(ctx->fam_compare_swap(
                     item, testOffset[ofs], cmpValue[i], newValue_cas[i]));
                 EXPECT_NO_THROW(
-                    result = my_fam->fam_fetch_int64(item, testOffset[ofs]));
+                    result = ctx->fam_fetch_int64(item, testOffset[ofs]));
                 EXPECT_EQ(expValue[i], result);
             }
         }
