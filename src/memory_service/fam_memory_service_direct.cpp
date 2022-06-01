@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_direct.cpp
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2022 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -133,12 +133,13 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(uint64_t memserver_id,
 
     allocator =
         new Memserver_Allocator(num_delayed_free_Threads, fam_path.c_str());
-    fam_backup_path = (char *)strdup(config_options["fam_backup_path"].c_str());
+    fam_backup_path = config_options["fam_backup_path"];
     struct stat info;
     if (stat(fam_backup_path.c_str(), &info) == -1) {
-        if ((errno == ENOENT) || (errno == ENOTDIR))
+        if ((errno == ENOENT) || (errno == ENOTDIR)) {
             mkdir(fam_backup_path.c_str(),
                   S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        }
     }
     if (isSharedMemory) {
         memoryRegistration = new Fam_Memory_Registration_SHM();
@@ -382,6 +383,12 @@ void Fam_Memory_Service_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
                                        uint32_t uid, uint32_t gid, mode_t mode,
                                        const string dataitemName) {
     ostringstream message;
+    struct stat info;
+    if (stat(fam_backup_path.c_str(), &info) == -1) {
+        message << "Fam_Backup_Path doesn't exist. " << endl;
+        THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_PATH_NOT_EXIST,
+                        message.str().c_str());
+    }
     std::string BackupNamePath = fam_backup_path + "/" + BackupName;
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     allocator->backup(srcRegionId, srcOffset, BackupNamePath, size, uid, gid,
@@ -393,6 +400,12 @@ void Fam_Memory_Service_Direct::restore(uint64_t destRegionId,
                                         uint64_t destOffset, string BackupName,
                                         uint64_t size) {
     ostringstream message;
+    struct stat info;
+    if (stat(fam_backup_path.c_str(), &info) == -1) {
+        message << "Fam_Backup_Path doesn't exist. " << endl;
+        THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_PATH_NOT_EXIST,
+                        message.str().c_str());
+    }
     std::string BackupNamePath = fam_backup_path + "/" + BackupName;
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     allocator->restore(destRegionId, destOffset, BackupNamePath, size);
@@ -402,6 +415,13 @@ void Fam_Memory_Service_Direct::restore(uint64_t destRegionId,
 Fam_Backup_Info
 Fam_Memory_Service_Direct::get_backup_info(std::string BackupName, uint32_t uid,
                                            uint32_t gid, uint32_t mode) {
+    ostringstream message;
+    struct stat sinfo;
+    if (stat(fam_backup_path.c_str(), &sinfo) == -1) {
+        message << "Fam_Backup_Path doesn't exist. " << endl;
+        THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_PATH_NOT_EXIST,
+                        message.str().c_str());
+    }
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     std::string BackupNamePath = fam_backup_path + "/" + BackupName;
     Fam_Backup_Info info =
@@ -413,8 +433,15 @@ Fam_Memory_Service_Direct::get_backup_info(std::string BackupName, uint32_t uid,
 std::string Fam_Memory_Service_Direct::list_backup(std::string BackupName,
                                                    uint32_t uid, uint32_t gid,
                                                    mode_t mode) {
-
+    ostringstream message;
+    struct stat info;
     std::string BackupNamePath;
+    if (stat(fam_backup_path.c_str(), &info) == -1) {
+        message << "Fam_Backup_Path doesn't exist. " << endl;
+        THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_PATH_NOT_EXIST,
+                        message.str().c_str());
+    }
+
     std::size_t found = BackupName.find("*");
     if (found != std::string::npos)
         BackupNamePath = fam_backup_path;
@@ -424,6 +451,13 @@ std::string Fam_Memory_Service_Direct::list_backup(std::string BackupName,
 }
 
 void Fam_Memory_Service_Direct::delete_backup(std::string BackupName) {
+    ostringstream message;
+    struct stat info;
+    if (stat(fam_backup_path.c_str(), &info) == -1) {
+        message << "Fam_Backup_Path doesn't exist. " << endl;
+        THROW_ERRNO_MSG(Memory_Service_Exception, BACKUP_PATH_NOT_EXIST,
+                        message.str().c_str());
+    }
     std::string backupnamePath = fam_backup_path + "/" + BackupName;
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     allocator->delete_backup(backupnamePath);

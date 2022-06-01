@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2020-2022 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -69,3 +69,6 @@ add_fam_test(api_fam_swap)
 add_fam_test(api_fam_xor)
 add_fam_test(api_fam_resize_region)
 add_fam_test(api_fam_context)
+add_fam_test(api_fam_backup)
+add_fam_test(api_fam_restore_backup)
+add_fam_test(api_fam_delete_backup)
