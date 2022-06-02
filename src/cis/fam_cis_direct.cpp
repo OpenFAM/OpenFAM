@@ -1476,10 +1476,28 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
         try {
             std::vector<std::string> temp = info->get_value_list("memsrv_list");
             ostringstream memsrvList;
+            std::vector<std::string> memsrvId;
+            for (auto item : temp) {
+                std::string delim = ":";
 
-            for (auto item : temp)
-                memsrvList << item << ",";
+                auto start = 0U;
+                auto end = item.find(delim);
+                std::string currMemsrvId = item.substr(start, end - start);
+                if (std::find(memsrvId.begin(), memsrvId.end(), currMemsrvId) ==
+                    memsrvId.end()) {
+                    /* memsrvId does not contain currMemsrvId */
+                    memsrvId.push_back(currMemsrvId);
+                    memsrvList << item << ",";
 
+                } else {
+                    /* memsrvId contains currMemsrvId  ie; duplicate memory
+                     * server id*/
+                    ostringstream message;
+                    message << "Duplicate memory server id specified in fam config option memsrv_list: "<<currMemsrvId;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+            }
             options["memsrv_list"] = (char *)strdup(memsrvList.str().c_str());
         } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
