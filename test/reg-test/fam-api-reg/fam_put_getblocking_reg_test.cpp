@@ -84,8 +84,6 @@ int main(int argc, char **argv) {
 
     my_fam = new fam();
 
-    fam_opts.famThreadModel = strdup("FAM_THREAD_MULTIPLE");
-
     init_fam_options(&fam_opts);
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
