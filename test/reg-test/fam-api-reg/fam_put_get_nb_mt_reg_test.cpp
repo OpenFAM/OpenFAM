@@ -416,11 +416,10 @@ void *thr_func4_get(void *arg) {
     // Get nonblocking
     char *local2 = (char *)malloc(MSG_SIZE);
 
-    sleep(1);
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, items[msg_no],
                                                 (uint64_t)off, MSG_SIZE));
     pthread_barrier_wait(&barrier_half);
-    if (tid == 0) {
+    if (tid == NUM_THREADS / 2) {
         EXPECT_NO_THROW(my_fam->fam_quiet());
     }
     pthread_barrier_wait(&barrier_half);
