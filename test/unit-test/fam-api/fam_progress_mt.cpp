@@ -44,7 +44,6 @@
 using namespace std;
 using namespace openfam;
 fam *my_fam;
-Fam_Options fam_opts;
 
 Fam_Region_Descriptor *testRegionDesc;
 const char *testRegionStr;
@@ -169,12 +168,12 @@ void *thrd_fam_context_mt_with_fam_progress(void *arg) {
 int main(int argc, char **argv) {
     int ret = 0;
     my_fam = new fam();
-    fam_opts.famThreadModel = strdup("FAM_THREAD_MULTIPLE");
 
     Fam_Options *fam_opts = (Fam_Options *)malloc(sizeof(Fam_Options));
     memset((void *)fam_opts, 0, sizeof(Fam_Options));
     // assume that no specific options are needed by the implementation
     fam_opts->runtime = strdup("NONE");
+    fam_opts->famThreadModel = strdup("FAM_THREAD_MULTIPLE");
 
     Fam_Descriptor *item;
     pthread_t thr[TOTAL_NUM_THREADS];
