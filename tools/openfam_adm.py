@@ -380,7 +380,7 @@ if args.create_config_files:
     else:
         metaservice_config_doc["enable_region_spanning"] = bool(1)
     if args.regionspanningsize is not None:
-        metaservice_config_doc["region_span_size_per_memoryserver"] = (
+        metaservice_config_doc["region_span_size_per_memoryserver"] = int(
             args.regionspanningsize
         )
 
