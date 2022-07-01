@@ -67,7 +67,8 @@ enum Fam_Error {
     FAM_ERR_ATL,
     FAM_BACKUP_NOT_CREATED,
     FAM_BACKUP_NOTFOUND,
-    FAM_BACKUP_INFO_NOTFOUND
+    FAM_BACKUP_INFO_NOTFOUND,
+    FAM_ERR_NOT_PWR_TWO
 };
 
 class Fam_Exception : public std::exception {
