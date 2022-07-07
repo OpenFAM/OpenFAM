@@ -800,10 +800,6 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     optValueMap->insert(
         {supportedOptionList[CIS_SERVER], famOptions.cisServer});
 
-    if (!config_file_fam_options.empty() &&
-        config_file_fam_options.count("default_memory_type") > 0)
-        famOptions.fam_default_memory_type =
-            strdup(config_file_fam_options["default_memory_type"].c_str());
 
     if (options && options->grpcPort)
         famOptions.grpcPort = strdup(options->grpcPort);
