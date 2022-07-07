@@ -946,9 +946,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     if (options && options->fam_default_memory_type)
         famOptions.fam_default_memory_type = strdup(options->fam_default_memory_type);
     else if (!config_file_fam_options.empty() &&
-             config_file_fam_options.count("fam_default_memory_type") > 0)
+             config_file_fam_options.count("default_memory_type") > 0)
         famOptions.fam_default_memory_type =
-            strdup(config_file_fam_options["fam_default_memory_type"].c_str());
+            strdup(config_file_fam_options["default_memory_type"].c_str());
     else
         famOptions.fam_default_memory_type = strdup("");
 
