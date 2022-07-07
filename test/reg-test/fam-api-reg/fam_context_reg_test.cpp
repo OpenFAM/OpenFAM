@@ -151,10 +151,10 @@ TEST(FamContextModel, FamContextNegativeTest) {
     Fam_Descriptor *item = NULL;
     const char *myRegion = get_uniq_str("myRegion", my_fam);
     const char *myItem = get_uniq_str("myItem", my_fam);
-    const char *myApplication = get_uniq_str("myApplication", my_fam);
     EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
-    EXPECT_THROW(ctx->fam_initialize(myApplication, &fam_opts), Fam_Exception);
-    EXPECT_THROW(ctx->fam_finalize(myApplication), Fam_Exception);
+    EXPECT_THROW(ctx->fam_initialize("myApplication", &fam_opts),
+                 Fam_Exception);
+    EXPECT_THROW(ctx->fam_finalize("myApplication"), Fam_Exception);
     EXPECT_THROW(ctx->fam_abort(-1), Fam_Exception);
     EXPECT_THROW(ctx->fam_barrier_all(), Fam_Exception);
     EXPECT_THROW(ctx->fam_list_options(), Fam_Exception);
@@ -633,18 +633,9 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
 int main(int argc, char **argv) {
     int ret = 0;
     ::testing::InitGoogleTest(&argc, argv);
-    //  const char *defaultName = get_uniq_str("default", my_fam);
     my_fam = new fam();
-    //    const char *defaultName = get_uniq_str("default", my_fam);
 
     init_fam_options(&fam_opts);
-    /*
-        EXPECT_NO_THROW(my_fam->fam_initialize(defaultName, &fam_opts));
-
-        ret = RUN_ALL_TESTS();
-
-        EXPECT_NO_THROW(my_fam->fam_finalize(defaultName));
-    */
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
