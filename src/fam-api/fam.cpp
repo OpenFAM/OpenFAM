@@ -800,7 +800,6 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     optValueMap->insert(
         {supportedOptionList[CIS_SERVER], famOptions.cisServer});
 
-
     if (options && options->grpcPort)
         famOptions.grpcPort = strdup(options->grpcPort);
     else if (!config_file_fam_options.empty() &&
