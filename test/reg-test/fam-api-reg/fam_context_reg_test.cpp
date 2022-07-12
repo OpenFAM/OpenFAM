@@ -75,15 +75,17 @@ TEST(FamContext, FamContextOpenCloseWithIOOperation) {
     Fam_Region_Descriptor *rd = NULL;
     Fam_Descriptor *descriptor = NULL;
     fam_context *ctx = NULL;
+    const char *myRegion = get_uniq_str("myRegion", my_fam);
+    const char *myItem = get_uniq_str("myItem", my_fam);
     EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
 
     // create a 100 MB region with 0777 permissions
-    EXPECT_NO_THROW(rd = my_fam->fam_create_region(
-                        "myRegion", (uint64_t)10000000, 0777, NULL));
+    EXPECT_NO_THROW(rd = my_fam->fam_create_region(myRegion, (uint64_t)10000000,
+                                                   0777, NULL));
     // use the created region...
     EXPECT_NE((void *)NULL, rd);
     EXPECT_NO_THROW(descriptor = my_fam->fam_allocate(
-                        "myItem", (uint64_t)(50 * sizeof(int)), 0600, rd));
+                        myItem, (uint64_t)(50 * sizeof(int)), 0600, rd));
 
     EXPECT_NO_THROW(ctx->fam_or(descriptor, 0, (uint32_t)1));
     EXPECT_NO_THROW(ctx->fam_or(descriptor, 0, (uint32_t)2));
@@ -103,15 +105,17 @@ TEST(FamContext, FamContextOpenCloseWithIOOperationStressTest) {
     Fam_Region_Descriptor *rd = NULL;
     Fam_Descriptor *descriptor = NULL;
     fam_context *ctx = NULL;
+    const char *myRegion = get_uniq_str("myRegion", my_fam);
+    const char *myItem = get_uniq_str("myItem", my_fam);
 
     // create a 100 MB region with 0777 permissions
-    EXPECT_NO_THROW(rd = my_fam->fam_create_region(
-                        "myRegion", (uint64_t)10000000, 0777, NULL));
+    EXPECT_NO_THROW(rd = my_fam->fam_create_region(myRegion, (uint64_t)10000000,
+                                                   0777, NULL));
     // use the created region...
 
     EXPECT_NE((void *)NULL, rd);
     EXPECT_NO_THROW(descriptor = my_fam->fam_allocate(
-                        "myItem", (uint64_t)(50 * sizeof(int)), 0600, rd));
+                        myItem, (uint64_t)(50 * sizeof(int)), 0600, rd));
 
     for (int i = 0; i < NUM_IO_ITERATIONS; i++) {
         EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
@@ -145,6 +149,8 @@ TEST(FamContext, FamContextSimultaneousOpenCloseStressTest) {
 TEST(FamContextModel, FamContextNegativeTest) {
     fam_context *ctx = NULL;
     Fam_Descriptor *item = NULL;
+    const char *myRegion = get_uniq_str("myRegion", my_fam);
+    const char *myItem = get_uniq_str("myItem", my_fam);
     EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
     EXPECT_THROW(ctx->fam_initialize("myApplication", &fam_opts),
                  Fam_Exception);
@@ -153,14 +159,14 @@ TEST(FamContextModel, FamContextNegativeTest) {
     EXPECT_THROW(ctx->fam_barrier_all(), Fam_Exception);
     EXPECT_THROW(ctx->fam_list_options(), Fam_Exception);
     EXPECT_THROW(ctx->fam_get_option(strdup("PE_ID")), Fam_Exception);
-    EXPECT_THROW(ctx->fam_lookup_region("myRegion"), Fam_Exception);
-    EXPECT_THROW(ctx->fam_lookup("myItem", ("myRegion")), Fam_Exception);
-    EXPECT_THROW(ctx->fam_create_region("myRegion", (uint64_t)1000, 0777, NULL),
+    EXPECT_THROW(ctx->fam_lookup_region(myRegion), Fam_Exception);
+    EXPECT_THROW(ctx->fam_lookup(myItem, (myRegion)), Fam_Exception);
+    EXPECT_THROW(ctx->fam_create_region(myRegion, (uint64_t)1000, 0777, NULL),
                  Fam_Exception);
     EXPECT_THROW(ctx->fam_destroy_region(testRegionDesc), Fam_Exception);
     EXPECT_THROW(ctx->fam_resize_region(testRegionDesc, 1024), Fam_Exception);
     EXPECT_THROW(ctx->fam_allocate(1024, 0444, testRegionDesc), Fam_Exception);
-    EXPECT_THROW(ctx->fam_allocate("myItem", 1024, 0444, testRegionDesc),
+    EXPECT_THROW(ctx->fam_allocate(myItem, 1024, 0444, testRegionDesc),
                  Fam_Exception);
     EXPECT_THROW(ctx->fam_deallocate(item), Fam_Exception);
     EXPECT_THROW(ctx->fam_change_permissions(item, 0777), Fam_Exception);
@@ -627,7 +633,6 @@ TEST(FamContextModel, FamContextAllAtomicsIOTest) {
 int main(int argc, char **argv) {
     int ret = 0;
     ::testing::InitGoogleTest(&argc, argv);
-
     my_fam = new fam();
 
     init_fam_options(&fam_opts);
