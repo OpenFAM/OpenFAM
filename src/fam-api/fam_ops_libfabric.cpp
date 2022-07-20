@@ -1048,7 +1048,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     // Current Local pointer position
     uint64_t currentLocalPtr = (uint64_t)local;
     for (int i = 0; i < (int)nElements; i++) {
-        offset = elementIndex[i];
+        offset = elementIndex[i] * elementSize;
         // Current memory server Id index
         uint64_t currentServerIndex =
             ((offset / interleaveSize) % usedMemsrvCnt);
@@ -1194,7 +1194,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
     // Current Local pointer position
     uint64_t currentLocalPtr = (uint64_t)local;
     for (int i = 0; i < (int)nElements; i++) {
-        offset = elementIndex[i];
+        offset = elementIndex[i] * elementSize;
         // Current memory server Id index
         uint64_t currentServerIndex =
             ((offset / interleaveSize) % usedMemsrvCnt);
@@ -1773,7 +1773,7 @@ void Fam_Ops_Libfabric::scatter_nonblocking(void *local,
     // Current Local pointer position
     uint64_t currentLocalPtr = (uint64_t)local;
     for (int i = 0; i < (int)nElements; i++) {
-        offset = elementIndex[i];
+        offset = elementIndex[i] * elementSize;
         // Current memory server Id index
         uint64_t currentServerIndex =
             ((offset / interleaveSize) % usedMemsrvCnt);
@@ -1884,7 +1884,7 @@ void Fam_Ops_Libfabric::gather_nonblocking(void *local,
     // Current Local pointer position
     uint64_t currentLocalPtr = (uint64_t)local;
     for (int i = 0; i < (int)nElements; i++) {
-        offset = elementIndex[i];
+        offset = elementIndex[i] * elementSize;
         // Current memory server Id index
         uint64_t currentServerIndex =
             ((offset / interleaveSize) % usedMemsrvCnt);
