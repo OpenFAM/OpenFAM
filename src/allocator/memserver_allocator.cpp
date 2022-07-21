@@ -404,7 +404,7 @@ uint64_t Memserver_Allocator::allocate(uint64_t regionId, size_t nbytes) {
     NVMM_PROFILE_START_OPS()
     offset = heap->AllocOffset(tmpSize);
     NVMM_PROFILE_END_OPS(Heap_AllocOffset)
-    if (!offset) {
+    if (!_IS_VALID(offset)) {
         try {
             {
                 NVMM_PROFILE_START_OPS()
@@ -412,8 +412,8 @@ uint64_t Memserver_Allocator::allocate(uint64_t regionId, size_t nbytes) {
                 NVMM_PROFILE_END_OPS(Heap_Merge)
             }
         } catch (...) {
-            message << "Heap Merge() failed";
-            THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_MERGE_FAILED,
+            message << "No space in Region";
+            THROW_ERRNO_MSG(Memory_Service_Exception, REGION_NO_SPACE,
                             message.str().c_str());
         }
         {
@@ -421,9 +421,9 @@ uint64_t Memserver_Allocator::allocate(uint64_t regionId, size_t nbytes) {
             offset = heap->AllocOffset(tmpSize);
             NVMM_PROFILE_END_OPS(Heap_AllocOffset)
         }
-        if (!offset) {
-            message << "alloc() failed";
-            THROW_ERRNO_MSG(Memory_Service_Exception, HEAP_ALLOCATE_FAILED,
+        if (!_IS_VALID(offset)) {
+            message << "No space in Region";
+            THROW_ERRNO_MSG(Memory_Service_Exception, REGION_NO_SPACE,
                             message.str().c_str());
         }
     }

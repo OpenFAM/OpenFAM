@@ -2470,6 +2470,13 @@ void Fam_Metadata_Service_Direct::Impl_::
                         message.str().c_str());
     }
 
+    // Check if the requested data item fits in the region
+    if (region.size < size) {
+        message << "Allocate Dataitem error : Requested dataitem size is "
+                   "bigger than than the region";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NO_SPACE,
+                        message.str().c_str());
+    }
     // Check if calling PE user is owner. If not, check with
     // metadata service if the calling PE has the write
     // permission to create dataitem in that region, if not return error
