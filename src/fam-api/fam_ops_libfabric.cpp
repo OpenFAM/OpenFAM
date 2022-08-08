@@ -440,6 +440,7 @@ int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,
             famCtx->aquire_RDLock();
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
+                delete ctx;
             } catch (...) {
                 famCtx->inc_num_tx_fail_cnt(1l);
                 // Release Fam_Context read lock
@@ -543,6 +544,7 @@ int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
+                delete ctx;
             } catch (...) {
                 famCtx->inc_num_tx_fail_cnt(1l);
                 // Release Fam_Context read lock
@@ -591,6 +593,7 @@ int Fam_Ops_Libfabric::get_blocking(void *local, Fam_Descriptor *descriptor,
             famCtx->aquire_RDLock();
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
+                delete ctx;
             } catch (...) {
                 famCtx->inc_num_rx_fail_cnt(1l);
                 // Release Fam_Context read lock
@@ -693,6 +696,7 @@ int Fam_Ops_Libfabric::get_blocking(void *local, Fam_Descriptor *descriptor,
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
+                delete ctx;
             } catch (...) {
                 famCtx->inc_num_rx_fail_cnt(1l);
                 // Release Fam_Context read lock
@@ -738,6 +742,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
         famCtx->aquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
+            delete ctx;
         } catch (...) {
             famCtx->inc_num_tx_fail_cnt(1l);
             // Release Fam_Context read lock
@@ -839,6 +844,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
+                delete ctx;
             } catch (...) {
                 famCtx->inc_num_tx_fail_cnt(1l);
                 // Release Fam_Context read lock
@@ -884,6 +890,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
         famCtx->aquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
+            delete ctx;
         } catch (...) {
             famCtx->inc_num_rx_fail_cnt(1l);
             // Release Fam_Context read lock
@@ -985,6 +992,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
+                delete ctx;
             } catch (...) {
                 famCtx->inc_num_rx_fail_cnt(1l);
                 // Release Fam_Context read lock
@@ -1030,6 +1038,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
         famCtx->aquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
+            delete ctx;
         } catch (...) {
             famCtx->inc_num_tx_fail_cnt(1l);
             // Release Fam_Context read lock
@@ -1131,6 +1140,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
+                delete ctx;
             } catch (...) {
                 famCtx->inc_num_tx_fail_cnt(1l);
                 // Release Fam_Context read lock
@@ -1176,6 +1186,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
         famCtx->aquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
+            delete ctx;
         } catch (...) {
             famCtx->inc_num_rx_fail_cnt(1l);
             // Release Fam_Context read lock
@@ -1277,6 +1288,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
+                delete ctx;
             } catch (...) {
                 famCtx->inc_num_rx_fail_cnt(1l);
                 // Release Fam_Context read lock
