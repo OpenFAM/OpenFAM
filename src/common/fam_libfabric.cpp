@@ -52,6 +52,7 @@ using namespace chrono;
 using namespace std;
 
 #define MAX_RETRY_CNT INT_MAX
+#define MAX_PENDING_IO 8192
 #define FABRIC_TIMEOUT 10     // 10 milliseconds
 #define TOTAL_TIMEOUT 3600000 // 1 hour
 #define TIMEOUT_WAIT_RETRY (TOTAL_TIMEOUT / FABRIC_TIMEOUT)
@@ -563,9 +564,18 @@ int fabric_deregister_mr(fid_mr *&mr) {
 int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
 
     if (ret) {
-        if (ret == -FI_EAGAIN) {
+        if (ret == -FI_EAGAIN || ret == -FI_ENOMEM) {
             (*retry_cnt)++;
             if ((*retry_cnt) <= MAX_RETRY_CNT) {
+		while(1) {
+			uint64_t pending = fabric_progress(famCtx);
+			if (pending < MAX_PENDING_IO) {
+                		FI_CALL(ret, fi_cq_read, famCtx->get_txcq(), NULL, 0);
+				break;
+			} else {
+                		FI_CALL(ret, fi_cq_read, famCtx->get_txcq(), NULL, 0);
+			}
+		}
                 // A fi_cq_read() with a zero count causes progress
                 // on many providers.
                 FI_CALL(ret, fi_cq_read, famCtx->get_txcq(), NULL, 0);
