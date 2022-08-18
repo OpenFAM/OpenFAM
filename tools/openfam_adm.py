@@ -913,11 +913,16 @@ if args.stop_service:
                 memory_server_id = server.split(":")[0]
                 memory_server_addr = server.split(":")[1]
                 key_string="openfam:mem:"+server
-                cmd="squeue --me -O JobId,Command,Comment | grep " + key_string + " | cut -d' ' -f1"
+                #Following squeue command lists the JobId(%i), Job Name(%j) and Comment(%k)
+                #for all jobs run by current user.
+                cmd="squeue --me --format=\"%i %20j %.50k\" | grep " + key_string + " | cut -d' ' -f1"
                 out=subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout;
                 job_id=out.read().decode()
-                cmd="scancel " + "--user=" + user + " --nodelist=" + memory_server_addr + " --quiet " + str(job_id) +" > /dev/null 2>&1"
-                os.system(cmd)
+                if (job_id == ""):
+                    print("No job ids found for the OpenFAM Memory Service for given configuration.")
+                else:
+                    cmd="scancel " + "--user=" + user + " --nodelist=" + memory_server_addr + " --quiet " + str(job_id) +" > /dev/null 2>&1"
+                    os.system(cmd)
         else:
             cmd = "pkill -9 memory_server"
             os.system(cmd)
@@ -940,11 +945,16 @@ if args.stop_service:
             for server in cis_config_doc["metadata_list"]:
                 metadata_server_addr = server.split(":")[1]
                 key_string="openfam:meta:"+server
-                cmd="squeue --me -O JobId,Command,Comment | grep " + key_string + " | cut -d' ' -f1"
+                #Following squeue command lists the JobId(%i), Job Name(%j) and Comment(%k)
+                #for all jobs run by current user.
+                cmd="squeue --me --format=\"%i %20j %.50k\" | grep " + key_string + " | cut -d' ' -f1"
                 out=subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout;
                 job_id=out.read().decode()
-                cmd="scancel " + "--user=" + user + " --nodelist=" + metadata_server_addr + " --quiet " + str(job_id) +" > /dev/null 2>&1"
-                os.system(cmd)
+                if (job_id == ""):
+                    print("No job id found for the OpenFAM Metadata Service for given configuration.")
+                else:
+                    cmd="scancel " + "--user=" + user + " --nodelist=" + metadata_server_addr + " --quiet " + str(job_id) +" > /dev/null 2>&1"
+                    os.system(cmd)
         else:
             cmd = "pkill -9 metadata_server"
             os.system(cmd)
@@ -959,11 +969,16 @@ if args.stop_service:
             user = os.environ["USER"]
             cis_addr = cis_config_doc["rpc_interface"].split(":")[0]
             key_string="openfam:cis:"+cis_config_doc["rpc_interface"]
-            cmd="squeue --me -O JobId,Command,Comment | grep " + key_string + " | cut -d' ' -f1"
+            #Following squeue command lists the JobId(%i), Job Name(%j) and Comment(%k)
+            #for all jobs run by current user.
+            cmd="squeue --me --format=\"%i %20j %.50k\" | grep " + key_string + " | cut -d' ' -f1"
             out=subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout;
             job_id=out.read().decode()
-            cmd="scancel " + "--user=" + user + " --nodelist=" + cis_addr + " --quiet " + str(job_id) +" > /dev/null 2>&1"
-            os.system(cmd)
+            if (job_id == ""):
+                print("No job ids found for the OpenFAM CIS Service for given configuration.")
+            else:
+                cmd="scancel " + "--user=" + user + " --nodelist=" + cis_addr + " --quiet " + str(job_id) +" > /dev/null 2>&1"
+                os.system(cmd)
         else:
             cmd = "pkill -9 cis_server"
         os.system(cmd)
