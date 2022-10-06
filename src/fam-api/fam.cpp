@@ -130,7 +130,7 @@ class fam::Impl_ {
         } else {
             famOps = new Fam_Ops_Libfabric((Fam_Ops_Libfabric *)pimpl->famOps);
             ctxId = famOps->get_context_id();
-            pimpl->famOps->context_open(ctxId);
+            pimpl->famOps->context_open(ctxId, famOps);
         }
         famAllocator = pimpl->famAllocator;
         famRuntime = pimpl->famRuntime;

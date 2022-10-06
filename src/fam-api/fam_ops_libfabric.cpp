@@ -164,6 +164,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps) {
     fiMrs = famOps->fiMrs;
     contexts = famOps->contexts;
     defContexts = famOps->defContexts;
+    ctxLock = famOps->ctxLock;
 
     fi = famOps->fi;
     fabric = famOps->fabric;
@@ -331,6 +332,7 @@ void Fam_Ops_Libfabric::populate_address_vector(void *memServerInfoBuffer,
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
         Fam_Context *defaultCtx = new Fam_Context(fi, domain, famThreadModel);
         defContexts->insert({FAM_DEFAULT_CTX_ID, defaultCtx});
+        set_context(defaultCtx);
         ret = fabric_enable_bind_ep(fi, av, eq, defaultCtx->get_ep());
         if (ret < 0) {
             message << "Fam libfabric fabric_enable_bind_ep failed: "
@@ -344,7 +346,7 @@ Fam_Context *Fam_Ops_Libfabric::get_context(Fam_Descriptor *descriptor) {
     std::ostringstream message;
     // Case - FAM_CONTEXT_DEFAULT
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-        return get_defaultCtx(get_context_id());
+        return get_context();
     } else {
         message << "Fam Invalid Option FAM_CONTEXT_MODEL: " << famContextModel;
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
@@ -2005,7 +2007,7 @@ void Fam_Ops_Libfabric::quiet_context(Fam_Context *context = NULL) {
 
 void Fam_Ops_Libfabric::quiet(Fam_Region_Descriptor *descriptor) {
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
-        quiet_context(get_defaultCtx(get_context_id()));
+        quiet_context(get_context());
         return;
     }
 }
@@ -2056,7 +2058,7 @@ void Fam_Ops_Libfabric::wait_for_restore(void *waitObj) {
 
 uint64_t Fam_Ops_Libfabric::progress_context() {
     uint64_t pending = 0;
-    pending = fabric_progress(get_defaultCtx(get_context_id()));
+    pending = fabric_progress(get_context());
     return pending;
 }
 
@@ -5372,7 +5374,7 @@ int128_t Fam_Ops_Libfabric::atomic_fetch_int128(Fam_Descriptor *descriptor,
     return local;
 }
 
-void Fam_Ops_Libfabric::context_open(uint64_t contextId) {
+void Fam_Ops_Libfabric::context_open(uint64_t contextId, Fam_Ops *famOpsObj) {
     // Create a new fam_context
     std::ostringstream message;
     Fam_Context *ctx = new Fam_Context(fi, domain, famThreadModel);
@@ -5386,6 +5388,7 @@ void Fam_Ops_Libfabric::context_open(uint64_t contextId) {
     // ctx mutex lock
     (void)pthread_mutex_lock(&ctxLock);
     // Add it in the context map with unique contextId
+    ((Fam_Ops_Libfabric *)famOpsObj)->set_context(ctx);
     defContexts->insert({contextId, ctx});
     // ctx mutex unlock
     (void)pthread_mutex_unlock(&ctxLock);

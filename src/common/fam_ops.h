@@ -734,7 +734,7 @@ class Fam_Ops {
      * context_open, context_close, get_context_id
      * These APIs are added to support user specific communication context
      */
-    virtual void context_open(uint64_t) = 0;
+    virtual void context_open(uint64_t, Fam_Ops *) = 0;
     virtual void context_close(uint64_t) = 0;
     virtual uint64_t get_context_id() = 0;
 

@@ -2300,7 +2300,9 @@ uint64_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
     return *oldValue;
 }
 
-void Fam_Ops_SHM::context_open(uint64_t contextId) { return; }
+void Fam_Ops_SHM::context_open(uint64_t contextId, Fam_Ops *famOpsObj) {
+    return;
+}
 
 void Fam_Ops_SHM::context_close(uint64_t contextId) { return; }
 
