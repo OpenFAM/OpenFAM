@@ -55,6 +55,11 @@ class Fam_Memory_Registration {
 
     virtual void dump_profile() = 0;
 
+    virtual void update_memserver_addrlist(void *memServerInfoBuffer,
+                                           size_t memServerInfoSize,
+                                           uint64_t memoryServerCount,
+                                           uint64_t myId) = 0;
+
     virtual void deregister_memory(uint64_t regionId, uint64_t offset) = 0;
 
     virtual void deregister_region_memory(uint64_t regionId) = 0;

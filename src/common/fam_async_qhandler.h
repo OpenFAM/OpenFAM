@@ -41,8 +41,13 @@
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 #include "memory_service/fam_memory_service.h"
+#include "metadata_service/fam_metadata_service.h"
 
 using namespace std;
+using namespace metadata;
+
+using memoryServerMap = std::map<uint64_t, Fam_Memory_Service *>;
+using metadataServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
 
 namespace openfam {
 
@@ -61,7 +66,7 @@ class Fam_Async_Err {
     void set_error_code(enum Fam_Error code) { errorCode = code; }
     void set_error_msg(const char *msg) { errorMsg = msg; }
     Fam_Error get_error_code() { return errorCode; }
-    char const *get_error_msg() { return errorMsg.c_str(); }
+    string get_error_msg() { return errorMsg; }
 
   private:
     enum Fam_Error errorCode;
@@ -70,29 +75,37 @@ class Fam_Async_Err {
 
 typedef struct {
     boost::atomic<bool> copyDone;
-    Fam_Memory_Service *memoryService;
+    memoryServerMap *memoryServiceMap;
     uint64_t srcRegionId;
     uint64_t destRegionId;
-    uint64_t srcOffset;
-    uint64_t destOffset;
+    uint64_t srcOffsets[MAX_MEMORY_SERVERS_CNT];
+    uint64_t destOffsets[MAX_MEMORY_SERVERS_CNT];
     uint64_t size;
-    uint64_t srcKey;
+    uint64_t srcKeys[MAX_MEMORY_SERVERS_CNT];
     uint64_t srcCopyStart;
-    uint64_t srcBaseAddr;
-    char *srcAddr;
-    uint32_t srcAddrLen;
-    uint64_t srcMemserverId;
-    uint64_t destMemserverId;
+    uint64_t destCopyStart;
+    uint64_t srcBaseAddrList[MAX_MEMORY_SERVERS_CNT];
+    uint64_t srcMemserverIds[MAX_MEMORY_SERVERS_CNT];
+    uint64_t destMemserverIds[MAX_MEMORY_SERVERS_CNT];
+    uint64_t srcInterleaveSize;
+    uint64_t destInterleaveSize;
+    uint64_t srcUsedMemsrvCnt;
+    uint64_t destUsedMemsrvCnt;
     Fam_Async_Err *err;
 } Fam_Copy_Tag;
 
 typedef struct {
     boost::atomic<bool> backupDone;
-    Fam_Memory_Service *memoryService;
+    memoryServerMap *memoryServiceMap;
     uint64_t srcRegionId;
-    uint64_t srcOffset;
-    uint64_t size;
-    uint64_t srcMemserverId;
+    uint64_t srcOffsets[MAX_MEMORY_SERVERS_CNT];
+    uint64_t srcMemserverIds[MAX_MEMORY_SERVERS_CNT];
+    uint64_t usedMemserverCnt;
+    uint64_t srcInterleaveSize;
+    uint64_t srcItemSize;
+    uint64_t sizePerServer;
+    uint64_t chunkSize;
+    uint64_t extraBlocks;
     uint32_t uid;
     uint32_t gid;
     mode_t mode;
@@ -103,12 +116,18 @@ typedef struct {
 
 typedef struct {
     boost::atomic<bool> restoreDone;
-    Fam_Memory_Service *memoryService;
-    uint64_t size;
-    string BackupName;
-    uint64_t destMemserverId;
-    uint64_t destOffset;
+    memoryServerMap *memoryServiceMap;
     uint64_t destRegionId;
+    uint64_t destOffsets[MAX_MEMORY_SERVERS_CNT];
+    uint64_t destMemserverIds[MAX_MEMORY_SERVERS_CNT];
+    uint64_t usedMemserverCnt;
+    uint64_t destInterleaveSize;
+    uint64_t destItemSize;
+    uint64_t sizePerServer;
+    uint64_t chunkSize;
+    uint64_t extraBlocks;
+    uint64_t iterations;
+    string BackupName;
     Fam_Async_Err *err;
 } Fam_Restore_Tag;
 

@@ -45,14 +45,6 @@
 #include "cis/fam_cis_rpc.grpc.pb.h"
 using namespace std;
 
-#define FAM_UNIMPLEMENTED_GRPC()                                               \
-    {                                                                          \
-        std::ostringstream message;                                            \
-        message << __func__                                                    \
-                << " is Not Yet Implemented for libfabric interface !!!";      \
-        throw Fam_Unimplemented_Exception(message.str().c_str());              \
-    }
-
 namespace openfam {
 
 using service = std::unique_ptr<Fam_CIS_Rpc::Stub>;
@@ -116,22 +108,22 @@ class Fam_CIS_Client : public Fam_CIS {
     Fam_Region_Item_Info get_stat_info(uint64_t regionId, uint64_t offset,
                                        uint64_t memoryServerId, uint32_t uid,
                                        uint32_t gid);
-
-    void *copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcCopyStart,
-               uint64_t srcKey, uint64_t srcBaseAddr, const char *srcAddr,
-               uint32_t srcAddrLen, uint64_t destRegionId, uint64_t destOffset,
-               uint64_t destCopyStar, uint64_t nbytes,
-               uint64_t srcMemoryServerId, uint64_t destMemoryServerId,
+    void *copy(uint64_t srcRegionId, uint64_t srcOffset,
+               uint64_t srcUsedMemsrvCnt, uint64_t srcCopyStart,
+               uint64_t *srcKeys, uint64_t *srcBaseAddrList,
+               uint64_t destRegionId, uint64_t destOffset,
+               uint64_t destCopyStart, uint64_t size,
+               uint64_t firstSrcMemserverId, uint64_t firstDestMemserverId,
                uint32_t uid, uint32_t gid);
 
     void wait_for_copy(void *waitObj);
+
     void *backup(uint64_t srcRegionId, uint64_t srcOffset,
                  uint64_t srcMemoryServerId, string BackupName, uint32_t uid,
-                 uint32_t gid, uint64_t size);
+                 uint32_t gid);
     void *restore(uint64_t destRegionId, uint64_t destOffset,
                   uint64_t destMemoryServerId, string BackupName, uint32_t uid,
                   uint32_t gid);
-
     Fam_Backup_Info get_backup_info(std::string BackupName,
                                     uint64_t memoryServerId, uint32_t uid,
                                     uint32_t gid);

@@ -29,3 +29,5 @@ enable_region_spanning: true
 # Default value is 1GB.
 region_span_size_per_memoryserver: 1073741824
 
+# If dataitem interleaving is enabled, the following value is used to determine the interleave block size
+dataitem_interleave_size: 1048576

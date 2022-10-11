@@ -75,7 +75,7 @@ int main() {
         global_item = item2->get_global_descriptor();
         cout << " Fam_Descriptor { Region ID : 0x" << hex << uppercase
              << global_item.regionId << ", Offset : 0x" << global_item.offset
-             << ", Key : 0x" << item2->get_key() << " }" << endl;
+             << " }" << endl;
     }
 
     // allocate an integer array and initialize it

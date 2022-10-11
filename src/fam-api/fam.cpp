@@ -639,6 +639,7 @@ class fam::Impl_ {
 void fam::Impl_::fam_reset_profile() {
     FAM_PROFILE_INIT();
     FAM_PROFILE_START_TIME();
+    famOps->reset_profile();
 }
 #endif
 
@@ -991,16 +992,12 @@ void fam::Impl_::clean_fam_options() {
  * */
 int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
     std::ostringstream message;
-    uint64_t key = descriptor->get_key();
+    uint64_t *keys = descriptor->get_keys();
 
-    if (key == FAM_KEY_UNINITIALIZED) {
+    if (keys == NULL) {
         famAllocator->check_permission_get_info(descriptor);
     }
 
-    if (key == FAM_KEY_INVALID) {
-        message << "Invalid Key Passed" << endl;
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
-    }
     return 0;
 }
 
@@ -1257,7 +1254,7 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
         memset(regionAttributesParam, 0, sizeof(Fam_Region_Attributes));
         if (regionAttributes == NULL) {
             regionAttributesParam->redundancyLevel = NONE;
-            regionAttributesParam->interleaveEnable = DISABLE;
+            regionAttributesParam->interleaveEnable = ENABLE;
             if (!(famOptions.fam_default_memory_type) ||
                 (strcmp(famOptions.fam_default_memory_type, "") == 0) ||
                 (strcmp(famOptions.fam_default_memory_type, "volatile") == 0)) {
@@ -1498,6 +1495,13 @@ void fam::Impl_::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
         famInfo->size = descriptor->get_size();
         famInfo->perm = descriptor->get_perm();
         famInfo->name = descriptor->get_name();
+        famInfo->uid = descriptor->get_uid();
+        famInfo->gid = descriptor->get_gid();
+        memset(&famInfo->region_attributes, 0, sizeof(Fam_Region_Attributes));
+        famInfo->num_memservers = descriptor->get_used_memsrv_cnt();
+        famInfo->interleaveSize = descriptor->get_interleave_size();
+        memcpy(famInfo->memory_servers, descriptor->get_memserver_ids(),
+               descriptor->get_used_memsrv_cnt() * sizeof(uint64_t));
 
     } else if (descriptor->get_desc_status() == DESC_INVALID) {
         std::ostringstream message;
@@ -1508,6 +1512,13 @@ void fam::Impl_::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
         famInfo->size = itemInfo.size;
         famInfo->perm = itemInfo.perm;
         famInfo->name = itemInfo.name;
+        famInfo->uid = itemInfo.uid;
+        famInfo->gid = itemInfo.gid;
+        memset(&famInfo->region_attributes, 0, sizeof(Fam_Region_Attributes));
+        famInfo->num_memservers = itemInfo.used_memsrv_cnt;
+        famInfo->interleaveSize = itemInfo.interleaveSize;
+        memcpy(famInfo->memory_servers, itemInfo.memoryServerIds,
+               itemInfo.used_memsrv_cnt * sizeof(uint64_t));
     }
 }
 
@@ -1524,12 +1535,7 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
                           Fam_Stat *famInfo) {
     Fam_Region_Item_Info regionInfo;
 
-    if ((descriptor->get_desc_status() == DESC_INIT_DONE) ||
-        (descriptor->get_desc_status() == DESC_INIT_DONE_BUT_KEY_NOT_VALID)) {
-        famInfo->size = descriptor->get_size();
-        famInfo->perm = descriptor->get_perm();
-        famInfo->name = descriptor->get_name();
-    } else if (descriptor->get_desc_status() == DESC_INVALID) {
+    if (descriptor->get_desc_status() == DESC_INVALID) {
         std::ostringstream message;
         message << "Descriptor is no longer valid" << endl;
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
@@ -1538,6 +1544,17 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
         famInfo->size = regionInfo.size;
         famInfo->perm = regionInfo.perm;
         famInfo->name = regionInfo.name;
+        famInfo->uid = regionInfo.uid;
+        famInfo->gid = regionInfo.gid;
+        Fam_Region_Attributes regionAttributes;
+        regionAttributes.redundancyLevel = regionInfo.redundancyLevel;
+        regionAttributes.memoryType = regionInfo.memoryType;
+        regionAttributes.interleaveEnable = regionInfo.interleaveEnable;
+        famInfo->region_attributes = regionAttributes;
+        famInfo->num_memservers = regionInfo.used_memsrv_cnt;
+        famInfo->interleaveSize = regionInfo.interleaveSize;
+        memcpy(famInfo->memory_servers, regionInfo.memoryServerIds,
+               regionInfo.used_memsrv_cnt * sizeof(uint64_t));
     }
 }
 
@@ -1550,26 +1567,31 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
  * @see #fam_unmap()
  */
 void *fam::Impl_::fam_map(Fam_Descriptor *descriptor) {
-    void *result = NULL;
-    FAM_CNTR_INC_API(fam_map);
-    FAM_PROFILE_START_ALLOCATOR(fam_map);
-    if (descriptor == NULL) {
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
-    }
-    int ret = validate_item(descriptor);
-    FAM_PROFILE_END_ALLOCATOR(fam_map);
-
-    FAM_PROFILE_START_OPS(fam_map);
-    if (ret == 0) {
-        void *address;
-        address = famAllocator->fam_map(descriptor);
-        if (address != NULL) {
-            descriptor->set_base_address(address);
+    if (strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) == 0) {
+        void *result = NULL;
+        FAM_CNTR_INC_API(fam_map);
+        FAM_PROFILE_START_ALLOCATOR(fam_map);
+        if (descriptor == NULL) {
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
         }
-        result = address;
+        int ret = validate_item(descriptor);
+        FAM_PROFILE_END_ALLOCATOR(fam_map);
+
+        FAM_PROFILE_START_OPS(fam_map);
+        if (ret == 0) {
+            void *address;
+            address = famAllocator->fam_map(descriptor);
+            if (address != NULL) {
+                // descriptor->set_base_address(address);
+            }
+            result = address;
+        }
+        FAM_PROFILE_END_OPS(fam_map);
+        return result;
+    } else {
+        FAM_UNIMPLEMENTED_MEMSRVMODEL()
+        return NULL;
     }
-    FAM_PROFILE_END_OPS(fam_map);
-    return result;
 }
 
 /**
@@ -1580,20 +1602,25 @@ void *fam::Impl_::fam_map(Fam_Descriptor *descriptor) {
  * @see #fam_map()
  */
 void fam::Impl_::fam_unmap(void *local, Fam_Descriptor *descriptor) {
-    FAM_CNTR_INC_API(fam_unmap);
-    FAM_PROFILE_START_ALLOCATOR(fam_unmap);
-    if (descriptor == NULL || local == NULL) {
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
-    }
+    if (strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) == 0) {
+        FAM_CNTR_INC_API(fam_unmap);
+        FAM_PROFILE_START_ALLOCATOR(fam_unmap);
+        if (descriptor == NULL || local == NULL) {
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+        }
 
-    int ret = validate_item(descriptor);
-    FAM_PROFILE_END_ALLOCATOR(fam_unmap);
-    FAM_PROFILE_START_OPS(fam_unmap);
-    if (ret == 0) {
-        famAllocator->fam_unmap(local, descriptor);
+        int ret = validate_item(descriptor);
+        FAM_PROFILE_END_ALLOCATOR(fam_unmap);
+        FAM_PROFILE_START_OPS(fam_unmap);
+        if (ret == 0) {
+            famAllocator->fam_unmap(local, descriptor);
+        }
+        FAM_PROFILE_END_OPS(fam_unmap);
+        return;
+    } else {
+        FAM_UNIMPLEMENTED_MEMSRVMODEL()
+        return;
     }
-    FAM_PROFILE_END_OPS(fam_unmap);
-    return;
 }
 
 // DATA READ AND WRITE Group. These APIs read and write data in FAM and copy

@@ -73,9 +73,8 @@ class Fam_Allocator_Client {
 
     Fam_Region_Item_Info get_stat_info(Fam_Descriptor *descriptor);
 
-    void *copy(Fam_Descriptor *src, uint64_t srcOffset, const char *srcAddr,
-               uint32_t srcAddrLen, Fam_Descriptor *dest, uint64_t destOffset,
-               uint64_t nbytes);
+    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
+               uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
     void *backup(Fam_Descriptor *descriptor, const char *BackupName);
@@ -107,13 +106,13 @@ class Fam_Allocator_Client {
      * 128-bit CAS operation.
      * @param descriptor - Descriptor associated with the data item in FAM
      */
-    void acquire_CAS_lock(Fam_Descriptor *descriptor);
+    void acquire_CAS_lock(Fam_Descriptor *descriptor, uint64_t memserverId);
     /**
      * release_CAS_lock - Release the mutex lock acquired to perform
      * 128-bit CAS operation.
      * @param descriptor - Descriptor associated with the data item in FAM
      */
-    void release_CAS_lock(Fam_Descriptor *descriptor);
+    void release_CAS_lock(Fam_Descriptor *descriptor, uint64_t memserverId);
 
     int get_addr_size(size_t *addrSize, uint64_t nodeId);
 

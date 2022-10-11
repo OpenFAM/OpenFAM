@@ -266,12 +266,29 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
                                 ::Fam_Memory_Copy_Response *response) {
     MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
     try {
-        memoryService->copy(
-            request->src_region_id(), request->src_offset(), request->src_key(),
-            request->src_copy_start(), request->src_base_addr(),
-            request->src_addr().c_str(), request->src_addr_len(),
-            request->dest_region_id(), request->dest_offset(), request->size(),
-            request->src_memserver_id(), request->dest_memserver_id());
+        uint64_t *srcOffsets = (uint64_t *)malloc(
+            sizeof(uint64_t) * request->src_used_memsrv_cnt());
+        uint64_t *srcKeys = (uint64_t *)malloc(sizeof(uint64_t) *
+                                               request->src_used_memsrv_cnt());
+        uint64_t *srcBaseAddrList = (uint64_t *)malloc(
+            sizeof(uint64_t) * request->src_used_memsrv_cnt());
+        uint64_t *srcMemserverIds = (uint64_t *)malloc(
+            sizeof(uint64_t) * request->src_used_memsrv_cnt());
+
+        for (uint64_t i = 0; i < request->src_used_memsrv_cnt(); i++) {
+            srcOffsets[i] = request->src_offsets((int)i);
+            srcKeys[i] = request->src_keys((int)i);
+            srcBaseAddrList[i] = request->src_base_addr((int)i);
+            srcMemserverIds[i] = request->src_ids((int)i);
+        }
+        memoryService->copy(request->src_region_id(), srcOffsets,
+                            request->src_used_memsrv_cnt(),
+                            request->src_copy_start(), request->src_copy_end(),
+                            srcKeys, srcBaseAddrList, request->dest_region_id(),
+                            request->dest_offset(),
+                            request->dest_used_memsrv_cnt(), srcMemserverIds,
+                            request->src_interleave_size(),
+                            request->dest_interleave_size(), request->size());
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -288,10 +305,12 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
     ::Fam_Memory_Backup_Restore_Response *response) {
     MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
     try {
-        memoryService->backup(request->region_id(), request->offset(),
-                              request->bname(), request->size(), request->uid(),
-                              request->gid(), request->mode(),
-                              request->diname());
+        memoryService->backup(
+            request->region_id(), request->offset(), request->size(),
+            request->chunk_size(), request->used_memserver_cnt(),
+            request->file_start_pos(), request->bname(), request->uid(),
+            request->gid(), request->mode(), request->diname(),
+            request->item_size(), request->write_metadata());
 
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
@@ -311,7 +330,9 @@ Fam_Memory_Service_Server::copy(::grpc::ServerContext *context,
     MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
     try {
         memoryService->restore(request->region_id(), request->offset(),
-                               request->bname(), request->size());
+                               request->size(), request->chunk_size(),
+                               request->used_memserver_cnt(),
+                               request->file_start_pos(), request->bname());
 
     } catch (Memory_Service_Exception &e) {
         response->set_errorcode(e.fam_error());
@@ -569,6 +590,31 @@ Fam_Memory_Service_Server::get_key(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
     MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_gather_indexed_atomic);
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status Fam_Memory_Service_Server::update_memserver_addrlist(
+    ::grpc::ServerContext *context,
+    const ::Fam_Memory_Service_Addr_Info *request,
+    ::Fam_Memory_Service_General_Response *response) {
+    MEMORY_SERVICE_SERVER_PROFILE_START_OPS()
+    try {
+        void *memServerInfoBuffer = NULL;
+        if (request->memserverinfo_size()) {
+            memServerInfoBuffer = calloc(1, request->memserverinfo_size());
+            memcpy(memServerInfoBuffer,
+                   (void *)request->memserverinfo().c_str(),
+                   request->memserverinfo_size());
+        }
+        memoryService->update_memserver_addrlist(memServerInfoBuffer,
+                                                 request->memserverinfo_size(),
+                                                 request->num_memservers());
+    } catch (Memory_Service_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        return ::grpc::Status::OK;
+    }
+    MEMORY_SERVICE_SERVER_PROFILE_END_OPS(mem_server_update_memserver_addrlist);
     return ::grpc::Status::OK;
 }
 

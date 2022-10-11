@@ -191,10 +191,14 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
     STATUS_CHECK(CIS_Exception)
     Fam_Region_Item_Info info;
     info.regionId = res.regionid();
-    info.memoryServerId = res.memserver_id();
+    info.used_memsrv_cnt = res.memsrv_list_size();
     info.offset = res.offset();
-    info.key = res.key();
-    info.base = (void *)res.base();
+    info.interleaveSize = res.interleave_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+        info.baseAddressList[i] = (void *)res.base_addr_list((int)i);
+        info.keys[i] = res.keys((int)i);
+    }
     return info;
 }
 
@@ -299,12 +303,17 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
 
     Fam_Region_Item_Info info;
     info.regionId = res.regionid();
-    info.offset = res.offset();
-    info.key = FAM_KEY_UNINITIALIZED;
     info.size = res.size();
     info.perm = (mode_t)res.perm();
-    info.memoryServerId = res.memserver_id();
+    info.used_memsrv_cnt = res.memsrv_list_size();
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    info.offset = res.offset();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.interleaveSize = res.interleave_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+    }
     return info;
 }
 
@@ -327,6 +336,16 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
     Fam_Region_Item_Info info;
     info.size = res.size();
     info.perm = (mode_t)res.perm();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+    info.memoryType = (Fam_Memory_Type)res.memorytype();
+    info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
+    info.interleaveSize = res.interleavesize();
+    info.used_memsrv_cnt = res.memsrv_list_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+    }
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
     return info;
 }
@@ -350,11 +369,18 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_item_info(
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.key = res.key();
     info.base = (void *)res.base();
     info.size = res.size();
     info.perm = (mode_t)res.perm();
+    info.used_memsrv_cnt = res.memsrv_list_size();
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    info.offset = res.offset();
+    info.interleaveSize = res.interleave_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+        info.baseAddressList[i] = (void *)res.base_addr_list((int)i);
+        info.keys[i] = res.keys((int)i);
+    }
     return info;
 }
 
@@ -379,42 +405,49 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
     Fam_Region_Item_Info info;
     info.size = res.size();
     info.perm = (mode_t)res.perm();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.used_memsrv_cnt = res.memsrv_list_size();
+    info.interleaveSize = res.interleave_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+    }
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
     return info;
 }
 
 void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
-                           uint64_t srcCopyStart, uint64_t srcKey,
-                           uint64_t srcBaseAddr, const char *srcAddr,
-                           uint32_t srcAddrLen, uint64_t destRegionId,
-                           uint64_t destOffset, uint64_t destCopyStar,
-                           uint64_t nbytes, uint64_t srcMemoryServerId,
-                           uint64_t destMemoryServerId, uint32_t uid,
+                           uint64_t srcUsedMemsrvCnt, uint64_t srcCopyStart,
+                           uint64_t *srcKeys, uint64_t *srcBaseAddrList,
+                           uint64_t destRegionId, uint64_t destOffset,
+                           uint64_t destCopyStart, uint64_t size,
+                           uint64_t firstSrcMemserverId,
+                           uint64_t firstDestMemserverId, uint32_t uid,
                            uint32_t gid) {
     Fam_Copy_Request req;
     Fam_Copy_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_srcregionid(srcRegionId);
-    req.set_destregionid(destRegionId);
-    req.set_srcoffset(srcOffset);
-    req.set_srckey(srcKey);
-    req.set_srcbaseaddr(srcBaseAddr);
-    req.set_srcaddr(srcAddr, srcAddrLen);
-    req.set_srcaddrlen(srcAddrLen);
-    req.set_destoffset(destOffset);
-    req.set_srccopystart(srcCopyStart);
-    req.set_destcopystart(destCopyStar);
+    req.set_src_region_id(srcRegionId);
+    req.set_dest_region_id(destRegionId);
+    req.set_src_offset(srcOffset);
+    req.set_dest_offset(destOffset);
+    req.set_src_copy_start(srcCopyStart);
+    req.set_dest_copy_start(destCopyStart);
     req.set_gid(gid);
     req.set_uid(uid);
-    req.set_copysize(nbytes);
-    req.set_src_memserver_id(srcMemoryServerId);
-    req.set_dest_memserver_id(destMemoryServerId);
+    req.set_copy_size(size);
+    req.set_first_src_memsrv_id(firstSrcMemserverId);
+    req.set_first_dest_memsrv_id(firstDestMemserverId);
+    for (uint64_t i = 0; i < srcUsedMemsrvCnt; i++) {
+        req.add_src_keys(srcKeys[i]);
+        req.add_src_base_addr(srcBaseAddrList[i]);
+    }
 
     Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
 
     waitObj->isCompleted = false;
-    waitObj->memServerId = destMemoryServerId;
+    // waitObj->memServerId = destMemoryServerId;
 
     waitObj->responseReader =
         stub->PrepareAsynccopy(&waitObj->ctx, req, copycq);
@@ -493,7 +526,7 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
 
 void *Fam_CIS_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
                              uint64_t srcMemoryServerId, string BackupName,
-                             uint32_t uid, uint32_t gid, uint64_t size) {
+                             uint32_t uid, uint32_t gid) {
 
     Fam_Backup_Restore_Request req;
     Fam_Backup_Restore_Response res;
@@ -504,7 +537,6 @@ void *Fam_CIS_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
     req.set_bname(BackupName);
     req.set_uid(uid);
     req.set_gid(gid);
-    req.set_size(size);
     Fam_Backup_Wait_Object *waitObj = new Fam_Backup_Wait_Object();
 
     waitObj->isCompleted = false;
@@ -808,14 +840,14 @@ Fam_Backup_Info Fam_CIS_Client::get_backup_info(std::string BackupName,
 void *Fam_CIS_Client::fam_map(uint64_t regionId, uint64_t offset,
                               uint64_t memoryServerId, uint32_t uid,
                               uint32_t gid) {
-    FAM_UNIMPLEMENTED_GRPC()
+    FAM_UNIMPLEMENTED_MEMSRVMODEL();
     return NULL;
 }
 
 void Fam_CIS_Client::fam_unmap(void *local, uint64_t regionId, uint64_t offset,
                                uint64_t memoryServerId, uint32_t uid,
                                uint32_t gid) {
-    FAM_UNIMPLEMENTED_GRPC()
+    FAM_UNIMPLEMENTED_MEMSRVMODEL();
 }
 
 void Fam_CIS_Client::acquire_CAS_lock(uint64_t offset,

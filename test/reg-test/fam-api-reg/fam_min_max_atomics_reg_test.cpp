@@ -61,10 +61,8 @@ TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     int32_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffff,
                                 (int32_t)0x87654321};
     int32_t operand2Value[5] = {(int32_t)0xf0000000, 0x1234, 0x7fffffff, 0x0,
@@ -74,17 +72,14 @@ TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
     int32_t testMinExpectedValue[5] = {(int32_t)0xf0000000, 0x1234, 0x54321,
                                        0x0, (int32_t)0x87654321};
     int32_t testMaxExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x1, 0x7fffffff};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(int32_t) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -112,22 +107,18 @@ TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 2 - MinMaxUInt32NonBlock
 TEST(FamMinMaxAtomics, MinMaxUInt32NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     uint32_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffff, 0x87654321};
     uint32_t operand2Value[5] = {0xf0000000, 0x1234, 0x7fffffff, 0x0,
                                  0xffffffff};
@@ -135,17 +126,14 @@ TEST(FamMinMaxAtomics, MinMaxUInt32NonBlock) {
     uint32_t testMinExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x0, 0x87654321};
     uint32_t testMaxExpectedValue[5] = {0x0, 0xffff0000, 0x54321, 0x1,
                                         0x87654321};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(uint32_t) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -173,22 +161,18 @@ TEST(FamMinMaxAtomics, MinMaxUInt32NonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 3 - MinMaxInt64NonBlock
 TEST(FamMinMaxAtomics, MinMaxInt64NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     int64_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffffffffffff,
                                 (int64_t)0xfedcba9876543210};
     int64_t operand2Value[5] = {(int64_t)0xf000000000000000, 0x1234,
@@ -201,17 +185,14 @@ TEST(FamMinMaxAtomics, MinMaxInt64NonBlock) {
                                        (int64_t)0xfedcba9876543210};
     int64_t testMaxExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x1,
                                        0x7fffffffffffffff};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(int64_t) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -239,22 +220,18 @@ TEST(FamMinMaxAtomics, MinMaxInt64NonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 4 - MinMaxUInt64NonBlock
 TEST(FamMinMaxAtomics, MinMaxUInt64NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     uint64_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffffffffffff,
                                  0xfedcba9876543210};
     uint64_t operand2Value[5] = {0xf000000000000000, 0x1234, 0x7fffffffffffffff,
@@ -265,17 +242,14 @@ TEST(FamMinMaxAtomics, MinMaxUInt64NonBlock) {
                                         0xfedcba9876543210};
     uint64_t testMaxExpectedValue[5] = {0x0, 0xffffffff00000000, 0x54321, 0x1,
                                         0xfedcba9876543210};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(int64_t) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -303,38 +277,31 @@ TEST(FamMinMaxAtomics, MinMaxUInt64NonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 5 - MinMaxFloatNonBlock
 TEST(FamMinMaxAtomics, MinMaxFloatNonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     float operand1Value[5] = {0.0f, 1234.12f, 54321.87f, 8888.33f, 99999.99f};
     float operand2Value[5] = {0.1f, 1234.12f, 0.12f, 9999.22f, 0.01f};
     float operand3Value[5] = {0.5f, 1234.23f, 0.01f, 5432.10f, 0.05f};
     float testMinExpectedValue[5] = {0.0f, 1234.12f, 0.12f, 8888.33f, 0.01f};
     float testMaxExpectedValue[5] = {0.5f, 1234.23f, 0.12f, 8888.33f, 0.05f};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(float) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -362,22 +329,18 @@ TEST(FamMinMaxAtomics, MinMaxFloatNonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 6 - MinMaxDoubleNonBlock
 TEST(FamMinMaxAtomics, MinMaxDoubleNonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     double operand1Value[5] = {0.0, 1234.123, 987654321.8765,
                                2222555577778888.3333, (DBL_MAX - 1.0)};
     double operand2Value[5] = {0.1, 1234.123, 0.1234, 1111.2222, 1.0};
@@ -386,17 +349,14 @@ TEST(FamMinMaxAtomics, MinMaxDoubleNonBlock) {
     double testMinExpectedValue[5] = {0.0, 1234.123, 0.1234, 1111.2222, 1.0};
     double testMaxExpectedValue[5] = {1.5, 5432.123, 0.1234,
                                       2222555577778888.3333, DBL_MAX - 1};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(double) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -424,7 +384,6 @@ TEST(FamMinMaxAtomics, MinMaxDoubleNonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }

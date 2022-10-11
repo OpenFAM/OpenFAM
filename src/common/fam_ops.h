@@ -66,12 +66,20 @@ class Fam_Ops {
      */
     virtual int initialize() = 0;
 
+    virtual void reset_profile() = 0;
+
+    virtual void dump_profile() = 0;
     /**
      * Finalize the libface library. Once finalized, the process can continue
      * work, but it is disconnected from the OpenFAM library functions.
      */
     virtual void finalize() = 0;
 
+    virtual size_t get_fabric_iov_limit() = 0;
+    virtual void populate_address_vector(void *memServerInfoBuffer = NULL,
+                                         size_t memServerInfoSize = 0,
+                                         uint64_t numMemNodes = 0,
+                                         uint64_t myId = 0) = 0;
     /**
      * Forcibly terminate all PEs in the same group as the caller
      * @param status - termination status to be returned by the program.

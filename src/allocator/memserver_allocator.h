@@ -85,13 +85,17 @@ class Memserver_Allocator {
     void resize_region(uint64_t regionId, size_t nbytes);
     uint64_t allocate(uint64_t regionId, size_t nbytes);
     void deallocate(uint64_t regionId, uint64_t offset);
-    void copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t destRegionId,
-              uint64_t destOffset, uint64_t size);
-    void backup(uint64_t srcRegionId, uint64_t srcOffset,
-                const string BackupName, uint64_t size, uint32_t uid,
-                uint32_t gid, mode_t mode, const string dataitemName);
-    void restore(uint64_t destRegionId, uint64_t destOffset,
-                 const string BackupName, uint64_t size);
+    void copy(void *src, void *destOffset, uint64_t size);
+
+    void backup(uint64_t srcRegionId, uint64_t srcOffset, uint64_t size,
+                uint64_t chunkSize, uint64_t usedMemserverCnt,
+                uint64_t fileStartPos, const string BackupName, uint32_t uid,
+                uint32_t gid, mode_t mode, const string dataitemName,
+                uint64_t itemSize, bool writeMetadata);
+
+    void restore(uint64_t destRegionId, uint64_t destOffset, uint64_t size,
+                 uint64_t chunkSize, uint64_t usedMemserverCnt,
+                 uint64_t fileStartPos, string BackupName);
     Fam_Backup_Info get_backup_info(const string BackupName, uint32_t uid,
                                     uint32_t gid, uint32_t op);
     std::string list_backup(const string BackupName, uint32_t uid, uint32_t gid,

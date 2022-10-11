@@ -251,30 +251,33 @@ void Fam_Memory_Service_Client::deallocate(uint64_t regionId, uint64_t offset) {
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_deallocate);
 }
 
-void Fam_Memory_Service_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
-                                     uint64_t srcKey, uint64_t srcCopyStart,
-                                     uint64_t srcBaseAddr, const char *srcAddr,
-                                     uint32_t srcAddrLen, uint64_t destRegionId,
-                                     uint64_t destOffset, uint64_t size,
-                                     uint64_t srcMemserverId,
-                                     uint64_t destMemserverId) {
+void Fam_Memory_Service_Client::copy(
+    uint64_t srcRegionId, uint64_t *srcOffsets, uint64_t srcUsedMemsrvCnt,
+    uint64_t srcCopyStart, uint64_t srcCopyEnd, uint64_t *srcKeys,
+    uint64_t *srcBaseAddrList, uint64_t destRegionId, uint64_t destOffset,
+    uint64_t destUsedMemsrvCnt, uint64_t *srcMemserverIds,
+    uint64_t srcInterleaveSize, uint64_t destInterleaveSize, uint64_t size) {
     Fam_Memory_Copy_Request req;
     Fam_Memory_Copy_Response res;
     ::grpc::ClientContext ctx;
 
     MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    for (uint64_t i = 0; i < srcUsedMemsrvCnt; i++) {
+        req.add_src_offsets(srcOffsets[i]);
+        req.add_src_keys(srcKeys[i]);
+        req.add_src_base_addr(srcBaseAddrList[i]);
+        req.add_src_ids(srcMemserverIds[i]);
+    }
+    req.set_src_used_memsrv_cnt(srcUsedMemsrvCnt);
+    req.set_dest_used_memsrv_cnt(destUsedMemsrvCnt);
     req.set_src_region_id(srcRegionId);
     req.set_dest_region_id(destRegionId);
-    req.set_src_offset(srcOffset);
-    req.set_src_key(srcKey);
     req.set_src_copy_start(srcCopyStart);
-    req.set_src_base_addr(srcBaseAddr);
-    req.set_src_addr(srcAddr, srcAddrLen);
-    req.set_src_addr_len(srcAddrLen);
+    req.set_src_copy_end(srcCopyEnd);
     req.set_dest_offset(destOffset);
     req.set_size(size);
-    req.set_src_memserver_id(srcMemserverId);
-    req.set_dest_memserver_id(destMemserverId);
+    req.set_src_interleave_size(srcInterleaveSize);
+    req.set_dest_interleave_size(destInterleaveSize);
 
     ::grpc::Status status = stub->copy(&ctx, req, &res);
 
@@ -282,10 +285,11 @@ void Fam_Memory_Service_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_copy);
 }
 
-void Fam_Memory_Service_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
-                                       const string BackupName, uint64_t size,
-                                       uint32_t uid, uint32_t gid, mode_t mode,
-                                       const string dataitemName) {
+void Fam_Memory_Service_Client::backup(
+    uint64_t srcRegionId, uint64_t srcOffset, uint64_t size, uint64_t chunkSize,
+    uint64_t usedMemserverCnt, uint64_t fileStartPos, const string BackupName,
+    uint32_t uid, uint32_t gid, mode_t mode, const string dataitemName,
+    uint64_t itemSize, bool writeMetadata) {
     Fam_Memory_Backup_Restore_Request req;
     Fam_Memory_Backup_Restore_Response res;
     ::grpc::ClientContext ctx;
@@ -295,10 +299,15 @@ void Fam_Memory_Service_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
     req.set_offset(srcOffset);
     req.set_bname(BackupName);
     req.set_size(size);
+    req.set_chunk_size(chunkSize);
+    req.set_used_memserver_cnt(usedMemserverCnt);
+    req.set_file_start_pos(fileStartPos);
     req.set_uid(uid);
     req.set_gid(gid);
     req.set_mode(mode);
     req.set_diname(dataitemName);
+    req.set_item_size(itemSize);
+    req.set_write_metadata(writeMetadata);
 
     ::grpc::Status status = stub->backup(&ctx, req, &res);
 
@@ -307,8 +316,11 @@ void Fam_Memory_Service_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
 }
 
 void Fam_Memory_Service_Client::restore(uint64_t destRegionId,
-                                        uint64_t destOffset, string BackupName,
-                                        uint64_t size) {
+                                        uint64_t destOffset, uint64_t size,
+                                        uint64_t chunkSize,
+                                        uint64_t usedMemserverCnt,
+                                        uint64_t fileStartPos,
+                                        string BackupName) {
     Fam_Memory_Backup_Restore_Request req;
     Fam_Memory_Backup_Restore_Response res;
     ::grpc::ClientContext ctx;
@@ -318,6 +330,9 @@ void Fam_Memory_Service_Client::restore(uint64_t destRegionId,
     req.set_offset(destOffset);
     req.set_bname(BackupName);
     req.set_size(size);
+    req.set_chunk_size(chunkSize);
+    req.set_used_memserver_cnt(usedMemserverCnt);
+    req.set_file_start_pos(fileStartPos);
 
     ::grpc::Status status = stub->restore(&ctx, req, &res);
 
@@ -378,9 +393,9 @@ void Fam_Memory_Service_Client::delete_backup(std::string BackupName) {
     req.set_bname(BackupName);
     MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
     ::grpc::Status status = stub->delete_backup(&ctx, req, &res);
+    STATUS_CHECK(Memory_Service_Exception)
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_delete_backup_info);
 
-    STATUS_CHECK(Memory_Service_Exception)
 }
 
 void Fam_Memory_Service_Client::acquire_CAS_lock(uint64_t offset) {
@@ -609,6 +624,24 @@ void Fam_Memory_Service_Client::gather_indexed_atomic(
 
     STATUS_CHECK(Memory_Service_Exception)
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_gather_indexed_atomic);
+}
+
+void Fam_Memory_Service_Client::update_memserver_addrlist(
+    void *memServerInfoBuffer, size_t memServerInfoSize,
+    uint64_t memoryServerCount) {
+    Fam_Memory_Service_Addr_Info req;
+    Fam_Memory_Service_General_Response res;
+    ::grpc::ClientContext ctx;
+
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_memserverinfo_size(memServerInfoSize);
+    req.set_memserverinfo(memServerInfoBuffer, memServerInfoSize);
+    req.set_num_memservers(memoryServerCount);
+
+    ::grpc::Status status = stub->update_memserver_addrlist(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_update_memserver_addrlist);
 }
 
 } // namespace openfam

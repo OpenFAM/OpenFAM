@@ -141,13 +141,13 @@ class Fam_Metadata_Service_Client : public Fam_Metadata_Service {
     metadata_validate_and_destroy_region(const uint64_t regionId, uint32_t uid,
                                          uint32_t gid,
                                          std::list<int> *memory_server_list);
-    void metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
-                                                   const uint64_t dataitemId,
-                                                   uint32_t uid, uint32_t gid);
-    void metadata_validate_and_allocate_dataitem(const std::string dataitemName,
-                                                 const uint64_t regionId,
-                                                 uint32_t uid, uint32_t gid,
-                                                 uint64_t *memorServerId);
+    void metadata_validate_and_deallocate_dataitem(
+        const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
+        uint32_t gid, Fam_DataItem_Metadata &dataitem);
+    void metadata_validate_and_allocate_dataitem(
+        const std::string dataitemName, const uint64_t regionId, uint32_t uid,
+        uint32_t gid, size_t size, std::list<int> *memory_server_list,
+        size_t *interleaveSize, int user_policy = 0);
 
     void metadata_find_region_and_check_permissions(
         metadata_region_item_op_t op, const uint64_t regionId, uint32_t uid,

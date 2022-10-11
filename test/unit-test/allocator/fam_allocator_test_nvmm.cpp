@@ -113,8 +113,7 @@ int main() {
         global_dataitem = item->get_global_descriptor();
         cout << " Fam_Descriptor { Region ID : 0x" << hex << uppercase
              << global_dataitem.regionId << ", Offset : 0x"
-             << global_dataitem.offset << ", Key : 0x" << item->get_key()
-             << " }" << endl;
+             << global_dataitem.offset << " }" << endl;
     }
     void *local;
 
@@ -155,8 +154,7 @@ int main() {
     cout << " Dataitem copy: " << endl;
     cout << " Fam_Descriptor { Region ID : 0x" << hex << uppercase
          << globalCopy_dataitem.regionId << ", Offset : 0x"
-         << globalCopy_dataitem.offset << ", Key : 0x" << itemCopy->get_key()
-         << " }" << endl;
+         << globalCopy_dataitem.offset << " }" << endl;
 
     if (global.regionId != globalCopy.regionId) {
         cout << "Test failed. regionId from lookup does not match expected "

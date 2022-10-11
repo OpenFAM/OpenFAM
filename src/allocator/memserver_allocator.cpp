@@ -427,7 +427,6 @@ uint64_t Memserver_Allocator::allocate(uint64_t regionId, size_t nbytes) {
                             message.str().c_str());
         }
     }
-
     return offset;
 }
 
@@ -471,66 +470,93 @@ void Memserver_Allocator::deallocate(uint64_t regionId, uint64_t offset) {
     }
 }
 
-void Memserver_Allocator::copy(uint64_t srcRegionId, uint64_t srcOffset,
-                               uint64_t destRegionId, uint64_t destOffset,
-                               uint64_t size) {
-    void *src = get_local_pointer(srcRegionId, srcOffset);
-    void *dest = get_local_pointer(destRegionId, destOffset);
-
+void Memserver_Allocator::copy(void *src, void *dest, uint64_t size) {
     fam_memcpy(dest, src, size);
 }
 
 void Memserver_Allocator::backup(uint64_t srcRegionId, uint64_t srcOffset,
-                                 const string BackupName, uint64_t size,
+                                 uint64_t size, uint64_t chunkSize,
+                                 uint64_t usedMemserverCnt,
+                                 uint64_t fileStartPos, const string BackupName,
                                  uint32_t uid, uint32_t gid, mode_t mode,
-                                 const string dataitemName) {
-    // Get the content from data item
-    void *src = get_local_pointer(srcRegionId, srcOffset);
+                                 const string dataitemName, uint64_t itemSize,
+                                 bool writeMetadata) {
     FILE *backup_fp;
-    backup_fp = fopen((char *)BackupName.c_str(), "w");
+    // Open the backup file
+    backup_fp = fopen((char *)BackupName.c_str(), "wx");
     if (backup_fp == NULL) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
-                        "Backup creation failed.");
+        backup_fp = fopen((char *)BackupName.c_str(), "r+");
+        if (backup_fp == NULL) {
+            THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
+                            "Backup creation failed.");
+        }
     }
-    fwrite(src, sizeof(char), size, backup_fp);
+
+    // Initialize starting points in FAM and backup file
+    uint64_t currentFilePos = fileStartPos * chunkSize;
+    uint64_t currentFamPtr = srcOffset;
+    size += srcOffset;
+    while (currentFamPtr < size) {
+        // seek to the apprpriate offset inside the file
+        fseek(backup_fp, currentFilePos, SEEK_SET);
+        // get the local address corresponding to offset in FAM
+        void *src = get_local_pointer(srcRegionId, currentFamPtr);
+        // Write data from FAM to file
+        fwrite(src, sizeof(char), chunkSize, backup_fp);
+
+        currentFamPtr += chunkSize;
+        /*
+         * Increment the current file position for next data chunk write.
+         * leave space for other memory servers to write their corresponding
+         * data chunks.
+         */
+        currentFilePos += (usedMemserverCnt * chunkSize);
+    }
+
+    fseek(backup_fp, 0, SEEK_SET);
     fclose(backup_fp);
 
-    // Prepare metadata for backup file
-    string metafile = BackupName + ".info";
-    char metainfo[BACKUP_META_SIZE];
-    memset(metainfo, 0, BACKUP_META_SIZE);
-    time_t now = time(0);
-    tm *ltm = localtime(&now);
-    char backupTime[MIN_INFO_SIZE];
+    if (writeMetadata) {
+        // Prepare metadata for backup file
+        string metafile = BackupName + ".info";
+        char metainfo[BACKUP_META_SIZE];
+        memset(metainfo, 0, BACKUP_META_SIZE);
+        time_t now = time(0);
+        tm *ltm = localtime(&now);
+        char backupTime[MIN_INFO_SIZE];
 
-    snprintf(backupTime, MIN_INFO_SIZE, "%d-%d-%d:%d:%d:%d",
-             ltm->tm_year + 1900, ltm->tm_mon + 1, ltm->tm_mday, ltm->tm_hour,
-             ltm->tm_min, ltm->tm_sec);
-    snprintf(metainfo, BACKUP_META_SIZE,
-             "backupName:%s\ndataitemName:%s\ndataitemSize:%lu\nBackupTime:"
-             "%s\nuid:%u\ngid:%u\nmode:%u\n",
-             BackupName.c_str(), dataitemName.c_str(), size, backupTime, uid,
-             gid, mode);
+        snprintf(backupTime, MIN_INFO_SIZE, "%d-%d-%d:%d:%d:%d",
+                 ltm->tm_year + 1900, ltm->tm_mon + 1, ltm->tm_mday,
+                 ltm->tm_hour, ltm->tm_min, ltm->tm_sec);
+        snprintf(
+            metainfo, BACKUP_META_SIZE,
+            "backupName: %s\ndataitemName: %s\ndataitemSize: %lu\nBackupTime: "
+            "%s\nuid: %u\ngid: %u\nmode: %u\n",
+            BackupName.c_str(), dataitemName.c_str(), itemSize, backupTime, uid,
+            gid, mode);
 
-    // Update metadata info in metatadata file.
-    FILE *meta_fp;
-    meta_fp = fopen((char *)metafile.c_str(), "w");
-    if (meta_fp == NULL) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
-                        "Backup creation failed.");
+        // Update metadata info in metatadata file.
+        FILE *meta_fp;
+        meta_fp = fopen((char *)metafile.c_str(), "w");
+        if (meta_fp == NULL) {
+            THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
+                            "Backup creation failed.");
+        }
+        size_t meta_size =
+            fwrite(metainfo, sizeof(char), strlen(metainfo), meta_fp);
+        if (meta_size < strlen(metainfo)) {
+            THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
+                            "Backup metadata creation failed.");
+        }
+        fclose(meta_fp);
     }
-    size_t meta_size =
-        fwrite(metainfo, sizeof(char), strlen(metainfo), meta_fp);
-    if (meta_size < strlen(metainfo)) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOT_CREATED,
-                        "Backup metadata creation failed.");
-    }
-    fclose(meta_fp);
 }
 
 void Memserver_Allocator::restore(uint64_t destRegionId, uint64_t destOffset,
-                                  const string BackupName, uint64_t size) {
-    void *dest = get_local_pointer(destRegionId, destOffset);
+                                  uint64_t size, uint64_t chunkSize,
+                                  uint64_t usedMemserverCnt,
+                                  uint64_t fileStartPos,
+                                  const string BackupName) {
     struct stat info;
     int exist = stat(BackupName.c_str(), &info);
     if (exist == -1) {
@@ -538,17 +564,39 @@ void Memserver_Allocator::restore(uint64_t destRegionId, uint64_t destOffset,
                         "Backup doesnt exist.");
     }
     FILE *restore_fp;
+    // Open the backup file
     restore_fp = fopen((char *)BackupName.c_str(), "r");
     if (restore_fp == NULL) {
         THROW_ERRNO_MSG(Memory_Service_Exception, FAM_BACKUP_NOTFOUND,
-                        "Opening of Backup failed.");
-    }
-    size_t di_size = fread(dest, sizeof(char), size, restore_fp);
-    if (di_size < size) {
-        THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
-                        "Reading of Backup failed.");
+                        "Backup does not exist");
     }
 
+    // Initialize starting points in FAM and backup file
+    uint64_t currentFilePos = fileStartPos * chunkSize;
+    uint64_t currentFamPtr = destOffset;
+    size += destOffset;
+    while (currentFamPtr < size) {
+        // seek to the apprpriate offset inside the file
+        fseek(restore_fp, currentFilePos, SEEK_SET);
+        // get the local address corresponding to offset in FAM
+        void *src = get_local_pointer(destRegionId, currentFamPtr);
+        // Write data from file to FAM
+        size_t di_size = fread(src, sizeof(char), chunkSize, restore_fp);
+        if (di_size < chunkSize) {
+            THROW_ERRNO_MSG(Memory_Service_Exception, FAM_ERR_OUTOFRANGE,
+                            "Reading of Backup failed.");
+        }
+        // Increment the current position in the FAM by the data size written to
+        // file
+        currentFamPtr += chunkSize;
+        /*
+         * Increment the current file position for next data chunk write.
+         * leave space for other memory servers to write their corresponding
+         * data chunks.
+         */
+        currentFilePos += (usedMemserverCnt * chunkSize);
+    }
+    fseek(restore_fp, 0, SEEK_SET);
     fclose(restore_fp);
 }
 

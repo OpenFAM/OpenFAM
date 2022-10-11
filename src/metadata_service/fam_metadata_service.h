@@ -51,7 +51,6 @@
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
-#define MAX_MEMORY_SERVERS_CNT 256
 
 using namespace radixtree;
 using namespace nvmm;
@@ -110,6 +109,7 @@ typedef struct {
     Fam_Redundancy_Level redundancyLevel;
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
+    size_t interleaveSize;
     GlobalPtr dataItemIdRoot;
     GlobalPtr dataItemNameRoot;
 } Fam_Region_Metadata;
@@ -123,13 +123,15 @@ typedef struct {
      * Data Item : Offset within the region for the start of the memory
      *             representing the descriptor
      */
-    uint64_t offset;
+    uint64_t offsets[MAX_MEMORY_SERVERS_CNT];
     uint32_t uid;
     uint32_t gid;
     mode_t perm;
     char name[RadixTree::MAX_KEY_LEN];
     uint64_t size;
-    uint64_t memoryServerId;
+    uint64_t used_memsrv_cnt;
+    uint64_t memoryServerIds[MAX_MEMORY_SERVERS_CNT];
+    size_t interleaveSize;
 } Fam_DataItem_Metadata;
 
 typedef enum metadata_region_item_op {
@@ -248,12 +250,12 @@ class Fam_Metadata_Service {
         std::list<int> *memory_server_list) = 0;
     virtual void metadata_validate_and_allocate_dataitem(
         const std::string dataitemName, const uint64_t regionId, uint32_t uid,
-        uint32_t gid, uint64_t *memoryServerId) = 0;
+        uint32_t gid, size_t size, std::list<int> *memory_server_list,
+        size_t *interleaveSize, int user_policy) = 0;
 
-    virtual void
-    metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
-                                              const uint64_t dataitemId,
-                                              uint32_t uid, uint32_t gid) = 0;
+    virtual void metadata_validate_and_deallocate_dataitem(
+        const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
+        uint32_t gid, Fam_DataItem_Metadata &dataitem) = 0;
 
     virtual size_t metadata_maxkeylen() = 0;
     virtual void metadata_find_region_and_check_permissions(
