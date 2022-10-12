@@ -1291,7 +1291,7 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
                     regionAttributes->redundancyLevel;
             }
             if (regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT)
-                regionAttributesParam->interleaveEnable = DISABLE;
+                regionAttributesParam->interleaveEnable = ENABLE;
             else {
                 if (!(regionAttributes->interleaveEnable == ENABLE ||
                       regionAttributes->interleaveEnable == DISABLE)) {

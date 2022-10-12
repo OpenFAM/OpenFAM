@@ -1,0 +1,12 @@
+--model=memory_server
+--cisinterface=rpc
+--memserverinterface=rpc
+--metaserverinterface=rpc
+--metapath=/dev/shm/fam_metadata
+--cisserver={rpc_interface:127.0.0.1,rpc_port:8880}
+--memservers=0:{memory_type:volatile,fam_path:/dev/shm/vol1,rpc_interface:127.0.0.1,rpc_port:8790,libfabric_port:7521,if_device:eth0}
+--memservers=1:{memory_type:volatile,fam_path:/dev/shm/vol2,rpc_interface:127.0.0.1,rpc_port:8791,libfabric_port:7522,if_device:eth0}
+--memservers=2:{memory_type:volatile,fam_path:/dev/shm/vol3,rpc_interface:127.0.0.1,rpc_port:8792,libfabric_port:7523,if_device:eth0}
+--memservers=3:{memory_type:volatile,fam_path:/dev/shm/vol4,rpc_interface:127.0.0.1,rpc_port:8793,libfabric_port:7524,if_device:eth0}
+--metaservers=0:{rpc_interface:127.0.0.1,rpc_port:8881}
+--test_args={num_pes:1}

@@ -205,7 +205,8 @@ case $OS in
 esac		
 if [ "$no_package_install" != "true" ] 
 then
-    pip3 install ruamel.yaml
+	pip3 install ruamel.yaml
+	pip3 install tabulate
     echo "Finished installing required RPMS"
 fi
 
