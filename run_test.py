@@ -1,6 +1,6 @@
-#!/bin/bash
- # run_test.sh
- # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
+#!/usr/bin/python3
+ # run_test.py
+ # Copyright (c) 2022 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -20,6 +20,25 @@
  #
  #
 
-OPENFAM_TEST_EXE=$1
-OPENFAM_TEST_ARG=$2
-$OPENFAM_TEST_COMMAND $OPENFAM_TEST_OPT $OPENFAM_TEST_EXE $OPENFAM_TEST_ARG
+import os
+import sys
+
+openfam_test_exe=sys.argv[1]
+if len(sys.argv) > 2:
+    openfam_test_arg=sys.argv[2]
+else:
+    openfam_test_arg=""
+
+command_line = os.environ["OPENFAM_TEST_COMMAND"] + " " + os.environ["OPENFAM_TEST_OPT"] + " " + openfam_test_exe + " " + openfam_test_arg
+print("Test Command : " + command_line)
+result = os.system(command_line)
+#If the return code from test is 77 return that back to gtest
+#so that the corresponding test can be skipped
+if (result >> 8) == 77:
+    sys.exit(result >> 8)
+#Other non zero values implies that test has failed.
+elif (result >> 8) != 0:
+    sys.exit(1)
+#For success case return zero
+else:
+    sys.exit(0)
