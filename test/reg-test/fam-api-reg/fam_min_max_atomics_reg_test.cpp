@@ -53,6 +53,11 @@ const char *testRegionStr;
 
 #define REGION_SIZE (1024 * 1024)
 #define REGION_PERM 0777
+#ifdef CHECK_OFFSETS
+unsigned int CHECK_OFFSET = 1;
+#else
+unsigned int CHECK_OFFSET = 0;
+#endif
 
 #define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
 /*
@@ -1008,6 +1013,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockPerm) {
     }
     free((void *)dataItem);
 }
+#endif
 
 // Test case 15 - Min Max Negative test case with invalid offset
 TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
@@ -1036,7 +1042,8 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
                                   (test_item_size[sm] + 1)};
 
         for (ofs = 0; ofs < 3; ofs++) {
-            if (SHM_CHECK) {
+		cout << "testOffset[" << ofs << "]:" << testOffset[ofs] << endl;
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
                     Fam_Exception);
@@ -1164,7 +1171,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
     }
     free((void *)dataItem);
 }
-#endif
+
 // Test case 13 - Min Max Negative test case with invalid offset
 TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
     Fam_Descriptor *item;
@@ -1192,7 +1199,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                                   (test_item_size[sm] + 1)};
 
         for (ofs = 0; ofs < 3; ofs++) {
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
                     Fam_Exception);
@@ -1208,7 +1215,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt32[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
                     Fam_Exception);
@@ -1224,7 +1231,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
                     Fam_Exception);
@@ -1240,7 +1247,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt64[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
                     Fam_Exception);
@@ -1256,7 +1263,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandUint64[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
                     Fam_Exception);
@@ -1272,7 +1279,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandFloat[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
                     Fam_Exception);

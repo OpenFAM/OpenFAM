@@ -1,8 +1,9 @@
 /*
  * fam_put_get_negative_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -82,16 +83,21 @@ TEST(FamPutGetT, PutGetFail) {
     // write to invalid offset bigger than alloc size
     EXPECT_THROW(my_fam->fam_put_blocking(local, item, 2048, 13),
                  Fam_Exception);
-
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(my_fam->fam_put_nonblocking(local, item, 2048, 13), Fam_Exception);
+#else
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(local, item, 2048, 13));
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
+#endif
     // Read from offset bigger than alloc size
     EXPECT_THROW(my_fam->fam_get_blocking(local2, item, 2048, 13),
                  Fam_Exception);
-
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(my_fam->fam_get_nonblocking(local2, item, 2048, 13), Fam_Exception);
+#else
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local2, item, 2048, 13));
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+#endif
 
     char *local3 = (char *)malloc(8192);
 
@@ -99,8 +105,12 @@ TEST(FamPutGetT, PutGetFail) {
     EXPECT_THROW(my_fam->fam_get_blocking(local3, item, 0, 8192),
                  Fam_Exception);
 
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(my_fam->fam_get_nonblocking(local3, item, 0, 8192), Fam_Exception);
+#else
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(local3, item, 0, 8192));
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+#endif
 
     // Pass invalid option
     EXPECT_THROW(my_fam->fam_put_blocking(NULL, item, 0, 13), Fam_Exception);
@@ -165,6 +175,7 @@ TEST(FamPutGetT, ScatterGatherIndexFail) {
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
     // No read permission
+	cout << "No read permission" << endl;
     EXPECT_NO_THROW(my_fam->fam_change_permissions(item, 0333));
 
     EXPECT_NO_THROW(
@@ -177,6 +188,7 @@ TEST(FamPutGetT, ScatterGatherIndexFail) {
     EXPECT_NO_THROW(my_fam->fam_change_permissions(item, 0777));
 
     // Pass invalid option
+    cout << " Pass invalid option" << endl;
     EXPECT_THROW(
         my_fam->fam_gather_blocking(NULL, item, 5, indexes, sizeof(int)),
         Fam_Exception);
@@ -210,6 +222,7 @@ TEST(FamPutGetT, ScatterGatherIndexFail) {
                  Fam_Exception);
 
     // Pass 0 as nelements
+    cout << " Pass 0 as nelements" << endl;
     EXPECT_THROW(
         my_fam->fam_gather_blocking(local2, item, 0, indexes, sizeof(int)),
         Fam_Exception);
@@ -259,6 +272,7 @@ TEST(FamPutGetT, ScatterGatherStrideFail) {
     int *local2 = (int *)malloc(100 * sizeof(int));
 
     // No write perm
+    cout << "No write perm" << endl;
     EXPECT_THROW(
         my_fam->fam_scatter_blocking(newLocal, item, 5, 2, 3, sizeof(int)),
         Fam_Exception);
@@ -268,6 +282,7 @@ TEST(FamPutGetT, ScatterGatherStrideFail) {
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
 
     // No read permission
+    cout << "No read permission" << endl;
     EXPECT_NO_THROW(my_fam->fam_change_permissions(item, 0333));
 
     EXPECT_NO_THROW(
@@ -280,6 +295,7 @@ TEST(FamPutGetT, ScatterGatherStrideFail) {
     EXPECT_NO_THROW(my_fam->fam_change_permissions(item, 0777));
 
     // Pass invalid option
+    cout << "Pass invalid option" << endl;
     EXPECT_THROW(my_fam->fam_gather_blocking(NULL, item, 5, 2, 3, sizeof(int)),
                  Fam_Exception);
 
@@ -311,6 +327,7 @@ TEST(FamPutGetT, ScatterGatherStrideFail) {
         Fam_Exception);
 
     // Pass 0 as nelements
+    cout << "Pass 0 as nelements" << endl;
     EXPECT_THROW(
         my_fam->fam_gather_blocking(local2, item, 0, 2, 3, sizeof(int)),
         Fam_Exception);
