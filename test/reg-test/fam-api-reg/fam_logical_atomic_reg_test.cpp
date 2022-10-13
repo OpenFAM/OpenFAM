@@ -53,7 +53,11 @@ const char *testRegionStr;
 
 #define REGION_SIZE (1024 * 1024)
 #define REGION_PERM 0777
-
+#ifdef CHECK_OFFSETS
+unsigned int CHECK_OFFSET = 1;
+#else
+unsigned int CHECK_OFFSET = 0;
+#endif
 #define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
 
 // Test case 1 - Fetch logical atomics for UInt32
@@ -573,7 +577,7 @@ TEST(FamLogicalAtomics, FetchLogicalNegativePerm) {
     }
     free((void *)dataItem);
 }
-#ifdef ENABLE_KNOWN_ISSUES
+
 // Test case 7 - Negative test cases with invalid offset
 TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
     Fam_Descriptor *item;
@@ -602,7 +606,7 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
                  << ", Dataitem size=" << test_item_size[sm]
                  << ", offset=" << testOffset[ofs] << endl;
 
-            if (SHM_CHECK) {
+            if ( CHECK_OFFSET || SHM_CHECK) {
                 // uint32 operations
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
@@ -678,7 +682,6 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
     }
     free((void *)dataItem);
 }
-#endif
 
 // Test case 8 - Negative test cases with invalid offset
 TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
@@ -708,7 +711,7 @@ TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
                  << ", Dataitem size=" << test_item_size[sm]
                  << ", offset=" << testOffset[ofs] << endl;
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 // uint32 operations
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
@@ -732,7 +735,7 @@ TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
                 my_fam->fam_fetch_xor(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 // uint32 operations
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),

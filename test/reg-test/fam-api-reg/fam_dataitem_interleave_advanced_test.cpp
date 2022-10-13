@@ -127,17 +127,28 @@ TEST(DataitemInterleavingNegative, PutGetNBInvalidOffset) {
            INTERLEAVE_SIZE);
     memset((void *)((uint64_t)local + 5 * INTERLEAVE_SIZE), 'f',
            INTERLEAVE_SIZE);
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(my_fam->fam_put_nonblocking(local, item,
+                                             16777216 - INTERLEAVE_SIZE,
+                                             6 * INTERLEAVE_SIZE),
+                 Fam_Exception);
 
+#else
     EXPECT_NO_THROW(my_fam->fam_put_nonblocking(
         local, item, 16777216 - INTERLEAVE_SIZE, 6 * INTERLEAVE_SIZE));
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
+#endif
     // allocate local memory to receive 20 elements
     char *local2 = (char *)malloc(6 * INTERLEAVE_SIZE);
 
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(my_fam->fam_get_nonblocking(
+        local2, item, 16777216 - INTERLEAVE_SIZE, 6 * INTERLEAVE_SIZE), Fam_Exception);
+#else
     EXPECT_NO_THROW(my_fam->fam_get_nonblocking(
         local2, item, 16777216 - INTERLEAVE_SIZE, 6 * INTERLEAVE_SIZE));
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+#endif
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
 
@@ -210,18 +221,26 @@ TEST(DataitemInterleaving, ScatterGatherStrideNonblockInvalidOffset) {
     // allocate an integer array and initialize it
     int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
                       26, 27, 28, 29, 30, 31, 32, 33, 34, 35};
-
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(my_fam->fam_scatter_nonblocking(
+        newLocal, item, 5, 16777216 - INTERLEAVE_SIZE, 4096, sizeof(int)), Fam_Exception);
+#else
     EXPECT_NO_THROW(my_fam->fam_scatter_nonblocking(
         newLocal, item, 5, 16777216 - INTERLEAVE_SIZE, 4096, sizeof(int)));
 
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
+#endif
     int *local2 = (int *)malloc(10 * sizeof(int));
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(my_fam->fam_gather_nonblocking(
+        local2, item, 5, 16777216 - INTERLEAVE_SIZE, 4096, sizeof(int)), Fam_Exception);
 
+#else
     EXPECT_NO_THROW(my_fam->fam_gather_nonblocking(
         local2, item, 5, 16777216 - INTERLEAVE_SIZE, 4096, sizeof(int)));
 
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+#endif
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
@@ -294,14 +313,24 @@ TEST(DataitemInterleaving, ScatterGatherIndexNonblockInvalidOffset) {
     uint64_t indexes[] = {
         16777216 - INTERLEAVE_SIZE, 16777216, 16777216 + INTERLEAVE_SIZE,
         16777216 - 2 * INTERLEAVE_SIZE, 16777216 - 3 * INTERLEAVE_SIZE};
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(my_fam->fam_scatter_nonblocking(newLocal, item, 10, indexes,
+                                                    sizeof(int)), Fam_Exception);
+
+#else
     EXPECT_NO_THROW(my_fam->fam_scatter_nonblocking(newLocal, item, 10, indexes,
                                                     sizeof(int)));
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
+#endif
     int *local2 = (int *)malloc(10 * sizeof(int));
+#ifdef CHECK_OFFSETS
+    EXPECT_THROW(
+        my_fam->fam_gather_nonblocking(local2, item, 10, indexes, sizeof(int)), Fam_Exception);
+#else
     EXPECT_NO_THROW(
         my_fam->fam_gather_nonblocking(local2, item, 10, indexes, sizeof(int)));
     EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+#endif
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));

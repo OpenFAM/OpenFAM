@@ -64,6 +64,11 @@ if(ENABLE_MEMORYSERVER_PROFILING)
         add_definitions(-DMEMSERVER_PROFILE)
 endif()
 
+if(ENABLE_CHECK_OFFSETS)
+	message(STATUS "Offset checks enabled")
+	add_definitions(-DCHECK_OFFSETS)
+endif()
+
 message(STATUS "====================")
 
 #
@@ -87,7 +92,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -g -O2")
 #
 # gcc flags for debug build
 #
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -DDEBUG -O0 -g")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -DDEBUG -DCHECK_OFFSETS -O0 -g")
 
 #
 # gcc flags for debug build
