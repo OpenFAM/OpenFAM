@@ -1,6 +1,6 @@
 /*
  * fam_libfabric.cpp
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -564,19 +564,11 @@ int fabric_retry(Fam_Context *famCtx, ssize_t ret, uint32_t *retry_cnt) {
 
     if (ret) {
         if (ret == -FI_EAGAIN) {
-            struct fi_cq_err_entry err;
-            FI_CALL(ret, fi_cq_readerr, famCtx->get_txcq(), &err, 0);
-            if (ret == 1) {
-                const char *errmsg = fi_cq_strerror(
-                    famCtx->get_txcq(), err.prov_errno, err.err_data, NULL, 0);
-                THROW_ERR_MSG(Fam_Datapath_Exception, errmsg);
-            } else if (ret && ret != -FI_EAGAIN) {
-                THROW_ERR_MSG(Fam_Datapath_Exception,
-                              "Reading from fabric CQ failed");
-            }
-
             (*retry_cnt)++;
             if ((*retry_cnt) <= MAX_RETRY_CNT) {
+                // A fi_cq_read() with a zero count causes progress
+                // on many providers.
+                FI_CALL(ret, fi_cq_read, famCtx->get_txcq(), NULL, 0);
                 return 1;
             } else {
                 THROW_ERR_MSG(Fam_Timeout_Exception,
