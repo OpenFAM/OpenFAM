@@ -104,6 +104,8 @@ inline void ResetBuf(char *buf, size_t &len, size_t const max_len) {
     len = max_len;
 }
 
+inline bool is_power_of_two(uint64_t n) { return ((n != 0) && !(n & (n - 1))); }
+
 /*
  * Internal implementation of Fam_Metadata_Service_Direct
  */
@@ -719,6 +721,12 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
     std::string regionKey = std::to_string(regionId);
 
     if (region->interleaveEnable == ENABLE) {
+        // Check if the interleave size if power of two
+        if (!is_power_of_two(dataitem_interleave_size)) {
+            message << "Interleave size is not power of two";
+            THROW_ERRNO_MSG(Metadata_Service_Exception,
+                            INTERLV_SIZE_NOT_PWR_TWO, message.str().c_str());
+        }
         region->interleaveSize = dataitem_interleave_size;
     } else {
         region->interleaveSize = 0;
@@ -2466,10 +2474,17 @@ void Fam_Metadata_Service_Direct::Impl_::
         if (!isPermitted) {
             message << "Allocate Dataitem error : Insufficient Permissions";
             THROW_ERRNO_MSG(Metadata_Service_Exception, NO_PERMISSION,
+
                             message.str().c_str());
         }
     }
 
+    // Check if the interleave size if power of two
+    if (!is_power_of_two(region.interleaveSize)) {
+        message << "Interleave size is not power of two";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, INTERLV_SIZE_NOT_PWR_TWO,
+                        message.str().c_str());
+    }
     // Check with metadata service if data item with the requested name
     // already exists.If exists return error.
     Fam_DataItem_Metadata dataitem;
@@ -2794,6 +2809,11 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_fam_path,
 
     dataitem_interleave_size = atoi(
         (const char *)(config_options["dataitem_interleave_size"].c_str()));
+
+    if (!is_power_of_two(dataitem_interleave_size)) {
+        THROW_ERRNO_MSG(Metadata_Service_Exception, INTERLV_SIZE_NOT_PWR_TWO,
+                        "Interleave size is not power of two");
+    }
 
     Start(use_meta_reg, enable_region_spanning,
           region_span_size_per_memoryserver, dataitem_interleave_size,

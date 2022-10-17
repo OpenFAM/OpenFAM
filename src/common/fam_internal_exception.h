@@ -118,7 +118,9 @@ enum Internal_Error {
     MEMORY_SERVER_START_FAILED,
     METADATA_SERVER_START_FAILED,
     ADDRVEC_POPULATION_FAILED,
-    MEMSERVER_LIST_CREATE_FAILED
+    MEMSERVER_LIST_CREATE_FAILED,
+    DATAITEM_KEY_NOT_AVAILABLE,
+    INTERLV_SIZE_NOT_PWR_TWO
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -170,6 +172,9 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case LIBFABRIC_ERROR:
     case ADDRVEC_POPULATION_FAILED:
         return FAM_ERR_LIBFABRIC;
+
+    case INTERLV_SIZE_NOT_PWR_TWO:
+        return FAM_ERR_NOT_PWR_TWO;
 
     case REGION_NOT_INSERTED:
     case DATAITEM_NOT_INSERTED:

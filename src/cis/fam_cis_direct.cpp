@@ -846,6 +846,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         ostringstream message;
         allocate_failure_cleanup(allocate_success_list, memoryServiceList,
                                  regionId, dataitem.offsets);
+        metadataService->metadata_delete_dataitem(dataitemId, regionId);
         if (allocate_failed_list.size() == 1) {
             THROW_ERRNO_MSG(CIS_Exception, (Fam_Error)ex.fam_error(),
                             ex.fam_error_msg());
