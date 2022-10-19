@@ -859,7 +859,7 @@ if args.runtests:
             os.environ["OPENFAM_TEST_OPT"] = ""
         else:
             os.environ["OPENFAM_TEST_COMMAND"] = openfam_install_path + \
-                "/third-party/build/bin/mpirun"
+                "/../third-party/build/bin/mpirun"
             os.environ["OPENFAM_TEST_OPT"] = (
                 "-n "
                 + str(npe) + " "

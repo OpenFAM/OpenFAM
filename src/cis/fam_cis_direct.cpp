@@ -671,14 +671,12 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
 
-    // uint64_t id = 0;
     uint64_t metadataServiceId = 0;
 
     uint64_t *memServerIds;
     int used_memsrv_cnt = 0;
     int user_policy = 0;
     size_t interleaveSize;
-    // uint64_t interleaveSize;
     std::list<int> memory_server_list;
     std::vector<Fam_Memory_Service *> memoryServiceList;
 
@@ -700,7 +698,6 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
 
     Fam_DataItem_Metadata dataitem;
 
-    // info = new Fam_Region_Item_Info[used_memsrv_cnt];
     size_t blocks = 0, numBlocksPerServer = 0, extraBlocks = 0;
     if (interleaveSize) {
         blocks = nbytes / interleaveSize;
@@ -739,17 +736,18 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     std::vector<int> allocate_failed_list;
     // Wait for region creation to complete.
     int id = 0;
-    Fam_Exception ex;
+    std::string create_ErrMsg = "Unknown error";
+    enum Fam_Error create_famErr = FAM_ERR_UNKNOWN;
     for (auto result : resultList) {
         try {
             Fam_Region_Item_Info itemInfo = result.get();
-            // info.offsets[id] = itemInfo.offset;
             dataitem.offsets[id] = itemInfo.offset;
             info.baseAddressList[id] = itemInfo.base;
             allocate_success_list.push_back(id++);
         } catch (Fam_Exception &e) {
             allocate_failed_list.push_back(id++);
-            ex = e;
+            create_ErrMsg = e.fam_error_msg();
+            create_famErr = (Fam_Error)e.fam_error();
         } catch (...) {
             allocate_failed_list.push_back(id++);
         }
@@ -760,8 +758,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         allocate_failure_cleanup(allocate_success_list, memoryServiceList,
                                  regionId, dataitem.offsets);
         if (allocate_failed_list.size() == 1) {
-            THROW_ERRNO_MSG(CIS_Exception, (Fam_Error)ex.fam_error(),
-                            ex.fam_error_msg());
+            THROW_ERRNO_MSG(CIS_Exception, create_famErr, create_ErrMsg);
         } else {
             message << "Multiple memory servers failed to allocate dataitem";
             THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_CREATED,
@@ -836,7 +833,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
             allocate_success_list.push_back(id++);
         } catch (Fam_Exception &e) {
             allocate_failed_list.push_back(id++);
-            ex = e;
+            create_ErrMsg = e.fam_error_msg();
+            create_famErr = (Fam_Error)e.fam_error();
         } catch (...) {
             allocate_failed_list.push_back(id++);
         }
@@ -848,8 +846,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
                                  regionId, dataitem.offsets);
         metadataService->metadata_delete_dataitem(dataitemId, regionId);
         if (allocate_failed_list.size() == 1) {
-            THROW_ERRNO_MSG(CIS_Exception, (Fam_Error)ex.fam_error(),
-                            ex.fam_error_msg());
+            THROW_ERRNO_MSG(CIS_Exception, create_famErr, create_ErrMsg);
         } else {
             message
                 << "Multiple memory servers failed to register the dataitem";

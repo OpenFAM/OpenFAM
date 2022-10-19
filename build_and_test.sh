@@ -4,6 +4,7 @@ BUILD_DIR=$CURRENTDIR/build/
 TOOL_DIR=$CURRENTDIR/tools
 MAKE_CMD="make -j"
 THIRDPARTY_BUILD=$CURRENTDIR/third-party/build/
+INSTALL_DIR=$BUILD_DIR
 
 #creating build directory if not present
 if [ ! -d "$BUILD_DIR" ]; then
@@ -16,6 +17,7 @@ export LD_LIBRARY_PATH=$THIRDPARTY_BUILD/lib/:$THIRDPARTY_BUILD/lib64/:$LD_LIBRA
 
 #Build and run test with MemoryServer allocator
 cd $BUILD_DIR
+
 cmake ..; $MAKE_CMD ; make install
 if [[ $? > 0 ]]
 then
@@ -28,7 +30,7 @@ echo "Test OpenFAM with cis-rpc-meta-direct-mem-rpc configuration"
 echo "==========================================================="
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-rpc
 export OPENFAM_ROOT=$CONFIG_OUT_DIR
-$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $CURRENTDIR --model memory_server --cisinterface rpc --memserverinterface rpc --metaserverinterface direct --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
+$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $INSTALL_DIR --model memory_server --cisinterface rpc --memserverinterface rpc --metaserverinterface direct --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
 if [[ $? > 0 ]]
 then
         echo "OpenFAM test with cis-rpc-meta-direct-mem-rpc configuration failed. exit..."
@@ -46,7 +48,7 @@ echo "Test OpenFAM with cis-rpc-meta-rpc-mem-rpc configuration"
 echo "========================================================"
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-rpc-meta-rpc-mem-rpc
 export OPENFAM_ROOT=$CONFIG_OUT_DIR
-$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $CURRENTDIR --model memory_server --cisinterface rpc --memserverinterface rpc --metaserverinterface rpc --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
+$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $INSTALL_DIR --model memory_server --cisinterface rpc --memserverinterface rpc --metaserverinterface rpc --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
 
 if [[ $? > 0 ]]
 then
@@ -65,7 +67,7 @@ echo "Test OpenFAM with cis-rpc-meta-direct-mem-direct configuration"
 echo "=============================================================="
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-rpc-meta-direct-mem-direct
 export OPENFAM_ROOT=$CONFIG_OUT_DIR
-$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $CURRENTDIR --model memory_server --cisinterface rpc --memserverinterface direct --metaserverinterface direct --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
+$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $INSTALL_DIR --model memory_server --cisinterface rpc --memserverinterface direct --metaserverinterface direct --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
 
 if [[ $? > 0 ]]
 then
@@ -84,7 +86,7 @@ echo "Test OpenFAM with cis-direct-meta-rpc-mem-rpc configuration"
 echo "==========================================================="
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-cis-direct-meta-rpc-mem-rpc
 export OPENFAM_ROOT=$CONFIG_OUT_DIR
-$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $CURRENTDIR --model memory_server --cisinterface direct --memserverinterface rpc --metaserverinterface rpc --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
+$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $INSTALL_DIR --model memory_server --cisinterface direct --memserverinterface rpc --metaserverinterface rpc --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
 
 if [[ $? > 0 ]]
 then
@@ -103,7 +105,7 @@ echo "Test OpenFAM with shared memory configuration"
 echo "==========================================================="
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-shared-memory
 export OPENFAM_ROOT=$CONFIG_OUT_DIR
-$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $CURRENTDIR --model shared_memory --cisinterface direct --memserverinterface direct --metaserverinterface direct --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
+$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/common-config-arg.txt --install_path $INSTALL_DIR --model shared_memory --cisinterface direct --memserverinterface direct --metaserverinterface direct --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
 
 if [[ $? > 0 ]]
 then
@@ -122,7 +124,7 @@ echo "Test OpenFAM with multiple memory servers in all rpc configuration"
 echo "==========================================================="
 CONFIG_OUT_DIR=$BUILD_DIR/test/config_files/config-multi-mem
 export OPENFAM_ROOT=$CONFIG_OUT_DIR
-$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/multi-mem-config-arg.txt --install_path $CURRENTDIR --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
+$BUILD_DIR/bin/openfam_adm @$TOOL_DIR/multi-mem-config-arg.txt --install_path $INSTALL_DIR --create_config_files --config_file_path $CONFIG_OUT_DIR --start_service --runtests
 
 if [[ $? > 0 ]]
 then

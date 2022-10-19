@@ -121,7 +121,7 @@ function get_os_release_version(){
 
 ubuntu18_package_list="build-essential cmake autoconf libtool pkg-config libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-dev libpmem-dev libpmem1 libboost-all-dev python python3 python-pip python3-pip"
 
-ubuntu20_package_list="build-essential cmake autoconf libtool pkg-config libyaml-cpp-dev python3 python3-pip libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libpmem-dev libpmem1 libboost-all-dev python3 python3-pip"
+ubuntu20_package_list="build-essential cmake autoconf libtool pkg-config libyaml-cpp-dev python3 python3-pip libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libpmem-dev libpmem1 libboost-all-dev python3 python3-pip libssl-dev"
 
 rhel8_package_list="gcc gcc-c++ python3 python3-pip cmake make kernel-devel libevent libevent-devel glibc automake epel-release boost-devel-1.66.0 libpmem libpmem-devel yaml-cpp yaml-cpp-devel flex"
 
