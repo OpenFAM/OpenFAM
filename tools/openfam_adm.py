@@ -880,14 +880,14 @@ if args.runtests:
         )
 
     # Run regression and unit tests
-    cmd = "cd " + openfam_install_path + "/build; " + " make reg-test"
+    cmd = "cd " + openfam_install_path + "; " + " make reg-test"
     result = os.system(cmd)
     if (result >> 8) != 0:
         error_count = error_count + 1
         print('\033[1;31;40mERROR['+str(error_count) +
               ']: Regression test failed \033[0;37;40m')
         sys.exit(1)
-    cmd = "cd " + openfam_install_path + "/build; " + " make unit-test"
+    cmd = "cd " + openfam_install_path + "; " + " make unit-test"
     result = os.system(cmd)
     if (result >> 8) != 0:
         error_count = error_count + 1
