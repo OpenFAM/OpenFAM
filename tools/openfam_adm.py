@@ -681,6 +681,11 @@ ssh_cmd = "ssh " + os.environ["USER"] + "@"
 if args.start_service:
     openfam_install_path = get_install_path()
     service_info = []
+    # unset http_proxy and https_proxy if they are set
+    os.environ.pop('http_proxy', None)
+    os.environ.pop('https_proxy', None)
+    os.environ.pop('HTTP_PROXY', None)
+    os.environ.pop('HTTPS_PROXY', None)
     # start all memory services
     if (
         pe_config_doc["openfam_model"] == "memory_server"
