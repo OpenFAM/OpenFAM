@@ -177,6 +177,7 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps) {
 
     numMemoryNodes = famOps->numMemoryNodes;
     fabric_iov_limit = famOps->fabric_iov_limit;
+    fabric_max_msg_size = famOps->fabric_max_msg_size;
 }
 
 int Fam_Ops_Libfabric::initialize() {
@@ -240,6 +241,12 @@ int Fam_Ops_Libfabric::initialize() {
 
         // Save this context to defContexts on memoryserver
         defContexts->insert({FAM_DEFAULT_CTX_ID, tmpCtx});
+    }
+    if (fi->ep_attr->max_msg_size > 0) {
+        fabric_max_msg_size = fi->ep_attr->max_msg_size;
+    } else {
+        message << "Unexpected FAM libfabric error: Fabric Info max message size 0";
+        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
     }
 
     fabric_iov_limit = fi->tx_attr->rma_iov_limit;
@@ -413,24 +420,42 @@ int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
-        // Issue an IO
-        fi_context *ctx =
-            fabric_write(keys[0], (void *)local, nbytes,
-                         (uint64_t)(base_addr_list[0]) + offset,
-                         (*fiAddr)[memServerIds[0]], famCtx, true);
-        // wait for IO to complete
-        famCtx->aquire_RDLock();
-        try {
-            ret = fabric_completion_wait(famCtx, ctx, 0);
-        } catch (...) {
-            famCtx->inc_num_tx_fail_cnt(1l);
-            // Release Fam_Context read lock
+        uint64_t currentLocal = (uint64_t)local;
+        uint64_t currentOffset = offset;
+        uint64_t currentNbytes = nbytes;
+        uint64_t pending_nbytes;
+        while (currentNbytes > 0) {
+            if (currentNbytes > fabric_max_msg_size) {
+                pending_nbytes = currentNbytes - fabric_max_msg_size;
+                currentNbytes = fabric_max_msg_size;
+            } else {
+                pending_nbytes = 0;
+            }
+            // Issue an IO
+            fi_context *ctx =
+                fabric_write(keys[0], (void *)currentLocal, currentNbytes,
+                             (uint64_t)(base_addr_list[0]) + currentOffset,
+                             (*fiAddr)[memServerIds[0]], famCtx, true);
+            // wait for IO to complete
+            famCtx->aquire_RDLock();
+            try {
+                ret = fabric_completion_wait(famCtx, ctx, 0);
+            } catch (...) {
+                famCtx->inc_num_tx_fail_cnt(1l);
+                // Release Fam_Context read lock
+                famCtx->release_lock();
+                throw;
+            }
             famCtx->release_lock();
-            throw;
+            currentNbytes = pending_nbytes;
+            if (currentNbytes > 0) {
+                currentOffset = currentOffset + fabric_max_msg_size;
+                currentLocal = currentLocal + fabric_max_msg_size;
+            }
         }
-        famCtx->release_lock();
         return ret;
     }
+
     // Vector to store fi_context pointer of each IO
     std::vector<struct fi_context *> fiCtxVector;
 
@@ -545,21 +570,40 @@ int Fam_Ops_Libfabric::get_blocking(void *local, Fam_Descriptor *descriptor,
     // first block and the displacement within the block using the given offset,
     // else issue a single IO to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
-        // Issue an IO
-        fi_context *ctx = fabric_read(keys[0], (void *)local, nbytes,
-                                      (uint64_t)(base_addr_list[0]) + offset,
-                                      (*fiAddr)[memServerIds[0]], famCtx, true);
-        // wait for IO to complete
-        famCtx->aquire_RDLock();
-        try {
-            ret = fabric_completion_wait(famCtx, ctx, 0);
-        } catch (...) {
-            famCtx->inc_num_rx_fail_cnt(1l);
-            // Release Fam_Context read lock
+        uint64_t currentLocal = (uint64_t)local;
+        uint64_t currentOffset = offset;
+        uint64_t currentNbytes = nbytes;
+        uint64_t pending_nbytes;
+        while (currentNbytes > 0) {
+            if (currentNbytes > fabric_max_msg_size) {
+                pending_nbytes = currentNbytes - fabric_max_msg_size;
+                currentNbytes = fabric_max_msg_size;
+            } else {
+                pending_nbytes = 0;
+            }
+            // Issue an IO
+            fi_context *ctx =
+                fabric_read(keys[0], (void *)currentLocal, currentNbytes,
+                            (uint64_t)(base_addr_list[0]) + currentOffset,
+                            (*fiAddr)[memServerIds[0]], famCtx, true);
+
+            // wait for IO to complete
+            famCtx->aquire_RDLock();
+            try {
+                ret = fabric_completion_wait(famCtx, ctx, 0);
+            } catch (...) {
+                famCtx->inc_num_rx_fail_cnt(1l);
+                // Release Fam_Context read lock
+                famCtx->release_lock();
+                throw;
+            }
             famCtx->release_lock();
-            throw;
+            currentNbytes = pending_nbytes;
+            if (currentNbytes > 0) {
+                currentOffset = currentOffset + fabric_max_msg_size;
+                currentLocal = currentLocal + fabric_max_msg_size;
+            }
         }
-        famCtx->release_lock();
         return ret;
     }
     // Vector to store fi_context pointer of each IO
@@ -678,6 +722,13 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
+        if (elementSize > fabric_max_msg_size) {
+            std::ostringstream message;
+            message << "IO size is larger than maximum supported IO size by "
+                       "provider";
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_LIBFABRIC,
+                            message.str().c_str());
+        }
         // Issue an IO
         fi_context *ctx = fabric_scatter_stride(
             keys[0], (void *)local, elementSize, firstElement, nElements,
@@ -817,6 +868,13 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
+        if (elementSize > fabric_max_msg_size) {
+            std::ostringstream message;
+            message << "IO size is larger than maximum supported IO size by "
+                       "provider";
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_LIBFABRIC,
+                            message.str().c_str());
+        }
         // Issue an IO
         fi_context *ctx = fabric_gather_stride(
             keys[0], (void *)local, elementSize, firstElement, nElements,
@@ -956,6 +1014,13 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
+        if (elementSize > fabric_max_msg_size) {
+            std::ostringstream message;
+            message << "IO size is larger than maximum supported IO size by "
+                       "provider";
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_LIBFABRIC,
+                            message.str().c_str());
+        }
         // Issue an IO
         fi_context *ctx = fabric_scatter_index(
             keys[0], (void *)local, elementSize, elementIndex, nElements,
@@ -983,7 +1048,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     // Current Local pointer position
     uint64_t currentLocalPtr = (uint64_t)local;
     for (int i = 0; i < (int)nElements; i++) {
-        offset = elementIndex[i];
+        offset = elementIndex[i] * elementSize;
         // Current memory server Id index
         uint64_t currentServerIndex =
             ((offset / interleaveSize) % usedMemsrvCnt);
@@ -1095,6 +1160,13 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
+        if (elementSize > fabric_max_msg_size) {
+            std::ostringstream message;
+            message << "IO size is larger than maximum supported IO size by "
+                       "provider";
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_LIBFABRIC,
+                            message.str().c_str());
+        }
         // Issue an IO
         fi_context *ctx = fabric_gather_index(
             keys[0], (void *)local, elementSize, elementIndex, nElements,
@@ -1122,7 +1194,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
     // Current Local pointer position
     uint64_t currentLocalPtr = (uint64_t)local;
     for (int i = 0; i < (int)nElements; i++) {
-        offset = elementIndex[i];
+        offset = elementIndex[i] * elementSize;
         // Current memory server Id index
         uint64_t currentServerIndex =
             ((offset / interleaveSize) % usedMemsrvCnt);
@@ -1231,10 +1303,28 @@ void Fam_Ops_Libfabric::put_nonblocking(void *local, Fam_Descriptor *descriptor,
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
-        // Issue an IO
-        fabric_write(keys[0], (void *)local, nbytes,
-                     (uint64_t)(base_addr_list[0]) + offset,
-                     (*fiAddr)[memServerIds[0]], famCtx, false);
+        uint64_t currentLocal = (uint64_t)local;
+        uint64_t currentOffset = offset;
+        uint64_t currentNbytes = nbytes;
+        uint64_t pending_nbytes;
+        while (currentNbytes > 0) {
+            if (currentNbytes > fabric_max_msg_size) {
+                pending_nbytes = currentNbytes - fabric_max_msg_size;
+                currentNbytes = fabric_max_msg_size;
+            } else {
+                pending_nbytes = 0;
+            }
+            // Issue an IO
+            fabric_write(keys[0], (void *)currentLocal, currentNbytes,
+                         (uint64_t)(base_addr_list[0]) + currentOffset,
+                         (*fiAddr)[memServerIds[0]], famCtx, false);
+            currentNbytes = pending_nbytes;
+            if (currentNbytes > 0) {
+                currentOffset = currentOffset + fabric_max_msg_size;
+                currentLocal = currentLocal + fabric_max_msg_size;
+            }
+        }
+
         return;
     }
 
@@ -1327,10 +1417,29 @@ void Fam_Ops_Libfabric::get_nonblocking(void *local, Fam_Descriptor *descriptor,
     // first block and the displacement within the block using the given offset,
     // else issue a single IO to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
-        // Issue an IO
-        fabric_read(keys[0], (void *)local, nbytes,
-                    (uint64_t)(base_addr_list[0]) + offset,
-                    (*fiAddr)[memServerIds[0]], famCtx, false);
+        uint64_t currentLocal = (uint64_t)local;
+        uint64_t currentOffset = offset;
+        uint64_t currentNbytes = nbytes;
+        uint64_t pending_nbytes;
+        while (currentNbytes > 0) {
+            if (currentNbytes > fabric_max_msg_size) {
+                pending_nbytes = currentNbytes - fabric_max_msg_size;
+                currentNbytes = fabric_max_msg_size;
+            } else {
+                pending_nbytes = 0;
+            }
+
+            // Issue an IO
+            fabric_read(keys[0], (void *)currentLocal, currentNbytes,
+                        (uint64_t)(base_addr_list[0]) + currentOffset,
+                        (*fiAddr)[memServerIds[0]], famCtx, false);
+            currentNbytes = pending_nbytes;
+            if (currentNbytes > 0) {
+                currentOffset = currentOffset + fabric_max_msg_size;
+                currentLocal = currentLocal + fabric_max_msg_size;
+            }
+        }
+
         return;
     }
 
@@ -1424,6 +1533,13 @@ void Fam_Ops_Libfabric::scatter_nonblocking(
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
+        if (elementSize > fabric_max_msg_size) {
+            std::ostringstream message;
+            message << "IO size is larger than maximum supported IO size by "
+                       "provider";
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_LIBFABRIC,
+                            message.str().c_str());
+        }
         // Issue an IO
         fabric_scatter_stride(keys[0], (void *)local, elementSize, firstElement,
                               nElements, stride, (*fiAddr)[memServerIds[0]],
@@ -1526,6 +1642,13 @@ void Fam_Ops_Libfabric::gather_nonblocking(
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
+        if (elementSize > fabric_max_msg_size) {
+            std::ostringstream message;
+            message << "IO size is larger than maximum supported IO size by "
+                       "provider";
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_LIBFABRIC,
+                            message.str().c_str());
+        }
         // Issue an IO
         fabric_gather_stride(keys[0], (void *)local, elementSize, firstElement,
                              nElements, stride, (*fiAddr)[memServerIds[0]],
@@ -1630,6 +1753,13 @@ void Fam_Ops_Libfabric::scatter_nonblocking(void *local,
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
+        if (elementSize > fabric_max_msg_size) {
+            std::ostringstream message;
+            message << "IO size is larger than maximum supported IO size by "
+                       "provider";
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_LIBFABRIC,
+                            message.str().c_str());
+        }
         // Issue an IO
         fabric_scatter_index(keys[0], (void *)local, elementSize, elementIndex,
                              nElements, (*fiAddr)[memServerIds[0]], famCtx,
@@ -1643,7 +1773,7 @@ void Fam_Ops_Libfabric::scatter_nonblocking(void *local,
     // Current Local pointer position
     uint64_t currentLocalPtr = (uint64_t)local;
     for (int i = 0; i < (int)nElements; i++) {
-        offset = elementIndex[i];
+        offset = elementIndex[i] * elementSize;
         // Current memory server Id index
         uint64_t currentServerIndex =
             ((offset / interleaveSize) % usedMemsrvCnt);
@@ -1734,6 +1864,13 @@ void Fam_Ops_Libfabric::gather_nonblocking(void *local,
     // first block and the displacement within the block, else issue a single IO
     // to a memory server where that dataitem is located.
     if (usedMemsrvCnt == 1) {
+        if (elementSize > fabric_max_msg_size) {
+            std::ostringstream message;
+            message << "IO size is larger than maximum supported IO size by "
+                       "provider";
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_LIBFABRIC,
+                            message.str().c_str());
+        }
         // Issue an IO
         fabric_gather_index(keys[0], (void *)local, elementSize, elementIndex,
                             nElements, (*fiAddr)[memServerIds[0]], famCtx,
@@ -1747,7 +1884,7 @@ void Fam_Ops_Libfabric::gather_nonblocking(void *local,
     // Current Local pointer position
     uint64_t currentLocalPtr = (uint64_t)local;
     for (int i = 0; i < (int)nElements; i++) {
-        offset = elementIndex[i];
+        offset = elementIndex[i] * elementSize;
         // Current memory server Id index
         uint64_t currentServerIndex =
             ((offset / interleaveSize) % usedMemsrvCnt);

@@ -27,3 +27,5 @@ endfunction()
 
 #add tests
 add_fam_test(fam_mm_maxconfig_test)
+add_fam_test(fam_put_get_test_largeio)
+add_fam_test(fam_put_get_quiet_nonblock_test_largeio)

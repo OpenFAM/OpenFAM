@@ -119,8 +119,8 @@ enum Internal_Error {
     METADATA_SERVER_START_FAILED,
     ADDRVEC_POPULATION_FAILED,
     MEMSERVER_LIST_CREATE_FAILED,
-    DATAITEM_KEY_NOT_AVAILABLE,
-    INTERLV_SIZE_NOT_PWR_TWO
+    INTERLV_SIZE_NOT_PWR_TWO,
+    REGION_NO_SPACE
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -153,6 +153,9 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case BACKUP_DATA_INVALID:
     case BACKUP_METADATA_INVALID:
         return FAM_ERR_OUTOFRANGE;
+
+    case REGION_NO_SPACE:
+        return FAM_ERR_NO_SPACE;
 
     case NULL_POINTER_ACCESS:
         return FAM_ERR_NULLPTR;

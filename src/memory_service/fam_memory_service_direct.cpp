@@ -233,12 +233,10 @@ Fam_Region_Item_Info Fam_Memory_Service_Direct::allocate(uint64_t regionId,
     Fam_Region_Item_Info info;
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
 
-    uint64_t offset = allocator->allocate(regionId, nbytes);
-    void *base = allocator->get_local_pointer(regionId, offset);
+    info.offset = allocator->allocate(regionId, nbytes);
 
-    info.offset = offset;
-    if (memoryRegistration->is_base_require()) {
-        info.base = base;
+    if (memoryRegistration->is_base_require() && (info.offset != 0)) {
+        info.base = allocator->get_local_pointer(regionId, info.offset);
     } else {
         info.base = NULL;
     }

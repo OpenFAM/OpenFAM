@@ -53,6 +53,7 @@
 #define MIN_HEAP_SIZE (64 * (1UL << 20))
 
 #define MAX_DATAITEM_NUM_HINT 1000000
+#define MAX_INTERLEAVE_SIZE 1073741824
 
 using namespace radixtree;
 using namespace nvmm;

@@ -738,6 +738,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     int id = 0;
     std::string create_ErrMsg = "Unknown error";
     enum Fam_Error create_famErr = FAM_ERR_UNKNOWN;
+    bool regionFull = false;
     for (auto result : resultList) {
         try {
             Fam_Region_Item_Info itemInfo = result.get();
@@ -745,6 +746,9 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
             info.baseAddressList[id] = itemInfo.base;
             allocate_success_list.push_back(id++);
         } catch (Fam_Exception &e) {
+            if (e.fam_error() == REGION_NO_SPACE) {
+                regionFull = true;
+            }
             allocate_failed_list.push_back(id++);
             create_ErrMsg = e.fam_error_msg();
             create_famErr = (Fam_Error)e.fam_error();
@@ -757,11 +761,14 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         ostringstream message;
         allocate_failure_cleanup(allocate_success_list, memoryServiceList,
                                  regionId, dataitem.offsets);
-        if (allocate_failed_list.size() == 1) {
+        if (regionFull) {
+            THROW_ERRNO_MSG(CIS_Exception, REGION_NO_SPACE,
+                            "No space in region for data item allocation");
+        } else if (allocate_failed_list.size() == 1) {
             THROW_ERRNO_MSG(CIS_Exception, create_famErr, create_ErrMsg);
         } else {
             message << "Multiple memory servers failed to allocate dataitem";
-            THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_CREATED,
+            THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_CREATED,
                             message.str().c_str());
         }
     }

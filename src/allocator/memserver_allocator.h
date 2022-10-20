@@ -53,6 +53,9 @@
 #define MIN_REGION_SIZE (1UL << 20)
 #define MIN_INFO_SIZE (1UL << 8)
 #define BACKUP_META_SIZE (1UL << 12)
+
+#define _IS_VALID(offset) (offset == 0) ? false : true
+
 using namespace std;
 using namespace nvmm;
 

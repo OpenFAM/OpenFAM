@@ -412,6 +412,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     std::map<uint64_t, Fam_Context *> *get_defcontexts() { return defContexts; }
 
     size_t get_fabric_iov_limit() { return fabric_iov_limit; }
+    size_t get_fabric_max_msg_size() { return fabric_max_msg_size; }
 
   protected:
     // Server_Map name;
@@ -429,6 +430,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     size_t fabric_iov_limit;
     size_t serverAddrNameLen;
     void *serverAddrName;
+    size_t fabric_max_msg_size;
     std::map<uint64_t, std::pair<void *, size_t>> *memServerAddrs;
     std::map<uint64_t, fi_addr_t> *fiMemsrvMap;
     pthread_rwlock_t fiMemsrvAddrLock;

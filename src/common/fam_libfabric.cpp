@@ -967,6 +967,9 @@ struct fi_context *fabric_write(uint64_t key, const void *local, size_t nbytes,
     struct fi_rma_iov rma_iov = {.addr = offset, .len = nbytes, .key = key};
 
     struct fam_fi_context *ctx = NULL;
+
+    uint64_t flags = (block ? FI_COMPLETION | FI_DELIVERY_COMPLETE : 0);
+
     if (block) {
         ctx = new struct fam_fi_context();
         memset(ctx, 0, sizeof(struct fam_fi_context));
@@ -991,8 +994,7 @@ struct fi_context *fabric_write(uint64_t key, const void *local, size_t nbytes,
 
     try {
         do {
-            FI_CALL(ret, fi_writemsg, famCtx->get_ep(), &msg,
-                    FI_COMPLETION | FI_DELIVERY_COMPLETE);
+            FI_CALL(ret, fi_writemsg, famCtx->get_ep(), &msg, flags);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
 
         famCtx->inc_num_tx_ops();
@@ -1038,6 +1040,9 @@ struct fi_context *fabric_read(uint64_t key, const void *local, size_t nbytes,
     struct fi_rma_iov rma_iov = {.addr = offset, .len = nbytes, .key = key};
 
     struct fam_fi_context *ctx = NULL;
+
+    uint64_t flags = (block ? FI_COMPLETION : 0);
+
     if (block) {
         ctx = new struct fam_fi_context();
         memset(ctx, 0, sizeof(struct fam_fi_context));
@@ -1062,7 +1067,7 @@ struct fi_context *fabric_read(uint64_t key, const void *local, size_t nbytes,
 
     try {
         do {
-            FI_CALL(ret, fi_readmsg, famCtx->get_ep(), &msg, FI_COMPLETION);
+            FI_CALL(ret, fi_readmsg, famCtx->get_ep(), &msg, flags);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
 
         famCtx->inc_num_rx_ops();

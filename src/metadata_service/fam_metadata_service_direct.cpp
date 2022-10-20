@@ -727,6 +727,12 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
             THROW_ERRNO_MSG(Metadata_Service_Exception,
                             INTERLV_SIZE_NOT_PWR_TWO, message.str().c_str());
         }
+        if (dataitem_interleave_size > MAX_INTERLEAVE_SIZE) {
+            ostringstream message;
+            message
+                << "Interleave size is not valid";
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
         region->interleaveSize = dataitem_interleave_size;
     } else {
         region->interleaveSize = 0;
@@ -2464,6 +2470,13 @@ void Fam_Metadata_Service_Direct::Impl_::
                         message.str().c_str());
     }
 
+    // Check if the requested data item fits in the region
+    if (region.size < size) {
+        message << "Allocate Dataitem error : Requested dataitem size is "
+                   "bigger than than the region";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NO_SPACE,
+                        message.str().c_str());
+    }
     // Check if calling PE user is owner. If not, check with
     // metadata service if the calling PE has the write
     // permission to create dataitem in that region, if not return error
@@ -2809,6 +2822,12 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_fam_path,
 
     dataitem_interleave_size = atoi(
         (const char *)(config_options["dataitem_interleave_size"].c_str()));
+
+    if (dataitem_interleave_size > MAX_INTERLEAVE_SIZE) {
+        ostringstream message;
+        message << "dataitem_interleave_size in the config file is invalid";
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    }
 
     if (!is_power_of_two(dataitem_interleave_size)) {
         THROW_ERRNO_MSG(Metadata_Service_Exception, INTERLV_SIZE_NOT_PWR_TWO,
