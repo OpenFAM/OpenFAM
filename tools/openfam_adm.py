@@ -681,6 +681,11 @@ ssh_cmd = "ssh " + os.environ["USER"] + "@"
 if args.start_service:
     openfam_install_path = get_install_path()
     service_info = []
+    # unset http_proxy and https_proxy if they are set
+    os.environ.pop('http_proxy', None)
+    os.environ.pop('https_proxy', None)
+    os.environ.pop('HTTP_PROXY', None)
+    os.environ.pop('HTTPS_PROXY', None)
     # start all memory services
     if (
         pe_config_doc["openfam_model"] == "memory_server"
@@ -854,7 +859,7 @@ if args.runtests:
             os.environ["OPENFAM_TEST_OPT"] = ""
         else:
             os.environ["OPENFAM_TEST_COMMAND"] = openfam_install_path + \
-                "/third-party/build/bin/mpirun"
+                "/../third-party/build/bin/mpirun"
             os.environ["OPENFAM_TEST_OPT"] = (
                 "-n "
                 + str(npe) + " "
@@ -875,14 +880,14 @@ if args.runtests:
         )
 
     # Run regression and unit tests
-    cmd = "cd " + openfam_install_path + "/build; " + " make reg-test"
+    cmd = "cd " + openfam_install_path + "; " + " make reg-test"
     result = os.system(cmd)
     if (result >> 8) != 0:
         error_count = error_count + 1
         print('\033[1;31;40mERROR['+str(error_count) +
               ']: Regression test failed \033[0;37;40m')
         sys.exit(1)
-    cmd = "cd " + openfam_install_path + "/build; " + " make unit-test"
+    cmd = "cd " + openfam_install_path + "; " + " make unit-test"
     result = os.system(cmd)
     if (result >> 8) != 0:
         error_count = error_count + 1

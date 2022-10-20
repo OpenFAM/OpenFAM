@@ -2369,7 +2369,6 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_create_region(
 
     // Call get_regionid_from_bitmap to get regionID
     int ret = get_regionid_from_bitmap(regionid);
-
     if (ret == META_NO_FREE_REGIONID) {
         message << "Create region error : No free RegionID.";
         THROW_ERRNO_MSG(Metadata_Service_Exception, NO_FREE_POOLID,
@@ -2480,7 +2479,8 @@ void Fam_Metadata_Service_Direct::Impl_::
     }
 
     // Check if the interleave size if power of two
-    if (!is_power_of_two(region.interleaveSize)) {
+    if (region.interleaveEnable == ENABLE &&
+        !is_power_of_two(region.interleaveSize)) {
         message << "Interleave size is not power of two";
         THROW_ERRNO_MSG(Metadata_Service_Exception, INTERLV_SIZE_NOT_PWR_TWO,
                         message.str().c_str());
@@ -3126,7 +3126,7 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
         try {
             options["dataitem_interleave_size"] = (char *)strdup(
                 (info->get_key_value("dataitem_interleave_size")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["dataitem_interleave_size"] = (char *)strdup("1048576");
         }
