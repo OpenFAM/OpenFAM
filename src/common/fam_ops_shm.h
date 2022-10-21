@@ -273,7 +273,7 @@ class Fam_Ops_SHM : public Fam_Ops {
                            float value);
     double atomic_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                             double value);
-    void *context_open();
+    void context_open(uint64_t contextId, Fam_Ops *famOpsObj);
     void context_close(void *);
 
     uint32_t atomic_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,

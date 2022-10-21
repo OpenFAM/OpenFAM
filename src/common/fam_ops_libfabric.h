@@ -326,7 +326,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                               uint32_t value);
     uint64_t atomic_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
                               uint64_t value);
-    void context_open(uint64_t contextId);
+    void context_open(uint64_t contextId, Fam_Ops *famOpsObj);
     void context_close(uint64_t contextId);
     /**
      * Routines to access protected members
@@ -375,6 +375,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     uint64_t get_context_id() { return ctxId; };
 
     void set_context_id(uint64_t contextID) { ctxId = contextID; };
+    Fam_Context *get_context() { return ctxObj; };
+    void set_context(Fam_Context *ctx) { ctxObj = ctx; };
 
     pthread_rwlock_t *get_mr_lock() { return &fiMrLock; };
 
@@ -448,6 +450,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Allocator_Client *famAllocator;
+    Fam_Context *ctxObj;
 };
 } // namespace openfam
 #endif

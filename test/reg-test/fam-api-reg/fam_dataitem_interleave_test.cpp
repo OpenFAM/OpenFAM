@@ -39,6 +39,9 @@
 
 #define ITERATION 10
 #define FILE_MAX_LEN 255
+#define TEST_REGION_SIZE 104857600
+#define TEST_ALLOCATE_SIZE 16777216
+#define TEST_OFFSET 1048576
 
 using namespace std;
 using namespace openfam;
@@ -557,6 +560,121 @@ TEST(DataitemInterleaving, CreateDataitemRestoreSuccess) {
 
     free((void *)testRegion);
     free((void *)secondItem);
+    free((void *)firstItem);
+}
+TEST(DataitemInterleaving, AtomicCallsSuccess) {
+    Fam_Region_Descriptor *desc;
+    Fam_Descriptor *descriptor;
+    int32_t value = 0x444;
+    int64_t value1 = 0x1fffffffffffffff;
+    uint32_t value2 = 0xefffffff;
+    uint64_t value3 = 0x7fffffffffffffff;
+    float value4 = 4.3f;
+    double value5 = 4.4e+38;
+    int128_t value6 = 1;
+
+    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(
+                        testRegion, TEST_REGION_SIZE, 0777, NULL));
+    EXPECT_NE((void *)NULL, desc);
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(descriptor = my_fam->fam_allocate(
+                        firstItem, TEST_ALLOCATE_SIZE, 0777, desc));
+    EXPECT_NE((void *)NULL, descriptor);
+    EXPECT_NO_THROW(value = my_fam->fam_fetch_int32(descriptor, TEST_OFFSET));
+    EXPECT_NO_THROW(value1 = my_fam->fam_fetch_int64(descriptor, TEST_OFFSET));
+    EXPECT_NO_THROW(value2 = my_fam->fam_fetch_uint32(descriptor, TEST_OFFSET));
+    EXPECT_NO_THROW(value3 = my_fam->fam_fetch_uint64(descriptor, TEST_OFFSET));
+    EXPECT_NO_THROW(value4 = my_fam->fam_fetch_float(descriptor, TEST_OFFSET));
+    EXPECT_NO_THROW(value5 = my_fam->fam_fetch_double(descriptor, TEST_OFFSET));
+    EXPECT_NO_THROW(value6 = my_fam->fam_fetch_int128(descriptor, TEST_OFFSET));
+
+    EXPECT_NO_THROW((void)my_fam->fam_swap(descriptor, TEST_OFFSET, value));
+    EXPECT_NO_THROW((void)my_fam->fam_swap(descriptor, TEST_OFFSET, value1));
+    EXPECT_NO_THROW((void)my_fam->fam_swap(descriptor, TEST_OFFSET, value2));
+    EXPECT_NO_THROW((void)my_fam->fam_swap(descriptor, TEST_OFFSET, value3));
+    EXPECT_NO_THROW((void)my_fam->fam_swap(descriptor, TEST_OFFSET, value4));
+    EXPECT_NO_THROW((void)my_fam->fam_swap(descriptor, TEST_OFFSET, value5));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_compare_swap(descriptor, TEST_OFFSET, value, value));
+    EXPECT_NO_THROW((void)my_fam->fam_compare_swap(descriptor, TEST_OFFSET,
+                                                   value1, value1));
+    EXPECT_NO_THROW((void)my_fam->fam_compare_swap(descriptor, TEST_OFFSET,
+                                                   value2, value2));
+    EXPECT_NO_THROW((void)my_fam->fam_compare_swap(descriptor, TEST_OFFSET,
+                                                   value3, value3));
+    EXPECT_NO_THROW((void)my_fam->fam_compare_swap(descriptor, TEST_OFFSET,
+                                                   value6, value6));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_add(descriptor, TEST_OFFSET, value));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_add(descriptor, TEST_OFFSET, value1));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_add(descriptor, TEST_OFFSET, value2));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_add(descriptor, TEST_OFFSET, value3));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_add(descriptor, TEST_OFFSET, value4));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_add(descriptor, TEST_OFFSET, value5));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_subtract(descriptor, TEST_OFFSET, value));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_subtract(descriptor, TEST_OFFSET, value1));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_subtract(descriptor, TEST_OFFSET, value2));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_subtract(descriptor, TEST_OFFSET, value3));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_subtract(descriptor, TEST_OFFSET, value4));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_subtract(descriptor, TEST_OFFSET, value5));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_min(descriptor, TEST_OFFSET, value));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_min(descriptor, TEST_OFFSET, value1));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_min(descriptor, TEST_OFFSET, value2));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_min(descriptor, TEST_OFFSET, value3));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_min(descriptor, TEST_OFFSET, value4));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_min(descriptor, TEST_OFFSET, value5));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_and(descriptor, TEST_OFFSET, value2));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_and(descriptor, TEST_OFFSET, value3));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_max(descriptor, TEST_OFFSET, value));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_max(descriptor, TEST_OFFSET, value1));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_max(descriptor, TEST_OFFSET, value2));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_max(descriptor, TEST_OFFSET, value3));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_max(descriptor, TEST_OFFSET, value4));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_max(descriptor, TEST_OFFSET, value5));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_or(descriptor, TEST_OFFSET, value2));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_or(descriptor, TEST_OFFSET, value3));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_xor(descriptor, TEST_OFFSET, value2));
+    EXPECT_NO_THROW(
+        (void)my_fam->fam_fetch_xor(descriptor, TEST_OFFSET, value3));
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(descriptor));
+
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+    delete descriptor;
+    delete desc;
+
+    free((void *)testRegion);
     free((void *)firstItem);
 }
 
