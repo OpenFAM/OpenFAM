@@ -49,10 +49,7 @@ using int128_t = openfam::int128_t;
 typedef openfam::Fam_Region_Descriptor Region;
 typedef openfam::Fam_Descriptor Fd;
 typedef openfam::Fam_Exception Fam_Exception;
-typedef openfam::Fam_Stat Fam_Stat;
-typedef openfam::Fam_Options Fam_Options;
 typedef openfam::fam_context Fcont;
-typedef openfam::Fam_Backup_Options Fam_Backup_Options;
 
 enum States {
     FAILURE = -1,

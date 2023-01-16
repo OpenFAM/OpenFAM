@@ -34,6 +34,13 @@
 
 #include <stdint.h>
 #include <sys/stat.h>
+#include <fam/fam.h>
+
+// This header is being used in both C & C++. Hence, the extern "C"
+// is kept under __cplusplus macro.
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef int128_t
 #ifdef __int128
@@ -47,72 +54,25 @@ typedef long long int128_t;
 #endif // __int128
 #endif // int128_t
 
-// This header is being used in both C & C++. Hence, the extern "C"
-// is kept under __cplusplus macro.
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef void c_fam;
 typedef void c_fam_region_desc;
 typedef void c_fam_desc;
 typedef void c_fam_context;
 
-typedef struct {
-    char *defaultRegionName;
-    char *cisServer;
-    char *grpcPort;
-    char *libfabricProvider;
-    char *famThreadModel;
-    char *cisInterfaceType;
-    char *openFamModel;
-    char *famContextModel;
-    char *numConsumer;
-    char *runtime;
-    char *fam_default_memory_type;
-    char *if_device;
-} c_fam_options;
+typedef Fam_Options c_fam_options;
 
-typedef enum { 
-    INTERLEAVE_DEFAULT = 0, 
-    ENABLE, 
-    DISABLE 
-} c_fam_Interleave_Enable;
+typedef Fam_Interleave_Enable c_fam_Interleave_Enable;
 
-typedef enum { 
-    MEMORY_TYPE_DEFAULT = 0, 
-    VOLATILE, 
-    PERSISTENT 
-} c_fam_Memory_Type;
+typedef Fam_Memory_Type c_fam_Memory_Type;
 
-typedef enum { 
-    REDUNDANCY_LEVEL_DEFAULT = 0, 
-    NONE, 
-    RAID1, 
-    RAID5 
-} c_fam_Redundancy_Level;
+typedef Fam_Redundancy_Level c_fam_Redundancy_Level;
 
-typedef struct {
-    c_fam_Redundancy_Level redundancyLevel;
-    c_fam_Memory_Type memoryType;
-    c_fam_Interleave_Enable interleaveEnable;
-} c_fam_Region_Attributes;
+typedef Fam_Region_Attributes c_fam_Region_Attributes;
 
-typedef struct {
-    uint64_t size;
-    mode_t perm;
-    char* name;
-    uint32_t uid;
-    uint32_t gid;
-    c_fam_Region_Attributes region_attributes;
-    uint64_t num_memservers;
-    uint64_t interleaveSize;
-    uint64_t memory_servers[256];
-} c_fam_stat;
+typedef Fam_Stat c_fam_stat;
 
-typedef struct {
-    uint32_t backup_option_reserved;
-} c_fam_backup_options;
+typedef Fam_Backup_Options c_fam_backup_options;
 
 /* This method is used to create a FAM instance 
  * and returns a pointer to the FAM instance.
@@ -199,7 +159,7 @@ int c_fam_destroy_region(c_fam* fam_obj, c_fam_region_desc* region_desc);
 c_fam_desc* c_fam_allocate(c_fam* fam_obj, size_t size, mode_t perm,
                            c_fam_region_desc* region_desc);
 /**
- * Allocate some unnamed space within a region. Allocates an area of FAM
+ * Allocate some named space within a region. Allocates an area of FAM
  * within a region
  * @param fam_obj - FAM instance
  * @param name - name of the data item
