@@ -21,7 +21,7 @@
  #
 function (add_wrapper_test file_name)
     add_executable(${file_name} ${file_name}.c)
-    target_link_libraries(${file_name} c_api)
+    target_link_libraries(${file_name} openfam_c)
     IF (${TEST_RUNTIME} STREQUAL "PMIX")
         add_test(NAME ${file_name} COMMAND python3 ${PROJECT_SOURCE_DIR}/run_test.py ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
     ELSE()

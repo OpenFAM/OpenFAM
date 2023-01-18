@@ -23,4 +23,4 @@
 enable_testing()
 include_directories(${PROJECT_BINARY_DIR}/test) # private headers (test)
 add_custom_target(wrappers-test ${CMAKE_CTEST_COMMAND} --force-new-ctest-process)
-add_subdirectory(c_api)
+add_subdirectory(openfam_c)

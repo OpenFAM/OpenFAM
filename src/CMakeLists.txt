@@ -79,6 +79,6 @@ add_executable (metadata_server ${METADATA_SERVER_SRC})
 
 target_link_libraries(metadata_server yaml-cpp nvmm radixtree grpc grpc++ grpc++_reflection gpr protobuf boost_system fambitmap)
 
-add_library(c_api SHARED ${LIBC_API_SRC})
+add_library(openfam_c SHARED ${LIBOPENFAM_C_SRC})
 
-target_link_libraries(c_api openfam)
+target_link_libraries(openfam_c openfam)
