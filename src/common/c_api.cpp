@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2022-2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. 
  * 
  * Redistribution and use in source and binary forms, with or
@@ -38,7 +38,7 @@
 #include <sys/stat.h>
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
-#include <fam/fam_c.h>
+#include "fam/fam_c.h"
 #define INIT_SLEEP_TIME 100
 
 using namespace std;
