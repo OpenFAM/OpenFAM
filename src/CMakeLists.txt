@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -78,3 +78,7 @@ endif()
 add_executable (metadata_server ${METADATA_SERVER_SRC})
 
 target_link_libraries(metadata_server yaml-cpp nvmm radixtree grpc grpc++ grpc++_reflection gpr protobuf boost_system fambitmap)
+
+add_library(openfam_c SHARED ${LIBOPENFAM_C_SRC})
+
+target_link_libraries(openfam_c openfam)

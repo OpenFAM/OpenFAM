@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -69,6 +69,12 @@ set(METADATA_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
+  PARENT_SCOPE
+  )
+
+set(LIBOPENFAM_C_SRC
+  ${LIBOPENFAM_C_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/c_api.cpp
   PARENT_SCOPE
   )
 

@@ -1,6 +1,6 @@
 /*
  * fam.h
- * Copyright (c) 2017, 2018, 2020, 2021 Hewlett Packard Enterprise Development,
+ * Copyright (c) 2017, 2018, 2020-2023 Hewlett Packard Enterprise Development,
  * LP. All rights reserved. Redistribution and use in source and binary forms,
  * with or without modification, are permitted provided that the following
  * conditions are met:
@@ -72,35 +72,8 @@
 #include <sys/stat.h> // needed for mode_t
 
 #ifdef __cplusplus
-/** C++ Header
- *  The header is defined as a single interface containing all desired methods
- */
-namespace openfam {
-
-#define FAM_SUCCESS 0
-
-/**
- * Currently support for 128-bit integers is spotty in GCC since the C standard
- * does not appear to define it. The following will use __int128 if defined in
- * gcc, else change 128-bit declarations to "long long" May need to be changed
- * based on compiler support.
- * Also, in some machines macro __int128 is not defined, We can check for
- * defenition of __SIZEOF_INT128__ in those machines. Based on
- * https://stackoverflow.com/questions/16088282/is-there-a-128-bit-integer-in-gcc
- *
- */
-#ifndef int128_t
-#ifdef __int128
-typedef __int128 int128_t;
-#else
-#ifdef __SIZEOF_INT128__
-typedef __int128 int128_t;
-#else
-typedef long long int128_t;
-#endif // __SIZEOF_INT128__
-#endif // __int128t
-#endif // int128_t
-
+extern "C" {
+#endif
 /**
  * Enumeration defining interleaving options for FAM.
  */
@@ -173,7 +146,6 @@ typedef struct {
     uint64_t interleaveSize;
     uint64_t memory_servers[256];
 } Fam_Stat;
-
 /*
  * Fam_Backup_Options gives information backup options to be used while backing
  * up a data item.
@@ -182,6 +154,70 @@ typedef struct {
     /* As of now, this field is  reserved for future use.*/
     uint32_t backup_option_reserved;
 } Fam_Backup_Options;
+
+typedef struct {
+    /** Default region to be used within the program */
+    char *defaultRegionName;
+    /** CIS servers to be used by OpenFam PEs */
+    char *cisServer;
+    /** Port to be used by OpenFam for CIS server RPC connection */
+    char *grpcPort;
+    /** Libfabric provider to be used by OpenFam libfabric datapath operations;
+     * "sockets" by default */
+    char *libfabricProvider;
+    /** FAM thread model */
+    char *famThreadModel;
+    /** CIS interface to be used, Default is RPC, Supports Direct calls too */
+    char *cisInterfaceType;
+    /** OpenFAM model to be used; default is memory_server, Other option is
+     * shared_memory */
+    char *openFamModel;
+    /** FAM context model - Default, Region*/
+    char *famContextModel;
+    /** Number of consumer threads for shared memory model **/
+    char *numConsumer;
+    /** FAM runtime - Default, pmix*/
+    char *runtime;
+    /** Default memory type(Persistent/Volatile) for creating region **/
+    char *fam_default_memory_type;
+    /** Interface device used by the PE for communication */
+    char *if_device;
+} Fam_Options;
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
+/** C++ Header
+ *  The header is defined as a single interface containing all desired methods
+ */
+namespace openfam {
+
+#define FAM_SUCCESS 0
+
+/**
+ * Currently support for 128-bit integers is spotty in GCC since the C standard
+ * does not appear to define it. The following will use __int128 if defined in
+ * gcc, else change 128-bit declarations to "long long" May need to be changed
+ * based on compiler support.
+ * Also, in some machines macro __int128 is not defined, We can check for
+ * defenition of __SIZEOF_INT128__ in those machines. Based on
+ * https://stackoverflow.com/questions/16088282/is-there-a-128-bit-integer-in-gcc
+ *
+ */
+#ifndef int128_t
+#ifdef __int128
+typedef __int128 int128_t;
+#else
+#ifdef __SIZEOF_INT128__
+typedef __int128 int128_t;
+#else
+typedef long long int128_t;
+#endif // __SIZEOF_INT128__
+#endif // __int128t
+#endif // int128_t
+
+
 /**
  * Structure defining a FAM descriptor. Descriptors are PE independent data
  * structures that enable the OpenFAM library to uniquely locate an area of
@@ -296,34 +332,6 @@ class Fam_Region_Descriptor {
  * the library. It is expected to evolve over time as the library is
  * implemented. Currently defined options are included below.
  */
-typedef struct {
-    /** Default region to be used within the program */
-    char *defaultRegionName;
-    /** CIS servers to be used by OpenFam PEs */
-    char *cisServer;
-    /** Port to be used by OpenFam for CIS server RPC connection */
-    char *grpcPort;
-    /** Libfabric provider to be used by OpenFam libfabric datapath operations;
-     * "sockets" by default */
-    char *libfabricProvider;
-    /** FAM thread model */
-    char *famThreadModel;
-    /** CIS interface to be used, Default is RPC, Supports Direct calls too */
-    char *cisInterfaceType;
-    /** OpenFAM model to be used; default is memory_server, Other option is
-     * shared_memory */
-    char *openFamModel;
-    /** FAM context model - Default, Region*/
-    char *famContextModel;
-    /** Number of consumer threads for shared memory model **/
-    char *numConsumer;
-    /** FAM runtime - Default, pmix*/
-    char *runtime;
-    /** Default memory type(Persistent/Volatile) for creating region **/
-    char *fam_default_memory_type;
-    /** Interface device used by the PE for communication */
-    char *if_device;
-} Fam_Options;
 
 class fam_context;
 
