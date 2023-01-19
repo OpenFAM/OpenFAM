@@ -62,10 +62,51 @@ TEST(DataitemInterleaving, PutGetSuccess) {
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(item =
                         my_fam->fam_allocate(firstItem, 16777216, 0777, desc));
     EXPECT_NE((void *)NULL, item);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     uint64_t INTERLEAVE_SIZE = item->get_interleave_size();
 
@@ -108,14 +149,56 @@ TEST(DataitemInterleaving, PutGetNonblockSuccess) {
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
+    cout << "Creating the region" << endl;
     EXPECT_NO_THROW(
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
+
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     // Allocating data items in the created region
     EXPECT_NO_THROW(item =
                         my_fam->fam_allocate(firstItem, 16777216, 0777, desc));
     EXPECT_NE((void *)NULL, item);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     uint64_t INTERLEAVE_SIZE = item->get_interleave_size();
 
@@ -164,10 +247,51 @@ TEST(DataitemInterleaving, ScatterGatherStrideBlockSuccess) {
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(item =
                         my_fam->fam_allocate(firstItem, 10485760, 0777, desc));
     EXPECT_NE((void *)NULL, item);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     // allocate an integer array and initialize it
     int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
@@ -205,10 +329,51 @@ TEST(DataitemInterleaving, ScatterGatherStrideNonblockSuccess) {
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(item =
                         my_fam->fam_allocate(firstItem, 10485760, 0777, desc));
     EXPECT_NE((void *)NULL, item);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     // allocate an integer array and initialize it
     int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
@@ -250,10 +415,51 @@ TEST(DataitemInterleaving, ScatterGatherIndexBlockSuccess) {
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(item =
                         my_fam->fam_allocate(firstItem, 10485760, 0777, desc));
     EXPECT_NE((void *)NULL, item);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     // allocate an integer array and initialize it
     int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
@@ -289,10 +495,51 @@ TEST(DataitemInterleaving, ScatterGatherIndexNonblockSuccess) {
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(item =
                         my_fam->fam_allocate(firstItem, 10485760, 0777, desc));
     EXPECT_NE((void *)NULL, item);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     // allocate an integer array and initialize it
     int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
@@ -335,10 +582,55 @@ TEST(DataitemInterleaving, Copy) {
                                                         104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, srcDesc);
 
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(srcDesc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+
+        delete srcDesc;
+
+        free((void *)info);
+        free((void *)srcRegionName);
+        free((void *)srcItemName);
+        free((void *)destRegionName);
+        free((void *)destItemName);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(
         srcItem = my_fam->fam_allocate(srcItemName, 16777216, 0777, srcDesc));
     EXPECT_NE((void *)NULL, srcItem);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(srcItem, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+
+        delete srcItem;
+        delete srcDesc;
+
+        free((void *)info);
+        free((void *)srcRegionName);
+        free((void *)srcItemName);
+        free((void *)destRegionName);
+        free((void *)destItemName);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     uint64_t INTERLEAVE_SIZE = srcItem->get_interleave_size();
 
@@ -358,6 +650,31 @@ TEST(DataitemInterleaving, Copy) {
                         destRegionName, 536870912, 0777, NULL));
     EXPECT_NE((void *)NULL, destDesc);
 
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(destDesc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(destDesc));
+
+        delete srcItem;
+        delete srcDesc;
+        delete destDesc;
+
+        free((void *)info);
+        free((void *)srcRegionName);
+        free((void *)srcItemName);
+        free((void *)destRegionName);
+        free((void *)destItemName);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     for (int i = 0; i < ITERATION; i++) {
         // Allocating data items in the created region
         char itemInfo[255];
@@ -365,6 +682,40 @@ TEST(DataitemInterleaving, Copy) {
         EXPECT_NO_THROW(destItem[i] = my_fam->fam_allocate(itemInfo, 16777216,
                                                            0777, destDesc));
         EXPECT_NE((void *)NULL, destItem[i]);
+    }
+
+    bool skip = false;
+    for (int i = 0; i < ITERATION; i++) {
+        memset(info, 0, sizeof(Fam_Stat));
+        EXPECT_NO_THROW(my_fam->fam_stat(destItem[i], info));
+
+        if (info->num_memservers < 2)
+            skip = true;
+    }
+
+    if (skip) {
+        for (int i = 0; i < ITERATION; i++) {
+            EXPECT_NO_THROW(my_fam->fam_deallocate(destItem[i]));
+            delete destItem[i];
+        }
+
+        EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(destDesc));
+
+        delete srcItem;
+        delete srcDesc;
+        delete destDesc;
+
+        free((void *)info);
+        free((void *)srcRegionName);
+        free((void *)srcItemName);
+        free((void *)destRegionName);
+        free((void *)destItemName);
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+        GTEST_SKIP();
     }
     EXPECT_NO_THROW(
         my_fam->fam_put_blocking(local, srcItem, 4096, 6 * INTERLEAVE_SIZE));
@@ -401,6 +752,7 @@ TEST(DataitemInterleaving, Copy) {
     delete srcDesc;
     delete destDesc;
 
+    free((void *)info);
     free((void *)srcRegionName);
     free((void *)srcItemName);
     free((void *)destRegionName);
@@ -417,10 +769,51 @@ TEST(DataitemInterleaving, BackupSuccess) {
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(item =
                         my_fam->fam_allocate(firstItem, 16777216, 0777, desc));
     EXPECT_NE((void *)NULL, item);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     backupInterleaveSize = item->get_interleave_size();
 
@@ -474,10 +867,51 @@ TEST(DataitemInterleaving, RestoreSuccess) {
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(item =
                         my_fam->fam_allocate(firstItem, 16777216, 0777, desc));
     EXPECT_NE((void *)NULL, item);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     void *waitobj;
     EXPECT_NO_THROW(waitobj = my_fam->fam_restore(backupName, item));
@@ -510,6 +944,7 @@ TEST(DataitemInterleaving, RestoreSuccess) {
 
     free((void *)testRegion);
 
+    free((void *)info);
     free((void *)firstItem);
     free((void *)secondItem);
 }
@@ -525,6 +960,25 @@ TEST(DataitemInterleaving, CreateDataitemRestoreSuccess) {
     EXPECT_NO_THROW(
         desc = my_fam->fam_create_region(testRegion, 104857600, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
+
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
 
     char *local = (char *)malloc(6 * backupInterleaveSize);
     memset(local, 'a', backupInterleaveSize);
@@ -547,6 +1001,28 @@ TEST(DataitemInterleaving, CreateDataitemRestoreSuccess) {
 
     EXPECT_NE((void *)NULL, waitobj);
     EXPECT_NO_THROW(my_fam->fam_restore_wait(waitobj));
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(item, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete item;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Restoring is complete. Now get the content of restored data item
     char *local2 = (char *)malloc(6 * backupInterleaveSize);
     EXPECT_NO_THROW(
@@ -558,6 +1034,7 @@ TEST(DataitemInterleaving, CreateDataitemRestoreSuccess) {
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
+    free((void *)info);
     free((void *)testRegion);
     free((void *)secondItem);
     free((void *)firstItem);
@@ -579,10 +1056,53 @@ TEST(DataitemInterleaving, AtomicCallsSuccess) {
     EXPECT_NO_THROW(desc = my_fam->fam_create_region(
                         testRegion, TEST_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
+
+    Fam_Stat *info = (Fam_Stat *)malloc(sizeof(Fam_Stat));
+
+    EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Region is not spanning across multiple servers, skipping with "
+                "status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     // Allocating data items in the created region
     EXPECT_NO_THROW(descriptor = my_fam->fam_allocate(
                         firstItem, TEST_ALLOCATE_SIZE, 0777, desc));
     EXPECT_NE((void *)NULL, descriptor);
+
+    memset(info, 0, sizeof(Fam_Stat));
+    EXPECT_NO_THROW(my_fam->fam_stat(descriptor, info));
+
+    if (info->num_memservers < 2) {
+        EXPECT_NO_THROW(my_fam->fam_deallocate(descriptor));
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+        delete descriptor;
+        delete desc;
+
+        free((void *)info);
+        free((void *)testRegion);
+        free((void *)firstItem);
+
+        cout << "Data item is not interleaved across multiple servers, "
+                "skipping with status : "
+             << TEST_SKIP_STATUS << endl;
+
+        GTEST_SKIP();
+    }
+
     EXPECT_NO_THROW(value = my_fam->fam_fetch_int32(descriptor, TEST_OFFSET));
     EXPECT_NO_THROW(value1 = my_fam->fam_fetch_int64(descriptor, TEST_OFFSET));
     EXPECT_NO_THROW(value2 = my_fam->fam_fetch_uint32(descriptor, TEST_OFFSET));
@@ -674,6 +1194,7 @@ TEST(DataitemInterleaving, AtomicCallsSuccess) {
     delete descriptor;
     delete desc;
 
+    free((void *)info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
