@@ -59,7 +59,7 @@ echo "Downloading OPENMPI source"
 wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.1.tar.gz
 tar -zxvf openmpi-4.0.1.tar.gz >/dev/null
 
-#GOOGLETEST 
+#GOOGLETEST
 cd $CURRENT_DIR
 echo "Downloading GOOGLETEST source"
 git clone --branch v1.10.x https://github.com/google/googletest.git googletest_v1_10_x
@@ -70,16 +70,19 @@ rm -fr googletest_v1_10_x
 #TODO: Replace with right NVMM branch before release
 cd $CURRENT_DIR
 echo "Downloading NVMM source"
-#git clone https://github.com/HewlettPackard/gull.git nvmm
-git clone -b devel https://github.com/HewlettPackard/gull.git nvmm
+git clone https://github.com/HewlettPackard/gull.git nvmm
+#git clone -b devel https://github.com/HewlettPackard/gull.git nvmm
 cd nvmm
-#git fetch --all --tags --prune
-#git checkout tags/v0.1 -b openfam
+git fetch --all --tags --prune
+git checkout tags/v0.2 -b openfam
 
 #Radixtree
 cd $CURRENT_DIR
 echo "Downloading radixtree source"
 git clone https://github.com/HewlettPackard/meadowlark.git radixtree
+cd radixtree
+git fetch --all --tags --prune
+git checkout tags/v0.1 -b openfam
 
 cd $CURRENT_DIR
 echo "Done..............."

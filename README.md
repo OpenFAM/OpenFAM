@@ -9,7 +9,7 @@ OpenFAM is is an API designed for clusters that contain disaggregated memory. Th
 * We are initially not assuming fault tolerance in the implementation of the OpenFAM library.
 
 
-## Building(Ubuntu 18.04 LTS)
+## Building(Ubuntu 20.04 LTS)
 
 1. Download the source code by cloning the repository. If you wish to contribute changes back to OpenFAM, follow the [contribution guidelines](/CONTRIBUTING.md).
 
