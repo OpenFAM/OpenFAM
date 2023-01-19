@@ -50,10 +50,17 @@ print_help() {
 	echo ""
 	echo "--no-parallel-make	: Do not use make -j (preferred option in low memory systems)"
 	echo ""
+	echo "--use-system-pmix		: use this if want system installed pmix as third-party package in openfam"
+	echo ""
+	echo "--use-system-openmpi	: use this if want system installed openmpi as third-party package in openfam"
+	echo ""
+	echo "--use-system-libfabric	: use this if want system installedlibfabric as third-party package in openfam"
+	echo ""
+	echo ""
     exit
 }
 
-
+args=$@
 while :; do
     case $1 in
         -h|-\?|--help)
@@ -64,6 +71,15 @@ while :; do
 			;;
 		--no-parallel-make)
 			no_parallel_make=true
+			;;
+		--use-system-pmix)
+			no_pmix=true
+			;;
+		--use-system-openmpi)
+			no_openmpi=true
+			;;
+		--use-system-libfabric)
+			no_libfabric=true
 			;;
 		*)
             break
@@ -113,19 +129,19 @@ if [ ! -d "$OBJ_DIR" ]; then
 fi
 
 #Download all dependency source files
-./download.sh
+./download.sh $args
 #Function for checking ubuntu release version
 function get_os_release_version(){
     cat /etc/issue | tr "\\n" " "
 }
 
-ubuntu18_package_list="build-essential cmake autoconf libtool pkg-config libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-dev libpmem-dev libpmem1 libboost-all-dev python python3 python-pip python3-pip"
+ubuntu18_package_list="build-essential cmake autoconf libtool pkg-config libpthread-stubs0-dev libevent-2.1-6 libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libyaml-cpp-dev libpmem-dev libpmem1 libboost-all-dev python python3 python-pip python3-pip libssl-dev"
 
 ubuntu20_package_list="build-essential cmake autoconf libtool pkg-config libyaml-cpp-dev python3 python3-pip libevent-dev flex hwloc libhwloc-dev libhwloc-plugins libpmem-dev libpmem1 libboost-all-dev python3 python3-pip libssl-dev"
 
-rhel8_package_list="gcc gcc-c++ python3 python3-pip cmake make kernel-devel libevent libevent-devel glibc automake epel-release boost-devel-1.66.0 libpmem libpmem-devel yaml-cpp yaml-cpp-devel flex"
+rhel8_package_list="gcc gcc-c++ python3 python3-pip cmake make kernel-devel libevent libevent-devel glibc automake epel-release boost-devel-1.66.0 libpmem libpmem-devel yaml-cpp yaml-cpp-devel flex openssl-devel"
 
-sles15_sp3_package_list="gcc gcc-c++ make cmake python3 python3-pip autoconf yaml-cpp-devel libtool libevent libevent-devel flex libpmem1 libpmem-devel libboost_system1_66_0-devel libboost_thread1_66_0-devel libboost_filesystem1_66_0-devel libboost_headers1_66_0-devel libboost_context1_66_0-devel libboost_program_options1_66_0-devel libboost_log1_66_0-devel"
+sles15_sp3_package_list="gcc gcc-c++ make cmake python3 python3-pip autoconf yaml-cpp-devel libtool libevent libevent-devel flex libpmem1 libpmem-devel libboost_system1_66_0-devel libboost_thread1_66_0-devel libboost_filesystem1_66_0-devel libboost_headers1_66_0-devel libboost_context1_66_0-devel libboost_program_options1_66_0-devel libboost_log1_66_0-devel libopenssl-devel"
 
 #Install dependency packages
 OS=`grep -m1 "^ID=" /etc/os-release | sed 's/"//g' | sed 's/ID=//g' `
@@ -220,7 +236,7 @@ git submodule update --init
 
 mkdir -p cmake/build
 cd cmake/build
-cmake ../.. -DBUILD_SHARED_LIBS=ON -DgRPC_INSTALL=ON -DCMAKE_INSTALL_PREFIX=$ABS_BUILD_DIR -DABSL_ENABLE_INSTALL=ON
+cmake ../.. -DgRPC_SSL_PROVIDER=package -DBUILD_SHARED_LIBS=ON -DgRPC_INSTALL=ON -DCMAKE_INSTALL_PREFIX=$ABS_BUILD_DIR -DABSL_ENABLE_INSTALL=ON
 #cmake ../.. -DgRPC_INSTALL=ON -DCMAKE_INSTALL_PREFIX=$ABS_BUILD_DIR
 $MAKE_CMD
 if [[ $? > 0 ]]
@@ -238,6 +254,7 @@ then
 fi
 
 #installing protocol buffer
+
 cd ../../third_party/protobuf
 if [[ ! -f "$ABS_BUILD_DIR/bin/protoc" ]]; then
     ./autogen.sh
@@ -250,40 +267,48 @@ if [[ ! -f "$ABS_BUILD_DIR/bin/protoc" ]]; then
         exit 1
     fi
 else
-    echo "$ABS_BUILD_DIR/bin/protoc is already present"	
+    echo "$ABS_BUILD_DIR/bin/protoc is already present"
 fi
 
-cd $CURRENT_DIR
-#PMIX and PRRTE Build
-cd pmix-3.1.2
-./autogen.pl --force
-PMIX_OBJ_DIR="$CURRENT_DIR/$BUILD_DIR"
-./configure --prefix=$PMIX_OBJ_DIR --with-platform=optimized
-make all install
-cd $CURRENT_DIR
-
-
-cd openmpi-4.0.1
-OPENMPI_OBJ_DIR="$CURRENT_DIR/$BUILD_DIR"
-case $OS in
-        "ubuntu")
-
-            ./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR"
-            ;;
-        "rhel" | "centos" | "rocky")
-            ./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR" --with-libevent=external      
-	    ;;
-	"opensuse-leap" | "sles")
-	    ./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR" --with-libevent=external 
-	    ;;
-esac
-
-$MAKE_CMD
-make install
-if [[ $? > 0 ]]
+if [ "$no_pmix" == "true" ]
 then
-        echo "Make all install of openmpi failed.. exit..."
-        exit 1
+    echo "Please provide PMIX_PATH while building openfam"
+else
+	cd $CURRENT_DIR
+	#PMIX and PRRTE Build
+	cd pmix-3.1.2
+	./autogen.pl --force
+	PMIX_OBJ_DIR="$CURRENT_DIR/$BUILD_DIR"
+	./configure --prefix=$PMIX_OBJ_DIR --with-platform=optimized
+	make all install
+fi
+
+if [ "$no_openmpi" == "true" ]
+then
+    echo "System openmpi library will be used"
+else
+	cd $CURRENT_DIR
+	cd openmpi-4.0.1
+	OPENMPI_OBJ_DIR="$CURRENT_DIR/$BUILD_DIR"
+	case $OS in
+		"ubuntu")
+			./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR"
+		;;
+		"rhel" | "centos" | "rocky")
+			./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR" --with-libevent=external
+		;;
+		"opensuse-leap" | "sles")
+			./configure --prefix="$CURRENT_DIR/$BUILD_DIR" --with-pmix="$CURRENT_DIR/$BUILD_DIR" --with-pmi-libdir="$CURRENT_DIR/$BUILD_DIR" --with-libevent=external
+		;;
+	esac
+
+	$MAKE_CMD
+	make install
+	if [[ $? > 0 ]]
+	then
+		echo "Make all install of openmpi failed.. exit..."
+		exit 1
+	fi
 fi
 cd $CURRENT_DIR
 export CMAKE_PREFIX_PATH=$ABS_BUILD_DIR/include:$ABS_BUILD_DIR/lib
@@ -303,20 +328,24 @@ cd ..
 cp build/src/libnvmm.so ../$LIB_DIR/.
 cp -r include/nvmm ../$INCLUDE_DIR/.
 
-cd $CURRENT_DIR
-
-#Build and Install libfabric
-INSTALLDIR="$CURRENT_DIR/build"
-
-
-cd libfabric/
-
-./autogen.sh ;
-./configure; $MAKE_CMD
-if [[ $? > 0 ]]
+if [ "$no_libfabric" == "true" ]
 then
-        echo "Make of libfabric failed.. exit..."
-        exit 1
+    echo "Please provide LIBFABRIC_PATH while building openfam"
+else
+	cd $CURRENT_DIR
+
+	#Build and Install libfabric
+	INSTALLDIR="$CURRENT_DIR/build"
+
+	cd libfabric/
+
+	./autogen.sh ;
+	./configure; $MAKE_CMD
+	if [[ $? > 0 ]]
+	then
+        	echo "Make of libfabric failed.. exit..."
+        	exit 1
+	fi
 fi
 
 make install prefix=$INSTALLDIR
