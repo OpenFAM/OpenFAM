@@ -4,6 +4,31 @@ OpenFAM Release Notes
 
 This file contains user visible OpenFAM changes
 
+v3.0.0
+------
+ - Added support for volatile and persistent memory types.
+ - Multi-threaded support has been added that enables OpenFAM to be used with
+   multi-threaded applications.
+ - Performance improvements: Data item interleaving feature has been added in
+   which a given data item will span across multiple memory servers. This has
+   been done to uniformly distribute the load across multiple memory servers,
+   thus reducing the network bottlenecks, and thereby improving the overall
+   performance. Data item interleaving is enabled by default.
+ - Added support for multiple contexts. The data path APIs (get,put, scatter,
+   gather and atomics) can be invoked from user defined contexts.
+ - OpenFAM APIs changes:
+   - fam_create_region API has been modified. Region specific attributes like
+     redundancyLevel, etc should now be specified using a structure called
+	 Fam_Region_Attributes.
+   - Two new APIs have been added to support multiple contexts namely
+     fam_context_open() and fam_context_close(). These APIs provide the
+	 flexibility to threads to invoke data path operations in parallel.
+   - A new API fam_progress has been provided that returns the count of pending
+     data path and atomic operations.
+   - Few APIs have been added to enable backing up and restoring of data items
+     namely - fam_backup() and fam_restore(). An API has been provided to delete
+	 the unused backup in the memory server.
+
 v2.0.1
 ------
  - Fam Option "runtime" was not being fetched from config file. It was using 
