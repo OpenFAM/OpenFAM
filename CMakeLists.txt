@@ -150,7 +150,7 @@ else()
        set (USE_CONFIG_OPTIONS "1")
        message(STATUS "Tests use Fam options/config files")
 endif()
-	
+
 IF (${CMAKE_MAJOR_VERSION} GREATER 2)
         set( TEST_SKIP_STATUS 77 )
 ELSE ()

@@ -37,27 +37,42 @@ cd grpc
 git fetch --all --tags --prune
 git checkout tags/v1.39.0 -b openfam
 
-#LIBFABRIC v1.14.0
-cd $CURRENT_DIR
-echo "Downloading LIBFABRIC source"
-git clone https://github.com/ofiwg/libfabric.git
-cd libfabric
-git fetch --all --tags --prune
-git checkout tags/v1.14.0 -b openfam
+if [ "$no_libfabric" == "true" ]
+then
+    echo "Please provide LIBFABRIC_PATH while building openfam"
+else
+	#LIBFABRIC v1.14.0
+	cd $CURRENT_DIR
+	echo "Downloading LIBFABRIC source"
+	git clone https://github.com/ofiwg/libfabric.git
+	cd libfabric
+	git fetch --all --tags --prune
+	git checkout tags/v1.14.0 -b openfam
+fi
 
-#PMIX v3.0.2
-cd $CURRENT_DIR
-echo "Downloading PMIX source"
-git clone https://github.com/openpmix/openpmix.git pmix-3.1.2
-cd pmix-3.1.2
-git fetch --all --tags --prune
-git checkout tags/v3.1.2 -b openfam
+if [ "$no_pmix" == "true" ]
+then
+    echo "Please provide PMIX_PATH while building openfam"
+else
+	#PMIX v3.0.2
+	cd $CURRENT_DIR
+	echo "Downloading PMIX source"
+	git clone https://github.com/openpmix/openpmix.git pmix-3.1.2
+	cd pmix-3.1.2
+	git fetch --all --tags --prune
+	git checkout tags/v3.1.2 -b openfam
+fi
 
-#OPENMPI v4.0.1
-cd $CURRENT_DIR
-echo "Downloading OPENMPI source"
-wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.1.tar.gz
-tar -zxvf openmpi-4.0.1.tar.gz >/dev/null
+if [ "$no_openmpi" == "true" ]
+then
+    echo "System openmpi library will be used"
+else
+	#OPENMPI v4.0.1
+	cd $CURRENT_DIR
+	echo "Downloading OPENMPI source"
+	wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.1.tar.gz
+	tar -zxvf openmpi-4.0.1.tar.gz >/dev/null
+fi
 
 #GOOGLETEST
 cd $CURRENT_DIR
