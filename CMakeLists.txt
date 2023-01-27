@@ -114,6 +114,7 @@ include_directories(${PROJECT_SOURCE_DIR}/third-party/googletest/include)
 #
 include_directories(${PROJECT_SOURCE_DIR}/include) # public headers (include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/build/include) # third-party headers (include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/grpc/third_party/abseil-cpp/)
 include_directories(${PROJECT_SOURCE_DIR}/test/util) # utility functions
 include_directories(${PROJECT_SOURCE_DIR}/src) # private headers (src)
 include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
@@ -123,10 +124,21 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
 link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib) # third-party libraries
 link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib64) # third-party libraries
 
+if(LIBFABRIC_PATH)
+    include_directories(${LIBFABRIC_PATH}/include)
+    link_directories(${LIBFABRIC_PATH}/lib64)
+    link_directories(${LIBFABRIC_PATH}/lib)
+endif()
+if(PMIX_PATH)
+    include_directories(${PMIX_PATH}/include)
+    link_directories(${PMIX_PATH}/lib)
+endif()
+
 #
 # default system include and link directories
 #
 link_directories(/usr/lib)
+link_directories(/usr/lib64)
 include_directories(/usr/include)
 link_directories(/usr/local/lib)
 include_directories(/usr/local/include)
@@ -200,7 +212,6 @@ add_subdirectory(test/microbench)
 add_subdirectory(test/apps)
 add_subdirectory(test/permission-test)
 add_subdirectory(test/services-test)
-add_subdirectory(test/wrappers-test)
 add_subdirectory(examples/api)
 
 #install openfam_adm in bin directory
