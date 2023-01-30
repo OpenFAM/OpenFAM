@@ -28,6 +28,58 @@
 # See https://spdx.org/licenses/BSD-3-Clause
 #
 
+print_help() {
+    tput bold
+    echo "SYNOPSIS :"
+    tput reset
+    echo ""
+    echo "./download.sh <options>"
+        echo ""
+    tput bold
+    echo "OPTIONS :"
+    tput reset
+        echo ""
+        echo "--no-package-install      : Do not install any packages"
+        echo ""
+        echo ""
+        echo "--no-parallel-make        : Do not use make -j (preferred option in low memory systems)"
+        echo ""
+        echo "--use-system-pmix         : use this if want system installed pmix as third-party package in openfam"
+        echo ""
+        echo "--use-system-openmpi      : use this if want system installed openmpi as third-party package in openfam"
+        echo ""
+        echo "--use-system-libfabric    : use this if want system installedlibfabric as third-party package in openfam"
+        echo ""
+        echo ""
+    exit
+}
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            print_help
+            ;;
+                --no-package-install)
+                        no_package_install=true
+                        ;;
+                --no-parallel-make)
+                        no_parallel_make=true
+                        ;;
+                --use-system-pmix)
+                        no_pmix=true
+                        ;;
+                --use-system-openmpi)
+                        no_openmpi=true
+                        ;;
+                --use-system-libfabric)
+                        no_libfabric=true
+                        ;;
+                *)
+            break
+        esac
+
+        shift
+done
+
 CURRENT_DIR=`pwd`
 
 #GRPC v1.39.0

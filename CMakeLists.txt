@@ -212,6 +212,7 @@ add_subdirectory(test/microbench)
 add_subdirectory(test/apps)
 add_subdirectory(test/permission-test)
 add_subdirectory(test/services-test)
+add_subdirectory(test/wrappers-test)
 add_subdirectory(examples/api)
 
 #install openfam_adm in bin directory
