@@ -10,9 +10,9 @@ OpenFAM is is an API designed for clusters that contain disaggregated memory. Th
 
 
 ## Supported OS
-   a. SUSE Linux Enterprise Server 15 SP3.
-   b. Ubuntu 20.04 LTS.
-   c. RHEL 8.x.
+   a. SUSE Linux Enterprise Server 15 SP3  
+   b. Ubuntu 20.04 LTS  
+   c. RHEL 8.x  
 
 ## Building(Ubuntu 20.04 LTS)
 
