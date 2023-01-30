@@ -9,6 +9,11 @@ OpenFAM is is an API designed for clusters that contain disaggregated memory. Th
 * We are initially not assuming fault tolerance in the implementation of the OpenFAM library.
 
 
+## Supported OS
+* SUSE Linux Enterprise Server 15 SP3  
+* Ubuntu 20.04 LTS  
+* RHEL 8.x  
+
 ## Building(Ubuntu 20.04 LTS)
 
 1. Download the source code by cloning the repository. If you wish to contribute changes back to OpenFAM, follow the [contribution guidelines](/CONTRIBUTING.md).
