@@ -9,6 +9,11 @@ OpenFAM is is an API designed for clusters that contain disaggregated memory. Th
 * We are initially not assuming fault tolerance in the implementation of the OpenFAM library.
 
 
+## Supported OS
+   a. SUSE Linux Enterprise Server 15 SP3
+   b. Ubuntu 20.04 LTS
+   c. RHEL 8.x
+
 ## Building(Ubuntu 20.04 LTS)
 
 1. Download the source code by cloning the repository. If you wish to contribute changes back to OpenFAM, follow the [contribution guidelines](/CONTRIBUTING.md).
@@ -132,9 +137,5 @@ $ cd OpenFAM
 	```
  	$ ./build_and_test.sh
  	```
-7. Supported OS
-   a. SUSE Linux Enterprise Server 15 SP3
-   b. Ubuntu 20.04 LTS
-   c. RHEL 8.x
 
 Note: cmake command should be re-run if fam\_rpc.proto file is modified to generate updated fam\_rpc.grpc.pb.cc and fam_rpc.pb.cc files
