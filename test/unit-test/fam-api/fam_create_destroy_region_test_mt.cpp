@@ -50,21 +50,21 @@ void *thr_func(void *arg) {
 
     string name;
     name = "test" + to_string(rand());
-    desc1 = my_fam->fam_create_region(name.c_str(), 8192, 0777, RAID1);
+    desc1 = my_fam->fam_create_region(name.c_str(), 8192, 0777, NULL);
     if (desc1 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
     name = "test" + to_string(rand());
-    desc2 = my_fam->fam_create_region(name.c_str(), 8192, 0777, RAID1);
+    desc2 = my_fam->fam_create_region(name.c_str(), 8192, 0777, NULL);
     if (desc2 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
     name = "test" + to_string(rand());
-    desc3 = my_fam->fam_create_region(name.c_str(), 8192, 0777, RAID1);
+    desc3 = my_fam->fam_create_region(name.c_str(), 8192, 0777, NULL);
     if (desc3 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -80,14 +80,14 @@ void *thr_func(void *arg) {
         my_fam->fam_destroy_region(desc2);
 
     name = "test" + to_string(rand());
-    desc1 = my_fam->fam_create_region(name.c_str(), 8192, 0777, RAID1);
+    desc1 = my_fam->fam_create_region(name.c_str(), 8192, 0777, NULL);
     if (desc1 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
     }
 
     name = "test" + to_string(rand());
-    desc2 = my_fam->fam_create_region(name.c_str(), 8192, 0777, RAID1);
+    desc2 = my_fam->fam_create_region(name.c_str(), 8192, 0777, NULL);
     if (desc2 == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);

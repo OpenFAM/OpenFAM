@@ -1,7 +1,7 @@
 # OpenFAM
 Recent technology advances in high-density, byte-addressable non-volatile memory (NVM) and low-latency interconnects have enabled building large-scale systems with a large disaggregated fabric-attached memory (FAM) pool shared across heterogeneous and decentralized compute nodes. In this model, compute nodes are decoupled from FAM, which allows separate evolution and scaling of processing and memory. Thus, the compute-to-memory ratio can be tailored to the specific needs of the workload. Compute nodes fail independently of FAM, and these separate fault domains provide a partial failure model that avoids a complete system shutdown in the event of a component failure. When a compute node fails, updates propagated to FAM remain visible to other compute nodes.
 
-OpenFAM is is an API designed for clusters that contain disaggregated memory. The primary purpose of the reference implementation at this site is to enable experimentation with the OpenFAM API, with the broader goal of gathering feedback from the community on how the API should evolve. The reference implementation, thus, is designed to run on standard commercially available servers. More documentation about the API itself is available [here](https://openfam.github.io/)
+OpenFAM is is an API designed for clusters that contain disaggregated memory. The primary purpose of the reference implementation at this site is to enable experimentation with the OpenFAM API, with the broader goal of gathering feedback from the community on how the API should evolve. The reference implementation, thus, is designed to run on standard commercially available servers. More documentation about the API itself is available [here](https://ba-ramya.github.io/OpenFAM.github.io)
 
 ## Assumptions
 * We assume that the fabric attached memory is modelled using memory servers implemented using standard hardware that expose their memory as FAM to other servers. Unlike target architectures, a memory server is an active entity on the FAM side, and participates in managing FAM-resident data. We also assume that RDMA transports are available to efficiently access the memory exposed by the memory servers. To the extent possible, we are using standard RDMA and communication libraries that are being developed in the community in our implementation.
@@ -9,43 +9,30 @@ OpenFAM is is an API designed for clusters that contain disaggregated memory. Th
 * We are initially not assuming fault tolerance in the implementation of the OpenFAM library.
 
 
-## Building(Ubuntu 18.04 LTS)
+## Supported OS
+* SUSE Linux Enterprise Server 15 SP3  
+* Ubuntu 20.04 LTS  
+* RHEL 8.x  
 
-1. Download the source code by cloning the repository. If you wish to contribute changes back to OpenFAM, follow the [contribution guidelines](https://github.com/OpenFAM/OpenFAM/blob/master/CONTRIBUTING.md).
+## Building(Ubuntu 20.04 LTS)
 
-2. Change into the source directory (assuming the code is at directory ```$OpenFAM```):
+1. Download the source code by cloning the repository. If you wish to contribute changes back to OpenFAM, follow the [contribution guidelines](/CONTRIBUTING.md).
 
 ```
-$ cd $OpenFAM
+$ git clone https://github.com/OpenFAM/OpenFAM.git
 ```
 
-3. Build third-party dependencies as described in the [README](https://github.com/OpenFAM/OpenFAM/tree/master/third-party) under the third-party directory.
+```
+$ cd OpenFAM
+```
 
+3. Build third-party dependencies as described in the [README](/third-party) under the third-party directory.
 
-4. Build and Test with the script.
-   (Note that this script will build OpenFAM under build directory and run unit tests and regression tests.
-   script takes two arguments which specify launcher for tests, argument can take 2 values mpi or slurm
-   1. --launcher        :   Launcher to be used to launch services and tests (mpi/slurm)
-   2. --run-multi-mem   :   Enable region spanning and multiple memory server tests )
-   For mpi :
- ```
- $ ./build_and_test.sh --launcher mpi
- ```
-   For slurm :
- ```
- $ ./build_and_test.sh --launcher slurm
- ```
-   Multiple memory test :
- ```
- $ ./build_and_test.sh --run-multi-mem
- ```
+4. Build and Test.
 
-5. (Optional) Build and Test manually.
-
-   a. Create and change into a build directory under the source directory ```$OpenFAM```.
+   a. Create and change into a build directory.
 
     ```
-    $ cd $OpenFAM
     $ mkdir build
     $ cd build
     ```
@@ -71,39 +58,49 @@ $ cd $OpenFAM
     $ make install
     ```
 
-   d. set OPENFAM_ROOT variable to point to config file location
-      (sample config files are located in config directory, User can configure OpenFAM using either fam options or configuration files. For testing default is fam options, to enable configuration file options during testing set USE_CONFIG_OPTION flag in cmake build as, cmake .. -DUSE_CONFIG_OPTION=ON)
+   d. After completing the build, user can use **openfam_adm** tool for generating configuration files, start/stop OpenFAM services and running tests.
+      The detailed description on this tool is available [here](/tools/README.md).
 
-    ```
-    export OPENFAM_ROOT="$OpenFAM"
-    ```
+	The following set of commands illustrate the openfam_adm usage:
 
-   e. Start all services on localhost(127.0.0.1) as a background process on the current terminal.
-      (In sample configurtion Memory Service and  Metadata Service are using direct interface and CIS has RPC interface,
-       edit the configuratuion files to run with desired configuration and start services accordingly)
+	Set $PATH to openfam_adm
+	```
+	$ PATH=./bin/:$PATH
+	```
 
-    ```
-    $ source setup.sh --cisserver=127.0.0.1
-    ```
-    (see setup.sh script description below)
+	```
+	$ openfam_adm @arg_file.txt --config_file_path=/path/to/generate/config/files --install_path=/path/to/openfam/install/dir
+	```
 
-   f. Run the unit tests and regresssion tests.
+	In arg_file.txt, arguments has to be mentioned one per line, for example:
 
-    ```
-    $ make unit-test
-    $ make reg-test
-    ```
+	arg_file.txt
+	```
+	--launcher=slurm
+	--model=memory_server
+	--cisinterface=rpc
+	--memserverinterface=rpc
+	--metaserverinterface=rpc
+	--cisserver={rpc_interface:127.0.0.1,rpc_port:8787}
+	--memservers=0:{memory_type:volatile,fam_path:/dev/shm/vol,rpc_interface:127.0.0.1,rpc_port:8793,libfabric_port:7500,if_device:eth0}
+	--metaservers=0:{rpc_interface:127.0.0.1,rpc_port:8788}
+	```
 
-   g. Stop all services running locally on the current terminal.
+	```
+	$ export OPENFAM_ROOT=/path/to/generated/config/files
 
-    ```
-    $ pkill memory_server
-        $ pkill metadata_server
-        $ pkill cis_server
-    ```
+	$ openfam_adm --start_service
+	```
+
+	Run tests (Note : "--runtests" runs regression tests and unit tests. This option works only when user is in build directory)
+	```
+	$ openfam_adm --runtests
+	```
+
+      Note : For testing default is configuration file options, to enable predefined fam options during testing set SET_FAM_OPTION flag in cmake build as, cmake .. -DSET_FAM_OPTION=ON
 
 
-6. (Optional) If you only wish to test code coverage.
+5. (Optional) If you only wish to test code coverage.
 
    a. Perform steps 5-a to 5-d using build type as Coverage in step 5-a
 
@@ -133,34 +130,12 @@ $ cd $OpenFAM
     A summary report is displayed on the terminal, while the details coverage results in html format is placed under build/test/coverage directory.
     To collect additional coverage information of memoryserver, repeat this step after stopping memoryserver instance(5-f).
 
-## setup script
-The script [setup.sh](https://github.com/OpenFAM/OpenFAM/blob/master/test/setup.sh) is used to start all services locally and set the environment variable which are necessary to run tests manually
 
-### Description
-```
-Usage :
+6. Build and Test with the script.
+   This script is alternative option for build and test OpenFAM with predeined set of configurations.
 
-        source setup.sh <options>
-```
-
-| Options | Description |
-| :---    | :---        |
-| -h/--help       | help
-| -n              | Number of PEs                                               |
-| --memserver     | IP address of memory server                                 |
-|                 | Note : This option is necessary to start the memory server  |
-| --metaserver    | IP address of metadata server                               |
-|                 | Note : This option is necessary to start the metadata server|
-| --cisserver     | IP address of CIS server                                    |
-|                 | Note : This option is necessary to start the CIS server     |
-| --memrpcport    | RPC port for memory service                                 |
-| --metarpcport   | RPC port for metadata server                                |
-| --cisrpcport    | RPC port for CIS server                                     |
-| --libfabricport | Libfabric port                                              |
-| --provider      | Libfabric provider                                          |
-| --fam_path      | Location of FAM                                             |
-| --init          | Initializes NVMM (use this option for shared memory model)  |
-
-(Note : Do no use source command for -h/--help and --init options eg : ./setup.sh -h or ./setup.sh --init)
+	```
+ 	$ ./build_and_test.sh
+ 	```
 
 Note: cmake command should be re-run if fam\_rpc.proto file is modified to generate updated fam\_rpc.grpc.pb.cc and fam_rpc.pb.cc files

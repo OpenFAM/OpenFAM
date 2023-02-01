@@ -1,8 +1,9 @@
 /*
  * fam_copy_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -47,6 +48,7 @@ int main() {
     Fam_Region_Descriptor *srcDesc, *destDesc;
     Fam_Descriptor *srcItem;
     Fam_Descriptor *destItem[MESSAGE_SIZE];
+    int fail = 0;
 
     init_fam_options(&fam_opts);
     try {
@@ -56,7 +58,7 @@ int main() {
         exit(1);
     }
 
-    srcDesc = my_fam->fam_create_region("srcRegion", 8192, 0777, RAID1);
+    srcDesc = my_fam->fam_create_region("srcRegion", 8192, 0777, NULL);
     if (srcDesc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -68,7 +70,7 @@ int main() {
         exit(1);
     }
 
-    destDesc = my_fam->fam_create_region("destRegion", 8192, 0777, RAID1);
+    destDesc = my_fam->fam_create_region("destRegion", 8192, 0777, NULL);
     if (destDesc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -128,15 +130,17 @@ int main() {
 
             my_fam->fam_get_blocking(local2, destItem[i], 0, 13);
 
-            if (strncmp(local, local2, i + 1) == 0) {
-                cout << "Copy " << i << " : " << local2 << " : CORRECT" << endl;
-            } else {
-                cout << "Copy " << i << " : " << local2 << " : WRONG" << endl;
-            }
         } catch (Fam_Exception &e) {
             cout << "Exception caught" << endl;
             cout << "Error msg: " << e.fam_error_msg() << endl;
             cout << "Error: " << e.fam_error() << endl;
+        }
+        if (strncmp(local, local2, i + 1) == 0) {
+            cout << "Copy " << i << " : " << local2 << " : CORRECT" << endl;
+        } else {
+            cout << "Copy " << i << " : " << local2 << " : WRONG" << endl;
+            fail++;
+            break;
         }
     }
 
@@ -161,4 +165,11 @@ int main() {
 
     my_fam->fam_finalize("default");
     cout << "fam finalize successful" << endl;
+    if (!fail) {
+        printf("Test passed\n");
+        return 0;
+    } else {
+        printf("Test failed\n");
+        return -1;
+    }
 }

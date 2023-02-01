@@ -137,21 +137,21 @@ int main() {
     }
 
     try {
-        desc1 = my_fam->fam_create_region("test111", 8192, 0777, RAID1);
+        desc1 = my_fam->fam_create_region("test111", 8192, 0777, NULL);
     } catch (Fam_Exception &e) {
         cout << "fam create region failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
     try {
-        desc2 = my_fam->fam_create_region("test112", 8192, 0777, RAID1);
+        desc2 = my_fam->fam_create_region("test112", 8192, 0777, NULL);
     } catch (Fam_Exception &e) {
         cout << "fam create region failed: " << e.fam_error_msg() << endl;
         exit(1);
     }
 
     try {
-        desc3 = my_fam->fam_create_region("test113", 8192, 0777, RAID1);
+        desc3 = my_fam->fam_create_region("test113", 8192, 0777, NULL);
     } catch (Fam_Exception &e) {
         cout << "fam create region failed: " << e.fam_error_msg() << endl;
         exit(1);

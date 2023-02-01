@@ -51,7 +51,7 @@ TEST(FamCompareSwapInt32, CompareSwapInt32Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -86,7 +86,7 @@ TEST(FamCompareSwapInt64, CompareSwapInt64Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -121,7 +121,7 @@ TEST(FamCompareSwapUint32, CompareSwapUint32Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -156,7 +156,7 @@ TEST(FamCompareSwapUint64, CompareSwapUint64Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -191,7 +191,7 @@ TEST(FamCompareSwapInt128, CompareSwapInt128Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -254,7 +254,7 @@ TEST(FamCompareSwapNegativeCase, CompareSwapNegativeCaseSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -289,7 +289,7 @@ TEST(FamCompareSwapNegativeCaseInt128, CompareSwapNegativeCaseInt128Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -343,6 +343,20 @@ TEST(FamCompareSwapNegativeCaseInt128, CompareSwapNegativeCaseInt128Success) {
 
     free((void *)testRegion);
     free((void *)firstItem);
+}
+
+TEST(FamCompareSwapNegative, CompareSwapNegativeInvalidDescriptor) {
+    Fam_Descriptor *item = NULL;
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (int32_t)0, (int32_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (int64_t)0, (int64_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (uint32_t)0, (uint32_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (uint64_t)0, (uint64_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_compare_swap(item, 0, (int128_t)0, (int128_t)0),
+                 Fam_Exception);
 }
 
 int main(int argc, char **argv) {

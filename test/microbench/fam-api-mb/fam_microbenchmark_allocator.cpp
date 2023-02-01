@@ -81,7 +81,7 @@ TEST(FamCreateDestroyRegion, FamCreateDestroyRegionMultiple1) {
         char regionInfo[NAME_BUFF_SIZE];
         sprintf(regionInfo, "%s_%d", testRegionLocal, i);
         EXPECT_NO_THROW(descLocal[i] = my_fam->fam_create_region(
-                            regionInfo, BLOCK_SIZE, 0777, RAID1));
+                            regionInfo, BLOCK_SIZE, 0777, NULL));
         EXPECT_NE((void *)NULL, descLocal[i]);
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
@@ -106,12 +106,36 @@ TEST(FamCreateDestroyRegion, FamCreateRegionMultiple2) {
         char regionInfo[NAME_BUFF_SIZE];
         sprintf(regionInfo, "%s_%d", testRegionLocal, i);
         EXPECT_NO_THROW(descLocal[i] = my_fam->fam_create_region(
-                            regionInfo, BLOCK_SIZE, 0777, RAID1));
+                            regionInfo, BLOCK_SIZE, 0777, NULL));
         EXPECT_NE((void *)NULL, descLocal[i]);
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     GENERATE_PROFILE();
     free((void *)testRegionLocal);
+}
+
+// Test case -  Lookup region test.
+TEST(FamLookup, FamLookupRegion) {
+    const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    RESET_PROFILE();
+    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
+        Fam_Region_Descriptor *desc2;
+        char *regionInfo;
+        regionInfo = (char *)malloc(NAME_BUFF_SIZE);
+        sprintf(regionInfo, "%s_%d", testRegionLocal, i);
+        try {
+            desc2 = my_fam->fam_lookup_region(regionInfo);
+        } catch (Fam_Exception &e) {
+            EXPECT_NO_THROW(desc2 = my_fam->fam_create_region(
+                                regionInfo, BIG_REGION_SIZE, 0777, NULL));
+        }
+        EXPECT_NE((void *)NULL, desc2);
+        free(regionInfo);
+    }
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    GENERATE_PROFILE();
+    // EXPECT_NO_THROW(rpc->generate_profile());
 }
 
 TEST(FamCreateDestroyRegion, FamDestroyRegionMultiple2) {
@@ -149,7 +173,7 @@ TEST(FamCreateDestroyRegion, FamCreateDestroyRegionChngPermissions) {
         perm = (mode_t)i;
         sprintf(regionInfo, "%s_%d", testRegionLocal, i);
         EXPECT_NO_THROW(descLocal[i] = my_fam->fam_create_region(
-                            regionInfo, BLOCK_SIZE, perm, RAID1));
+                            regionInfo, BLOCK_SIZE, perm, NULL));
         EXPECT_NE((void *)NULL, descLocal[i]);
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
@@ -167,7 +191,7 @@ TEST(FamAllocateDellocate, FamAllocateDellocateMultiple1) {
     const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
 
     EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+                        testRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, descLocal);
 
     for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
@@ -198,7 +222,7 @@ TEST(FamAllocateDeallocate, FamAllocateMultiple2) {
     const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
     const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
     EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+                        testRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, descLocal);
 
     EXPECT_NO_THROW(item1 = my_fam->fam_allocate(firstItemLocal, DATA_ITEM_SIZE,
@@ -221,6 +245,32 @@ TEST(FamAllocateDeallocate, FamAllocateMultiple2) {
     free((void *)firstItemLocal);
 }
 
+// Test case -  Lookup dataite test.
+TEST(FamLookup, FamLookupDataItem) {
+    const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
+    const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
+    Fam_Descriptor *item1;
+    EXPECT_NO_THROW(item1 =
+                        my_fam->fam_lookup(firstItemLocal, testRegionLocal));
+    EXPECT_NE((void *)NULL, item1);
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    RESET_PROFILE();
+    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
+        Fam_Descriptor *item1;
+        char itemInfo[NAME_BUFF_SIZE];
+        sprintf(itemInfo, "%s_%d", firstItemLocal, i);
+        EXPECT_NO_THROW(item1 = my_fam->fam_lookup(itemInfo, testRegionLocal));
+        EXPECT_NE((void *)NULL, item1);
+        // EXPECT_NO_THROW(my_fam->fam_deallocate(itemLocal[i]));
+    }
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    GENERATE_PROFILE();
+    // EXPECT_NO_THROW(rpc->generate_profile());
+
+    free((void *)testRegionLocal);
+    free((void *)firstItemLocal);
+}
+
 TEST(FamAllocateDeallocate, FamAllocateSingleRegion) {
     Fam_Region_Descriptor *descLocal;
     Fam_Descriptor *item1;
@@ -228,7 +278,7 @@ TEST(FamAllocateDeallocate, FamAllocateSingleRegion) {
     const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
     if (*myPE == 0) {
         EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                            "test", BIG_REGION_SIZE, 0777, RAID1));
+                            "test", BIG_REGION_SIZE, 0777, NULL));
         EXPECT_NE((void *)NULL, descLocal);
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
@@ -252,6 +302,30 @@ TEST(FamAllocateDeallocate, FamAllocateSingleRegion) {
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     GENERATE_PROFILE();
     // EXPECT_NO_THROW(rpc->generate_profile());
+    free((void *)firstItemLocal);
+}
+
+TEST(FamLookup, FamLookupDataItemSingleRegion) {
+    const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
+
+    Fam_Descriptor *item1;
+    EXPECT_NO_THROW(item1 = my_fam->fam_lookup(firstItemLocal, "test"));
+    EXPECT_NE((void *)NULL, item1);
+
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    RESET_PROFILE();
+    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
+        Fam_Descriptor *item1;
+        char itemInfo[NAME_BUFF_SIZE];
+        sprintf(itemInfo, "%s_%d", firstItemLocal, i);
+        EXPECT_NO_THROW(item1 = my_fam->fam_lookup(itemInfo, "test"));
+        EXPECT_NE((void *)NULL, item1);
+        // EXPECT_NO_THROW(my_fam->fam_deallocate(itemLocal[i]));
+    }
+    EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    GENERATE_PROFILE();
+    // EXPECT_NO_THROW(rpc->generate_profile());
+
     free((void *)firstItemLocal);
 }
 
@@ -279,6 +353,10 @@ TEST(FamAllocateDeallocate, FamDeallocateMultiple2) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(itemLocal[i]));
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    Fam_Region_Descriptor *desc;
+    EXPECT_NO_THROW(desc = my_fam->fam_lookup_region(testRegionLocal));
+    EXPECT_NE((void *)NULL, desc);
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
     GENERATE_PROFILE();
     // EXPECT_NO_THROW(rpc->generate_profile());
     free((void *)testRegionLocal);
@@ -308,6 +386,12 @@ TEST(FamAllocateDeallocate, FamDeallocateSingleRegion) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(itemLocal[i]));
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
+    Fam_Region_Descriptor *descLocal;
+    if (*myPE == 0) {
+        EXPECT_NO_THROW(descLocal = my_fam->fam_lookup_region("test"));
+        EXPECT_NE((void *)NULL, descLocal);
+        EXPECT_NO_THROW(my_fam->fam_destroy_region(descLocal));
+    }
     GENERATE_PROFILE();
     // EXPECT_NO_THROW(rpc->generate_profile());
     free((void *)firstItemLocal);
@@ -324,7 +408,7 @@ TEST(FamChangePermissions, DataItemChangePermission) {
     }
     catch (Fam_Exception &e) {
         EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                            testRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+                            testRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     }
     EXPECT_NE((void *)NULL, descLocal);
 
@@ -355,7 +439,7 @@ TEST(FamChangePermissions, RegionChangePermission) {
     Fam_Region_Descriptor *descLocal;
     const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
     EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+                        testRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, descLocal);
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
@@ -374,86 +458,11 @@ TEST(FamChangePermissions, RegionChangePermission) {
     free((void *)testRegionLocal);
 }
 
-// Test case -  Lookup region test.
-TEST(FamLookup, FamLookupRegion) {
-    const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
-    EXPECT_NO_THROW(my_fam->fam_barrier_all());
-    RESET_PROFILE();
-    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
-        Fam_Region_Descriptor *desc2;
-        char *regionInfo;
-        regionInfo = (char *)malloc(NAME_BUFF_SIZE);
-        sprintf(regionInfo, "%s_%d", testRegionLocal, i);
-        try {
-            desc2 = my_fam->fam_lookup_region(regionInfo);
-        }
-        catch (Fam_Exception &e) {
-            EXPECT_NO_THROW(desc2 = my_fam->fam_create_region(
-                                regionInfo, BIG_REGION_SIZE, 0777, RAID1));
-        }
-        EXPECT_NE((void *)NULL, desc2);
-        free(regionInfo);
-    }
-    EXPECT_NO_THROW(my_fam->fam_barrier_all());
-    GENERATE_PROFILE();
-    // EXPECT_NO_THROW(rpc->generate_profile());
-}
-
-// Test case -  Lookup dataite test.
-TEST(FamLookup, FamLookupDataItem) {
-    const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
-    const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
-    Fam_Descriptor *item1;
-    EXPECT_NO_THROW(item1 =
-                        my_fam->fam_lookup(firstItemLocal, testRegionLocal));
-    EXPECT_NE((void *)NULL, item1);
-    EXPECT_NO_THROW(my_fam->fam_barrier_all());
-    RESET_PROFILE();
-    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
-        Fam_Descriptor *item1;
-        char itemInfo[NAME_BUFF_SIZE];
-        sprintf(itemInfo, "%s_%d", firstItemLocal, i);
-        EXPECT_NO_THROW(item1 = my_fam->fam_lookup(itemInfo, testRegionLocal));
-        EXPECT_NE((void *)NULL, item1);
-        // EXPECT_NO_THROW(my_fam->fam_deallocate(itemLocal[i]));
-    }
-    EXPECT_NO_THROW(my_fam->fam_barrier_all());
-    GENERATE_PROFILE();
-    // EXPECT_NO_THROW(rpc->generate_profile());
-
-    free((void *)testRegionLocal);
-    free((void *)firstItemLocal);
-}
-
-TEST(FamLookup, FamLookupDataItemSingleRegion) {
-    const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
-
-    Fam_Descriptor *item1;
-    EXPECT_NO_THROW(item1 = my_fam->fam_lookup(firstItemLocal, "test"));
-    EXPECT_NE((void *)NULL, item1);
-
-    EXPECT_NO_THROW(my_fam->fam_barrier_all());
-    RESET_PROFILE();
-    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
-        Fam_Descriptor *item1;
-        char itemInfo[NAME_BUFF_SIZE];
-        sprintf(itemInfo, "%s_%d", firstItemLocal, i);
-        EXPECT_NO_THROW(item1 = my_fam->fam_lookup(itemInfo, "test"));
-        EXPECT_NE((void *)NULL, item1);
-        // EXPECT_NO_THROW(my_fam->fam_deallocate(itemLocal[i]));
-    }
-    EXPECT_NO_THROW(my_fam->fam_barrier_all());
-    GENERATE_PROFILE();
-    // EXPECT_NO_THROW(rpc->generate_profile());
-
-    free((void *)firstItemLocal);
-}
-
 TEST(FamAllocator, FamResizeRegion) {
     Fam_Region_Descriptor *descLocal;
     const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
     EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, RESIZE_REGION_SIZE, 0777, RAID1));
+                        testRegionLocal, RESIZE_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, descLocal);
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
@@ -482,7 +491,7 @@ TEST(FamCopy, FamCopyAndWait) {
     char *local = strdup("Test message");
 
     EXPECT_NO_THROW(srcRegion = my_fam->fam_create_region(
-                        firstRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+                        firstRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, srcRegion);
 
     for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
@@ -495,12 +504,10 @@ TEST(FamCopy, FamCopyAndWait) {
         EXPECT_NO_THROW(my_fam->fam_put_blocking(
             local, src[i], (i * 20) % (DATA_ITEM_SIZE - 20), 20));
     }
-
     const char *secondItemLocal = get_uniq_str("firstLocal", my_fam);
     const char *secondRegionLocal = get_uniq_str("secondRegionLocal", my_fam);
-
     EXPECT_NO_THROW(destRegion = my_fam->fam_create_region(
-                        secondRegionLocal, BIG_REGION_SIZE, 0777, RAID1));
+                        secondRegionLocal, BIG_REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, destRegion);
 
     for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
@@ -527,7 +534,8 @@ TEST(FamCopy, FamCopyAndWait) {
 
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     GENERATE_PROFILE();
-    for (int i = NUM_MM_ITERATIONS - 1; i >= 0; i--) {
+
+    for (int i = 0; i < NUM_MM_ITERATIONS; i++) {
         EXPECT_NO_THROW(my_fam->fam_deallocate(src[i]));
         EXPECT_NO_THROW(my_fam->fam_deallocate(dest[i]));
     }

@@ -1,6 +1,6 @@
 /*
  * fam_cis_server.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -145,10 +145,15 @@ Fam_CIS_Server::create_region(::grpc::ServerContext *context,
                               ::Fam_Region_Response *response) {
     CIS_SERVER_PROFILE_START_OPS()
     Fam_Region_Item_Info info;
+    Fam_Region_Attributes *regionAttributes = new (Fam_Region_Attributes);
+    regionAttributes->redundancyLevel =
+        (Fam_Redundancy_Level)request->redundancylevel();
+    regionAttributes->memoryType = (Fam_Memory_Type)request->memorytype();
+    regionAttributes->interleaveEnable =
+        (Fam_Interleave_Enable)request->interleaveenable();
     try {
         info = famCIS->create_region(request->name(), (size_t)request->size(),
-                                     (mode_t)request->perm(),
-                                     static_cast<Fam_Redundancy_Level>(0),
+                                     (mode_t)request->perm(), regionAttributes,
                                      request->uid(), request->gid());
     }
     catch (Fam_Exception &e) {
@@ -156,7 +161,6 @@ Fam_CIS_Server::create_region(::grpc::ServerContext *context,
         response->set_errormsg(e.fam_error_msg());
         return ::grpc::Status::OK;
     }
-    response->set_memserver_id(info.memoryServerId);
     response->set_regionid(info.regionId);
     response->set_offset(info.offset);
 
@@ -226,11 +230,14 @@ Fam_CIS_Server::resize_region(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
 
-    response->set_key(info.key);
     response->set_regionid(request->regionid());
     response->set_offset(info.offset);
-    response->set_base((uint64_t)info.base);
-    response->set_memserver_id(info.memoryServerId);
+    response->set_interleave_size(info.interleaveSize);
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        response->add_keys(info.keys[i]);
+        response->add_base_addr_list((uint64_t)info.baseAddressList[i]);
+        response->add_memsrv_list(info.memoryServerIds[i]);
+    }
     CIS_SERVER_PROFILE_END_OPS(allocate);
 
     // Return status OK
@@ -317,13 +324,15 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
 
-    response->set_memserver_id(info.memoryServerId);
     response->set_regionid(info.regionId);
     response->set_offset(info.offset);
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
     response->set_maxnamelen(info.maxNameLen);
+    response->set_redundancylevel(info.redundancyLevel);
+    response->set_memorytype(info.memoryType);
+    response->set_interleaveenable(info.interleaveEnable);
 
     CIS_SERVER_PROFILE_END_OPS(lookup_region);
     return ::grpc::Status::OK;
@@ -345,13 +354,18 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
 
-    response->set_memserver_id(info.memoryServerId);
     response->set_regionid(info.regionId);
-    response->set_offset(info.offset);
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
     response->set_maxnamelen(info.maxNameLen);
+    response->set_offset(info.offset);
+    response->set_uid(info.uid);
+    response->set_gid(info.gid);
+    response->set_interleave_size(info.interleaveSize);
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        response->add_memsrv_list(info.memoryServerIds[i]);
+    }
     // Return status OK
     CIS_SERVER_PROFILE_END_OPS(lookup);
     return ::grpc::Status::OK;
@@ -379,6 +393,15 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     response->set_perm(info.perm);
     response->set_name(info.name);
     response->set_maxnamelen(info.maxNameLen);
+    response->set_uid(info.uid);
+    response->set_gid(info.gid);
+    response->set_redundancylevel(info.redundancyLevel);
+    response->set_memorytype(info.memoryType);
+    response->set_interleaveenable(info.interleaveEnable);
+    response->set_interleavesize(info.interleaveSize);
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        response->add_memsrv_list(info.memoryServerIds[i]);
+    }
     CIS_SERVER_PROFILE_END_OPS(check_permission_get_region_info);
     return ::grpc::Status::OK;
 }
@@ -401,13 +424,17 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
         return ::grpc::Status::OK;
     }
 
-    response->set_key(info.key);
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
     response->set_maxnamelen(info.maxNameLen);
-    response->set_base((uint64_t)info.base);
-
+    response->set_offset(info.offset);
+    response->set_interleave_size(info.interleaveSize);
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        response->add_keys(info.keys[i]);
+        response->add_base_addr_list((uint64_t)info.baseAddressList[i]);
+        response->add_memsrv_list(info.memoryServerIds[i]);
+    }
     CIS_SERVER_PROFILE_END_OPS(check_permission_get_item_info);
 
     // Return status OK
@@ -435,8 +462,13 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
     response->set_size(info.size);
     response->set_perm(info.perm);
     response->set_name(info.name);
+    response->set_uid(info.uid);
+    response->set_gid(info.gid);
     response->set_maxnamelen(info.maxNameLen);
-
+    response->set_interleave_size(info.interleaveSize);
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        response->add_memsrv_list(info.memoryServerIds[i]);
+    }
     CIS_SERVER_PROFILE_END_OPS(get_stat_info);
 
     // Return status OK
@@ -446,6 +478,20 @@ Fam_CIS_Server::get_stat_info(::grpc::ServerContext *context,
 ::grpc::Status Fam_CIS_Server::copy(::grpc::ServerContext *context,
                                     const ::Fam_Copy_Request *request,
                                     ::Fam_Copy_Response *response) {
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::backup(::grpc::ServerContext *context,
+                       const ::Fam_Backup_Restore_Request *request,
+                       ::Fam_Backup_Restore_Response *response) {
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::restore(::grpc::ServerContext *context,
+                        const ::Fam_Backup_Restore_Request *request,
+                        ::Fam_Backup_Restore_Response *response) {
     return ::grpc::Status::OK;
 }
 
@@ -482,6 +528,66 @@ Fam_CIS_Server::release_CAS_lock(::grpc::ServerContext *context,
     }
     CIS_SERVER_PROFILE_END_OPS(release_CAS_lock);
     // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::get_backup_info(::grpc::ServerContext *context,
+                                const ::Fam_Backup_Info_Request *request,
+                                ::Fam_Backup_Info_Response *response) {
+    CIS_SERVER_PROFILE_START_OPS()
+    Fam_Backup_Info info;
+    try {
+        info =
+            famCIS->get_backup_info(request->bname(), request->memserver_id(),
+                                    request->uid(), request->gid());
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        response->set_size(-1);
+        response->set_name("");
+        response->set_mode(-1);
+        response->set_uid(-1);
+        response->set_gid(-1);
+
+        return ::grpc::Status::OK;
+    }
+    response->set_size(info.size);
+    response->set_name(info.bname);
+    response->set_mode(info.mode);
+    response->set_uid(info.uid);
+    response->set_gid(info.gid);
+    CIS_SERVER_PROFILE_END_OPS(get_backup_info);
+
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::list_backup(::grpc::ServerContext *context,
+                            const ::Fam_Backup_List_Request *request,
+                            ::Fam_Backup_List_Response *response) {
+    string contents;
+    try {
+        contents =
+            famCIS->list_backup(request->bname(), request->memserver_id(),
+                                request->uid(), request->gid());
+        response->set_contents(contents);
+    } catch (Fam_Exception &e) {
+        response->set_errorcode(e.fam_error());
+        response->set_errormsg(e.fam_error_msg());
+        response->set_contents(string("Backup Listing failed."));
+
+        return ::grpc::Status::OK;
+    }
+    // Return status OK
+    return ::grpc::Status::OK;
+}
+
+::grpc::Status
+Fam_CIS_Server::delete_backup(::grpc::ServerContext *context,
+                              const ::Fam_Backup_List_Request *request,
+                              ::Fam_Backup_List_Response *response) {
     return ::grpc::Status::OK;
 }
 
@@ -600,11 +706,11 @@ Fam_CIS_Server::get_atomic(::grpc::ServerContext *context,
     CIS_SERVER_PROFILE_START_OPS()
     ostringstream message;
     try {
-        famCIS->get_atomic(request->regionid(), request->srcoffset(),
-                           request->dstoffset(), request->nbytes(),
-                           request->key(), request->nodeaddr().c_str(),
-                           request->nodeaddrsize(), request->memserver_id(),
-                           request->uid(), request->gid());
+        famCIS->get_atomic(
+            request->regionid(), request->srcoffset(), request->dstoffset(),
+            request->nbytes(), request->key(), request->srcbaseaddr(),
+            request->nodeaddr().c_str(), request->nodeaddrsize(),
+            request->memserver_id(), request->uid(), request->gid());
     }
     catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
@@ -625,11 +731,12 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
     CIS_SERVER_PROFILE_START_OPS()
     ostringstream message;
     try {
-        famCIS->put_atomic(
-            request->regionid(), request->srcoffset(), request->dstoffset(),
-            request->nbytes(), request->key(), request->nodeaddr().c_str(),
-            request->nodeaddrsize(), request->data().c_str(),
-            request->memserver_id(), request->uid(), request->gid());
+        famCIS->put_atomic(request->regionid(), request->srcoffset(),
+                           request->dstoffset(), request->nbytes(),
+                           request->key(), request->srcbaseaddr(),
+                           request->nodeaddr().c_str(), request->nodeaddrsize(),
+                           request->data().c_str(), request->memserver_id(),
+                           request->uid(), request->gid());
     }
     catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
@@ -653,7 +760,7 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
         famCIS->scatter_strided_atomic(
             request->regionid(), request->offset(), request->nelements(),
             request->firstelement(), request->stride(), request->elementsize(),
-            request->key(), request->nodeaddr().c_str(),
+            request->key(), request->srcbaseaddr(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
     }
@@ -679,7 +786,7 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
         famCIS->gather_strided_atomic(
             request->regionid(), request->offset(), request->nelements(),
             request->firstelement(), request->stride(), request->elementsize(),
-            request->key(), request->nodeaddr().c_str(),
+            request->key(), request->srcbaseaddr(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
     }
@@ -705,7 +812,7 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
         famCIS->scatter_indexed_atomic(
             request->regionid(), request->offset(), request->nelements(),
             request->elementindex().c_str(), request->elementsize(),
-            request->key(), request->nodeaddr().c_str(),
+            request->key(), request->srcbaseaddr(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
     }
@@ -731,7 +838,7 @@ Fam_CIS_Server::put_atomic(::grpc::ServerContext *context,
         famCIS->gather_indexed_atomic(
             request->regionid(), request->offset(), request->nelements(),
             request->elementindex().c_str(), request->elementsize(),
-            request->key(), request->nodeaddr().c_str(),
+            request->key(), request->srcbaseaddr(), request->nodeaddr().c_str(),
             request->nodeaddrsize(), request->memserver_id(), request->uid(),
             request->gid());
     }

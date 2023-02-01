@@ -68,6 +68,9 @@ TEST(FamOption, GetDefaultOptionList) {
         EXPECT_STREQ(optList[9], "PE_COUNT");
         EXPECT_STREQ(optList[10], "PE_ID");
         EXPECT_STREQ(optList[11], "RUNTIME");
+        EXPECT_STREQ(optList[12], "NUM_CONSUMER");
+        EXPECT_STREQ(optList[13], "FAM_DEFAULT_MEMORY_TYPE");
+        EXPECT_STREQ(optList[14], "IF_DEVICE");
     }
 }
 

@@ -57,17 +57,23 @@ typedef struct {
     int32_t msg_size;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 // Test case 1 - test for atomic fetch_add.
 void *thrd_add_subtract_int32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
     int32_t valueInt32 = 0xAAAA;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt32));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueInt32 = 0x1;
 
@@ -103,7 +109,7 @@ TEST(FamArithAtomicInt32, ArithAtomicInt32Success) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -130,6 +136,7 @@ TEST(FamArithAtomicInt32, ArithAtomicInt32Success) {
     delete item;
     delete desc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -137,13 +144,17 @@ void *thrd_add_subtract_int64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     // Atomic tests for int64
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueInt64));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueInt64 = 0x1;
 
@@ -180,7 +191,7 @@ TEST(FamArithAtomicInt64, ArithAtomicInt64Success) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -207,6 +218,7 @@ TEST(FamArithAtomicInt64, ArithAtomicInt64Success) {
     delete item;
     delete desc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -215,13 +227,17 @@ void *thrd_add_subtract_uint32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
     // Atomic tests for uint32
     uint32_t valueUint32 = 0xBBBBBBBB;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint32 = 0x1;
 
@@ -237,8 +253,11 @@ void *thrd_add_subtract_uint32(void *arg) {
     valueUint32 = 0;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint32 = 0x1;
 
@@ -263,7 +282,7 @@ TEST(FamArithAtomicUint32, ArithAtomicUint32Success) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -290,6 +309,7 @@ TEST(FamArithAtomicUint32, ArithAtomicUint32Success) {
     delete item;
     delete desc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -298,13 +318,17 @@ void *thrd_add_subtract_uint64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     // Atomic tests for uint64
     uint64_t valueUint64 = 0xBBBBBBBBBBBBBBBB;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint64 = 0x1;
 
@@ -320,8 +344,11 @@ void *thrd_add_subtract_uint64(void *arg) {
     valueUint64 = 0;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint64 = 0x1;
 
@@ -346,7 +373,7 @@ TEST(FamArithAtomicUint64, ArithAtomicUint64Success) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -373,6 +400,7 @@ TEST(FamArithAtomicUint64, ArithAtomicUint64Success) {
     delete item;
     delete desc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -381,13 +409,17 @@ void *thrd_add_subtract_float(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(float);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(float);
     // Atomic tests for float
     float valueFloat = 4.3f;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueFloat));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueFloat = 1.2f;
 
@@ -423,7 +455,7 @@ TEST(FamArithAtomicFloat, ArithAtomiciFloatSuccess) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -450,6 +482,7 @@ TEST(FamArithAtomicFloat, ArithAtomiciFloatSuccess) {
     delete item;
     delete desc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -458,13 +491,17 @@ void *thrd_add_subtract_double(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(double);
     // Atomic tests for double
     double valueDouble = 4.4e+38;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueDouble));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueDouble = 1.2e+38;
 
@@ -500,7 +537,7 @@ TEST(FamArithAtomiciDouble, ArithAtomicDoubleSuccess) {
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -527,6 +564,7 @@ TEST(FamArithAtomiciDouble, ArithAtomicDoubleSuccess) {
     delete item;
     delete desc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -541,7 +579,9 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
 

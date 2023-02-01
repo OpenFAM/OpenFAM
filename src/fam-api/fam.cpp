@@ -1,6 +1,6 @@
 /*
  * fam.cpp
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -31,6 +31,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
 
 #include "allocator/fam_allocator_client.h"
@@ -64,6 +66,11 @@
         throw e;                                                               \
     }
 
+#ifdef CHECK_OFFSETS
+#define is_aligned(OFFSET, BYTE_COUNT) \
+    (((uint64_t)(OFFSET)) % (BYTE_COUNT) == 0)
+
+#endif
 using namespace std;
 
 /**
@@ -84,7 +91,9 @@ const char *supportedOptionList[] = {
     "PE_ID",               // index #10
     "RUNTIME",             // index #11
     "NUM_CONSUMER",        // index #12
-    NULL                   // index #13
+    "FAM_DEFAULT_MEMORY_TYPE", // index #13
+    "IF_DEVICE",           // index #14
+    NULL                   // index #15
 };
 
 namespace openfam {
@@ -103,22 +112,56 @@ class fam::Impl_ {
         famAllocator = NULL;
         famRuntime = NULL;
         memset((void *)&famOptions, 0, sizeof(Fam_Options));
+        ctxId = FAM_DEFAULT_CTX_ID;
+        ctxList = NULL;
+    }
+
+    Impl_(Impl_ *pimpl) {
+        uid = pimpl->uid;
+        gid = pimpl->gid;
+
+        optValueMap = pimpl->optValueMap;
+        groupName = pimpl->groupName;
+
+        if (strcmp((pimpl->famOptions).openFamModel, FAM_OPTIONS_SHM_STR) ==
+            0) {
+            famOps = pimpl->famOps;
+            ctxId = FAM_DEFAULT_CTX_ID;
+        } else {
+            famOps = new Fam_Ops_Libfabric((Fam_Ops_Libfabric *)pimpl->famOps);
+            ctxId = famOps->get_context_id();
+            pimpl->famOps->context_open(ctxId, famOps);
+        }
+        famAllocator = pimpl->famAllocator;
+        famRuntime = pimpl->famRuntime;
+        memset((void *)&famOptions, 0, sizeof(Fam_Options));
+        memcpy((void *)&famOptions, (void *)&pimpl->famOptions,
+               sizeof(Fam_Options));
+        ctxList = pimpl->ctxList;
+        famThreadModel = pimpl->famThreadModel;
+        famContextModel = pimpl->famContextModel;
     }
 
     ~Impl_() {
-        if (groupName)
-            free(groupName);
-        if (famOps)
-            delete (famOps);
-        if (famAllocator)
-            delete famAllocator;
-        if (famRuntime)
-            delete famRuntime;
+        if (ctxId == FAM_DEFAULT_CTX_ID) {
+            if (groupName)
+                free(groupName);
+            if (famOps)
+                delete (famOps);
+            if (famAllocator)
+                delete famAllocator;
+            if (famRuntime)
+                delete famRuntime;
+        }
     }
 
     void fam_initialize(const char *groupName, Fam_Options *options);
 
     void fam_finalize(const char *groupName);
+
+    fam_context *fam_context_open();
+
+    void fam_context_close(fam_context *ctx);
 
     void fam_abort(int status);
 
@@ -134,7 +177,7 @@ class fam::Impl_ {
 
     Fam_Region_Descriptor *
     fam_create_region(const char *name, uint64_t size, mode_t permissions,
-                      Fam_Redundancy_Level redundancyLevel, ...);
+                      Fam_Region_Attributes *regionAttributes);
 
     void fam_destroy_region(Fam_Region_Descriptor *descriptor);
 
@@ -210,6 +253,20 @@ class fam::Impl_ {
 
     void fam_copy_wait(void *waitObj);
 
+    void *fam_backup(Fam_Descriptor *src, const char *BackupName,
+                     Fam_Backup_Options *backupOptions);
+
+    void *fam_restore(const char *BackupName, Fam_Descriptor *dest);
+    void *fam_restore(const char *BackupName, Fam_Region_Descriptor *destRegion,
+                      const char *dataitemName, mode_t accessPermissions,
+                      Fam_Descriptor **dest);
+
+    void fam_backup_wait(void *waitObj);
+
+    void fam_restore_wait(void *waitObj);
+    void *fam_delete_backup(const char *BackupName);
+    void fam_delete_backup_wait(void *waitObj);
+    char *fam_list_backup(const char *BackupName);
     void fam_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
     void fam_set(Fam_Descriptor *descriptor, uint64_t offset, int64_t value);
     void fam_set(Fam_Descriptor *descriptor, uint64_t offset, int128_t value);
@@ -360,10 +417,13 @@ class fam::Impl_ {
     void fam_fence(Fam_Region_Descriptor *descriptor = NULL);
     void fam_quiet(Fam_Region_Descriptor *descriptor = NULL);
 
+    uint64_t fam_progress();
+
     int validate_fam_options(Fam_Options *options,
                              configFileParams config_file_fam_options);
     void clean_fam_options();
     int validate_item(Fam_Descriptor *descriptor);
+    int contains_nonutf(const char *name);
     configFileParams get_info_from_config_file(std::string filename);
 #ifdef FAM_PROFILE
     void fam_reset_profile();
@@ -380,6 +440,8 @@ class fam::Impl_ {
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Runtime *famRuntime;
+    std::list<fam_context *> *ctxList;
+    uint64_t ctxId;
 
 #ifdef FAM_PROFILE
     Fam_Counter_St profileData[fam_counter_max][FAM_CNTR_TYPE_MAX];
@@ -582,6 +644,7 @@ class fam::Impl_ {
 void fam::Impl_::fam_reset_profile() {
     FAM_PROFILE_INIT();
     FAM_PROFILE_START_TIME();
+    famOps->reset_profile();
 }
 #endif
 
@@ -617,6 +680,7 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     // Initialize Options
     //
     optValueMap = new std::map<std::string, const void *>();
+    ctxList = new std::list<fam_context *>();
 
     optValueMap->insert({supportedOptionList[VERSION], strdup(OPENFAM_VERSION)});
 
@@ -698,8 +762,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             famAllocator = new Fam_Allocator_Client();
         }
         famOps = new Fam_Ops_Libfabric(false, famOptions.libfabricProvider,
-                                       famThreadModel, famAllocator,
-                                       famContextModel);
+                                       famOptions.if_device, famThreadModel,
+                                       famAllocator, famContextModel);
         ret = famOps->initialize();
         if (ret < 0) {
             message << "Fam libfabric initialization failed: "
@@ -763,6 +827,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
 
     optValueMap->insert({supportedOptionList[LIBFABRIC_PROVIDER],
                          famOptions.libfabricProvider});
+
 
     if (options && options->famThreadModel)
         famOptions.famThreadModel = strdup(options->famThreadModel);
@@ -850,9 +915,9 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
              config_file_fam_options.count("runtime") > 0)
         famOptions.runtime =
             strdup(config_file_fam_options["runtime"].c_str());
-    else 
+    else
         famOptions.runtime = strdup("PMIX");
-    
+
     if ((strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMI2_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) != 0) &&
         (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_PMIX_STR) != 0)) {
@@ -869,7 +934,43 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     optValueMap->insert(
         {supportedOptionList[NUM_CONSUMER], famOptions.numConsumer});
 
+    if (options && options->if_device)
+        famOptions.if_device = strdup(options->if_device);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("if_device") > 0)
+        famOptions.if_device =
+            strdup(config_file_fam_options["if_device"].c_str());
+    else
+        famOptions.if_device = strdup("");
+    optValueMap->insert({supportedOptionList[IF_DEVICE], famOptions.if_device});
+    
+    if (options && options->fam_default_memory_type)
+        famOptions.fam_default_memory_type = strdup(options->fam_default_memory_type);
+    else if (!config_file_fam_options.empty() &&
+             config_file_fam_options.count("default_memory_type") > 0)
+        famOptions.fam_default_memory_type =
+            strdup(config_file_fam_options["default_memory_type"].c_str());
+    else
+        famOptions.fam_default_memory_type = strdup("");
+
+    optValueMap->insert({supportedOptionList[FAM_DEFAULT_MEMORY_TYPE], famOptions.fam_default_memory_type});
     return ret;
+}
+
+fam_context *fam::Impl_::fam_context_open() {
+    fam_context *ctx = new fam_context((void *)this);
+    ctxList->push_back(ctx);
+    return ctx;
+}
+
+void fam::Impl_::fam_context_close(fam_context *ctx) {
+    auto it = std::find(ctxList->begin(), ctxList->end(), ctx);
+    if (it != ctxList->end()) {
+        uint64_t contextId = ctx->pimpl_->ctxId;
+        famOps->context_close(contextId);
+        // Delete this list during fam_finalize
+        // ctxList->erase(it);
+    }
 }
 
 /**
@@ -896,16 +997,12 @@ void fam::Impl_::clean_fam_options() {
  * */
 int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
     std::ostringstream message;
-    uint64_t key = descriptor->get_key();
+    uint64_t *keys = descriptor->get_keys();
 
-    if (key == FAM_KEY_UNINITIALIZED) {
+    if (keys == NULL) {
         famAllocator->check_permission_get_info(descriptor);
     }
 
-    if (key == FAM_KEY_INVALID) {
-        message << "Invalid Key Passed" << endl;
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
-    }
     return 0;
 }
 
@@ -927,7 +1024,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
             options["cisServer"] = temp.substr(0, temp.find(':'));
             options["grpcPort"] = temp.substr(temp.find(':') + 1);
 
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter cis_ip is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -935,7 +1032,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
             options["client_interface_type"] = (char *)strdup(
                 (info->get_key_value("client_interface_type")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter client_interface_type is not present, then
             // ignore the exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -943,17 +1040,23 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
             options["libfabricProvider"] =
                 (char *)strdup((info->get_key_value("provider")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter libfabricProvider is not present, then ignore
             // the exception. This parameter will be obtained from
             // validate_fam_options function.
         }
         try {
+            options["if_device"] =
+                (char *)strdup((info->get_key_value("if_device")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+        }
+
+        try {
             std::string famThreadModel = info->get_key_value("FamThreadModel");
             options["famThreadModel"] = ((famThreadModel.compare("single") == 0)
                                              ? strdup(FAM_THREAD_SERIALIZE_STR)
                                              : strdup(FAM_THREAD_MULTIPLE_STR));
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter famThreadModel is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -961,7 +1064,7 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
 
             options["openfam_model"] = info->get_key_value("openfam_model");
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter allocator is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -969,7 +1072,15 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
         try {
             options["runtime"] =
                 (char *)strdup((info->get_key_value("runtime")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If the parameter runtime is not present, then ignore the
+            // exception. This parameter will be obtained from
+            // validate_fam_options function.
+        }
+        try {
+            options["default_memory_type"] = (char *)strdup(
+                (info->get_key_value("default_memory_type")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
             // If the parameter runtime is not present, then ignore the
             // exception. This parameter will be obtained from
             // validate_fam_options function.
@@ -1042,7 +1153,7 @@ const char **fam::Impl_::fam_list_options(void) {
     ndx = 0;
     while (supportedOptionList[ndx]) {
         size_t optLen = strlen(supportedOptionList[ndx]);
-        strncpy(next, supportedOptionList[ndx], optLen);
+        memcpy((void *)next, (void *)supportedOptionList[ndx], optLen);
         next[optLen] = '\0';
         buf[ndx++] = next;
         next = next + optLen + 1;
@@ -1133,13 +1244,129 @@ Fam_Descriptor *fam::Impl_::fam_lookup(const char *itemName,
 Fam_Region_Descriptor *
 fam::Impl_::fam_create_region(const char *name, uint64_t size,
                               mode_t permissions,
-                              Fam_Redundancy_Level redundancyLevel, ...) {
+                              Fam_Region_Attributes *regionAttributes) {
     FAM_CNTR_INC_API(fam_create_region);
     FAM_PROFILE_START_ALLOCATOR(fam_create_region);
-    auto ret =
-        famAllocator->create_region(name, size, permissions, redundancyLevel);
+    Fam_Region_Attributes *regionAttributesParam = NULL;
+    Fam_Region_Descriptor *region = NULL;
+    std::ostringstream message;
+    if ((regionAttributes == NULL) ||
+        (regionAttributes->redundancyLevel == REDUNDANCY_LEVEL_DEFAULT ||
+         regionAttributes->memoryType == MEMORY_TYPE_DEFAULT ||
+         regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT)) {
+        regionAttributesParam =
+            (Fam_Region_Attributes *)malloc(sizeof(Fam_Region_Attributes));
+        memset(regionAttributesParam, 0, sizeof(Fam_Region_Attributes));
+        if (regionAttributes == NULL) {
+            regionAttributesParam->redundancyLevel = NONE;
+            regionAttributesParam->interleaveEnable = ENABLE;
+            if (!(famOptions.fam_default_memory_type) ||
+                (strcmp(famOptions.fam_default_memory_type, "") == 0) ||
+                (strcmp(famOptions.fam_default_memory_type, "volatile") == 0)) {
+
+                regionAttributesParam->memoryType = VOLATILE;
+            } else if (strcmp(famOptions.fam_default_memory_type,
+                              "persistent") == 0) {
+                regionAttributesParam->memoryType = PERSISTENT;
+            }
+
+            else {
+
+                message << "Default Memory Type option provided in config file "
+                           "is not valid"
+                        << endl;
+                THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                              message.str().c_str());
+            }
+
+        } else {
+            if (regionAttributes->redundancyLevel == REDUNDANCY_LEVEL_DEFAULT)
+                regionAttributesParam->redundancyLevel = NONE;
+            else {
+                if (!(regionAttributes->redundancyLevel == NONE ||
+                      regionAttributes->redundancyLevel == RAID1 ||
+                      regionAttributes->redundancyLevel == RAID5)) {
+                    message << "Redundancy Level option provided is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+
+                regionAttributesParam->redundancyLevel =
+                    regionAttributes->redundancyLevel;
+            }
+            if (regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT)
+                regionAttributesParam->interleaveEnable = ENABLE;
+            else {
+                if (!(regionAttributes->interleaveEnable == ENABLE ||
+                      regionAttributes->interleaveEnable == DISABLE)) {
+                    std::ostringstream message;
+                    message << "InterleaveEnable option provided is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+
+                regionAttributesParam->interleaveEnable =
+                    regionAttributes->interleaveEnable;
+            }
+            if (regionAttributes->memoryType == MEMORY_TYPE_DEFAULT) {
+                if (!(famOptions.fam_default_memory_type) ||
+                    (strcmp(famOptions.fam_default_memory_type, "") == 0) ||
+                    (strcmp(famOptions.fam_default_memory_type, "volatile") ==
+                     0)) {
+                    regionAttributesParam->memoryType = VOLATILE;
+                } else if ((strcmp(famOptions.fam_default_memory_type,
+                                   "persistent") == 0)) {
+                    regionAttributesParam->memoryType = PERSISTENT;
+                } else {
+                    message << "Default Memory Type option provided in config "
+                               "file is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+            } else {
+                if (!(regionAttributes->memoryType == VOLATILE ||
+                      regionAttributes->memoryType == PERSISTENT)) {
+                    std::ostringstream message;
+                    message << "Memory Type option provided is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+                regionAttributesParam->memoryType =
+                    regionAttributes->memoryType;
+            }
+        }
+        region = famAllocator->create_region(name, size, permissions,
+                                             regionAttributesParam);
+        free(regionAttributesParam);
+    } else {
+        if (!(regionAttributes->redundancyLevel == NONE ||
+              regionAttributes->redundancyLevel == RAID1 ||
+              regionAttributes->redundancyLevel == RAID5)) {
+            message << "Redundancy Level option provided is not valid" << endl;
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
+        if (!(regionAttributes->memoryType == VOLATILE ||
+              regionAttributes->memoryType == PERSISTENT)) {
+            std::ostringstream message;
+            message << "Memory Type option provided is not valid" << endl;
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
+        if (!(regionAttributes->interleaveEnable == ENABLE ||
+              regionAttributes->interleaveEnable == DISABLE)) {
+            std::ostringstream message;
+            message << "InterleaveEnable option provided is not valid" << endl;
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
+
+        region = famAllocator->create_region(name, size, permissions,
+                                             regionAttributes);
+    }
     FAM_PROFILE_END_ALLOCATOR(fam_create_region);
-    return ret;
+    return region;
 }
 
 /**
@@ -1273,6 +1500,13 @@ void fam::Impl_::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
         famInfo->size = descriptor->get_size();
         famInfo->perm = descriptor->get_perm();
         famInfo->name = descriptor->get_name();
+        famInfo->uid = descriptor->get_uid();
+        famInfo->gid = descriptor->get_gid();
+        memset(&famInfo->region_attributes, 0, sizeof(Fam_Region_Attributes));
+        famInfo->num_memservers = descriptor->get_used_memsrv_cnt();
+        famInfo->interleaveSize = descriptor->get_interleave_size();
+        memcpy(famInfo->memory_servers, descriptor->get_memserver_ids(),
+               descriptor->get_used_memsrv_cnt() * sizeof(uint64_t));
 
     } else if (descriptor->get_desc_status() == DESC_INVALID) {
         std::ostringstream message;
@@ -1283,6 +1517,13 @@ void fam::Impl_::fam_stat(Fam_Descriptor *descriptor, Fam_Stat *famInfo) {
         famInfo->size = itemInfo.size;
         famInfo->perm = itemInfo.perm;
         famInfo->name = itemInfo.name;
+        famInfo->uid = itemInfo.uid;
+        famInfo->gid = itemInfo.gid;
+        memset(&famInfo->region_attributes, 0, sizeof(Fam_Region_Attributes));
+        famInfo->num_memservers = itemInfo.used_memsrv_cnt;
+        famInfo->interleaveSize = itemInfo.interleaveSize;
+        memcpy(famInfo->memory_servers, itemInfo.memoryServerIds,
+               itemInfo.used_memsrv_cnt * sizeof(uint64_t));
     }
 }
 
@@ -1299,12 +1540,7 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
                           Fam_Stat *famInfo) {
     Fam_Region_Item_Info regionInfo;
 
-    if ((descriptor->get_desc_status() == DESC_INIT_DONE) ||
-        (descriptor->get_desc_status() == DESC_INIT_DONE_BUT_KEY_NOT_VALID)) {
-        famInfo->size = descriptor->get_size();
-        famInfo->perm = descriptor->get_perm();
-        famInfo->name = descriptor->get_name();
-    } else if (descriptor->get_desc_status() == DESC_INVALID) {
+    if (descriptor->get_desc_status() == DESC_INVALID) {
         std::ostringstream message;
         message << "Descriptor is no longer valid" << endl;
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
@@ -1313,6 +1549,17 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
         famInfo->size = regionInfo.size;
         famInfo->perm = regionInfo.perm;
         famInfo->name = regionInfo.name;
+        famInfo->uid = regionInfo.uid;
+        famInfo->gid = regionInfo.gid;
+        Fam_Region_Attributes regionAttributes;
+        regionAttributes.redundancyLevel = regionInfo.redundancyLevel;
+        regionAttributes.memoryType = regionInfo.memoryType;
+        regionAttributes.interleaveEnable = regionInfo.interleaveEnable;
+        famInfo->region_attributes = regionAttributes;
+        famInfo->num_memservers = regionInfo.used_memsrv_cnt;
+        famInfo->interleaveSize = regionInfo.interleaveSize;
+        memcpy(famInfo->memory_servers, regionInfo.memoryServerIds,
+               regionInfo.used_memsrv_cnt * sizeof(uint64_t));
     }
 }
 
@@ -1325,26 +1572,31 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
  * @see #fam_unmap()
  */
 void *fam::Impl_::fam_map(Fam_Descriptor *descriptor) {
-    void *result = NULL;
-    FAM_CNTR_INC_API(fam_map);
-    FAM_PROFILE_START_ALLOCATOR(fam_map);
-    if (descriptor == NULL) {
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
-    }
-    int ret = validate_item(descriptor);
-    FAM_PROFILE_END_ALLOCATOR(fam_map);
-
-    FAM_PROFILE_START_OPS(fam_map);
-    if (ret == 0) {
-        void *address;
-        address = famAllocator->fam_map(descriptor);
-        if (address != NULL) {
-            descriptor->set_base_address(address);
+    if (strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) == 0) {
+        void *result = NULL;
+        FAM_CNTR_INC_API(fam_map);
+        FAM_PROFILE_START_ALLOCATOR(fam_map);
+        if (descriptor == NULL) {
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
         }
-        result = address;
+        int ret = validate_item(descriptor);
+        FAM_PROFILE_END_ALLOCATOR(fam_map);
+
+        FAM_PROFILE_START_OPS(fam_map);
+        if (ret == 0) {
+            void *address;
+            address = famAllocator->fam_map(descriptor);
+            if (address != NULL) {
+                // descriptor->set_base_address(address);
+            }
+            result = address;
+        }
+        FAM_PROFILE_END_OPS(fam_map);
+        return result;
+    } else {
+        FAM_UNIMPLEMENTED_MEMSRVMODEL()
+        return NULL;
     }
-    FAM_PROFILE_END_OPS(fam_map);
-    return result;
 }
 
 /**
@@ -1355,20 +1607,25 @@ void *fam::Impl_::fam_map(Fam_Descriptor *descriptor) {
  * @see #fam_map()
  */
 void fam::Impl_::fam_unmap(void *local, Fam_Descriptor *descriptor) {
-    FAM_CNTR_INC_API(fam_unmap);
-    FAM_PROFILE_START_ALLOCATOR(fam_unmap);
-    if (descriptor == NULL || local == NULL) {
-        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
-    }
+    if (strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) == 0) {
+        FAM_CNTR_INC_API(fam_unmap);
+        FAM_PROFILE_START_ALLOCATOR(fam_unmap);
+        if (descriptor == NULL || local == NULL) {
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+        }
 
-    int ret = validate_item(descriptor);
-    FAM_PROFILE_END_ALLOCATOR(fam_unmap);
-    FAM_PROFILE_START_OPS(fam_unmap);
-    if (ret == 0) {
-        famAllocator->fam_unmap(local, descriptor);
+        int ret = validate_item(descriptor);
+        FAM_PROFILE_END_ALLOCATOR(fam_unmap);
+        FAM_PROFILE_START_OPS(fam_unmap);
+        if (ret == 0) {
+            famAllocator->fam_unmap(local, descriptor);
+        }
+        FAM_PROFILE_END_OPS(fam_unmap);
+        return;
+    } else {
+        FAM_UNIMPLEMENTED_MEMSRVMODEL()
+        return;
     }
-    FAM_PROFILE_END_OPS(fam_unmap);
-    return;
 }
 
 // DATA READ AND WRITE Group. These APIs read and write data in FAM and copy
@@ -1403,6 +1660,16 @@ void fam::Impl_::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
     ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t io_size = nbytes ;
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + io_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_get_blocking);
     FAM_PROFILE_START_OPS(fam_get_blocking);
     if (ret == 0) {
@@ -1431,6 +1698,15 @@ void fam::Impl_::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
     }
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t io_size = nbytes ;
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + io_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_get_nonblocking);
     FAM_PROFILE_START_OPS(fam_get_nonblocking);
     if (ret == 0) {
@@ -1468,6 +1744,16 @@ void fam::Impl_::fam_put_blocking(void *local, Fam_Descriptor *descriptor,
     }
 
     ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t io_size = nbytes;
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + io_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_put_blocking);
     FAM_PROFILE_START_OPS(fam_put_blocking);
     if (ret == 0) {
@@ -1495,6 +1781,16 @@ void fam::Impl_::fam_put_nonblocking(void *local, Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t io_size = nbytes;
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + io_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_put_nonblocking);
     FAM_PROFILE_START_OPS(fam_put_nonblocking);
     if (ret == 0) {
@@ -1535,6 +1831,14 @@ void fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t last_offset = firstElement * elementSize + (nElements - 1) * stride * elementSize;
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((last_offset >= disize) || ((last_offset + elementSize) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_gather_blocking);
     FAM_PROFILE_START_OPS(fam_gather_blocking);
     if (ret == 0) {
@@ -1570,6 +1874,17 @@ void fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t offset = 0;
+    for ( uint64_t i = 0; i < nElements;i++) {
+	    offset = elementIndex[i] * elementSize;
+	    // Offset is of type uint64_t. So no need to check for offset < 0.
+	    if ((offset >= disize) || ((offset + elementSize) > disize)) {
+        	THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+	    }
+    }
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_gather_blocking);
     FAM_PROFILE_START_OPS(fam_gather_blocking);
     if (ret == 0) {
@@ -1605,6 +1920,16 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t last_offset = firstElement * elementSize + (nElements - 1) * stride * elementSize;
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((last_offset >= disize) || ((last_offset + elementSize) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_gather_nonblocking);
     FAM_PROFILE_START_OPS(fam_gather_nonblocking);
     if (ret == 0) {
@@ -1640,6 +1965,19 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user descriptor.
+    uint64_t offset = 0;
+    for ( uint64_t i = 0; i < nElements;i++) {
+	    offset = elementIndex[i] * elementSize;
+	    // Offset is of type uint64_t. So no need to check for offset < 0.
+	    if ((offset >= disize) || ((offset + elementSize) > disize)) {
+        	THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+	    }
+    }
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_gather_nonblocking);
     FAM_PROFILE_START_OPS(fam_gather_nonblocking);
     if (ret == 0) {
@@ -1678,6 +2016,16 @@ void fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t last_offset = firstElement * elementSize + (nElements - 1) * stride * elementSize;
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((last_offset >= disize) || ((last_offset + elementSize) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_scatter_blocking);
     FAM_PROFILE_START_OPS(fam_scatter_blocking);
     if (ret == 0) {
@@ -1714,6 +2062,18 @@ void fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t offset = 0;
+    for ( uint64_t i = 0; i < nElements;i++) {
+	    offset = elementIndex[i] * elementSize;
+	    // Offset is of type uint64_t. So no need to check for offset < 0.
+	    if ((offset >= disize) || ((offset + elementSize) > disize)) {
+        	THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+	    }
+    }
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_scatter_blocking);
     FAM_PROFILE_START_OPS(fam_scatter_blocking);
     if (ret == 0) {
@@ -1752,6 +2112,14 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t last_offset = firstElement * elementSize + (nElements - 1) * stride * elementSize;
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((last_offset >= disize) || ((last_offset + elementSize) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_scatter_nonblocking);
     FAM_PROFILE_START_OPS(fam_scatter_nonblocking);
     if (ret == 0) {
@@ -1789,6 +2157,17 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t offset = 0;
+    for ( uint64_t i = 0; i < nElements;i++) {
+	    offset = elementIndex[i] * elementSize;
+	    // Offset is of type uint64_t. So no need to check for offset < 0.
+	    if ((offset >= disize) || ((offset + elementSize) > disize)) {
+        	THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+	    }
+    }
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_scatter_nonblocking);
     FAM_PROFILE_START_OPS(fam_scatter_nonblocking);
     if (ret == 0) {
@@ -1848,6 +2227,155 @@ void fam::Impl_::fam_copy_wait(void *waitObj) {
     return;
 }
 
+int fam::Impl_::contains_nonutf(const char *name) {
+
+    int ret = 0;
+    int i = 0;
+    while (name[i]) {
+        if (!(isprint(name[i]))) {
+            ret = 1;
+            break;
+        }
+        i++;
+    }
+
+    return ret;
+}
+
+void *fam::Impl_::fam_backup(Fam_Descriptor *src, const char *BackupName,
+                             Fam_Backup_Options *backupOptions) {
+    void *result = NULL;
+    FAM_CNTR_INC_API(fam_backup);
+    FAM_PROFILE_START_ALLOCATOR(fam_backup);
+
+    if ((src == NULL) || (BackupName == NULL) ||
+        (contains_nonutf(BackupName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
+    int retS = validate_item(src);
+    FAM_PROFILE_END_ALLOCATOR(fam_backup);
+    FAM_PROFILE_START_OPS(fam_backup);
+
+    if (retS == 0 )
+        result = famOps->backup(src, BackupName);
+    FAM_PROFILE_END_OPS(fam_backup);
+    return result;
+}
+
+void *fam::Impl_::fam_restore(const char *BackupName, Fam_Descriptor *dest) {
+
+    void *result = NULL;
+    FAM_CNTR_INC_API(fam_restore);
+    FAM_PROFILE_START_ALLOCATOR(fam_restore);
+
+    if ((dest == NULL) || (BackupName == NULL) ||
+        (contains_nonutf(BackupName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
+    int retD = validate_item(dest);
+    FAM_PROFILE_END_ALLOCATOR(fam_restore);
+    FAM_PROFILE_START_OPS(fam_restore);
+    if (retD == 0) {
+        result = famOps->restore(BackupName, dest);
+    }
+    FAM_PROFILE_END_OPS(fam_restore);
+    return result;
+}
+
+void *fam::Impl_::fam_restore(const char *BackupName,
+                              Fam_Region_Descriptor *destRegion,
+                              const char *dataitemName,
+                              mode_t accessPermissions, Fam_Descriptor **dest) {
+
+    void *result = NULL;
+    FAM_CNTR_INC_API(fam_restore);
+    FAM_PROFILE_START_ALLOCATOR(fam_restore);
+
+    if ((destRegion == NULL) || (BackupName == NULL) ||
+        (contains_nonutf(BackupName)) || (dataitemName == NULL) ||
+        (contains_nonutf(dataitemName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
+    Fam_Backup_Info info =
+        famAllocator->get_backup_info(BackupName, destRegion);
+    if (info.size == (int)-1) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Backup doesnot exist.");
+    }
+    *dest = famAllocator->allocate(dataitemName, info.size, accessPermissions,
+                                   destRegion);
+    int retD = validate_item(*dest);
+    FAM_PROFILE_END_ALLOCATOR(fam_restore);
+    FAM_PROFILE_START_OPS(fam_restore);
+
+    if (retD == 0 )
+        result = famOps->restore(BackupName, *dest);
+
+    FAM_PROFILE_END_OPS(fam_restore);
+
+    return result;
+}
+
+void *fam::Impl_::fam_delete_backup(const char *BackupName) {
+    FAM_PROFILE_START_ALLOCATOR(fam_delete_backup);
+    FAM_PROFILE_END_ALLOCATOR(fam_delete_backup);
+    FAM_PROFILE_START_OPS(fam_delete_backup);
+    if ((BackupName == NULL) || (contains_nonutf(BackupName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
+    void *result = famAllocator->delete_backup(BackupName);
+    FAM_PROFILE_END_OPS(fam_delete_backup);
+    return result;
+}
+
+void fam::Impl_::fam_delete_backup_wait(void *waitObj) {
+    FAM_CNTR_INC_API(fam_delete_backup_wait);
+    FAM_PROFILE_START_ALLOCATOR(fam_backup_wait);
+    if (waitObj == NULL) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+    famAllocator->wait_for_delete_backup(waitObj);
+    FAM_PROFILE_END_ALLOCATOR(fam_delete_backup_wait);
+    return;
+}
+
+void fam::Impl_::fam_backup_wait(void *waitObj) {
+    FAM_CNTR_INC_API(fam_backup_wait);
+    FAM_PROFILE_START_ALLOCATOR(fam_backup_wait);
+    if (waitObj == NULL) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
+    famOps->wait_for_backup(waitObj);
+    FAM_PROFILE_END_ALLOCATOR(fam_backup_wait);
+    return;
+
+}
+
+void fam::Impl_::fam_restore_wait(void *waitObj) {
+    FAM_CNTR_INC_API(fam_restore_wait);
+    FAM_PROFILE_START_ALLOCATOR(fam_restore_wait);
+    if (waitObj == NULL) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+
+    famOps->wait_for_restore(waitObj);
+    FAM_PROFILE_END_ALLOCATOR(fam_restore_wait);
+    return;
+
+
+}
+
+char *fam::Impl_::fam_list_backup(const char *BackupName) {
+    if ((BackupName == NULL) || (contains_nonutf(BackupName))) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Invalid Options");
+    }
+    return (famAllocator->list_backup(BackupName));
+}
+
 // ATOMICS Group
 
 // NON fetching routines
@@ -1869,6 +2397,18 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_set);
     FAM_PROFILE_START_OPS(fam_set);
     if (ret == 0) {
@@ -1877,6 +2417,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_END_OPS(fam_set);
     return;
 }
+
 void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
                          int64_t value) {
     std::ostringstream message;
@@ -1888,6 +2429,17 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
 
     int ret = validate_item(descriptor);
     FAM_PROFILE_END_ALLOCATOR(fam_set);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset provided"); 
+#endif
 
     FAM_PROFILE_START_OPS(fam_set);
     if (ret == 0) {
@@ -1906,6 +2458,18 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_set);
 
     FAM_PROFILE_START_OPS(fam_set);
@@ -1926,6 +2490,18 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_set);
 
     FAM_PROFILE_START_OPS(fam_set);
@@ -1945,6 +2521,17 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+          THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_set);
 
     FAM_PROFILE_START_OPS(fam_set);
@@ -1954,6 +2541,7 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_END_OPS(fam_set);
     return;
 }
+
 void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
                          float value) {
     std::ostringstream message;
@@ -1964,6 +2552,18 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_set);
 
     FAM_PROFILE_START_OPS(fam_set);
@@ -1973,6 +2573,8 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_END_OPS(fam_set);
     return;
 }
+
+
 void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
                          double value) {
     std::ostringstream message;
@@ -1983,6 +2585,18 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_set);
 
     FAM_PROFILE_START_OPS(fam_set);
@@ -2010,6 +2624,18 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_add);
 
     FAM_PROFILE_START_OPS(fam_add);
@@ -2029,6 +2655,18 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_add);
 
     FAM_PROFILE_START_OPS(fam_add);
@@ -2048,6 +2686,18 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_add);
 
     FAM_PROFILE_START_OPS(fam_add);
@@ -2067,6 +2717,18 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_add);
 
     FAM_PROFILE_START_OPS(fam_add);
@@ -2086,6 +2748,18 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_add);
 
     FAM_PROFILE_START_OPS(fam_add);
@@ -2105,6 +2779,18 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_add);
 
     FAM_PROFILE_START_OPS(fam_add);
@@ -2133,6 +2819,18 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
 
     FAM_PROFILE_START_OPS(fam_subtract);
@@ -2152,6 +2850,18 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
 
     FAM_PROFILE_START_OPS(fam_subtract);
@@ -2171,6 +2881,18 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
 
     FAM_PROFILE_START_OPS(fam_subtract);
@@ -2190,6 +2912,18 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
 
     FAM_PROFILE_START_OPS(fam_subtract);
@@ -2209,6 +2943,18 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
 
     FAM_PROFILE_START_OPS(fam_subtract);
@@ -2228,6 +2974,18 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
 
     FAM_PROFILE_START_OPS(fam_subtract);
@@ -2256,6 +3014,18 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_min);
 
     FAM_PROFILE_START_OPS(fam_min);
@@ -2275,6 +3045,18 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_min);
 
     FAM_PROFILE_START_OPS(fam_min);
@@ -2294,6 +3076,18 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_min);
 
     FAM_PROFILE_START_OPS(fam_min);
@@ -2313,6 +3107,18 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_min);
 
     FAM_PROFILE_START_OPS(fam_min);
@@ -2332,6 +3138,16 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_min);
 
     FAM_PROFILE_START_OPS(fam_min);
@@ -2351,6 +3167,18 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_min);
 
     FAM_PROFILE_START_OPS(fam_min);
@@ -2379,6 +3207,18 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_max);
 
     FAM_PROFILE_START_OPS(fam_max);
@@ -2398,6 +3238,18 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_max);
 
     FAM_PROFILE_START_OPS(fam_max);
@@ -2417,6 +3269,18 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_max);
 
     FAM_PROFILE_START_OPS(fam_max);
@@ -2436,6 +3300,18 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_max);
 
     FAM_PROFILE_START_OPS(fam_max);
@@ -2455,6 +3331,18 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_max);
 
     FAM_PROFILE_START_OPS(fam_max);
@@ -2474,6 +3362,18 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_max);
 
     FAM_PROFILE_START_OPS(fam_max);
@@ -2502,6 +3402,18 @@ void fam::Impl_::fam_and(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_and);
 
     FAM_PROFILE_START_OPS(fam_and);
@@ -2521,6 +3433,18 @@ void fam::Impl_::fam_and(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_and);
 
     FAM_PROFILE_START_OPS(fam_and);
@@ -2549,6 +3473,18 @@ void fam::Impl_::fam_or(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_or);
 
     FAM_PROFILE_START_OPS(fam_or);
@@ -2568,6 +3504,18 @@ void fam::Impl_::fam_or(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_or);
 
     FAM_PROFILE_START_OPS(fam_or);
@@ -2596,6 +3544,18 @@ void fam::Impl_::fam_xor(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_xor);
 
     FAM_PROFILE_START_OPS(fam_xor);
@@ -2615,6 +3575,18 @@ void fam::Impl_::fam_xor(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_xor);
 
     FAM_PROFILE_START_OPS(fam_xor);
@@ -2645,6 +3617,18 @@ int32_t fam::Impl_::fam_fetch_int32(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(int32_t);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
 
     FAM_PROFILE_START_OPS(fam_fetch);
@@ -2665,6 +3649,18 @@ int64_t fam::Impl_::fam_fetch_int64(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(int64_t);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
 
     FAM_PROFILE_START_OPS(fam_fetch);
@@ -2685,6 +3681,18 @@ int128_t fam::Impl_::fam_fetch_int128(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(int128_t);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
 
     FAM_PROFILE_START_OPS(fam_fetch);
@@ -2706,6 +3714,18 @@ uint32_t fam::Impl_::fam_fetch_uint32(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(uint32_t);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
 
     FAM_PROFILE_START_OPS(fam_fetch);
@@ -2726,6 +3746,18 @@ uint64_t fam::Impl_::fam_fetch_uint64(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(uint64_t);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
 
     FAM_PROFILE_START_OPS(fam_fetch);
@@ -2745,6 +3777,18 @@ float fam::Impl_::fam_fetch_float(Fam_Descriptor *descriptor, uint64_t offset) {
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(float);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
 
     FAM_PROFILE_START_OPS(fam_fetch);
@@ -2765,6 +3809,18 @@ double fam::Impl_::fam_fetch_double(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(double);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
 
     FAM_PROFILE_START_OPS(fam_fetch);
@@ -2795,6 +3851,18 @@ int32_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
 
     FAM_PROFILE_START_OPS(fam_swap);
@@ -2815,6 +3883,18 @@ int64_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
 
     FAM_PROFILE_START_OPS(fam_swap);
@@ -2835,6 +3915,18 @@ uint32_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
 
     FAM_PROFILE_START_OPS(fam_swap);
@@ -2855,6 +3947,16 @@ uint64_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
 
     FAM_PROFILE_START_OPS(fam_swap);
@@ -2875,6 +3977,18 @@ float fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
 
     FAM_PROFILE_START_OPS(fam_swap);
@@ -2895,6 +4009,18 @@ double fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
 
     FAM_PROFILE_START_OPS(fam_swap);
@@ -2928,6 +4054,18 @@ int32_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(oldValue);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
 
     FAM_PROFILE_START_OPS(fam_compare_swap);
@@ -2949,6 +4087,18 @@ int64_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(oldValue);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
 
     FAM_PROFILE_START_OPS(fam_compare_swap);
@@ -2970,6 +4120,16 @@ uint32_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(oldValue);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
 
     FAM_PROFILE_START_OPS(fam_compare_swap);
@@ -2991,6 +4151,18 @@ uint64_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(oldValue);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
 
     FAM_PROFILE_START_OPS(fam_compare_swap);
@@ -3012,6 +4184,18 @@ int128_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(oldValue);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
 
     FAM_PROFILE_START_OPS(fam_compare_swap);
@@ -3041,6 +4225,18 @@ int32_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
 
     FAM_PROFILE_START_OPS(fam_fetch_add);
@@ -3061,6 +4257,18 @@ int64_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
 
     FAM_PROFILE_START_OPS(fam_fetch_add);
@@ -3081,6 +4289,16 @@ uint32_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
 
     FAM_PROFILE_START_OPS(fam_fetch_add);
@@ -3102,6 +4320,18 @@ uint64_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
 
     FAM_PROFILE_START_OPS(fam_fetch_add);
@@ -3123,6 +4353,16 @@ float fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
 
     FAM_PROFILE_START_OPS(fam_fetch_add);
@@ -3143,6 +4383,18 @@ double fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
 
     FAM_PROFILE_START_OPS(fam_fetch_add);
@@ -3173,6 +4425,18 @@ int32_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
 
     FAM_PROFILE_START_OPS(fam_fetch_subtract);
@@ -3193,6 +4457,18 @@ int64_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
 
     FAM_PROFILE_START_OPS(fam_fetch_subtract);
@@ -3214,6 +4490,18 @@ uint32_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
 
     FAM_PROFILE_START_OPS(fam_fetch_subtract);
@@ -3235,6 +4523,18 @@ uint64_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
 
     FAM_PROFILE_START_OPS(fam_fetch_subtract);
@@ -3255,6 +4555,18 @@ float fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
 
     FAM_PROFILE_START_OPS(fam_fetch_subtract);
@@ -3275,6 +4587,18 @@ double fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
 
     FAM_PROFILE_START_OPS(fam_fetch_subtract);
@@ -3306,6 +4630,18 @@ int32_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
 
     FAM_PROFILE_START_OPS(fam_fetch_min);
@@ -3326,6 +4662,18 @@ int64_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
 
     FAM_PROFILE_START_OPS(fam_fetch_min);
@@ -3346,6 +4694,18 @@ uint32_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
 
     FAM_PROFILE_START_OPS(fam_fetch_min);
@@ -3366,6 +4726,18 @@ uint64_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
 
     FAM_PROFILE_START_OPS(fam_fetch_min);
@@ -3386,6 +4758,18 @@ float fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
 
     FAM_PROFILE_START_OPS(fam_fetch_min);
@@ -3406,6 +4790,18 @@ double fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
 
     FAM_PROFILE_START_OPS(fam_fetch_min);
@@ -3437,6 +4833,18 @@ int32_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
 
     FAM_PROFILE_START_OPS(fam_fetch_max);
@@ -3457,6 +4865,18 @@ int64_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
 
     FAM_PROFILE_START_OPS(fam_fetch_max);
@@ -3477,6 +4897,18 @@ uint32_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
 
     FAM_PROFILE_START_OPS(fam_fetch_max);
@@ -3497,6 +4929,16 @@ uint64_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
 
     FAM_PROFILE_START_OPS(fam_fetch_max);
@@ -3517,6 +4959,18 @@ float fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
 
     FAM_PROFILE_START_OPS(fam_fetch_max);
@@ -3537,6 +4991,18 @@ double fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
 
     FAM_PROFILE_START_OPS(fam_fetch_max);
@@ -3568,6 +5034,18 @@ uint32_t fam::Impl_::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_and);
 
     FAM_PROFILE_START_OPS(fam_fetch_and);
@@ -3588,6 +5066,18 @@ uint64_t fam::Impl_::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_and);
 
     FAM_PROFILE_START_OPS(fam_fetch_and);
@@ -3619,6 +5109,18 @@ uint32_t fam::Impl_::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_or);
 
     FAM_PROFILE_START_OPS(fam_fetch_or);
@@ -3639,6 +5141,18 @@ uint64_t fam::Impl_::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_or);
 
     FAM_PROFILE_START_OPS(fam_fetch_or);
@@ -3670,6 +5184,18 @@ uint32_t fam::Impl_::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_xor);
 
     FAM_PROFILE_START_OPS(fam_fetch_xor);
@@ -3690,6 +5216,18 @@ uint64_t fam::Impl_::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
     }
 
     int ret = validate_item(descriptor);
+
+#ifdef CHECK_OFFSETS
+    uint64_t disize = descriptor->get_size(); // Get size from user decriptor
+    uint64_t value_size = sizeof(value);
+    // Offset is of type uint64_t. So no need to check for offset < 0.
+    if ((offset >= disize) || ((offset + value_size) > disize)) {
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+    }
+    if (!is_aligned(offset,value_size))
+	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+#endif
+
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_xor);
 
     FAM_PROFILE_START_OPS(fam_fetch_xor);
@@ -3728,6 +5266,21 @@ void fam::Impl_::fam_quiet(Fam_Region_Descriptor *descriptor) {
     famOps->quiet(descriptor);
     FAM_PROFILE_END_OPS(fam_quiet);
     return;
+}
+
+/**
+ * fam_progress - returns number of all its pending FAM
+ * operations (put, scatter, atomics, copy).
+ * @return - number of pending operations
+ */
+
+uint64_t fam::Impl_::fam_progress() {
+    uint64_t ret;
+    FAM_CNTR_INC_API(fam_progress);
+    FAM_PROFILE_START_OPS(fam_progress);
+    ret = famOps->progress();
+    FAM_PROFILE_END_OPS(fam_progress);
+    return ret;
 }
 
 /**
@@ -3861,9 +5414,9 @@ Fam_Descriptor *fam::fam_lookup(const char *itemName, const char *regionName) {
  */
 Fam_Region_Descriptor *
 fam::fam_create_region(const char *name, uint64_t size, mode_t permissions,
-                       Fam_Redundancy_Level redundancyLevel, ...) {
+                       Fam_Region_Attributes *regionAttributes) {
     TRY_CATCH_BEGIN
-    return pimpl_->fam_create_region(name, size, permissions, redundancyLevel);
+    return pimpl_->fam_create_region(name, size, permissions, regionAttributes);
     RETURN_WITH_FAM_EXCEPTION
 }
 
@@ -4392,6 +5945,58 @@ void *fam::fam_copy(Fam_Descriptor *src, uint64_t srcOffset,
 void fam::fam_copy_wait(void *waitObj) {
     TRY_CATCH_BEGIN
     pimpl_->fam_copy_wait(waitObj);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void *fam::fam_backup(Fam_Descriptor *src, const char *BackupName,
+                      Fam_Backup_Options *backupOptions) {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_backup(src, BackupName, backupOptions);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void *fam::fam_restore(const char *BackupName, Fam_Descriptor *dest) {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_restore(BackupName, dest);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void *fam::fam_restore(const char *BackupName,
+                       Fam_Region_Descriptor *destRegion,
+                       const char *dataitemName, mode_t accessPermissions,
+                       Fam_Descriptor **dest) {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_restore(BackupName, destRegion, dataitemName,
+                               accessPermissions, dest);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void fam::fam_backup_wait(void *waitObj) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_backup_wait(waitObj);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void fam::fam_restore_wait(void *waitObj) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_restore_wait(waitObj);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void *fam::fam_delete_backup(const char *BackupName) {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_delete_backup(BackupName);
+    RETURN_WITH_FAM_EXCEPTION
+}
+void fam::fam_delete_backup_wait(void *waitObj) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_delete_backup_wait(waitObj);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+char *fam::fam_list_backup(const char *BackupName) {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_list_backup(BackupName);
     RETURN_WITH_FAM_EXCEPTION
 }
 
@@ -5166,6 +6771,16 @@ void fam::fam_quiet() {
     RETURN_WITH_FAM_EXCEPTION
 }
 
+/**
+ * fam_progress - returns number of all its pending FAM
+ * operations (put, scatter, atomics, copy).
+ * @return - number of pending operations
+ */
+uint64_t fam::fam_progress() {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_progress();
+    RETURN_WITH_FAM_EXCEPTION
+}
 
 #ifdef FAM_PROFILE
 void fam::fam_reset_profile() {
@@ -5174,6 +6789,27 @@ void fam::fam_reset_profile() {
     RETURN_WITH_FAM_EXCEPTION
 }
 #endif
+
+fam_context *fam::fam_context_open() {
+    // Open context and return to user
+    // Do we need id to track context ?
+    // In case of fam_finalize we will have to close all fam contexts,
+    // So, fam_context needs to be stored somwhere.
+    //
+    // TODO: Take lock
+
+    TRY_CATCH_BEGIN
+    fam_context *ctx = (fam_context *)pimpl_->fam_context_open();
+    return ctx;
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+void fam::fam_context_close(fam_context *ctx) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_context_close(ctx);
+    return;
+    RETURN_WITH_FAM_EXCEPTION
+}
 
 /**
  * fam() - constructor for fam class
@@ -5186,6 +6822,125 @@ fam::fam() { pimpl_ = new Impl_; }
 fam::~fam() {
     if (pimpl_)
         delete pimpl_;
+}
+
+/**
+ * fam_context() - constructor for fam_context class
+ */
+fam_context::fam_context(void *inp_fam_impl) {
+    pimpl_ = new Impl_((Impl_ *)inp_fam_impl);
+    return;
+}
+
+/**
+ * ~fam_context() - destructor for fam_context class
+ */
+fam_context::~fam_context() {}
+
+/**
+ * fam_initialize() - destructor for fam_context class
+ */
+void fam_context::fam_initialize(const char *groupName, Fam_Options *options) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_initialze cannot be invoked from fam_context object");
+}
+void fam_context::fam_finalize(const char *groupName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_finalize cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_abort(int status) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_abort cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_barrier_all() {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_barrier_all cannot be invoked from fam_context object");
+}
+
+const char **fam_context::fam_list_options(void) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_list_options cannot be invoked from fam_context object");
+}
+
+const void *fam_context::fam_get_option(char *optionName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_get_option cannot be invoked from fam_context object");
+}
+
+Fam_Region_Descriptor *fam_context::fam_lookup_region(const char *name) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_lookup_region cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_lookup(const char *itemName,
+                                        const char *regionName) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_lookup cannot be invoked from fam_context object");
+}
+
+Fam_Region_Descriptor *
+fam_context::fam_create_region(const char *name, uint64_t size,
+                               mode_t permissions,
+                               Fam_Region_Attributes *regionAttributes) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_create_region cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_destroy_region(Fam_Region_Descriptor *descriptor) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_destroy_region cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_resize_region(Fam_Region_Descriptor *descriptor,
+                                    uint64_t nbytes) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_resize_region cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_allocate(uint64_t nbytes,
+                                          mode_t accessPermissions,
+                                          Fam_Region_Descriptor *region) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_allocate cannot be invoked from fam_context object");
+}
+
+Fam_Descriptor *fam_context::fam_allocate(const char *name, uint64_t nbytes,
+                                          mode_t accessPermissions,
+                                          Fam_Region_Descriptor *region) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_allocate cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_deallocate(Fam_Descriptor *descriptor) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_deallocate cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_change_permissions(Fam_Descriptor *descriptor,
+                                         mode_t accessPermissions) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_change_permission cannot be invoked from fam_context object");
+}
+
+fam_context *fam_context::fam_context_open() {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_context_open cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_context_close(fam_context *) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_context_close cannot be invoked from fam_context object");
 }
 
 } // namespace openfam

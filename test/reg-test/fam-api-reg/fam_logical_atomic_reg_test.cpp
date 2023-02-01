@@ -1,8 +1,9 @@
 /*
  * fam_logical_atomics_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -52,7 +53,11 @@ const char *testRegionStr;
 
 #define REGION_SIZE (1024 * 1024)
 #define REGION_PERM 0777
-
+#ifdef CHECK_OFFSETS
+unsigned int CHECK_OFFSET = 1;
+#else
+unsigned int CHECK_OFFSET = 0;
+#endif
 #define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
 
 // Test case 1 - Fetch logical atomics for UInt32
@@ -80,7 +85,7 @@ TEST(FamLogicalAtomics, FetchLogicalUInt32) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint32_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint32_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -164,7 +169,7 @@ TEST(FamLogicalAtomics, FetchLogicalUInt64) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint64_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -245,7 +250,7 @@ TEST(FamLogicalAtomics, NonfetchLogicalUInt32) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint32_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint32_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -329,7 +334,7 @@ TEST(FamLogicalAtomics, NonfetchLogicalUInt64) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint64_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -405,7 +410,7 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativePerm) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint64_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             cout << "Testing fam logical atomic: item=" << item
@@ -511,7 +516,7 @@ TEST(FamLogicalAtomics, FetchLogicalNegativePerm) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint64_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint64_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             cout << "Testing fam logical atomic: item=" << item
@@ -572,7 +577,7 @@ TEST(FamLogicalAtomics, FetchLogicalNegativePerm) {
     }
     free((void *)dataItem);
 }
-#ifdef ENABLE_KNOWN_ISSUES
+
 // Test case 7 - Negative test cases with invalid offset
 TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
     Fam_Descriptor *item;
@@ -601,7 +606,7 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
                  << ", Dataitem size=" << test_item_size[sm]
                  << ", offset=" << testOffset[ofs] << endl;
 
-            if (SHM_CHECK) {
+            if ( CHECK_OFFSET || SHM_CHECK) {
                 // uint32 operations
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
@@ -677,7 +682,6 @@ TEST(FamLogicalAtomics, NonfetchLogicalNegativeInvalidOffset) {
     }
     free((void *)dataItem);
 }
-#endif
 
 // Test case 8 - Negative test cases with invalid offset
 TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
@@ -707,7 +711,7 @@ TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
                  << ", Dataitem size=" << test_item_size[sm]
                  << ", offset=" << testOffset[ofs] << endl;
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 // uint32 operations
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
@@ -731,7 +735,7 @@ TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
                 my_fam->fam_fetch_xor(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 // uint32 operations
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
@@ -762,6 +766,28 @@ TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidOffset) {
     free((void *)dataItem);
 }
 
+// Test case 8 - Negative test cases with invalid descriptor
+TEST(FamLogicalAtomics, FetchLogicalNegativeInvalidDescriptor) {
+
+    // uint32 operations
+    EXPECT_THROW(my_fam->fam_set(NULL, 0, uint32_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_and(NULL, 0, uint32_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_or(NULL, 0, uint32_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_xor(NULL, 0, uint32_t(0)), Fam_Exception);
+
+    // uint32 operations
+    EXPECT_THROW(my_fam->fam_set(NULL, 0, uint64_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_and(NULL, 0, uint64_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_or(NULL, 0, uint64_t(0)), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_xor(NULL, 0, uint64_t(0)), Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);
@@ -777,7 +803,7 @@ int main(int argc, char **argv) {
     openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, REGION_PERM, RAID1));
+                        testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     ret = RUN_ALL_TESTS();

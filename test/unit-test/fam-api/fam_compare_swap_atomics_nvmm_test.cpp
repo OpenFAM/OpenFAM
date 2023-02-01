@@ -1,6 +1,6 @@
 /*
  * fam_compare_swap_atomics_nvmm_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2019,2022 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -79,7 +79,7 @@ int main() {
         return TEST_SKIP_STATUS;
     }
 
-    desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
+    desc = my_fam->fam_create_region("test", 8192, 0777, NULL);
     if (desc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -96,7 +96,7 @@ int main() {
 
     int32_t valueInt32 = 0xAAAAAAAA;
     try {
-        my_fam->fam_set(item, 4, valueInt32);
+        my_fam->fam_set(item, 8, valueInt32);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -107,7 +107,7 @@ int main() {
     int32_t newValueInt32 = 0xBBBBBBBB;
 
     try {
-        my_fam->fam_compare_swap(item, 4, oldValueInt32, newValueInt32);
+        my_fam->fam_compare_swap(item, 8, oldValueInt32, newValueInt32);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -115,7 +115,7 @@ int main() {
     }
 
     try {
-        valueInt32 = my_fam->fam_fetch_int32(item, 4);
+        valueInt32 = my_fam->fam_fetch_int32(item, 8);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -126,7 +126,7 @@ int main() {
     // Compare atomic operation for int64
     int64_t valueInt64 = 0xBBBBBBBBBBBBBBBB;
     try {
-        my_fam->fam_set(item, 4, valueInt64);
+        my_fam->fam_set(item, 8, valueInt64);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -137,7 +137,7 @@ int main() {
     int64_t newValueInt64 = 0xCCCCCCCCCCCCCCCC;
 
     try {
-        my_fam->fam_compare_swap(item, 4, oldValueInt64, newValueInt64);
+        my_fam->fam_compare_swap(item, 8, oldValueInt64, newValueInt64);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -145,7 +145,7 @@ int main() {
     }
 
     try {
-        valueInt64 = my_fam->fam_fetch_int64(item, 4);
+        valueInt64 = my_fam->fam_fetch_int64(item, 8);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -156,7 +156,7 @@ int main() {
     // Compare atomic operations for uint32
     uint32_t valueUint32 = 0xBBBBBBBB;
     try {
-        my_fam->fam_set(item, 4, valueUint32);
+        my_fam->fam_set(item, 8, valueUint32);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -167,7 +167,7 @@ int main() {
     uint32_t newValueUint32 = 0xCCCCCCCC;
 
     try {
-        my_fam->fam_compare_swap(item, 4, oldValueUint32, newValueUint32);
+        my_fam->fam_compare_swap(item, 8, oldValueUint32, newValueUint32);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -175,7 +175,7 @@ int main() {
     }
 
     try {
-        valueUint32 = my_fam->fam_fetch_uint32(item, 4);
+        valueUint32 = my_fam->fam_fetch_uint32(item, 8);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -186,7 +186,7 @@ int main() {
     // Compare atomic operation for uint64
     uint64_t valueUint64 = 0xBBBBBBBBBBBBBBBB;
     try {
-        my_fam->fam_set(item, 4, valueUint64);
+        my_fam->fam_set(item, 8, valueUint64);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -197,7 +197,7 @@ int main() {
     uint64_t newValueUint64 = 0xCCCCCCCCCCCCCCCC;
 
     try {
-        my_fam->fam_compare_swap(item, 4, oldValueUint64, newValueUint64);
+        my_fam->fam_compare_swap(item, 8, oldValueUint64, newValueUint64);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -205,7 +205,7 @@ int main() {
     }
 
     try {
-        valueUint64 = my_fam->fam_fetch_uint64(item, 4);
+        valueUint64 = my_fam->fam_fetch_uint64(item, 8);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -216,7 +216,7 @@ int main() {
     // Failure test case
     valueUint64 = 0xBBBBBBBBBBBBBBBB;
     try {
-        my_fam->fam_set(item, 4, valueUint64);
+        my_fam->fam_set(item, 8, valueUint64);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -227,7 +227,7 @@ int main() {
     newValueUint64 = 0xCCCCCCCCCCCCCCCC;
 
     try {
-        my_fam->fam_compare_swap(item, 4, oldValueUint64, newValueUint64);
+        my_fam->fam_compare_swap(item, 8, oldValueUint64, newValueUint64);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
@@ -235,7 +235,7 @@ int main() {
     }
 
     try {
-        valueUint64 = my_fam->fam_fetch_uint64(item, 4);
+        valueUint64 = my_fam->fam_fetch_uint64(item, 8);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;

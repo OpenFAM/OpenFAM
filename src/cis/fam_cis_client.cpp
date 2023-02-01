@@ -1,8 +1,9 @@
 /*
  * fam_cis_client.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -53,10 +54,14 @@ Fam_CIS_Client::Fam_CIS_Client(const char *name, uint64_t port) {
     /** sending a start signal to server **/
     ::grpc::Status status = stub->signal_start(&ctx, req, &res);
     if (!status.ok()) {
-        throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        message << "Fam CIS Client: "<<status.error_message().c_str()<<":"<<name_s;
+        throw CIS_Exception(FAM_ERR_RPC, message.str().c_str());
     }
 
-    cq = new ::grpc::CompletionQueue();
+    copycq = new ::grpc::CompletionQueue();
+    backupcq = new ::grpc::CompletionQueue();
+    restorecq = new ::grpc::CompletionQueue();
+    delbackupcq = new ::grpc::CompletionQueue();
 }
 
 Fam_CIS_Client::~Fam_CIS_Client() {
@@ -104,7 +109,7 @@ uint64_t Fam_CIS_Client::get_num_memory_servers() {
 
 Fam_Region_Item_Info
 Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
-                              Fam_Redundancy_Level redundancyLevel,
+                              Fam_Region_Attributes *regionAttributes,
                               uint32_t uid, uint32_t gid) {
     Fam_Region_Request req;
     Fam_Region_Response res;
@@ -113,6 +118,9 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     req.set_name(name);
     req.set_size(nbytes);
     req.set_perm(permission);
+    req.set_redundancylevel(regionAttributes->redundancyLevel);
+    req.set_memorytype(regionAttributes->memoryType);
+    req.set_interleaveenable(regionAttributes->interleaveEnable);
     req.set_uid(uid);
     req.set_gid(gid);
 
@@ -122,6 +130,9 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     Fam_Region_Item_Info info;
     info.regionId = res.regionid();
     info.offset = res.offset();
+    info.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+    info.memoryType = (Fam_Memory_Type)res.memorytype();
+    info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     return info;
 }
 
@@ -180,10 +191,14 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
     STATUS_CHECK(CIS_Exception)
     Fam_Region_Item_Info info;
     info.regionId = res.regionid();
-    info.memoryServerId = res.memserver_id();
+    info.used_memsrv_cnt = res.memsrv_list_size();
     info.offset = res.offset();
-    info.key = res.key();
-    info.base = (void *)res.base();
+    info.interleaveSize = res.interleave_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+        info.baseAddressList[i] = (void *)res.base_addr_list((int)i);
+        info.keys[i] = res.keys((int)i);
+    }
     return info;
 }
 
@@ -265,6 +280,9 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name, uint32_t uid,
     info.size = res.size();
     info.perm = (mode_t)res.perm();
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    info.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+    info.memoryType = (Fam_Memory_Type)res.memorytype();
+    info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     return info;
 }
 
@@ -285,12 +303,17 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
 
     Fam_Region_Item_Info info;
     info.regionId = res.regionid();
-    info.offset = res.offset();
-    info.key = FAM_KEY_UNINITIALIZED;
     info.size = res.size();
     info.perm = (mode_t)res.perm();
-    info.memoryServerId = res.memserver_id();
+    info.used_memsrv_cnt = res.memsrv_list_size();
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    info.offset = res.offset();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.interleaveSize = res.interleave_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+    }
     return info;
 }
 
@@ -313,6 +336,16 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
     Fam_Region_Item_Info info;
     info.size = res.size();
     info.perm = (mode_t)res.perm();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+    info.memoryType = (Fam_Memory_Type)res.memorytype();
+    info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
+    info.interleaveSize = res.interleavesize();
+    info.used_memsrv_cnt = res.memsrv_list_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+    }
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
     return info;
 }
@@ -336,11 +369,18 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_item_info(
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.key = res.key();
     info.base = (void *)res.base();
     info.size = res.size();
     info.perm = (mode_t)res.perm();
+    info.used_memsrv_cnt = res.memsrv_list_size();
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
+    info.offset = res.offset();
+    info.interleaveSize = res.interleave_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+        info.baseAddressList[i] = (void *)res.base_addr_list((int)i);
+        info.keys[i] = res.keys((int)i);
+    }
     return info;
 }
 
@@ -365,43 +405,52 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
     Fam_Region_Item_Info info;
     info.size = res.size();
     info.perm = (mode_t)res.perm();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.used_memsrv_cnt = res.memsrv_list_size();
+    info.interleaveSize = res.interleave_size();
+    for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+        info.memoryServerIds[i] = res.memsrv_list((int)i);
+    }
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
     return info;
 }
 
 void *Fam_CIS_Client::copy(uint64_t srcRegionId, uint64_t srcOffset,
-                           uint64_t srcCopyStart, uint64_t srcKey,
-                           const char *srcAddr, uint32_t srcAddrLen,
+                           uint64_t srcUsedMemsrvCnt, uint64_t srcCopyStart,
+                           uint64_t *srcKeys, uint64_t *srcBaseAddrList,
                            uint64_t destRegionId, uint64_t destOffset,
-                           uint64_t destCopyStar, uint64_t nbytes,
-                           uint64_t srcMemoryServerId,
-                           uint64_t destMemoryServerId, uint32_t uid,
+                           uint64_t destCopyStart, uint64_t size,
+                           uint64_t firstSrcMemserverId,
+                           uint64_t firstDestMemserverId, uint32_t uid,
                            uint32_t gid) {
     Fam_Copy_Request req;
     Fam_Copy_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_srcregionid(srcRegionId);
-    req.set_destregionid(destRegionId);
-    req.set_srcoffset(srcOffset);
-    req.set_srckey(srcKey);
-    req.set_srcaddr(srcAddr, srcAddrLen);
-    req.set_srcaddrlen(srcAddrLen);
-    req.set_destoffset(destOffset);
-    req.set_srccopystart(srcCopyStart);
-    req.set_destcopystart(destCopyStar);
+    req.set_src_region_id(srcRegionId);
+    req.set_dest_region_id(destRegionId);
+    req.set_src_offset(srcOffset);
+    req.set_dest_offset(destOffset);
+    req.set_src_copy_start(srcCopyStart);
+    req.set_dest_copy_start(destCopyStart);
     req.set_gid(gid);
     req.set_uid(uid);
-    req.set_copysize(nbytes);
-    req.set_src_memserver_id(srcMemoryServerId);
-    req.set_dest_memserver_id(destMemoryServerId);
+    req.set_copy_size(size);
+    req.set_first_src_memsrv_id(firstSrcMemserverId);
+    req.set_first_dest_memsrv_id(firstDestMemserverId);
+    for (uint64_t i = 0; i < srcUsedMemsrvCnt; i++) {
+        req.add_src_keys(srcKeys[i]);
+        req.add_src_base_addr(srcBaseAddrList[i]);
+    }
 
     Fam_Copy_Wait_Object *waitObj = new Fam_Copy_Wait_Object();
 
     waitObj->isCompleted = false;
-    waitObj->memServerId = destMemoryServerId;
+    // waitObj->memServerId = destMemoryServerId;
 
-    waitObj->responseReader = stub->PrepareAsynccopy(&waitObj->ctx, req, cq);
+    waitObj->responseReader =
+        stub->PrepareAsynccopy(&waitObj->ctx, req, copycq);
 
     // StartCall initiates the RPC call
     waitObj->responseReader->StartCall();
@@ -444,7 +493,7 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
     } else {
 
         do {
-            GPR_ASSERT(cq->Next(&got_waitObj, &ok));
+            GPR_ASSERT(copycq->Next(&got_waitObj, &ok));
             // The waitObj is the memory location of Fam_Copy_waitObj object
             waitObjCompleted = static_cast<Fam_Copy_Wait_Object *>(got_waitObj);
             if (!waitObjCompleted) {
@@ -475,17 +524,330 @@ void Fam_CIS_Client::wait_for_copy(void *waitObj) {
     }
 }
 
+void *Fam_CIS_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
+                             uint64_t srcMemoryServerId, string BackupName,
+                             uint32_t uid, uint32_t gid) {
+
+    Fam_Backup_Restore_Request req;
+    Fam_Backup_Restore_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_regionid(srcRegionId);
+    req.set_offset(srcOffset);
+    req.set_memserver_id(srcMemoryServerId);
+    req.set_bname(BackupName);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    Fam_Backup_Wait_Object *waitObj = new Fam_Backup_Wait_Object();
+
+    waitObj->isCompleted = false;
+    waitObj->memServerId = srcMemoryServerId;
+
+    waitObj->responseReader =
+        stub->PrepareAsyncbackup(&waitObj->ctx, req, backupcq);
+
+    // StartCall initiates the RPC call
+    waitObj->responseReader->StartCall();
+
+    waitObj->responseReader->Finish(&waitObj->res, &waitObj->status,
+                                    (void *)waitObj);
+
+    return (void *)waitObj;
+}
+
+void Fam_CIS_Client::wait_for_backup(void *waitObj) {
+    void *got_waitObj;
+    bool ok = false;
+    Fam_Backup_Wait_Object *waitObjIn, *waitObjCompleted;
+    ::grpc::Status status;
+    Fam_Backup_Restore_Response res;
+
+    waitObjIn = static_cast<Fam_Backup_Wait_Object *>(waitObj);
+
+    if (!waitObjIn) {
+        throw CIS_Exception(FAM_ERR_INVALID, "Backup waitObj is null");
+    }
+
+    if (waitObjIn->isCompleted) {
+        if (waitObjIn->status.ok()) {
+            if (waitObjIn->res.errorcode()) {
+                res = waitObjIn->res;
+                delete waitObjIn;
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
+            } else {
+                delete waitObjIn;
+                return;
+            }
+        } else {
+            status = waitObjIn->status;
+            delete waitObjIn;
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        }
+    } else {
+
+        do {
+            GPR_ASSERT(backupcq->Next(&got_waitObj, &ok));
+            // The waitObj is the memory location of Fam_Backup_waitObj object
+            waitObjCompleted = static_cast<Fam_Backup_Wait_Object *>(got_waitObj);
+            if (!waitObjCompleted) {
+                throw CIS_Exception(FAM_ERR_INVALID, "Backup waitObj is null");
+            }
+            waitObjCompleted->isCompleted = true;
+            // Verify that the request was completed successfully. Note
+            // that "ok" corresponds solely to the request for updates
+            // introduced by Finish().
+            GPR_ASSERT(ok);
+        } while (waitObjIn != waitObjCompleted);
+
+        if (waitObjCompleted->status.ok()) {
+            if (waitObjCompleted->res.errorcode()) {
+                res = waitObjCompleted->res;
+                delete waitObjCompleted;
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
+            } else {
+                delete waitObjCompleted;
+                return;
+            }
+        } else {
+            status = waitObjCompleted->status;
+            delete waitObjCompleted;
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        }
+    }
+}
+
+void *Fam_CIS_Client::restore(uint64_t destRegionId, uint64_t destOffset,
+                              uint64_t destMemoryServerId, string BackupName,
+                              uint32_t uid, uint32_t gid) {
+    Fam_Backup_Restore_Request req;
+    Fam_Backup_Restore_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_regionid(destRegionId);
+    req.set_memserver_id(destMemoryServerId);
+    req.set_offset(destOffset);
+    req.set_bname(BackupName);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    Fam_Restore_Wait_Object *waitObj = new Fam_Restore_Wait_Object();
+
+    waitObj->isCompleted = false;
+    waitObj->memServerId = destMemoryServerId;
+
+    waitObj->responseReader =
+        stub->PrepareAsyncrestore(&waitObj->ctx, req, restorecq);
+
+    // StartCall initiates the RPC call
+    waitObj->responseReader->StartCall();
+
+    waitObj->responseReader->Finish(&waitObj->res, &waitObj->status,
+                                    (void *)waitObj);
+
+    return (void *)waitObj;
+}
+
+void Fam_CIS_Client::wait_for_restore(void *waitObj) {
+    void *got_waitObj;
+    bool ok = false;
+    Fam_Restore_Wait_Object *waitObjIn, *waitObjCompleted;
+    ::grpc::Status status;
+    Fam_Backup_Restore_Response res;
+
+    waitObjIn = static_cast<Fam_Restore_Wait_Object *>(waitObj);
+
+    if (!waitObjIn) {
+        throw CIS_Exception(FAM_ERR_INVALID, "Restore waitObj is null");
+    }
+
+    if (waitObjIn->isCompleted) {
+        if (waitObjIn->status.ok()) {
+            if (waitObjIn->res.errorcode()) {
+                res = waitObjIn->res;
+                delete waitObjIn;
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
+            } else {
+                delete waitObjIn;
+                return;
+            }
+        } else {
+            status = waitObjIn->status;
+            delete waitObjIn;
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        }
+    } else {
+
+        do {
+            GPR_ASSERT(restorecq->Next(&got_waitObj, &ok));
+            // The waitObj is the memory location of Fam_Restore_waitObj object
+            waitObjCompleted = static_cast<Fam_Restore_Wait_Object *>(got_waitObj);
+            if (!waitObjCompleted) {
+                throw CIS_Exception(FAM_ERR_INVALID, "Restore waitObj is null");
+            }
+            waitObjCompleted->isCompleted = true;
+            // Verify that the request was completed successfully. Note
+            // that "ok" corresponds solely to the request for updates
+            // introduced by Finish().
+            GPR_ASSERT(ok);
+        } while (waitObjIn != waitObjCompleted);
+
+        if (waitObjCompleted->status.ok()) {
+            if (waitObjCompleted->res.errorcode()) {
+                res = waitObjCompleted->res;
+                delete waitObjCompleted;
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
+            } else {
+                delete waitObjCompleted;
+                return;
+            }
+        } else {
+            status = waitObjCompleted->status;
+            delete waitObjCompleted;
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        }
+    }
+}
+
+string Fam_CIS_Client::list_backup(string BackupName, uint64_t memoryServerId,
+                                   uint32_t uid, uint32_t gid) {
+    Fam_Backup_List_Request req;
+    Fam_Backup_List_Response res;
+    ::grpc::ClientContext ctx;
+
+    req.set_bname(BackupName);
+    req.set_memserver_id(memoryServerId);
+    req.set_uid(uid);
+    req.set_gid(gid);
+
+    ::grpc::Status status = stub->list_backup(&ctx, req, &res);
+    STATUS_CHECK(CIS_Exception)
+    string info = res.contents();
+    return info;
+}
+
+void *Fam_CIS_Client::delete_backup(string BackupName, uint64_t memoryServerId,
+                                    uint32_t uid, uint32_t gid) {
+    Fam_Backup_List_Request req;
+    Fam_Backup_List_Response res;
+    ::grpc::ClientContext ctx;
+    req.set_bname(BackupName);
+    req.set_memserver_id(memoryServerId);
+    req.set_uid(uid);
+    req.set_gid(gid);
+    Fam_Delete_Backup_Wait_Object *waitObj =
+        new Fam_Delete_Backup_Wait_Object();
+    waitObj->isCompleted = false;
+
+    waitObj->responseReader =
+        stub->PrepareAsyncdelete_backup(&waitObj->ctx, req, delbackupcq);
+
+    // StartCall initiates the RPC call
+    waitObj->responseReader->StartCall();
+
+    waitObj->responseReader->Finish(&waitObj->res, &waitObj->status,
+                                    (void *)waitObj);
+    return (void *)waitObj;
+}
+
+void Fam_CIS_Client::wait_for_delete_backup(void *waitObj) {
+    void *got_waitObj;
+    bool ok = false;
+    Fam_Delete_Backup_Wait_Object *waitObjIn, *waitObjCompleted;
+    ::grpc::Status status;
+    Fam_Backup_List_Response res;
+    waitObjIn = static_cast<Fam_Delete_Backup_Wait_Object *>(waitObj);
+
+    if (!waitObjIn) {
+        throw CIS_Exception(FAM_ERR_INVALID, "Delete Backup waitObj is null");
+    }
+
+    if (waitObjIn->isCompleted) {
+        if (waitObjIn->status.ok()) {
+            if (waitObjIn->res.errorcode()) {
+                res = waitObjIn->res;
+                delete waitObjIn;
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
+            } else {
+                delete waitObjIn;
+                return;
+            }
+        } else {
+            status = waitObjIn->status;
+            delete waitObjIn;
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        }
+    } else {
+
+        do {
+            GPR_ASSERT(delbackupcq->Next(&got_waitObj, &ok));
+            // The waitObj is the memory location of Fam_Backup_waitObj object
+            waitObjCompleted =
+                static_cast<Fam_Delete_Backup_Wait_Object *>(got_waitObj);
+            if (!waitObjCompleted) {
+                throw CIS_Exception(FAM_ERR_INVALID,
+                                    "Delete Backup waitObj is null");
+            }
+            waitObjCompleted->isCompleted = true;
+            // Verify that the request was completed successfully. Note
+            // that "ok" corresponds solely to the request for updates
+            // introduced by Finish().
+            GPR_ASSERT(ok);
+        } while (waitObjIn != waitObjCompleted);
+
+        if (waitObjCompleted->status.ok()) {
+            if (waitObjCompleted->res.errorcode()) {
+                res = waitObjCompleted->res;
+                delete waitObjCompleted;
+                throw CIS_Exception((enum Fam_Error)res.errorcode(),
+                                    res.errormsg().c_str());
+            } else {
+                delete waitObjCompleted;
+                return;
+                return;
+            }
+        } else {
+            status = waitObjCompleted->status;
+            delete waitObjCompleted;
+            throw CIS_Exception(FAM_ERR_RPC, (status.error_message()).c_str());
+        }
+    }
+}
+
+Fam_Backup_Info Fam_CIS_Client::get_backup_info(std::string BackupName,
+                                                uint64_t memoryServerId,
+                                                uint32_t uid, uint32_t gid) {
+    Fam_Backup_Info_Request req;
+    Fam_Backup_Info_Response res;
+    ::grpc::ClientContext ctx;
+
+    req.set_memserver_id(memoryServerId);
+    req.set_bname(BackupName);
+    ::grpc::Status status = stub->get_backup_info(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+    Fam_Backup_Info info;
+    info.bname = (char *)(res.name().c_str());
+    info.size = res.size();
+    info.uid = res.uid();
+    info.gid = res.gid();
+    info.mode = res.mode();
+
+    return info;
+}
+
 void *Fam_CIS_Client::fam_map(uint64_t regionId, uint64_t offset,
                               uint64_t memoryServerId, uint32_t uid,
                               uint32_t gid) {
-    FAM_UNIMPLEMENTED_GRPC()
+    FAM_UNIMPLEMENTED_MEMSRVMODEL();
     return NULL;
 }
 
 void Fam_CIS_Client::fam_unmap(void *local, uint64_t regionId, uint64_t offset,
                                uint64_t memoryServerId, uint32_t uid,
                                uint32_t gid) {
-    FAM_UNIMPLEMENTED_GRPC()
+    FAM_UNIMPLEMENTED_MEMSRVMODEL();
 }
 
 void Fam_CIS_Client::acquire_CAS_lock(uint64_t offset,
@@ -559,6 +921,7 @@ void Fam_CIS_Client::get_addr(void *memServerFabricAddr,
     }
 }
 
+
 size_t Fam_CIS_Client::get_memserverinfo_size() {
     Fam_Request req;
     Fam_Memserverinfo_Response res;
@@ -587,9 +950,10 @@ void Fam_CIS_Client::get_memserverinfo(void *memServerInfoBuffer) {
 
 int Fam_CIS_Client::get_atomic(uint64_t regionId, uint64_t srcOffset,
                                uint64_t dstOffset, uint64_t nbytes,
-                               uint64_t key, const char *nodeAddr,
-                               uint32_t nodeAddrSize, uint64_t memoryServerId,
-                               uint32_t uid, uint32_t gid) {
+                               uint64_t key, uint64_t srcBaseAddr,
+                               const char *nodeAddr, uint32_t nodeAddrSize,
+                               uint64_t memoryServerId, uint32_t uid,
+                               uint32_t gid) {
     Fam_Atomic_Get_Request req;
     Fam_Atomic_Response res;
     ::grpc::ClientContext ctx;
@@ -598,6 +962,7 @@ int Fam_CIS_Client::get_atomic(uint64_t regionId, uint64_t srcOffset,
     req.set_dstoffset(dstOffset);
     req.set_nbytes(nbytes);
     req.set_key(key);
+    req.set_srcbaseaddr(srcBaseAddr);
     req.set_nodeaddr(nodeAddr, nodeAddrSize);
     req.set_nodeaddrsize(nodeAddrSize);
     req.set_memserver_id(memoryServerId);
@@ -611,10 +976,10 @@ int Fam_CIS_Client::get_atomic(uint64_t regionId, uint64_t srcOffset,
 
 int Fam_CIS_Client::put_atomic(uint64_t regionId, uint64_t srcOffset,
                                uint64_t dstOffset, uint64_t nbytes,
-                               uint64_t key, const char *nodeAddr,
-                               uint32_t nodeAddrSize, const char *data,
-                               uint64_t memoryServerId, uint32_t uid,
-                               uint32_t gid) {
+                               uint64_t key, uint64_t srcBaseAddr,
+                               const char *nodeAddr, uint32_t nodeAddrSize,
+                               const char *data, uint64_t memoryServerId,
+                               uint32_t uid, uint32_t gid) {
     Fam_Atomic_Put_Request req;
     Fam_Atomic_Response res;
     ::grpc::ClientContext ctx;
@@ -623,6 +988,7 @@ int Fam_CIS_Client::put_atomic(uint64_t regionId, uint64_t srcOffset,
     req.set_dstoffset(dstOffset);
     req.set_nbytes(nbytes);
     req.set_key(key);
+    req.set_srcbaseaddr(srcBaseAddr);
     req.set_nodeaddr(nodeAddr, nodeAddrSize);
     if (nbytes <= MAX_DATA_IN_MSG)
         req.set_data(data, nbytes);
@@ -639,8 +1005,8 @@ int Fam_CIS_Client::put_atomic(uint64_t regionId, uint64_t srcOffset,
 int Fam_CIS_Client::scatter_strided_atomic(
     uint64_t regionId, uint64_t offset, uint64_t nElements,
     uint64_t firstElement, uint64_t stride, uint64_t elementSize, uint64_t key,
-    const char *nodeAddr, uint32_t nodeAddrSize, uint64_t memoryServerId,
-    uint32_t uid, uint32_t gid) {
+    uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize,
+    uint64_t memoryServerId, uint32_t uid, uint32_t gid) {
     Fam_Atomic_SG_Strided_Request req;
     Fam_Atomic_Response res;
     ::grpc::ClientContext ctx;
@@ -651,6 +1017,7 @@ int Fam_CIS_Client::scatter_strided_atomic(
     req.set_stride(stride);
     req.set_elementsize(elementSize);
     req.set_key(key);
+    req.set_srcbaseaddr(srcBaseAddr);
     req.set_nodeaddr(nodeAddr, nodeAddrSize);
     req.set_nodeaddrsize(nodeAddrSize);
     req.set_memserver_id(memoryServerId);
@@ -665,8 +1032,8 @@ int Fam_CIS_Client::scatter_strided_atomic(
 int Fam_CIS_Client::gather_strided_atomic(
     uint64_t regionId, uint64_t offset, uint64_t nElements,
     uint64_t firstElement, uint64_t stride, uint64_t elementSize, uint64_t key,
-    const char *nodeAddr, uint32_t nodeAddrSize, uint64_t memoryServerId,
-    uint32_t uid, uint32_t gid) {
+    uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize,
+    uint64_t memoryServerId, uint32_t uid, uint32_t gid) {
     Fam_Atomic_SG_Strided_Request req;
     Fam_Atomic_Response res;
     ::grpc::ClientContext ctx;
@@ -677,6 +1044,7 @@ int Fam_CIS_Client::gather_strided_atomic(
     req.set_stride(stride);
     req.set_elementsize(elementSize);
     req.set_key(key);
+    req.set_srcbaseaddr(srcBaseAddr);
     req.set_nodeaddr(nodeAddr, nodeAddrSize);
     req.set_nodeaddrsize(nodeAddrSize);
     req.set_memserver_id(memoryServerId);
@@ -691,8 +1059,8 @@ int Fam_CIS_Client::gather_strided_atomic(
 int Fam_CIS_Client::scatter_indexed_atomic(
     uint64_t regionId, uint64_t offset, uint64_t nElements,
     const void *elementIndex, uint64_t elementSize, uint64_t key,
-    const char *nodeAddr, uint32_t nodeAddrSize, uint64_t memoryServerId,
-    uint32_t uid, uint32_t gid) {
+    uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize,
+    uint64_t memoryServerId, uint32_t uid, uint32_t gid) {
     Fam_Atomic_SG_Indexed_Request req;
     Fam_Atomic_Response res;
     ::grpc::ClientContext ctx;
@@ -702,6 +1070,7 @@ int Fam_CIS_Client::scatter_indexed_atomic(
     req.set_elementindex(elementIndex, strlen((char *)elementIndex));
     req.set_elementsize(elementSize);
     req.set_key(key);
+    req.set_srcbaseaddr(srcBaseAddr);
     req.set_nodeaddr(nodeAddr, nodeAddrSize);
     req.set_nodeaddrsize(nodeAddrSize);
     req.set_memserver_id(memoryServerId);
@@ -716,8 +1085,8 @@ int Fam_CIS_Client::scatter_indexed_atomic(
 int Fam_CIS_Client::gather_indexed_atomic(
     uint64_t regionId, uint64_t offset, uint64_t nElements,
     const void *elementIndex, uint64_t elementSize, uint64_t key,
-    const char *nodeAddr, uint32_t nodeAddrSize, uint64_t memoryServerId,
-    uint32_t uid, uint32_t gid) {
+    uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize,
+    uint64_t memoryServerId, uint32_t uid, uint32_t gid) {
     Fam_Atomic_SG_Indexed_Request req;
     Fam_Atomic_Response res;
     ::grpc::ClientContext ctx;
@@ -727,6 +1096,7 @@ int Fam_CIS_Client::gather_indexed_atomic(
     req.set_elementindex(elementIndex, strlen((char *)elementIndex));
     req.set_elementsize(elementSize);
     req.set_key(key);
+    req.set_srcbaseaddr(srcBaseAddr);
     req.set_nodeaddr(nodeAddr, nodeAddrSize);
     req.set_nodeaddrsize(nodeAddrSize);
     req.set_memserver_id(memoryServerId);

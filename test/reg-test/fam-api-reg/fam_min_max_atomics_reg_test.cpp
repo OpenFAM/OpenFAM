@@ -1,8 +1,9 @@
 /*
  * fam_min_max_atomics_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -52,6 +53,11 @@ const char *testRegionStr;
 
 #define REGION_SIZE (1024 * 1024)
 #define REGION_PERM 0777
+#ifdef CHECK_OFFSETS
+unsigned int CHECK_OFFSET = 1;
+#else
+unsigned int CHECK_OFFSET = 0;
+#endif
 
 #define SHM_CHECK (strcmp(openFamModel, "shared_memory") == 0)
 /*
@@ -60,10 +66,8 @@ TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     int32_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffff,
                                 (int32_t)0x87654321};
     int32_t operand2Value[5] = {(int32_t)0xf0000000, 0x1234, 0x7fffffff, 0x0,
@@ -73,17 +77,14 @@ TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
     int32_t testMinExpectedValue[5] = {(int32_t)0xf0000000, 0x1234, 0x54321,
                                        0x0, (int32_t)0x87654321};
     int32_t testMaxExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x1, 0x7fffffff};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(int32_t) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -111,22 +112,18 @@ TEST(FamMinMaxAtomics, MinMaxInt32NonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 2 - MinMaxUInt32NonBlock
 TEST(FamMinMaxAtomics, MinMaxUInt32NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     uint32_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffff, 0x87654321};
     uint32_t operand2Value[5] = {0xf0000000, 0x1234, 0x7fffffff, 0x0,
                                  0xffffffff};
@@ -134,17 +131,14 @@ TEST(FamMinMaxAtomics, MinMaxUInt32NonBlock) {
     uint32_t testMinExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x0, 0x87654321};
     uint32_t testMaxExpectedValue[5] = {0x0, 0xffff0000, 0x54321, 0x1,
                                         0x87654321};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(uint32_t) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -172,22 +166,18 @@ TEST(FamMinMaxAtomics, MinMaxUInt32NonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 3 - MinMaxInt64NonBlock
 TEST(FamMinMaxAtomics, MinMaxInt64NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     int64_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffffffffffff,
                                 (int64_t)0xfedcba9876543210};
     int64_t operand2Value[5] = {(int64_t)0xf000000000000000, 0x1234,
@@ -200,17 +190,14 @@ TEST(FamMinMaxAtomics, MinMaxInt64NonBlock) {
                                        (int64_t)0xfedcba9876543210};
     int64_t testMaxExpectedValue[5] = {0x0, 0x1234, 0x54321, 0x1,
                                        0x7fffffffffffffff};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(int64_t) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -238,22 +225,18 @@ TEST(FamMinMaxAtomics, MinMaxInt64NonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 4 - MinMaxUInt64NonBlock
 TEST(FamMinMaxAtomics, MinMaxUInt64NonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     uint64_t operand1Value[5] = {0x0, 0x1234, 0x54321, 0x7fffffffffffffff,
                                  0xfedcba9876543210};
     uint64_t operand2Value[5] = {0xf000000000000000, 0x1234, 0x7fffffffffffffff,
@@ -264,17 +247,14 @@ TEST(FamMinMaxAtomics, MinMaxUInt64NonBlock) {
                                         0xfedcba9876543210};
     uint64_t testMaxExpectedValue[5] = {0x0, 0xffffffff00000000, 0x54321, 0x1,
                                         0xfedcba9876543210};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(int64_t) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -302,38 +282,31 @@ TEST(FamMinMaxAtomics, MinMaxUInt64NonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 5 - MinMaxFloatNonBlock
 TEST(FamMinMaxAtomics, MinMaxFloatNonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     float operand1Value[5] = {0.0f, 1234.12f, 54321.87f, 8888.33f, 99999.99f};
     float operand2Value[5] = {0.1f, 1234.12f, 0.12f, 9999.22f, 0.01f};
     float operand3Value[5] = {0.5f, 1234.23f, 0.01f, 5432.10f, 0.05f};
     float testMinExpectedValue[5] = {0.0f, 1234.12f, 0.12f, 8888.33f, 0.01f};
     float testMaxExpectedValue[5] = {0.5f, 1234.23f, 0.12f, 8888.33f, 0.05f};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(float) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -361,22 +334,18 @@ TEST(FamMinMaxAtomics, MinMaxFloatNonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
     free((void *)dataItem);
 }
-
 // Test case 6 - MinMaxDoubleNonBlock
 TEST(FamMinMaxAtomics, MinMaxDoubleNonBlock) {
     Fam_Descriptor *item;
     const char *dataItem = get_uniq_str("first", my_fam);
     int i, sm, ofs;
-
     mode_t test_perm_mode[3] = {0777, 0644, 0600};
     size_t test_item_size[3] = {1024, 4096, 8192};
-
     double operand1Value[5] = {0.0, 1234.123, 987654321.8765,
                                2222555577778888.3333, (DBL_MAX - 1.0)};
     double operand2Value[5] = {0.1, 1234.123, 0.1234, 1111.2222, 1.0};
@@ -385,17 +354,14 @@ TEST(FamMinMaxAtomics, MinMaxDoubleNonBlock) {
     double testMinExpectedValue[5] = {0.0, 1234.123, 0.1234, 1111.2222, 1.0};
     double testMaxExpectedValue[5] = {1.5, 5432.123, 0.1234,
                                       2222555577778888.3333, DBL_MAX - 1};
-
     for (sm = 0; sm < 3; sm++) {
         // Allocating data items in the created region
         EXPECT_NO_THROW(
             item = my_fam->fam_allocate(dataItem, test_item_size[sm],
                                         test_perm_mode[sm], testRegionDesc));
         EXPECT_NE((void *)NULL, item);
-
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
                                   (test_item_size[sm] - sizeof(double) - 1)};
-
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
                 cout << "Testing min max atomics: item=" << item
@@ -423,7 +389,6 @@ TEST(FamMinMaxAtomics, MinMaxDoubleNonBlock) {
                 EXPECT_EQ(testMaxExpectedValue[i], result);
             }
         }
-
         EXPECT_NO_THROW(my_fam->fam_deallocate(item));
         delete item;
     }
@@ -457,7 +422,7 @@ TEST(FamMinMaxAtomics, MinMaxInt32Block) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(int32_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(int32_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -511,7 +476,7 @@ TEST(FamMinMaxAtomics, MinMaxUInt32Block) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(uint32_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(uint32_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -570,7 +535,7 @@ TEST(FamMinMaxAtomics, MinMaxInt64Block) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(int64_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -627,7 +592,7 @@ TEST(FamMinMaxAtomics, MinMaxUInt64Block) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(int64_t) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(int64_t))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -679,7 +644,7 @@ TEST(FamMinMaxAtomics, MinMaxFloatBlock) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(float) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(float))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -734,7 +699,7 @@ TEST(FamMinMaxAtomics, MinMaxDoubleBlock) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(double) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(double))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             for (i = 0; i < 5; i++) {
@@ -787,7 +752,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockPerm) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(double) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(double))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             if (SHM_CHECK) {
@@ -916,7 +881,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockPerm) {
         EXPECT_NE((void *)NULL, item);
 
         uint64_t testOffset[3] = {0, (test_item_size[sm] / 2),
-                                  (test_item_size[sm] - sizeof(double) - 1)};
+                                  (test_item_size[sm] - 2 * sizeof(double))};
 
         for (ofs = 0; ofs < 3; ofs++) {
             if (SHM_CHECK) {
@@ -980,162 +945,6 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockPerm) {
                     my_fam->fam_max(item, testOffset[ofs], operandDouble[1]),
                     Fam_Exception);
 
-            } else {
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandInt32[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandInt32[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandUint32[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandUint32[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandInt64[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandInt64[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandUint64[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandUint64[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandFloat[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandFloat[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-
-                EXPECT_NO_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandDouble[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-                EXPECT_NO_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandDouble[1]));
-                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
-            }
-        }
-
-        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
-        delete item;
-    }
-    free((void *)dataItem);
-}
-
-// Test case 15 - Min Max Negative test case with invalid offset
-TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
-    Fam_Descriptor *item;
-    const char *dataItem = get_uniq_str("first", my_fam);
-    int sm, ofs;
-
-    mode_t test_perm_mode[4] = {0600, 0644, 0755, 0711};
-    size_t test_item_size[4] = {1024, 4096, 8192, 16384};
-
-    int32_t operandInt32[2] = {0x1234, (int32_t)0xffffffff};
-    uint32_t operandUint32[2] = {0x1234, 0xffffffff};
-    int64_t operandInt64[2] = {0x12345678, (int32_t)0xffffffffffffffff};
-    uint64_t operandUint64[2] = {0x12345678, 0xffffffffffffffff};
-    float operandFloat[2] = {0.1f, 1234.56f};
-    double operandDouble[2] = {123456.78, 999999.99};
-
-    for (sm = 0; sm < 4; sm++) {
-        // Allocating data items in the created region
-        EXPECT_NO_THROW(
-            item = my_fam->fam_allocate(dataItem, test_item_size[sm],
-                                        test_perm_mode[sm], testRegionDesc));
-        EXPECT_NE((void *)NULL, item);
-
-        uint64_t testOffset[3] = {test_item_size[sm], (2 * test_item_size[sm]),
-                                  (test_item_size[sm] + 1)};
-
-        for (ofs = 0; ofs < 3; ofs++) {
-            if (SHM_CHECK) {
-                EXPECT_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandInt32[1]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandInt32[1]),
-                    Fam_Exception);
-
-                EXPECT_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandUint32[1]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandUint32[1]),
-                    Fam_Exception);
-
-                EXPECT_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandInt64[1]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandInt64[1]),
-                    Fam_Exception);
-
-                EXPECT_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandUint64[1]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandUint64[1]),
-                    Fam_Exception);
-
-                EXPECT_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandFloat[1]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandFloat[1]),
-                    Fam_Exception);
-
-                EXPECT_THROW(
-                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_min(item, testOffset[ofs], operandDouble[1]),
-                    Fam_Exception);
-                EXPECT_THROW(
-                    my_fam->fam_max(item, testOffset[ofs], operandDouble[1]),
-                    Fam_Exception);
             } else {
                 EXPECT_NO_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
@@ -1205,6 +1014,164 @@ TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
     free((void *)dataItem);
 }
 #endif
+
+// Test case 15 - Min Max Negative test case with invalid offset
+TEST(FamMinMaxAtomics, MinMaxNegativeNonblockInvalidOffset) {
+    Fam_Descriptor *item;
+    const char *dataItem = get_uniq_str("first", my_fam);
+    int sm, ofs;
+
+    mode_t test_perm_mode[4] = {0600, 0644, 0755, 0711};
+    size_t test_item_size[4] = {1024, 4096, 8192, 16384};
+
+    int32_t operandInt32[2] = {0x1234, (int32_t)0xffffffff};
+    uint32_t operandUint32[2] = {0x1234, 0xffffffff};
+    int64_t operandInt64[2] = {0x12345678, (int32_t)0xffffffffffffffff};
+    uint64_t operandUint64[2] = {0x12345678, 0xffffffffffffffff};
+    float operandFloat[2] = {0.1f, 1234.56f};
+    double operandDouble[2] = {123456.78, 999999.99};
+
+    for (sm = 0; sm < 4; sm++) {
+        // Allocating data items in the created region
+        EXPECT_NO_THROW(
+            item = my_fam->fam_allocate(dataItem, test_item_size[sm],
+                                        test_perm_mode[sm], testRegionDesc));
+        EXPECT_NE((void *)NULL, item);
+
+        uint64_t testOffset[3] = {test_item_size[sm], (2 * test_item_size[sm]),
+                                  (test_item_size[sm] + 1)};
+
+        for (ofs = 0; ofs < 3; ofs++) {
+		cout << "testOffset[" << ofs << "]:" << testOffset[ofs] << endl;
+            if (CHECK_OFFSET || SHM_CHECK) {
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt32[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt32[1]),
+                    Fam_Exception);
+
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint32[1]),
+                    Fam_Exception);
+
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt64[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt64[1]),
+                    Fam_Exception);
+
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint64[1]),
+                    Fam_Exception);
+
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandFloat[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandFloat[1]),
+                    Fam_Exception);
+
+                EXPECT_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandDouble[1]),
+                    Fam_Exception);
+                EXPECT_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandDouble[1]),
+                    Fam_Exception);
+            } else {
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint32[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint32[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandInt64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandInt64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandInt64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandUint64[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandUint64[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandFloat[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandFloat[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandFloat[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+
+                EXPECT_NO_THROW(
+                    my_fam->fam_set(item, testOffset[ofs], operandDouble[0]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_min(item, testOffset[ofs], operandDouble[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+                EXPECT_NO_THROW(
+                    my_fam->fam_max(item, testOffset[ofs], operandDouble[1]));
+                EXPECT_THROW(my_fam->fam_quiet(), Fam_Exception);
+            }
+        }
+
+        EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+        delete item;
+    }
+    free((void *)dataItem);
+}
+
 // Test case 13 - Min Max Negative test case with invalid offset
 TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
     Fam_Descriptor *item;
@@ -1232,7 +1199,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                                   (test_item_size[sm] + 1)};
 
         for (ofs = 0; ofs < 3; ofs++) {
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandInt32[0]),
                     Fam_Exception);
@@ -1248,7 +1215,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt32[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint32[0]),
                     Fam_Exception);
@@ -1264,7 +1231,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandUint32[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandInt64[0]),
                     Fam_Exception);
@@ -1280,7 +1247,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandInt64[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandUint64[0]),
                     Fam_Exception);
@@ -1296,7 +1263,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandUint64[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandFloat[0]),
                     Fam_Exception);
@@ -1312,7 +1279,7 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
                 my_fam->fam_fetch_max(item, testOffset[ofs], operandFloat[1]),
                 Fam_Exception);
 
-            if (SHM_CHECK) {
+            if (CHECK_OFFSET || SHM_CHECK) {
                 EXPECT_THROW(
                     my_fam->fam_set(item, testOffset[ofs], operandDouble[0]),
                     Fam_Exception);
@@ -1335,6 +1302,38 @@ TEST(FamMinMaxAtomics, MinMaxNegativeBlockInvalidOffset) {
     free((void *)dataItem);
 }
 
+// Test case 16 - Min Max Negative test case with invalid descriptor
+TEST(FamMinMaxAtomics, MinMaxNegativeInvalidDescriptor) {
+    Fam_Descriptor *item = NULL;
+
+    EXPECT_THROW(my_fam->fam_min(item, 0, uint32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, uint32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, uint64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, uint64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, int32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, int32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, int64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, int64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, float(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, float(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_min(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_max(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, uint32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, uint32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, uint64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, uint64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, int32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, int32_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, int64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, int64_t(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, float(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, float(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_min(item, 0, double(0)), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_max(item, 0, double(0)), Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);
@@ -1350,7 +1349,7 @@ int main(int argc, char **argv) {
     openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, REGION_PERM, RAID1));
+                        testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     ret = RUN_ALL_TESTS();

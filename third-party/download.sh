@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # download.sh
-# Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+# Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All rights
 # reserved. Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 # 1. Redistributions of source code must retain the above copyright notice,
@@ -28,38 +28,105 @@
 # See https://spdx.org/licenses/BSD-3-Clause
 #
 
+print_help() {
+    tput bold
+    echo "SYNOPSIS :"
+    tput reset
+    echo ""
+    echo "./download.sh <options>"
+        echo ""
+    tput bold
+    echo "OPTIONS :"
+    tput reset
+        echo ""
+        echo "--no-package-install      : Do not install any packages"
+        echo ""
+        echo ""
+        echo "--no-parallel-make        : Do not use make -j (preferred option in low memory systems)"
+        echo ""
+        echo "--use-system-pmix         : use this if want system installed pmix as third-party package in openfam"
+        echo ""
+        echo "--use-system-openmpi      : use this if want system installed openmpi as third-party package in openfam"
+        echo ""
+        echo "--use-system-libfabric    : use this if want system installedlibfabric as third-party package in openfam"
+        echo ""
+        echo ""
+    exit
+}
+while :; do
+    case $1 in
+        -h|-\?|--help)
+            print_help
+            ;;
+                --no-package-install)
+                        no_package_install=true
+                        ;;
+                --no-parallel-make)
+                        no_parallel_make=true
+                        ;;
+                --use-system-pmix)
+                        no_pmix=true
+                        ;;
+                --use-system-openmpi)
+                        no_openmpi=true
+                        ;;
+                --use-system-libfabric)
+                        no_libfabric=true
+                        ;;
+                *)
+            break
+        esac
+
+        shift
+done
+
 CURRENT_DIR=`pwd`
 
-#GRPC v1.17.0
+#GRPC v1.39.0
 echo "Downloading GRPC source"
 git clone https://github.com/grpc/grpc.git
 cd grpc
 git fetch --all --tags --prune
-git checkout tags/v1.17.0 -b openfam
+git checkout tags/v1.39.0 -b openfam
 
-#LIBFABRIC v1.7.2 
-cd $CURRENT_DIR
-echo "Downloading LIBFABRIC source"
-git clone https://github.com/ofiwg/libfabric.git
-cd libfabric
-git fetch --all --tags --prune
-git checkout tags/v1.9.1rc1 -b openfam
+if [ "$no_libfabric" == "true" ]
+then
+    echo "Please provide LIBFABRIC_PATH while building openfam"
+else
+	#LIBFABRIC v1.14.0
+	cd $CURRENT_DIR
+	echo "Downloading LIBFABRIC source"
+	git clone https://github.com/ofiwg/libfabric.git
+	cd libfabric
+	git fetch --all --tags --prune
+	git checkout tags/v1.14.0 -b openfam
+fi
 
-#PMIX v3.0.2
-cd $CURRENT_DIR
-echo "Downloading PMIX source"
-git clone https://github.com/openpmix/openpmix.git pmix-3.0.2
-cd pmix-3.0.2 
-git fetch --all --tags --prune
-git checkout tags/v3.0.2 -b openfam
+if [ "$no_pmix" == "true" ]
+then
+    echo "Please provide PMIX_PATH while building openfam"
+else
+	#PMIX v3.0.2
+	cd $CURRENT_DIR
+	echo "Downloading PMIX source"
+	git clone https://github.com/openpmix/openpmix.git pmix-3.1.2
+	cd pmix-3.1.2
+	git fetch --all --tags --prune
+	git checkout tags/v3.1.2 -b openfam
+fi
 
-#OPENMPI v4.0.1
-cd $CURRENT_DIR
-echo "Downloading OPENMPI source"
-wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.1.tar.gz
-tar -zxvf openmpi-4.0.1.tar.gz >/dev/null
+if [ "$no_openmpi" == "true" ]
+then
+    echo "System openmpi library will be used"
+else
+	#OPENMPI v4.0.1
+	cd $CURRENT_DIR
+	echo "Downloading OPENMPI source"
+	wget https://download.open-mpi.org/release/open-mpi/v4.0/openmpi-4.0.1.tar.gz
+	tar -zxvf openmpi-4.0.1.tar.gz >/dev/null
+fi
 
-#GOOGLETEST 
+#GOOGLETEST
 cd $CURRENT_DIR
 echo "Downloading GOOGLETEST source"
 git clone --branch v1.10.x https://github.com/google/googletest.git googletest_v1_10_x
@@ -67,17 +134,22 @@ cp -fr googletest_v1_10_x/googletest .
 rm -fr googletest_v1_10_x
 
 #NVMM
+#TODO: Replace with right NVMM branch before release
 cd $CURRENT_DIR
 echo "Downloading NVMM source"
 git clone https://github.com/HewlettPackard/gull.git nvmm
+#git clone -b devel https://github.com/HewlettPackard/gull.git nvmm
 cd nvmm
 git fetch --all --tags --prune
-git checkout tags/v0.1 -b openfam
+git checkout tags/v0.2 -b openfam
 
 #Radixtree
 cd $CURRENT_DIR
 echo "Downloading radixtree source"
 git clone https://github.com/HewlettPackard/meadowlark.git radixtree
+cd radixtree
+git fetch --all --tags --prune
+git checkout tags/v0.1 -b openfam
 
 cd $CURRENT_DIR
 echo "Done..............."

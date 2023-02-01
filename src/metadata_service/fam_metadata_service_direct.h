@@ -51,6 +51,10 @@
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
 #define MIN_HEAP_SIZE (64 * (1UL << 20))
+
+#define MAX_DATAITEM_NUM_HINT 1000000
+#define MAX_INTERLEAVE_SIZE 1073741824
+
 using namespace radixtree;
 using namespace nvmm;
 using namespace std;
@@ -60,7 +64,9 @@ namespace metadata {
 class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
   public:
     void Start(bool use_meta_reg, bool enable_region_spanning,
-               size_t size_per_memoryserver);
+               size_t region_span_size_per_memoryserver,
+               size_t dataitem_span_size_per_memoryserver,
+               const char *metadata_path, bool use_fam_path);
     void Stop();
 
     void reset_profile();
@@ -138,24 +144,26 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
     size_t metadata_maxkeylen();
     configFileParams get_config_info(std::string filename);
     uint64_t align_to_address(uint64_t size, int multiple);
-    void metadata_update_memoryserver(int nmemServers,
-                                      std::vector<uint64_t> memsrv_id_list);
-    void metadata_validate_and_create_region(const std::string regionname,
-                                             size_t size, uint64_t *regionid,
-                                             std::list<int> *memory_server_list,
-                                             int user_policy);
+    void metadata_update_memoryserver(
+        int nmemServersPersistent,
+        std::vector<uint64_t> memsrv_persistent_id_list,
+        int nmemServersVolatile, std::vector<uint64_t> memsrv_volatile_id_list);
+    void metadata_validate_and_create_region(
+        const std::string regionname, size_t size, uint64_t *regionid,
+        Fam_Region_Attributes *regionAttributes,
+        std::list<int> *memory_server_list, int user_policy);
     void
     metadata_validate_and_destroy_region(const uint64_t regionId, uint32_t uid,
                                          uint32_t gid,
                                          std::list<int> *memory_server_list);
-    void metadata_validate_and_allocate_dataitem(const std::string dataitemName,
-                                                 const uint64_t regionId,
-                                                 uint32_t uid, uint32_t gid,
-                                                 uint64_t *memoryServerId);
+    void metadata_validate_and_allocate_dataitem(
+        const std::string dataitemName, const uint64_t regionId, uint32_t uid,
+        uint32_t gid, size_t size, std::list<int> *memory_server_list,
+        size_t *interleaveSize, int user_policy);
 
-    void metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
-                                                   const uint64_t dataitemId,
-                                                   uint32_t uid, uint32_t gid);
+    void metadata_validate_and_deallocate_dataitem(
+        const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
+        uint32_t gid, Fam_DataItem_Metadata &dataitem);
     void metadata_find_region_and_check_permissions(
         metadata_region_item_op_t op, const uint64_t regionId, uint32_t uid,
         uint32_t gid, Fam_Region_Metadata &region);
@@ -176,7 +184,7 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
 
     std::list<int> get_memory_server_list(uint64_t regionId);
 
-    Fam_Metadata_Service_Direct(bool use_meta_reg = 0);
+    Fam_Metadata_Service_Direct(bool use_fam_path, bool use_meta_reg = 0);
     void metadata_reset_bitmap(uint64_t regionID);
     ~Fam_Metadata_Service_Direct();
 

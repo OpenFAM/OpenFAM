@@ -47,14 +47,15 @@
 
 #include "common/fam_internal.h"
 #include "common/fam_internal_exception.h"
+#include "fam/fam.h"
 #include "nvmm/epoch_manager.h"
 #include "nvmm/fam.h"
 #include "nvmm/memory_manager.h"
-#define MAX_MEMORY_SERVERS_CNT 256
 
 using namespace radixtree;
 using namespace nvmm;
 using namespace std;
+using namespace openfam;
 
 namespace metadata {
 
@@ -105,7 +106,10 @@ typedef struct {
     uint64_t used_memsrv_cnt;
     uint64_t memServerIds[MAX_MEMORY_SERVERS_CNT];
     bool isHeapCreated;
-    //   Fam_Redundancy_Level redundancyLevel;
+    Fam_Redundancy_Level redundancyLevel;
+    Fam_Memory_Type memoryType;
+    Fam_Interleave_Enable interleaveEnable;
+    size_t interleaveSize;
     GlobalPtr dataItemIdRoot;
     GlobalPtr dataItemNameRoot;
 } Fam_Region_Metadata;
@@ -119,13 +123,15 @@ typedef struct {
      * Data Item : Offset within the region for the start of the memory
      *             representing the descriptor
      */
-    uint64_t offset;
+    uint64_t offsets[MAX_MEMORY_SERVERS_CNT];
     uint32_t uid;
     uint32_t gid;
     mode_t perm;
     char name[RadixTree::MAX_KEY_LEN];
     uint64_t size;
-    uint64_t memoryServerId;
+    uint64_t used_memsrv_cnt;
+    uint64_t memoryServerIds[MAX_MEMORY_SERVERS_CNT];
+    size_t interleaveSize;
 } Fam_DataItem_Metadata;
 
 typedef enum metadata_region_item_op {
@@ -228,25 +234,28 @@ class Fam_Metadata_Service {
     virtual bool metadata_check_permissions(Fam_Region_Metadata *region,
                                             metadata_region_item_op_t op,
                                             uint32_t uid, uint32_t gid) = 0;
-    virtual void
-    metadata_update_memoryserver(int nmemServers,
-                                 std::vector<uint64_t> memsrv_id_list) = 0;
+    virtual void metadata_update_memoryserver(
+        int nmemServersPersistent,
+        std::vector<uint64_t> memsrv_persistent_id_list,
+        int nmemServersVolatile,
+        std::vector<uint64_t> memsrv_volatile_id_list) = 0;
     virtual void metadata_reset_bitmap(uint64_t regionID) = 0;
 
     virtual void metadata_validate_and_create_region(
         const std::string regionname, size_t size, uint64_t *regionid,
+        Fam_Region_Attributes *regionAttributes,
         std::list<int> *memory_server_list, int user_policy) = 0;
     virtual void metadata_validate_and_destroy_region(
         const uint64_t regionId, uint32_t uid, uint32_t gid,
         std::list<int> *memory_server_list) = 0;
     virtual void metadata_validate_and_allocate_dataitem(
         const std::string dataitemName, const uint64_t regionId, uint32_t uid,
-        uint32_t gid, uint64_t *memoryServerId) = 0;
+        uint32_t gid, size_t size, std::list<int> *memory_server_list,
+        size_t *interleaveSize, int user_policy) = 0;
 
-    virtual void
-    metadata_validate_and_deallocate_dataitem(const uint64_t regionId,
-                                              const uint64_t dataitemId,
-                                              uint32_t uid, uint32_t gid) = 0;
+    virtual void metadata_validate_and_deallocate_dataitem(
+        const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
+        uint32_t gid, Fam_DataItem_Metadata &dataitem) = 0;
 
     virtual size_t metadata_maxkeylen() = 0;
     virtual void metadata_find_region_and_check_permissions(

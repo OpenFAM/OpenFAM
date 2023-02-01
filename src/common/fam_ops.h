@@ -1,8 +1,9 @@
 /*
  * fam_ops.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -65,12 +66,20 @@ class Fam_Ops {
      */
     virtual int initialize() = 0;
 
+    virtual void reset_profile() = 0;
+
+    virtual void dump_profile() = 0;
     /**
      * Finalize the libface library. Once finalized, the process can continue
      * work, but it is disconnected from the OpenFAM library functions.
      */
     virtual void finalize() = 0;
 
+    virtual size_t get_fabric_iov_limit() = 0;
+    virtual void populate_address_vector(void *memServerInfoBuffer = NULL,
+                                         size_t memServerInfoSize = 0,
+                                         uint64_t numMemNodes = 0,
+                                         uint64_t myId = 0) = 0;
     /**
      * Forcibly terminate all PEs in the same group as the caller
      * @param status - termination status to be returned by the program.
@@ -312,6 +321,11 @@ class Fam_Ops {
                        uint64_t nbytes) = 0;
 
     virtual void wait_for_copy(void *waitObj) = 0;
+    virtual void *backup(Fam_Descriptor *desc, const char *Backup_Name) = 0;
+    virtual void *restore(const char *BackupName, Fam_Descriptor *dest) = 0;
+    virtual void wait_for_backup(void *waitObj) = 0;
+    virtual void wait_for_restore(void *waitObj) = 0;
+
     // ATOMICS Group
 
     // NON fetching routines
@@ -705,9 +719,25 @@ class Fam_Ops {
     virtual void quiet(Fam_Region_Descriptor *descriptor = NULL) = 0;
 
     /**
+     * progress - returns number of all its pending FAM
+     * operations (put, scatter, atomics, copy).
+     * @return - number of pending operations
+     */
+    virtual uint64_t progress() = 0;
+
+    /**
      * check_progress thread is used by memory server to keep the I/Os going on.
      */
     virtual void check_progress(Fam_Region_Descriptor *descriptor = NULL) = 0;
+
+    /**
+     * context_open, context_close, get_context_id
+     * These APIs are added to support user specific communication context
+     */
+    virtual void context_open(uint64_t, Fam_Ops *) = 0;
+    virtual void context_close(uint64_t) = 0;
+    virtual uint64_t get_context_id() = 0;
+
     /**
      * fam() - constructor for fam class
      */

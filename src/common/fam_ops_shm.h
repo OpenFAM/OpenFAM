@@ -1,6 +1,6 @@
 /*
  * fam_ops_shm.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -62,7 +62,19 @@ class Fam_Ops_SHM : public Fam_Ops {
 
     void finalize();
 
+    void reset_profile() {}
+
+    void dump_profile() {}
+
     void abort(int status);
+
+    void populate_address_vector(void *memServerInfoBuffer = NULL,
+                                 size_t memServerInfoSize = 0,
+                                 uint64_t numMemNodes = 0, uint64_t myId = 0) {
+        return;
+    }
+
+    size_t get_fabric_iov_limit() { return 0; }
 
     Fam_Context *get_context(Fam_Descriptor *descriptor);
     int put_blocking(void *local, Fam_Descriptor *descriptor, uint64_t offset,
@@ -110,10 +122,15 @@ class Fam_Ops_SHM : public Fam_Ops {
                uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
+    void *backup(Fam_Descriptor *desc, const char *BackupName);
+    void *restore(const char *BackupName, Fam_Descriptor *dest);
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
 
     void fence(Fam_Region_Descriptor *descriptor = NULL);
 
     void quiet(Fam_Region_Descriptor *descriptor = NULL);
+    uint64_t progress();
     void check_progress(Fam_Region_Descriptor *descriptor = NULL);
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, int64_t value);
@@ -256,6 +273,8 @@ class Fam_Ops_SHM : public Fam_Ops {
                            float value);
     double atomic_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                             double value);
+    void context_open(uint64_t contextId, Fam_Ops *famOpsObj);
+    void context_close(void *);
 
     uint32_t atomic_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
                               uint32_t value);
@@ -284,6 +303,10 @@ class Fam_Ops_SHM : public Fam_Ops {
     pthread_mutex_t *get_ctx_lock() { return &ctxLock; };
 
     void quiet_context(Fam_Context *context);
+    uint64_t progress_context(Fam_Context *context);
+    void context_open(uint64_t contextId);
+    void context_close(uint64_t contextId);
+    uint64_t get_context_id();
 
   protected:
     Fam_Async_QHandler *asyncQHandler;

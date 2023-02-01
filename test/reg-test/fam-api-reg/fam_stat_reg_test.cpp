@@ -51,17 +51,23 @@ TEST(FamStat, FamStatSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
     cout << "Region Info  - Name : " << info->name << " Size: " << std::dec
-         << info->size << " Item perm: " << std::oct << info->perm << endl;
+         << info->size << " Item perm: " << std::oct << info->perm << std::dec
+         << " UID : " << info->uid << " GID : " << info->gid
+         << " Number of servers : " << info->num_memservers
+         << " Interleaving size : " << info->interleaveSize << endl;
     // Allocating data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024, 0777, desc));
     EXPECT_NE((void *)NULL, item);
     EXPECT_NO_THROW(my_fam->fam_stat(item, info));
     cout << "Item Info  - Name : " << info->name << " Size: " << std::dec
-         << info->size << " Item perm: " << std::oct << info->perm << endl;
+         << info->size << " Item perm: " << std::oct << info->perm << std::dec
+         << " UID : " << info->uid << " GID : " << info->gid
+         << " Number of servers : " << info->num_memservers
+         << " Interleaving size : " << info->interleaveSize << endl;
 
     free(info);
 
@@ -83,17 +89,23 @@ TEST(FamStat, FamStatSuccessUnnamedDataItem) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
     EXPECT_NO_THROW(my_fam->fam_stat(desc, info));
     cout << "Region Info  - Name : " << info->name << " Size: " << std::dec
-         << info->size << " Item perm: " << std::oct << info->perm << endl;
+         << info->size << " Item perm: " << std::oct << info->perm << std::dec
+         << " UID : " << info->uid << " GID : " << info->gid
+         << " Number of servers : " << info->num_memservers
+         << " Interleaving size : " << info->interleaveSize << endl;
     // Allocating data items in the created region
     EXPECT_NO_THROW(item = my_fam->fam_allocate("", 1024, 0777, desc));
     EXPECT_NE((void *)NULL, item);
     EXPECT_NO_THROW(my_fam->fam_stat(item, info));
     cout << "Item Info  - Name : " << info->name << " Size: " << std::dec
-         << info->size << " Item perm: " << std::oct << info->perm << endl;
+         << info->size << " Item perm: " << std::oct << info->perm << std::dec
+         << " UID : " << info->uid << " GID : " << info->gid
+         << " Number of servers : " << info->num_memservers
+         << " Interleaving size : " << info->interleaveSize << endl;
 
     free(info);
 
@@ -117,7 +129,7 @@ TEST(FamStat, FamStatSuccessCompareSize) {
     uint64_t size, sizeCopy;
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     EXPECT_NO_THROW(descCopy = my_fam->fam_lookup_region(testRegion));
@@ -164,7 +176,7 @@ TEST(FamStat, FamStatLookup) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -174,11 +186,11 @@ TEST(FamStat, FamStatLookup) {
     EXPECT_NO_THROW(desc2 = my_fam->fam_lookup_region(testRegion));
     EXPECT_NO_THROW(item2 = my_fam->fam_lookup(firstItem, testRegion));
 
-    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
-    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
-
     EXPECT_NO_THROW(my_fam->fam_stat((Fam_Region_Descriptor *)desc2, info));
     EXPECT_NO_THROW(my_fam->fam_stat((Fam_Descriptor *)item2, info));
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
 
     free(info);
 
@@ -200,7 +212,7 @@ TEST(FamStat, FamStatGlobalDescriptor) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -210,14 +222,23 @@ TEST(FamStat, FamStatGlobalDescriptor) {
     Fam_Global_Descriptor globalDesc = item->get_global_descriptor();
 
     EXPECT_NO_THROW(item1 = new Fam_Descriptor(globalDesc));
+
+    globalDesc = desc->get_global_descriptor();
+
     EXPECT_NO_THROW(desc1 = new Fam_Region_Descriptor(globalDesc));
 
     EXPECT_NO_THROW(my_fam->fam_stat((Fam_Region_Descriptor *)desc1, info));
     cout << "Region Info - Name : " << info->name << " Size: " << std::dec
-         << info->size << " Region perm: " << std::oct << info->perm << endl;
+         << info->size << " Region perm: " << std::oct << info->perm << std::dec
+         << " UID : " << info->uid << " GID : " << info->gid
+         << " Number of servers : " << info->num_memservers
+         << " Interleaving size : " << info->interleaveSize << endl;
     EXPECT_NO_THROW(my_fam->fam_stat((Fam_Descriptor *)item1, info));
     cout << "Item Info  - Name : " << info->name << " Size: " << std::dec
-         << info->size << " Item perm: " << std::oct << info->perm << endl;
+         << info->size << " Item perm: " << std::oct << info->perm << std::dec
+         << " UID : " << info->uid << " GID : " << info->gid
+         << " Number of servers : " << info->num_memservers
+         << " Interleaving size : " << info->interleaveSize << endl;
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
@@ -245,7 +266,7 @@ TEST(FamStat, FamStatFailure) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -257,6 +278,9 @@ TEST(FamStat, FamStatFailure) {
     Fam_Global_Descriptor globalDesc = item2->get_global_descriptor();
 
     EXPECT_NO_THROW(item1 = new Fam_Descriptor(globalDesc));
+
+    globalDesc = desc2->get_global_descriptor();
+
     EXPECT_NO_THROW(desc1 = new Fam_Region_Descriptor(globalDesc));
 
     cout << "All destroy region, dealloacteion done from now" << endl;
@@ -306,7 +330,7 @@ TEST(FamStat, FamStatAll) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -319,6 +343,9 @@ TEST(FamStat, FamStatAll) {
     Fam_Global_Descriptor globalDesc = item2->get_global_descriptor();
 
     EXPECT_NO_THROW(item1 = new Fam_Descriptor(globalDesc));
+
+    globalDesc = desc2->get_global_descriptor();
+
     EXPECT_NO_THROW(desc1 = new Fam_Region_Descriptor(globalDesc));
 
     cout << "From lookup" << endl;

@@ -1,9 +1,9 @@
 /*
  * fam.h
- * Copyright (c) 2017, 2018, 2020 Hewlett Packard Enterprise Development, LP.
- * All rights reserved. Redistribution and use in source and binary forms, with
- * or without modification, are permitted provided that the following conditions
- * are met:
+ * Copyright (c) 2017, 2018, 2020-2023 Hewlett Packard Enterprise Development,
+ * LP. All rights reserved. Redistribution and use in source and binary forms,
+ * with or without modification, are permitted provided that the following
+ * conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -72,6 +72,122 @@
 #include <sys/stat.h> // needed for mode_t
 
 #ifdef __cplusplus
+extern "C" {
+#endif
+/**
+ * Enumeration defining interleaving options for FAM.
+ */
+typedef enum { INTERLEAVE_DEFAULT = 0, ENABLE, DISABLE } Fam_Interleave_Enable;
+
+/**
+ * Enumeration defining memory types supported in FAM.
+ */
+typedef enum { MEMORY_TYPE_DEFAULT = 0, VOLATILE, PERSISTENT } Fam_Memory_Type;
+
+/**
+ * Enumeration defining redundancy options for FAM. This enum defines redundancy
+ * levels (software or hardware) supported within the library.
+ */
+typedef enum {
+    /** System Default Value */
+    REDUNDANCY_LEVEL_DEFAULT = 0,
+    /** No redundancy is provided */
+    NONE,
+    /** RAID 1 equivalent redundancy is provided */
+    RAID1,
+    /** RAID 5 equivalent redundancy is provided */
+    RAID5
+} Fam_Redundancy_Level;
+
+typedef struct {
+    Fam_Redundancy_Level redundancyLevel;
+    Fam_Memory_Type memoryType;
+    Fam_Interleave_Enable interleaveEnable;
+} Fam_Region_Attributes;
+/**
+ * Enumeration defining descriptor update on several  fields.
+ */
+typedef enum {
+    /** Descriptor is invalid */
+    DESC_INVALID,
+    /** Descriptor is initialized*/
+    DESC_INIT_DONE,
+    /** Descriptor is initialized, but valid key isnt present*/
+    DESC_INIT_DONE_BUT_KEY_NOT_VALID,
+    /** Descriptor is uninitialized*/
+    DESC_UNINITIALIZED
+} Fam_Descriptor_Status;
+
+/**
+ * FAM Global descriptor represents both the region and data item in FAM.
+ */
+typedef struct {
+    /** region ID for this descriptor */
+    uint64_t regionId;
+    /*
+     * Data Item : Offset within the region for the start of the memory
+     * represented the descriptor Region    : FAM_REGION_OFFSET(magic number)
+     */
+    uint64_t offset;
+} Fam_Global_Descriptor;
+/*
+ * Fam_Stat structure gives info for region and/or data item.
+ */
+typedef struct {
+    uint64_t size;
+    /*Permission bits associated with given region or data item.*/
+    mode_t perm;
+    /* Name of region and/or data item.*/
+    char *name;
+    uint32_t uid;
+    uint32_t gid;
+    Fam_Region_Attributes region_attributes;
+    uint64_t num_memservers;
+    uint64_t interleaveSize;
+    uint64_t memory_servers[256];
+} Fam_Stat;
+/*
+ * Fam_Backup_Options gives information backup options to be used while backing
+ * up a data item.
+ * */
+typedef struct {
+    /* As of now, this field is  reserved for future use.*/
+    uint32_t backup_option_reserved;
+} Fam_Backup_Options;
+
+typedef struct {
+    /** Default region to be used within the program */
+    char *defaultRegionName;
+    /** CIS servers to be used by OpenFam PEs */
+    char *cisServer;
+    /** Port to be used by OpenFam for CIS server RPC connection */
+    char *grpcPort;
+    /** Libfabric provider to be used by OpenFam libfabric datapath operations;
+     * "sockets" by default */
+    char *libfabricProvider;
+    /** FAM thread model */
+    char *famThreadModel;
+    /** CIS interface to be used, Default is RPC, Supports Direct calls too */
+    char *cisInterfaceType;
+    /** OpenFAM model to be used; default is memory_server, Other option is
+     * shared_memory */
+    char *openFamModel;
+    /** FAM context model - Default, Region*/
+    char *famContextModel;
+    /** Number of consumer threads for shared memory model **/
+    char *numConsumer;
+    /** FAM runtime - Default, pmix*/
+    char *runtime;
+    /** Default memory type(Persistent/Volatile) for creating region **/
+    char *fam_default_memory_type;
+    /** Interface device used by the PE for communication */
+    char *if_device;
+} Fam_Options;
+#ifdef __cplusplus
+}
+#endif
+
+#ifdef __cplusplus
 /** C++ Header
  *  The header is defined as a single interface containing all desired methods
  */
@@ -101,52 +217,7 @@ typedef long long int128_t;
 #endif // __int128t
 #endif // int128_t
 
-/**
- * Enumeration defining redundancy options for FAM. This enum defines redundancy
- * levels (software or hardware) supported within the library.
- */
-typedef enum {
-    /** No redundancy is provided */
-    NONE,
-    /** RAID 1 equivalent redundancy is provided */
-    RAID1,
-    /** RAID 5 equivalent redundancy is provided */
-    RAID5
-} Fam_Redundancy_Level;
 
-/**
- * Enumeration defining descriptor update on several  fields.
- */
-typedef enum {
-    /** Descriptor is invalid */
-    DESC_INVALID,
-    /** Descriptor is initialized*/
-    DESC_INIT_DONE,
-    /** Descriptor is initialized, but valid key isnt present*/
-    DESC_INIT_DONE_BUT_KEY_NOT_VALID,
-    /** Descriptor is uninitialized*/
-    DESC_UNINITIALIZED
-} Fam_Descriptor_Status;
-
-/**
- * FAM Global descriptor represents both the region and data item in FAM.
- */
-typedef struct {
-    /** region ID for this descriptor */
-    uint64_t regionId;
-    /*
-     * Data Item : Offset within the region for the start of the memory
-     * represented the descriptor Region    : FAM_REGION_OFFSET(magic number)
-     */
-    uint64_t offset;
-} Fam_Global_Descriptor;
-
-typedef struct {
-    uint64_t key;
-    uint64_t size;
-    mode_t perm;
-    char *name;
-} Fam_Stat;
 /**
  * Structure defining a FAM descriptor. Descriptors are PE independent data
  * structures that enable the OpenFAM library to uniquely locate an area of
@@ -166,15 +237,15 @@ class Fam_Descriptor {
     // return Global descriptor
     Fam_Global_Descriptor get_global_descriptor();
     // bind key.
-    void bind_key(uint64_t tempKey);
+    void bind_keys(uint64_t *tempKey, uint64_t cnt);
     // get keys
-    uint64_t get_key();
+    uint64_t *get_keys();
     // get context
     void *get_context();
     // set context
     void set_context(void *context);
-    void set_base_address(void *address);
-    void *get_base_address();
+    void set_base_address_list(void **addressList, uint64_t cnt);
+    void **get_base_address_list();
     // get status
     int get_desc_status();
     // put status
@@ -183,12 +254,23 @@ class Fam_Descriptor {
     void set_size(uint64_t itemSize);
     void set_perm(mode_t perm);
     void set_name(char *name);
+    void set_interleave_size(uint64_t interleaveSize_);
     // get size, perm and name.
     uint64_t get_size();
     mode_t get_perm();
     char *get_name();
+    uint64_t get_interleave_size();
     // get memory server id
-    uint64_t get_memserver_id();
+    // uint64_t get_memserver_id();
+    void set_used_memsrv_cnt(uint64_t cnt);
+    uint64_t get_used_memsrv_cnt();
+    void set_memserver_ids(uint64_t *ids);
+    uint64_t *get_memserver_ids();
+    uint64_t get_first_memserver_id();
+    uint32_t get_uid();
+    void set_uid(uint32_t uid_);
+    uint32_t get_gid();
+    void set_gid(uint32_t gid_);
 
   private:
     class FamDescriptorImpl_;
@@ -226,6 +308,12 @@ class Fam_Region_Descriptor {
     void set_size(uint64_t itemSize);
     void set_perm(mode_t perm);
     void set_name(char *name);
+    void set_redundancyLevel(Fam_Redundancy_Level redundancyLevel);
+    void set_memoryType(Fam_Memory_Type memoryType);
+    void set_interleaveEnable(Fam_Interleave_Enable interleaveEnable);
+    Fam_Redundancy_Level get_redundancyLevel();
+    Fam_Memory_Type get_memoryType();
+    Fam_Interleave_Enable get_interleaveEnable();
     // get size, perm and name.
     uint64_t get_size();
     mode_t get_perm();
@@ -244,30 +332,8 @@ class Fam_Region_Descriptor {
  * the library. It is expected to evolve over time as the library is
  * implemented. Currently defined options are included below.
  */
-typedef struct {
-    /** Default region to be used within the program */
-    char *defaultRegionName;
-    /** CIS servers to be used by OpenFam PEs */
-    char *cisServer;
-    /** Port to be used by OpenFam for CIS server RPC connection */
-    char *grpcPort;
-    /** Libfabric provider to be used by OpenFam libfabric datapath operations;
-     * "sockets" by default */
-    char *libfabricProvider;
-    /** FAM thread model */
-    char *famThreadModel;
-    /** CIS interface to be used, Default is RPC, Supports Direct calls too */
-    char *cisInterfaceType;
-    /** OpenFAM model to be used; default is memory_server, Other option is
-     * shared_memory */
-    char *openFamModel;
-    /** FAM context model - Default, Region*/
-    char *famContextModel;
-    /** Number of consumer threads for shared memory model **/
-    char *numConsumer;
-    /** FAM runtime - Default, pmix*/
-    char *runtime;
-} Fam_Options;
+
+class fam_context;
 
 class fam {
   public:
@@ -363,7 +429,7 @@ class fam {
      */
     Fam_Region_Descriptor *
     fam_create_region(const char *name, uint64_t size, mode_t permissions,
-                      Fam_Redundancy_Level redundancyLevel, ...);
+                      Fam_Region_Attributes *regionAttributes);
 
     /**
      * Destroy a region, and all contents within the region. Note that this
@@ -717,6 +783,76 @@ class fam {
      * @return - none
      */
     void fam_copy_wait(void *waitObj);
+
+    /* Backup data item to archival storage.
+     * @param src - Data item to be backed up.
+     * @param BackupName - Name of the backup
+     * @param Fam_Backup_Options - backup related info.
+     * @return - a pointer to the wait object for the backup operation.
+     */
+    void *fam_backup(Fam_Descriptor *src, const char *BackupName,
+                     Fam_Backup_Options *backupOptions);
+
+    /* Restore backup data from  archival storage to data item.
+     * @param BackupName - Name of the backup
+     * @param dest - Data item in which backup content will be restored.
+     * @return - a pointer to the wait object for the restore operation.
+     */
+    void *fam_restore(const char *BackupName, Fam_Descriptor *dest);
+    /* Creates data item, Restore backup data from  archival storage to newly
+     * created data item.
+     * @param BackupName - Name of the backup
+     * @param destRegion - Region where data item is to be created for restoring
+     * backup content.
+     * @param dataitemName - Data item name in which backup content will be
+     * restored.
+     * @param accessPermissions - Access permissions associated with data item.
+     * @param dest - dataitem handle created during fam_restore call.
+     * @return - a pointer to the wait object for the restore operation.
+     */
+    void *fam_restore(const char *BackupName, Fam_Region_Descriptor *destRegion,
+                      const char *dataitemName, mode_t accessPermissions,
+                      Fam_Descriptor **dest);
+
+    /**
+     * Wait for backup operation corresponding to the wait object passed to
+     * complete
+     * @param waitObj - unique tag to backup operation
+     * @return - none
+     */
+    void fam_backup_wait(void *waitObj);
+    /**
+     * Wait for restore operation corresponding to the wait object passed to
+     * complete
+     * @param waitObj - unique tag to restore operation
+     * @return - none
+     */
+    void fam_restore_wait(void *waitObj);
+
+    /* Deletes the backup mentioned by BackupName.
+     * @param BackupName -  name of backup to be deleted.
+     * @return - a pointer to the wait object for the backup deletion operation.
+     */
+    void *fam_delete_backup(const char *BackupName);
+    /**
+     * Wait for backup deletion operation corresponding to the wait object
+     * passed to complete
+     * @param waitObj - unique tag to restore operation
+     * @return - none
+     */
+    void fam_delete_backup_wait(void *waitObj);
+    /**
+     * Provides metadata information of the specified BackupName if user has
+     * sufficient privileges.
+     * @param BackupName:
+     *  - If specific name is given, it returns backup metadata  of given item.
+     * 	- If "*" is specified, returns backup metadata of backup data which
+     *    user has access to.
+     * @return - backup metadata info
+     * (This is an internal API as of now.)
+     */
+
+    char *fam_list_backup(const char *BackupName);
     // ATOMICS Group
 
     // NON fetching routines
@@ -1077,6 +1213,19 @@ class fam {
      * @return - none
      */
     void fam_quiet(void);
+    fam_context *fam_context_open();
+    void fam_context_close(fam_context *);
+
+    /**
+     * fam_progress - returns number of pending FAM
+     * operations (put, get, scatter, gather, atomics).
+     * @return - number of pending operations
+     */
+    uint64_t fam_progress(void);
+
+#ifdef FAM_PROFILE
+    void fam_reset_profile();
+#endif
 
     /**
      * fam() - constructor for fam class
@@ -1088,10 +1237,41 @@ class fam {
      */
     ~fam();
 
-  private:
+  protected:
     class Impl_;
     Impl_ *pimpl_;
 };
+
+class fam_context : public fam {
+  public:
+    fam_context(void *inp_fam_impl);
+    ~fam_context();
+    void fam_initialize(const char *groupName, Fam_Options *options);
+    void fam_finalize(const char *groupName);
+    void fam_abort(int status);
+    void fam_barrier_all();
+    const char **fam_list_options(void);
+    const void *fam_get_option(char *optionName);
+    Fam_Region_Descriptor *fam_lookup_region(const char *name);
+    Fam_Descriptor *fam_lookup(const char *itemName, const char *regionName);
+
+    Fam_Region_Descriptor *
+    fam_create_region(const char *name, uint64_t size, mode_t permissions,
+                      Fam_Region_Attributes *regionAttributes);
+    void fam_destroy_region(Fam_Region_Descriptor *descriptor);
+    void fam_resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
+    Fam_Descriptor *fam_allocate(uint64_t nbytes, mode_t accessPermissions,
+                                 Fam_Region_Descriptor *region);
+    Fam_Descriptor *fam_allocate(const char *name, uint64_t nbytes,
+                                 mode_t accessPermissions,
+                                 Fam_Region_Descriptor *region);
+    void fam_deallocate(Fam_Descriptor *descriptor);
+    void fam_change_permissions(Fam_Descriptor *descriptor,
+                                mode_t accessPermissions);
+    fam_context *fam_context_open();
+    void fam_context_close(fam_context *);
+};
+
 } // namespace openfam
 
 #endif /* end of C/C11 Headers */

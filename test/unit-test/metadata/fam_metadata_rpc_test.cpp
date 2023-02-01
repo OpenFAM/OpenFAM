@@ -72,7 +72,7 @@ char *get_severlist_from_cis_config() {
         try {
             metadataInterfaceType = (char *)strdup(
                 (info->get_key_value("metadata_interface_type")).c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             metadataInterfaceType = (char *)strdup("rpc");
         }
@@ -89,7 +89,7 @@ char *get_severlist_from_cis_config() {
                 metasrvList << item << ",";
 
             serverList = (char *)strdup(metasrvList.str().c_str());
-        } catch (Fam_InvalidOption_Exception e) {
+        } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             serverList = (char *)strdup("0:127.0.0.1:8787");
         }
@@ -152,8 +152,8 @@ int main(int argc, char *argv[]) {
 
     Fam_DataItem_Metadata dinode;
     Fam_DataItem_Metadata *datanode = new Fam_DataItem_Metadata();
-    memset(regnode, 0, sizeof(Fam_Region_Metadata));
-    memset(datanode, 0, sizeof(Fam_DataItem_Metadata));
+    memset((void *)regnode, 0, sizeof(Fam_Region_Metadata));
+    memset((void *)datanode, 0, sizeof(Fam_DataItem_Metadata));
 
     uint64_t i = 0, j = 5000;
 
@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
         uint64_t regionId;
 
         desc[i] = my_fam->fam_create_region(to_string(i).c_str(),
-                                            16 * 1024 * 1024, 0744, RAID1);
+                                            16 * 1024 * 1024, 0744, NULL);
         if (desc[i] == NULL) {
             cout << "fam create region failed" << endl;
             exit(1);
@@ -177,7 +177,9 @@ int main(int argc, char *argv[]) {
 
         name = node.name;
         regionId = node.regionId;
-        memcpy(regnode, &node, sizeof(Fam_Region_Metadata));
+
+        // Using void* to prevent -Wclass-memaccess
+        memcpy((void *)regnode, &node, sizeof(Fam_Region_Metadata));
 
         try {
             manager->metadata_insert_region(regionId, name.c_str(), regnode);
@@ -260,8 +262,8 @@ int main(int argc, char *argv[]) {
             fail++;
         }
         count++;
-
-        memset(datanode, 0, sizeof(Fam_DataItem_Metadata));
+        // Using void* to prevent -Wclass-memaccess
+        memset((void *)datanode, 0, sizeof(Fam_DataItem_Metadata));
         for (j = 5000; j < 5002; j++) {
             try {
                 manager->metadata_insert_dataitem(j, regionId, datanode);

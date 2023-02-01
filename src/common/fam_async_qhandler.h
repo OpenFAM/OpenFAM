@@ -1,6 +1,6 @@
 /*
  * fam_async_qhandler.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -41,28 +41,110 @@
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 #include "memory_service/fam_memory_service.h"
+#include "metadata_service/fam_metadata_service.h"
 
 using namespace std;
+using namespace metadata;
+
+using memoryServerMap = std::map<uint64_t, Fam_Memory_Service *>;
+using metadataServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
 
 namespace openfam {
 
-typedef enum { WRITE = 0, READ, COPY } Fam_Ops_Type;
+typedef enum {
+    WRITE = 0,
+    READ,
+    COPY,
+    BACKUP,
+    RESTORE,
+    DELETE_BACKUP
+} Fam_Ops_Type;
+
+class Fam_Async_Err {
+  public:
+    Fam_Async_Err() : errorCode(FAM_NO_ERROR) {}
+    void set_error_code(enum Fam_Error code) { errorCode = code; }
+    void set_error_msg(const char *msg) { errorMsg = msg; }
+    Fam_Error get_error_code() { return errorCode; }
+    string get_error_msg() { return errorMsg; }
+
+  private:
+    enum Fam_Error errorCode;
+    string errorMsg;
+};
 
 typedef struct {
     boost::atomic<bool> copyDone;
-    Fam_Memory_Service *memoryService;
+    memoryServerMap *memoryServiceMap;
     uint64_t srcRegionId;
     uint64_t destRegionId;
-    uint64_t srcOffset;
-    uint64_t destOffset;
+    uint64_t srcOffsets[MAX_MEMORY_SERVERS_CNT];
+    uint64_t destOffsets[MAX_MEMORY_SERVERS_CNT];
     uint64_t size;
-    uint64_t srcKey;
+    uint64_t srcKeys[MAX_MEMORY_SERVERS_CNT];
     uint64_t srcCopyStart;
-    char *srcAddr;
-    uint32_t srcAddrLen;
-    uint64_t srcMemserverId;
-    uint64_t destMemserverId;
+    uint64_t destCopyStart;
+    uint64_t srcBaseAddrList[MAX_MEMORY_SERVERS_CNT];
+    uint64_t srcMemserverIds[MAX_MEMORY_SERVERS_CNT];
+    uint64_t destMemserverIds[MAX_MEMORY_SERVERS_CNT];
+    uint64_t srcInterleaveSize;
+    uint64_t destInterleaveSize;
+    uint64_t srcUsedMemsrvCnt;
+    uint64_t destUsedMemsrvCnt;
+    Fam_Async_Err *err;
 } Fam_Copy_Tag;
+
+typedef struct {
+    boost::atomic<bool> backupDone;
+    memoryServerMap *memoryServiceMap;
+    uint64_t srcRegionId;
+    uint64_t srcOffsets[MAX_MEMORY_SERVERS_CNT];
+    uint64_t srcMemserverIds[MAX_MEMORY_SERVERS_CNT];
+    uint64_t usedMemserverCnt;
+    uint64_t srcInterleaveSize;
+    uint64_t srcItemSize;
+    uint64_t sizePerServer;
+    uint64_t chunkSize;
+    uint64_t extraBlocks;
+    uint32_t uid;
+    uint32_t gid;
+    mode_t mode;
+    string dataitemName;
+    string BackupName;
+    Fam_Async_Err *err;
+} Fam_Backup_Tag;
+
+typedef struct {
+    boost::atomic<bool> restoreDone;
+    memoryServerMap *memoryServiceMap;
+    uint64_t destRegionId;
+    uint64_t destOffsets[MAX_MEMORY_SERVERS_CNT];
+    uint64_t destMemserverIds[MAX_MEMORY_SERVERS_CNT];
+    uint64_t usedMemserverCnt;
+    uint64_t destInterleaveSize;
+    uint64_t destItemSize;
+    uint64_t sizePerServer;
+    uint64_t chunkSize;
+    uint64_t extraBlocks;
+    uint64_t iterations;
+    string BackupName;
+    Fam_Async_Err *err;
+} Fam_Restore_Tag;
+
+typedef struct {
+    boost::atomic<bool> delbackupDone;
+    Fam_Memory_Service *memoryService;
+    uint64_t srcRegionId;
+    uint64_t srcOffset;
+    uint64_t size;
+    string dataitemName;
+    string BackupName;
+    uint64_t srcMemserverId;
+    uid_t uid;
+    gid_t gid;
+    mode_t mode;
+    Fam_Async_Err *err;
+} Fam_Delete_Backup_Tag;
 
 typedef struct {
     Fam_Ops_Type opsType;
@@ -73,21 +155,8 @@ typedef struct {
     uint64_t upperBound;
     uint64_t key;
     uint64_t itemSize;
-    Fam_Copy_Tag *tag;
+    void *tag;
 } Fam_Ops_Info;
-
-class Fam_Async_Err {
-  public:
-    Fam_Async_Err() : errorCode(FAM_NO_ERROR) {}
-    void set_error_code(enum Fam_Error code) { errorCode = code; }
-    void set_error_msg(const char *msg) { errorMsg = msg; }
-    Fam_Error get_error_code() { return errorCode; }
-    char const *get_error_msg() { return errorMsg.c_str(); }
-
-  private:
-    enum Fam_Error errorCode;
-    string errorMsg;
-};
 
 class Fam_Async_QHandler {
   public:
@@ -100,7 +169,13 @@ class Fam_Async_QHandler {
     void quiet(Fam_Context *famCtx);
     void write_quiet(uint64_t ctr);
     void read_quiet(uint64_t ctr);
+    uint64_t progress(Fam_Context *famCtx);
+    uint64_t write_progress(Fam_Context *famCtx);
+    uint64_t read_progress(Fam_Context *famCtx);
     void wait_for_copy(void *waitObj);
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
+    void wait_for_delete_backup(void *waitObj);
     void decode_and_execute(Fam_Ops_Info opsInfo);
     void write_handler(void *src, void *dest, uint64_t nbytes, uint64_t offset,
                        uint64_t upperBound, uint64_t key, uint64_t itemSize);
@@ -108,6 +183,12 @@ class Fam_Async_QHandler {
                       uint64_t upperBound, uint64_t key, uint64_t itemSize);
     void copy_handler(void *src, void *dest, uint64_t nbytes,
                       Fam_Copy_Tag *tag);
+    void backup_handler(void *src, void *dest, uint64_t nbytes,
+                        Fam_Backup_Tag *tag);
+    void restore_handler(void *src, void *dest, uint64_t nbytes,
+                         Fam_Restore_Tag *tag);
+    void delete_backup_handler(void *src, void *dest, uint64_t nbytes,
+                               Fam_Delete_Backup_Tag *tag);
 
   private:
     class FamAsyncQHandlerImpl_;

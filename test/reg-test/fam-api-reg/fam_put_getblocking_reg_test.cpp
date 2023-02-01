@@ -52,7 +52,7 @@ TEST(FamPutGet, PutGetSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -83,8 +83,6 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
 
     my_fam = new fam();
-
-    fam_opts.famThreadModel = strdup("FAM_THREAD_MULTIPLE");
 
     init_fam_options(&fam_opts);
 

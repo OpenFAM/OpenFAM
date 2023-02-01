@@ -1,6 +1,6 @@
-#!/bin/bash
- # run_test.sh
- # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ #
+ # CMakeLists.txt
+ # Copyright (c) 2022-2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -20,6 +20,7 @@
  #
  #
 
-OPENFAM_TEST_EXE=$1
-OPENFAM_TEST_ARG=$2
-$OPENFAM_TEST_COMMAND $OPENFAM_TEST_OPT $OPENFAM_TEST_EXE $OPENFAM_TEST_ARG
+enable_testing()
+include_directories(${PROJECT_BINARY_DIR}/test) # private headers (test)
+add_custom_target(wrappers-test ${CMAKE_CTEST_COMMAND} --force-new-ctest-process)
+add_subdirectory(openfam_c)

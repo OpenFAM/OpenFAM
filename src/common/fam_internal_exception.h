@@ -1,6 +1,6 @@
 /*
  * fam/fam_internal_exception.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -107,20 +107,37 @@ enum Internal_Error {
     ATL_QUEUE_FULL,
     ATL_QUEUE_INSERT_ERROR,
     ATL_NOT_ENABLED,
-    LIBFABRIC_ERROR
+    LIBFABRIC_ERROR,
+    BACKUP_PATH_NOT_EXIST,
+    BACKUP_FILE_EXIST,
+    BACKUP_FILE_NOT_FOUND,
+    BACKUP_SIZE_TOO_LARGE,
+    BACKUP_DATA_INVALID,
+    BACKUP_METADATA_INVALID,
+    REQUESTED_MEMORY_TYPE_NOT_AVAILABLE,
+    MEMORY_SERVER_START_FAILED,
+    METADATA_SERVER_START_FAILED,
+    ADDRVEC_POPULATION_FAILED,
+    MEMSERVER_LIST_CREATE_FAILED,
+    INTERLV_SIZE_NOT_PWR_TWO,
+    REGION_NO_SPACE
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     switch (serverErr) {
     case REGION_EXIST:
     case DATAITEM_EXIST:
+    case BACKUP_FILE_EXIST:
         return FAM_ERR_ALREADYEXIST;
 
     case REGION_NOT_CREATED:
     case DATAITEM_NOT_CREATED:
+    case REQUESTED_MEMORY_TYPE_NOT_AVAILABLE:
         return FAM_ERR_NOT_CREATED;
     case REGION_NOT_FOUND:
     case DATAITEM_NOT_FOUND:
+    case BACKUP_FILE_NOT_FOUND:
+    case BACKUP_PATH_NOT_EXIST:
         return FAM_ERR_NOTFOUND;
 
     case DESTROY_REGION_NOT_PERMITTED:
@@ -133,7 +150,12 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
         return FAM_ERR_NOPERM;
 
     case OUT_OF_RANGE:
+    case BACKUP_DATA_INVALID:
+    case BACKUP_METADATA_INVALID:
         return FAM_ERR_OUTOFRANGE;
+
+    case REGION_NO_SPACE:
+        return FAM_ERR_NO_SPACE;
 
     case NULL_POINTER_ACCESS:
         return FAM_ERR_NULLPTR;
@@ -151,13 +173,19 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
         return FAM_ERR_ATL_NOT_ENABLED;
 
     case LIBFABRIC_ERROR:
+    case ADDRVEC_POPULATION_FAILED:
         return FAM_ERR_LIBFABRIC;
+
+    case INTERLV_SIZE_NOT_PWR_TWO:
+        return FAM_ERR_NOT_PWR_TWO;
 
     case REGION_NOT_INSERTED:
     case DATAITEM_NOT_INSERTED:
     case REGION_NOT_REMOVED:
     case DATAITEM_NOT_REMOVED:
     case METADATA_ERROR:
+    case METADATA_SERVER_START_FAILED:
+    case MEMSERVER_LIST_CREATE_FAILED:
         return FAM_ERR_METADATA;
     case REGION_NAME_TOO_LONG:
     case DATAITEM_NAME_TOO_LONG:
@@ -180,6 +208,8 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case FENCE_DEREG_FAILED:
     case ITEM_REGISTRATION_FAILED:
     case ITEM_DEREGISTRATION_FAILED:
+    case BACKUP_SIZE_TOO_LARGE:
+    case MEMORY_SERVER_START_FAILED:
         return FAM_ERR_MEMORY;
     default:
         return FAM_ERR_RESOURCE;

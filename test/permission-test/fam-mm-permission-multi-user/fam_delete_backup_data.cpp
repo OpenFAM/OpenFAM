@@ -1,6 +1,6 @@
 /*
- * fam_put_get_region_ctx.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * fam_delete_backup_data.cpp
+ * Copyright (c) 2022 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -27,26 +27,27 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
+
+// ./fam_delete_backup_data <backupName>
+
+#include <fam/fam.h>
 #include <fam/fam_exception.h>
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
-
-#include <fam/fam.h>
+#include <unistd.h>
 
 #include "common/fam_test_config.h"
-
+#define FILE_MAX_LEN 255
 using namespace std;
 using namespace openfam;
 
-int main() {
+int main(int argc, char *argv[]) {
     fam *my_fam = new fam();
     Fam_Options fam_opts;
-    Fam_Region_Descriptor *desc = NULL;
-    Fam_Descriptor *item = NULL;
 
     init_fam_options(&fam_opts);
-    fam_opts.famContextModel = strdup("FAM_CONTEXT_REGION");
+    fam_opts.runtime = strdup("NONE");
 
     try {
         my_fam->fam_initialize("default", &fam_opts);
@@ -54,60 +55,31 @@ int main() {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
+        exit(1);
     }
+    char *backupName = (char *)calloc(1, FILE_MAX_LEN);
+    sprintf(backupName, "%s", argv[1]);
 
     try {
-        desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
+        void *waitobj = my_fam->fam_delete_backup(backupName);
+        my_fam->fam_delete_backup_wait(waitobj);
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
+        // my_fam->fam_finalize("default");
+        free(backupName);
+        return (e.fam_error());
     }
 
-    // Allocating data items in the created region
     try {
-        item = my_fam->fam_allocate("first", 1024, 0777, desc);
+        my_fam->fam_finalize("default");
     } catch (Fam_Exception &e) {
         cout << "Exception caught" << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
+        exit(3);
     }
-
-    char *local = strdup("Test message");
-    try {
-        my_fam->fam_put_blocking(local, item, 0, 13);
-    } catch (Fam_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    }
-    // allocate local memory to receive 20 elements
-    char *local2 = (char *)malloc(20);
-    try {
-        my_fam->fam_get_blocking(local2, item, 0, 13);
-    } catch (Fam_Exception &e) {
-        cout << "Exception caught" << endl;
-        cout << "Error msg: " << e.fam_error_msg() << endl;
-        cout << "Error: " << e.fam_error() << endl;
-    }
-
-    // ... we now have a copy in local memory to work with
-    cout << " Content of local2 : " << local2 << endl;
-    // Deallocating data items
-    if (item != NULL)
-        my_fam->fam_deallocate(item);
-
-    // Destroying the region
-    if (desc != NULL)
-        my_fam->fam_destroy_region(desc);
-
-    my_fam->fam_finalize("default");
-    cout << "fam finalize successful" << endl;
-    if (strncmp(local, local2, 13) == 0) {
-        cout << "Data read is same is as written" << endl;
-        return 0;
-    } else {
-        cout << "Read and Written Data are different" << endl;
-        return -1;
-    }
+    free(backupName);
+    return 0;
 }

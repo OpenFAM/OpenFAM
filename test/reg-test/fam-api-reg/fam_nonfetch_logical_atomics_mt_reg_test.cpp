@@ -62,35 +62,62 @@ typedef struct {
     int32_t msg_size;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 // Test case 1 - tests FAM APIs fam_and, fam_or and fam_xow with uint32_t.
 void *thrd_logical_uint32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
     uint32_t valueUint32 = 0xAAAAAAAA;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint32 = 0x12345678;
     EXPECT_NO_THROW(my_fam->fam_and(item, offset, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_uint32(item, offset));
     EXPECT_EQ(valueUint32, 0x02200228);
     valueUint32 = 0xAAAAAAAA;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueUint32 = 0x12345678;
     EXPECT_NO_THROW(my_fam->fam_or(item, offset, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_uint32(item, offset));
     EXPECT_EQ(valueUint32, 0xBABEFEFA);
     valueUint32 = 0xAAAAAAAA;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueUint32 = 0x12345678;
     EXPECT_NO_THROW(my_fam->fam_xor(item, offset, valueUint32));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(valueUint32 = my_fam->fam_fetch_uint32(item, offset));
     EXPECT_EQ(valueUint32, 0xB89EFCD2);
     pthread_exit(NULL);
@@ -106,7 +133,7 @@ TEST(FamNonfetchLogicalAtomicUint32, NonfetchLogicalAtomicUint32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -143,30 +170,55 @@ void *thrd_logical_uint64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
     // Logical atomic operations for uint64
     uint64_t valueUint64 = 0xAAAAAAAAAAAAAAAA;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueUint64 = 0x1234567890ABCDEF;
     EXPECT_NO_THROW(my_fam->fam_and(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(valueUint64 = my_fam->fam_fetch_uint64(item, offset));
     EXPECT_EQ(valueUint64, 0x0220022880AA88AA);
     valueUint64 = 0xAAAAAAAAAAAAAAAA;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueUint64 = 0x1234567890ABCDEF;
     EXPECT_NO_THROW(my_fam->fam_or(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(valueUint64 = my_fam->fam_fetch_uint64(item, offset));
     EXPECT_EQ(valueUint64, 0xBABEFEFABAABEFEF);
     valueUint64 = 0xAAAAAAAAAAAAAAAA;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     valueUint64 = 0x1234567890ABCDEF;
     EXPECT_NO_THROW(my_fam->fam_xor(item, offset, valueUint64));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(valueUint64 = my_fam->fam_fetch_uint64(item, offset));
     EXPECT_EQ(valueUint64, 0xB89EFCD23A016745);
     pthread_exit(NULL);
@@ -182,7 +234,7 @@ TEST(FamNonfetchLogicalAtomicUint64, NonfetchLogicalAtomicUint64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, REGION_SIZE, 0777, RAID1));
+                        testRegion, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -209,6 +261,7 @@ TEST(FamNonfetchLogicalAtomicUint64, NonfetchLogicalAtomicUint64Success) {
     delete item;
     delete testRegionDesc;
 
+    free(info);
     free((void *)testRegion);
     free((void *)firstItem);
 }
@@ -224,7 +277,9 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
 

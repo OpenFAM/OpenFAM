@@ -56,7 +56,7 @@ int main() {
         exit(1);
     }
 
-    desc = my_fam->fam_create_region("test", 8192, 0777, RAID1);
+    desc = my_fam->fam_create_region("test", 8192, 0777, NULL);
     if (desc == NULL) {
         cout << "fam create region failed" << endl;
         exit(1);
@@ -76,7 +76,7 @@ int main() {
         global_item = item2->get_global_descriptor();
         cout << " Fam_Descriptor { Region ID : 0x" << hex << uppercase
              << global_item.regionId << ", Offset : 0x" << global_item.offset
-             << ", Key : 0x" << item2->get_key() << " }" << endl;
+             << " }" << endl;
     }
 
     // allocate an integer array and initialize it

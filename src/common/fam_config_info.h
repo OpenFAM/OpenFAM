@@ -36,6 +36,8 @@
 #include "common/fam_internal_exception.h"
 #include <iostream>
 #include <map>
+#include <pwd.h>
+#include <string.h>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -52,6 +54,8 @@ class config_info {
 
   public:
     virtual std::string get_key_value(std::string key) = 0;
+    virtual std::string get_map_value(std::string mapinfo, uint64_t key,
+                                      std::string val) = 0;
     virtual std::vector<std::string> get_value_list(std::string key) = 0;
     virtual int get_value_type(std::string key) = 0;
     virtual ~config_info() {}
@@ -61,6 +65,8 @@ class yaml_config_info : public config_info {
   public:
     yaml_config_info(std::string file_name);
     std::string get_key_value(std::string key);
+    std::string get_map_value(std::string mapinfo, uint64_t key,
+                              std::string val);
     std::vector<std::string> get_value_list(std::string key);
     int get_value_type(std::string key);
     ~yaml_config_info();
@@ -68,6 +74,8 @@ class yaml_config_info : public config_info {
   private:
     YAML::Node config;
 };
+
+// Miscellaneous functions
 
 /*
  * find_config_file - Look for configuration file in path specified by
@@ -105,4 +113,26 @@ inline std::string find_config_file(char *config_file) {
     return config_filename;
 }
 
+/*
+ * login_username - fetch the login username
+ * On Success, return loginname. Else returns NULL
+ */
+inline std::string login_username(void) {
+    struct passwd *loginPwName;
+    uid_t loginUid;
+    char *loginName;
+
+    loginName = getlogin();
+
+    if (loginName != NULL)
+        return std::string(strdup(loginName));
+
+    loginUid = getuid();
+    loginPwName = getpwuid(loginUid);
+
+    if (loginPwName != NULL)
+        return std::string(strdup(loginPwName->pw_name));
+    else
+        return std::string(strdup(""));
+}
 #endif

@@ -43,7 +43,7 @@ using namespace openfam;
 fam *my_fam;
 Fam_Options fam_opts;
 
-// Test case 1 - put get test.
+// Test case 1
 TEST(FamScatterGatherIndexBlock, ScatterGatherIndexBlockSuccess) {
     Fam_Region_Descriptor *desc;
     Fam_Descriptor *item;
@@ -51,7 +51,7 @@ TEST(FamScatterGatherIndexBlock, ScatterGatherIndexBlockSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -72,6 +72,90 @@ TEST(FamScatterGatherIndexBlock, ScatterGatherIndexBlockSuccess) {
 
     for (int i = 0; i < 5; i++) {
         EXPECT_EQ(local2[i], newLocal[i]);
+    }
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+    delete item;
+    delete desc;
+
+    free((void *)testRegion);
+    free((void *)firstItem);
+}
+
+// Test case 2
+TEST(FamScatterGatherIndexBlock, PutGatherIndexBlockSuccess) {
+    Fam_Region_Descriptor *desc;
+    Fam_Descriptor *item;
+    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+
+    EXPECT_NO_THROW(
+        desc = my_fam->fam_create_region(testRegion, 8388608, 0777, NULL));
+    EXPECT_NE((void *)NULL, desc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 4194304, 0777, desc));
+    EXPECT_NE((void *)NULL, item);
+
+    // allocate an integer array and initialize it
+    int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+    uint64_t indexes[] = {0, 7, 3, 5, 8};
+
+    EXPECT_NO_THROW(
+        my_fam->fam_put_blocking(newLocal, item, 0, 10 * sizeof(int)));
+
+    int *local2 = (int *)malloc(10 * sizeof(int));
+
+    EXPECT_NO_THROW(
+        my_fam->fam_gather_blocking(local2, item, 5, indexes, sizeof(int)));
+
+    for (int i = 0; i < 5; i++) {
+        EXPECT_EQ(local2[i], newLocal[indexes[i]]);
+    }
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+    delete item;
+    delete desc;
+
+    free((void *)testRegion);
+    free((void *)firstItem);
+}
+
+// Test case 3
+TEST(FamScatterGatherIndexBlock, ScatterGetIndexBlockSuccess) {
+    Fam_Region_Descriptor *desc;
+    Fam_Descriptor *item;
+    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+
+    EXPECT_NO_THROW(
+        desc = my_fam->fam_create_region(testRegion, 8388608, 0777, NULL));
+    EXPECT_NE((void *)NULL, desc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item =
+                        my_fam->fam_allocate(firstItem, 4194304, 0777, desc));
+    EXPECT_NE((void *)NULL, item);
+
+    // allocate an integer array and initialize it
+    int newLocal[] = {15, 16, 17, 18, 19, 20, 21, 22, 23, 24};
+    uint64_t indexes[] = {0, 7, 3, 5, 8};
+
+    EXPECT_NO_THROW(
+        my_fam->fam_scatter_blocking(newLocal, item, 5, indexes, sizeof(int)));
+
+    int *local2 = (int *)malloc(10 * sizeof(int));
+
+    EXPECT_NO_THROW(
+        my_fam->fam_get_blocking(local2, item, 0, 10 * sizeof(int)));
+
+    for (int i = 0; i < 5; i++) {
+        EXPECT_EQ(local2[indexes[i]], newLocal[i]);
     }
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));

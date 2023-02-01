@@ -52,9 +52,11 @@ TEST(FamOpsLibfabricInternal, FamUnimplemented) {
     const char *name = "127.0.0.1";
     const char *service = "1500";
     char *provider = strdup("sockets");
+    char *if_device = strdup("");
 
-    famOps = new Fam_Ops_Libfabric(true, provider, FAM_THREAD_MULTIPLE, NULL,
-                                   FAM_CONTEXT_DEFAULT, name, service);
+    famOps =
+        new Fam_Ops_Libfabric(true, provider, if_device, FAM_THREAD_MULTIPLE,
+                              NULL, FAM_CONTEXT_DEFAULT, name, service);
 
     EXPECT_THROW(famOps->abort(0), Fam_Unimplemented_Exception);
 

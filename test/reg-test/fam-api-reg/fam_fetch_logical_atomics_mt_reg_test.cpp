@@ -63,18 +63,24 @@ typedef struct {
     int32_t deltaValue;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 // Test case 1 - test for Logical AND,OR and XOR with uint32_t datatype
 
 void *thrd_logical_uint32(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
+    int tid = addInfo->tid;
     uint32_t valueUint32 = 0xAAAAAAAA;
-    uint64_t offset = addInfo->tid * sizeof(valueUint32);
+    uint64_t offset = tid * sizeof(valueUint32);
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint32 = 0x12345678;
 
@@ -90,8 +96,11 @@ void *thrd_logical_uint32(void *arg) {
     valueUint32 = 0xAAAAAAAA;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint32 = 0x12345678;
 
@@ -107,8 +116,11 @@ void *thrd_logical_uint32(void *arg) {
     valueUint32 = 0xAAAAAAAA;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint32));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint32 = 0x12345678;
 
@@ -133,7 +145,7 @@ TEST(FamLogicalAtomicUint32, LogicalAtomicUint32Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, 0777, RAID1));
+                        testRegionStr, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -161,6 +173,7 @@ TEST(FamLogicalAtomicUint32, LogicalAtomicUint32Success) {
     delete item;
     delete testRegionDesc;
 
+    free(info);
     free((void *)testRegionStr);
     free((void *)firstItem);
 }
@@ -171,13 +184,17 @@ void *thrd_logical_uint64(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
+    int tid = addInfo->tid;
     // Logical atomic operations for uint64
     uint64_t valueUint64 = 0xAAAAAAAAAAAAAAAA;
-    uint64_t offset = addInfo->tid * sizeof(valueUint64);
+    uint64_t offset = tid * sizeof(valueUint64);
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint64 = 0x1234567890ABCDEF;
 
@@ -193,8 +210,11 @@ void *thrd_logical_uint64(void *arg) {
     valueUint64 = 0xAAAAAAAAAAAAAAAA;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint64 = 0x1234567890ABCDEF;
 
@@ -210,8 +230,11 @@ void *thrd_logical_uint64(void *arg) {
     valueUint64 = 0xAAAAAAAAAAAAAAAA;
 
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, valueUint64));
-
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
 
     valueUint64 = 0x1234567890ABCDEF;
 
@@ -235,7 +258,7 @@ TEST(FamLogicalAtomicUint64, LogicalAtomicUint64Success) {
     info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, 0777, RAID1));
+                        testRegionStr, REGION_SIZE, 0777, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -263,6 +286,7 @@ TEST(FamLogicalAtomicUint64, LogicalAtomicUint64Success) {
     delete item;
     delete testRegionDesc;
 
+    free(info);
     free((void *)testRegionStr);
     free((void *)firstItem);
 }
@@ -272,13 +296,14 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
 
     my_fam = new fam();
-
     init_fam_options(&fam_opts);
     fam_opts.famThreadModel = strdup("FAM_THREAD_MULTIPLE");
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
 

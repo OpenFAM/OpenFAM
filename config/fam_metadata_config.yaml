@@ -3,9 +3,8 @@
 # Metadata manager: default is radixtree. Currently radixtree is the only supported KVS.
 metadata_manager: radixtree
  
-# Path where metadata info is stored. By default, it will be placed in /dev/shm/<metadata_manager>. 
-# Example: If metadata manager is radixtree, then metadata info would be placed under /dev/shm/radixtree folder.
-metadata_path: /dev/shm/
+# Path where metadata info is stored.  
+metadata_path: /dev/shm/fam_metadata
 
 # Rpc interface
 # Rpc interface used by metadata rpc server.
@@ -30,3 +29,5 @@ enable_region_spanning: true
 # Default value is 1GB.
 region_span_size_per_memoryserver: 1073741824
 
+# If dataitem interleaving is enabled, the following value is used to determine the interleave block size
+dataitem_interleave_size: 1048576

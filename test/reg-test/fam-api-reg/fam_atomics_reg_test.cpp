@@ -101,7 +101,7 @@ TEST(FamGeneriAtomics, AddSubInt32NonBlock) {
 
     int32_t baseValue = 100;
     int32_t resValue = 80;
-    uint64_t testOffset = (test_item_size - sizeof(int32_t) - 1);
+    uint64_t testOffset = (test_item_size - 2 * sizeof(int32_t));
 #define NT 2
     pthread_t nThread[NT];
     int32_t result;
@@ -154,7 +154,7 @@ TEST(FamGeneriAtomics, AddInt32NonBlock) {
 
     int32_t baseValue = 100;
     int32_t resValue = 1100;
-    uint64_t testOffset = (test_item_size - sizeof(int32_t) - 1);
+    uint64_t testOffset = (test_item_size - 2 * sizeof(int32_t));
 #define NT 10
     pthread_t nThread[NT];
     int32_t result;
@@ -205,7 +205,7 @@ TEST(FamGeneriAtomics, SubInt32NonBlock) {
 
     int32_t baseValue = 1100;
     int32_t resValue = 100;
-    uint64_t testOffset = (test_item_size - sizeof(int32_t) - 1);
+    uint64_t testOffset = (test_item_size - 2 * sizeof(int32_t));
 #define NT 10
     pthread_t nThread[NT];
     int32_t result;
@@ -245,6 +245,18 @@ TEST(FamGeneriAtomics, SubInt32NonBlock) {
 #undef NT
 }
 
+// Test case 3 - SubInt32NonBlock
+TEST(FamFetchInt, FamFetchIntInvalidDesc) {
+    Fam_Descriptor *item = NULL;
+    EXPECT_THROW(my_fam->fam_fetch_int32(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_int64(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_int128(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_uint32(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_uint64(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_float(item, 0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_double(item, 0), Fam_Exception);
+}
+
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);
@@ -258,7 +270,7 @@ int main(int argc, char **argv) {
     testRegionStr = get_uniq_str("test", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, REGION_PERM, RAID1));
+                        testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     ret = RUN_ALL_TESTS();

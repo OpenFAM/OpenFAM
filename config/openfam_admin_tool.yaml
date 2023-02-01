@@ -1,0 +1,12 @@
+install_path: ""
+sleep_time: 5 
+launcher: ""
+num_pes: 1
+launcher_options:
+  common: ""
+  memserver:
+    0: ""
+  metaserver:
+    0: ""
+  cis: ""
+  compute_pes: ""

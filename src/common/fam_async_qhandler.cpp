@@ -1,6 +1,6 @@
 /*
  * fam_async_qhandler.cpp
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -31,6 +31,7 @@
 
 #include <boost/lockfree/queue.hpp>
 #include <boost/thread/thread.hpp>
+#include <future>
 
 #ifdef USE_BOOST_FIBER
 #include <boost/fiber/condition_variable.hpp>
@@ -97,6 +98,25 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         return;
     }
 
+    uint64_t read_progress(Fam_Context *famCtx) {
+        uint64_t total_reads, ctr = 0;
+        total_reads = famCtx->get_num_rx_ops();
+        ctr = readCtr.load(boost::memory_order_seq_cst);
+        return (total_reads - ctr);
+    }
+    uint64_t write_progress(Fam_Context *famCtx) {
+        uint64_t ctr, writes = 0;
+        writes = famCtx->get_num_tx_ops();
+        ctr = writeCtr.load(boost::memory_order_seq_cst);
+        return (writes - ctr);
+    }
+
+    uint64_t progress(Fam_Context *famCtx) {
+        uint64_t writes, reads = 0;
+        writes = write_progress(famCtx);
+        reads = read_progress(famCtx);
+        return (writes + reads);
+    }
     void quiet(Fam_Context *famCtx) {
 
         qreadCtr = famCtx->get_num_rx_ops();
@@ -118,12 +138,16 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
             writeErrCtr.store(0, boost::memory_order_seq_cst);
             Fam_Async_Err *err;
             while (writeCQ->pop(err)) {
-                if (!(err->get_error_code()))
+                if (!(err->get_error_code())) {
+                    delete err;
                     return;
-                else
-                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
-                                    err->get_error_code(),
-                                    err->get_error_msg());
+                } else {
+                    Fam_Error errCode = err->get_error_code();
+                    string errMsg = err->get_error_msg();
+                    delete err;
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode,
+                                    errMsg.c_str());
+                }
             }
         }
     }
@@ -139,12 +163,16 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
             readErrCtr.store(0, boost::memory_order_seq_cst);
             Fam_Async_Err *err;
             while (readCQ->pop(err)) {
-                if (!(err->get_error_code()))
+                if (!(err->get_error_code())) {
+                    delete err;
                     return;
-                else
-                    THROW_ERRNO_MSG(Fam_Datapath_Exception,
-                                    err->get_error_code(),
-                                    err->get_error_msg());
+                } else {
+                    Fam_Error errCode = err->get_error_code();
+                    string errMsg = err->get_error_msg();
+                    delete err;
+                    THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode,
+                                    errMsg.c_str());
+                }
             }
         }
     }
@@ -157,6 +185,79 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
                 copyCond.wait(lk);
             }
         }
+
+        if (tag->err) {
+            Fam_Error errCode = tag->err->get_error_code();
+            string errMsg = tag->err->get_error_msg();
+            delete tag->err;
+            delete tag;
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode, errMsg.c_str());
+        }
+        delete tag;
+        return;
+    }
+
+    void wait_for_backup(void *waitObj) {
+        Fam_Backup_Tag *tag = static_cast<Fam_Backup_Tag *>(waitObj);
+        {
+            AQUIRE_MUTEX(backupMtx);
+            while (!tag->backupDone.load(boost::memory_order_seq_cst)) {
+                backupCond.wait(lk);
+            }
+        }
+
+        if (tag->err) {
+            Fam_Error errCode = tag->err->get_error_code();
+            string errMsg = tag->err->get_error_msg();
+            delete tag->err;
+            delete tag;
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode, errMsg.c_str());
+        }
+
+        delete tag;
+        return;
+    }
+
+    void wait_for_restore(void *waitObj) {
+        Fam_Restore_Tag *tag = static_cast<Fam_Restore_Tag *>(waitObj);
+        {
+            AQUIRE_MUTEX(restoreMtx);
+            while (!tag->restoreDone.load(boost::memory_order_seq_cst)) {
+                restoreCond.wait(lk);
+            }
+        }
+
+        if (tag->err) {
+            Fam_Error errCode = tag->err->get_error_code();
+            string errMsg = tag->err->get_error_msg();
+            delete tag->err;
+            delete tag;
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode, errMsg.c_str());
+        }
+
+        delete tag;
+        return;
+    }
+
+    void wait_for_delete_backup(void *waitObj) {
+        Fam_Delete_Backup_Tag *tag =
+            static_cast<Fam_Delete_Backup_Tag *>(waitObj);
+        {
+            AQUIRE_MUTEX(deletebackupMtx);
+            while (!tag->delbackupDone.load(boost::memory_order_seq_cst)) {
+                deletebackupCond.wait(lk);
+            }
+        }
+
+        if (tag->err) {
+            Fam_Error errCode = tag->err->get_error_code();
+            string errMsg = tag->err->get_error_msg();
+            delete tag->err;
+            delete tag;
+            THROW_ERRNO_MSG(Fam_Datapath_Exception, errCode, errMsg.c_str());
+        }
+
+        delete tag;
         return;
     }
 
@@ -176,13 +277,30 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         }
         case COPY: {
             copy_handler(opsInfo.src, opsInfo.dest, opsInfo.nbytes,
-                         opsInfo.tag);
+                         (Fam_Copy_Tag *)opsInfo.tag);
             break;
         }
+	case BACKUP: {
+	    backup_handler(opsInfo.src, opsInfo.dest, opsInfo.nbytes,
+                         (Fam_Backup_Tag *)opsInfo.tag);
+	    break;
+	}
+	case RESTORE: {
+	    restore_handler(opsInfo.src, opsInfo.dest, opsInfo.nbytes,
+                         (Fam_Restore_Tag *)opsInfo.tag);
+	    break;
+	}
+        case DELETE_BACKUP: {
+            delete_backup_handler(opsInfo.src, opsInfo.dest, opsInfo.nbytes,
+                                  (Fam_Delete_Backup_Tag *)opsInfo.tag);
+            break;
+        }
+
         default: {
             THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_INVALIDOP,
                             "invalid operation request");
         }
+	
         }
         return;
     }
@@ -255,13 +373,64 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
 
     void copy_handler(void *src, void *dest, uint64_t nbytes,
                       Fam_Copy_Tag *tag) {
-        if (tag->memoryService)
-            tag->memoryService->copy(
-                tag->srcRegionId, tag->srcOffset, tag->srcKey,
-                tag->srcCopyStart, tag->srcAddr, tag->srcAddrLen,
-                tag->destRegionId, tag->destOffset, tag->size,
-                tag->srcMemserverId, tag->destMemserverId);
-        else {
+        if (tag->memoryServiceMap) {
+            ostringstream message;
+            uint64_t srcCopyEnd = tag->srcCopyStart + tag->size;
+            uint64_t destStartServerIdx =
+                (tag->destUsedMemsrvCnt == 1)
+                    ? 0
+                    : ((tag->destCopyStart / tag->destInterleaveSize) %
+                       tag->destUsedMemsrvCnt);
+            uint64_t destFamPtr =
+                (tag->destUsedMemsrvCnt == 1)
+                    ? tag->destCopyStart
+                    : (((tag->destCopyStart / tag->destInterleaveSize) -
+                        destStartServerIdx) /
+                       tag->destUsedMemsrvCnt) *
+                          tag->destInterleaveSize;
+            uint64_t destDisplacement =
+                (tag->destUsedMemsrvCnt == 1)
+                    ? 0
+                    : (tag->destCopyStart % tag->destInterleaveSize);
+            std::list<std::shared_future<void>> resultList;
+            for (int i = 0; i < (int)tag->destUsedMemsrvCnt; i++) {
+                int index =
+                    (i + (int)destStartServerIdx) % (int)tag->destUsedMemsrvCnt;
+                auto obj =
+                    tag->memoryServiceMap->find((tag->destMemserverIds)[index]);
+                if (obj == tag->memoryServiceMap->end()) {
+                    message << "Memory service RPC client not found";
+                    THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RPC_CLIENT_NOTFOUND,
+                                    message.str().c_str());
+                }
+                Fam_Memory_Service *memoryService = obj->second;
+                uint64_t additionalOffset =
+                    (index == (int)destStartServerIdx) ? destDisplacement : 0;
+                std::future<void> result(std::async(
+                    std::launch::async, &openfam::Fam_Memory_Service::copy,
+                    memoryService, tag->srcRegionId, tag->srcOffsets,
+                    tag->srcUsedMemsrvCnt, tag->srcCopyStart, srcCopyEnd,
+                    tag->srcKeys, tag->srcBaseAddrList, tag->destRegionId,
+                    tag->destOffsets[index] + destFamPtr + additionalOffset,
+                    tag->destUsedMemsrvCnt, tag->srcMemserverIds,
+                    tag->srcInterleaveSize, tag->destInterleaveSize,
+                    tag->size));
+                resultList.push_back(result.share());
+                tag->srcCopyStart +=
+                    (tag->destInterleaveSize - additionalOffset);
+            }
+            // Wait for region destroy to complete.
+            try {
+                for (auto result : resultList) {
+                    result.get();
+                }
+            } catch (Fam_Exception &e) {
+                Fam_Async_Err *err = new Fam_Async_Err();
+                err->set_error_code((Fam_Error)e.fam_error());
+                err->set_error_msg(e.fam_error_msg());
+                tag->err = err;
+            }
+        } else {
             memcpy(dest, src, nbytes);
             openfam_persist(dest, nbytes);
         }
@@ -273,19 +442,142 @@ class Fam_Async_QHandler::FamAsyncQHandlerImpl_ {
         return;
     }
 
+    void backup_handler(void *src, void *dest, uint64_t nbytes,
+                      Fam_Backup_Tag *tag) {
+        if (tag->memoryServiceMap) {
+            ostringstream message;
+            bool writeMetadata = true;
+            std::list<std::shared_future<void>> resultList;
+            for (int i = 0; i < (int)tag->usedMemserverCnt; i++) {
+                auto obj =
+                    tag->memoryServiceMap->find((tag->srcMemserverIds)[i]);
+                if (obj == tag->memoryServiceMap->end()) {
+                    message << "Memory service RPC client not found";
+                    THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RPC_CLIENT_NOTFOUND,
+                                    message.str().c_str());
+                }
+                Fam_Memory_Service *memoryService = obj->second;
+                uint64_t size = tag->sizePerServer;
+                if (tag->extraBlocks) {
+                    size += tag->srcInterleaveSize;
+                    tag->extraBlocks--;
+                }
+
+                std::future<void> result(std::async(
+                    std::launch::async, &openfam::Fam_Memory_Service::backup,
+                    memoryService, tag->srcRegionId, tag->srcOffsets[i], size,
+                    tag->chunkSize, tag->usedMemserverCnt, i, tag->BackupName,
+                    tag->uid, tag->gid, tag->mode, tag->dataitemName,
+                    tag->srcItemSize, writeMetadata));
+                resultList.push_back(result.share());
+                writeMetadata = false;
+            }
+
+            // Wait for region destroy to complete.
+            try {
+                for (auto result : resultList) {
+                    result.get();
+                }
+            } catch (Fam_Exception &e) {
+                Fam_Async_Err *err = new Fam_Async_Err();
+                err->set_error_code((Fam_Error)e.fam_error());
+                err->set_error_msg(e.fam_error_msg());
+                tag->err = err;
+            }
+        }
+        {
+            AQUIRE_MUTEX(backupMtx)
+            tag->backupDone.store(true, boost::memory_order_seq_cst);
+        }
+        backupCond.notify_one();
+        return;
+    }
+
+    void restore_handler(void *src, void *dest, uint64_t nbytes,
+                      Fam_Restore_Tag *tag) {
+        if (tag->memoryServiceMap) {
+            ostringstream message;
+            std::list<std::shared_future<void>> resultList;
+            for (int i = 0; i < (int)tag->iterations; i++) {
+                auto obj =
+                    tag->memoryServiceMap->find((tag->destMemserverIds)[i]);
+                if (obj == tag->memoryServiceMap->end()) {
+                    message << "Memory service RPC client not found";
+                    THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RPC_CLIENT_NOTFOUND,
+                                    message.str().c_str());
+                }
+                Fam_Memory_Service *memoryService = obj->second;
+                uint64_t size = tag->sizePerServer;
+                if (tag->extraBlocks) {
+                    size += tag->destInterleaveSize;
+                    tag->extraBlocks--;
+                }
+
+                std::future<void> result(std::async(
+                    std::launch::async, &openfam::Fam_Memory_Service::restore,
+                    memoryService, tag->destRegionId, tag->destOffsets[i], size,
+                    tag->chunkSize, tag->usedMemserverCnt, i, tag->BackupName));
+                resultList.push_back(result.share());
+            }
+            // Wait for region destroy to complete.
+            try {
+                for (auto result : resultList) {
+                    result.get();
+                }
+            } catch (Fam_Exception &e) {
+                Fam_Async_Err *err = new Fam_Async_Err();
+                err->set_error_code((Fam_Error)e.fam_error());
+                err->set_error_msg(e.fam_error_msg());
+                tag->err = err;
+            }
+        }
+        {
+            AQUIRE_MUTEX(restoreMtx)
+            tag->restoreDone.store(true, boost::memory_order_seq_cst);
+        }
+        restoreCond.notify_one();
+        return;
+    }
+
+    void delete_backup_handler(void *src, void *dest, uint64_t nbytes,
+                               Fam_Delete_Backup_Tag *tag) {
+        if (tag->memoryService) {
+            try {
+                tag->memoryService->delete_backup(tag->BackupName);
+            } catch (Fam_Exception &e) {
+                Fam_Async_Err *err = new Fam_Async_Err();
+                err->set_error_code((Fam_Error)e.fam_error());
+                err->set_error_msg(e.fam_error_msg());
+                tag->err = err;
+            }
+        }
+        {
+            AQUIRE_MUTEX(deletebackupMtx)
+            tag->delbackupDone.store(true, boost::memory_order_seq_cst);
+        }
+        deletebackupCond.notify_one();
+        return;
+    }
+
   private:
     boost::lockfree::queue<Fam_Ops_Info> *queue;
-    boost::lockfree::queue<Fam_Async_Err *> *readCQ, *writeCQ;
+    boost::lockfree::queue<Fam_Async_Err *> *readCQ, *writeCQ, *copyCQ,
+        *backupCQ, *restoreCQ, *deleteCQ;
     boost::thread_group consumerThreads;
 #ifdef USE_BOOST_FIBER
-    boost::fibers::condition_variable readCond, writeCond, copyCond, queueCond;
-    boost::fibers::mutex readMtx, writeMtx, copyMtx, queueMtx;
+    boost::fibers::condition_variable readCond, writeCond, copyCond, queueCond,
+        backupCond, restoreCond, deletebackupCond;
+    boost::fibers::mutex readMtx, writeMtx, copyMtx, queueMtx, backupMtx,
+        restoreMtx, deletebackupMtx;
 #else
-    std::condition_variable readCond, writeCond, copyCond, queueCond;
-    std::mutex readMtx, writeMtx, copyMtx, queueMtx;
+    std::condition_variable readCond, writeCond, copyCond, queueCond,
+        backupCond, restoreCond, deletebackupCond;
+    std::mutex readMtx, writeMtx, copyMtx, queueMtx, backupMtx, restoreMtx,
+        deletebackupMtx;
 #endif
     boost::atomic_uint64_t readCtr, writeCtr, readErrCtr, writeErrCtr,
-        qwriteCtr, qreadCtr;
+        copyErrCtr, backupErrCtr, restoreErrCtr, deleteErrCtr, qwriteCtr,
+        qreadCtr;
     boost::atomic<bool> run;
 };
 
@@ -315,8 +607,27 @@ void Fam_Async_QHandler::read_quiet(uint64_t ctr) {
     fAsyncQHandler_->read_quiet(ctr);
 }
 
+uint64_t Fam_Async_QHandler::progress(Fam_Context *famCtx) {
+    return fAsyncQHandler_->progress(famCtx);
+}
+
+uint64_t Fam_Async_QHandler::write_progress(Fam_Context *famCtx) {
+    return fAsyncQHandler_->write_progress(famCtx);
+}
+
+uint64_t Fam_Async_QHandler::read_progress(Fam_Context *famCtx) {
+    return fAsyncQHandler_->read_progress(famCtx);
+}
 void Fam_Async_QHandler::wait_for_copy(void *waitObj) {
     fAsyncQHandler_->wait_for_copy(waitObj);
+}
+
+void Fam_Async_QHandler::wait_for_backup(void *waitObj) {
+    fAsyncQHandler_->wait_for_backup(waitObj);
+}
+
+void Fam_Async_QHandler::wait_for_restore(void *waitObj) {
+    fAsyncQHandler_->wait_for_restore(waitObj);
 }
 
 void Fam_Async_QHandler::decode_and_execute(Fam_Ops_Info opsInfo) {
@@ -340,6 +651,26 @@ void Fam_Async_QHandler::read_handler(void *src, void *dest, uint64_t nbytes,
 void Fam_Async_QHandler::copy_handler(void *src, void *dest, uint64_t nbytes,
                                       Fam_Copy_Tag *tag) {
     fAsyncQHandler_->copy_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::backup_handler(void *src, void *dest, uint64_t nbytes,
+                                        Fam_Backup_Tag *tag) {
+    fAsyncQHandler_->backup_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::restore_handler(void *src, void *dest, uint64_t nbytes,
+                                         Fam_Restore_Tag *tag) {
+    fAsyncQHandler_->restore_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::delete_backup_handler(void *src, void *dest,
+                                               uint64_t nbytes,
+                                               Fam_Delete_Backup_Tag *tag) {
+    fAsyncQHandler_->delete_backup_handler(src, dest, nbytes, tag);
+}
+
+void Fam_Async_QHandler::wait_for_delete_backup(void *waitObj) {
+    fAsyncQHandler_->wait_for_delete_backup(waitObj);
 }
 
 } // namespace openfam

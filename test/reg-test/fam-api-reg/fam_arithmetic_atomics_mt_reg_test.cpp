@@ -59,6 +59,8 @@ typedef struct {
     int32_t msg_size;
 } ValueInfo;
 
+pthread_barrier_t barrier;
+
 #define NUM_THREADS 10
 #define REGION_SIZE (8 * 1024 * 1024 * NUM_THREADS)
 #define REGION_PERM 0777
@@ -67,22 +69,34 @@ void *thr_add_sub_int32_nonblocking(void *arg) {
 
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
 
-    // int tid =  addInfo->tid;
     int32_t baseValue = 0x1234;
     int32_t testAddValue = 0x1234;
     int32_t testExpectedValue = 0x2468;
     EXPECT_NE((void *)NULL, item);
     int32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_add(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int32(item, offset));
     EXPECT_EQ(testExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_subtract(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int32(item, offset));
     EXPECT_EQ(baseValue, result);
     pthread_exit(NULL);
@@ -128,22 +142,34 @@ TEST(FamArithmaticAtomics, AddSubInt32NonBlock) {
 void *thr_add_sub_uint32_nonblocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
 
-    // int tid =  addInfo->tid;
     int32_t baseValue = 0x7ffffffe;
     int32_t testAddValue = 0x1;
     int32_t testExpectedValue = 0x7fffffff;
     EXPECT_NE((void *)NULL, item);
     int32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_add(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint32(item, offset));
     EXPECT_EQ(testExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_subtract(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint32(item, offset));
     EXPECT_EQ(baseValue, result);
     pthread_exit(NULL);
@@ -188,22 +214,34 @@ TEST(FamArithmaticAtomics, AddSubUInt32NonBlock) {
 void *thr_add_sub_int64_nonblocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
 
-    // int tid =  addInfo->tid;
     int64_t baseValue = 0x1111222233334321;
     int64_t testAddValue = 0x1111222233334321;
     int64_t testExpectedValue = 0x2222444466668642;
     EXPECT_NE((void *)NULL, item);
     int64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_add(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int64(item, offset));
     EXPECT_EQ(testExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_subtract(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_int64(item, offset));
     EXPECT_EQ(baseValue, result);
     pthread_exit(NULL);
@@ -247,22 +285,34 @@ TEST(FamArithmaticAtomics, AddSubInt64NonBlock) {
 void *thr_add_sub_uint64_nonblocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
 
-    // int tid =  addInfo->tid;
     uint64_t baseValue = 0x7fffffffffffffff;
     uint64_t testAddValue = 0x1;
     uint64_t testExpectedValue = 0x8000000000000000;
     EXPECT_NE((void *)NULL, item);
     uint64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_add(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint64(item, offset));
     EXPECT_EQ(testExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_subtract(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_uint64(item, offset));
     EXPECT_EQ(baseValue, result);
     pthread_exit(NULL);
@@ -306,22 +356,34 @@ TEST(FamArithmaticAtomics, AddSubUInt64NonBlock) {
 void *thr_add_sub_float_nonblocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(float);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(float);
 
-    // int tid =  addInfo->tid;
     float baseValue = 1234.12f;
     float testAddValue = 1234.12f;
     float testExpectedValue = 2468.24f;
     EXPECT_NE((void *)NULL, item);
     float result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_add(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_float(item, offset));
     EXPECT_FLOAT_EQ(testExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_subtract(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_float(item, offset));
     EXPECT_FLOAT_EQ(baseValue, result);
     pthread_exit(NULL);
@@ -365,22 +427,34 @@ TEST(FamArithmaticAtomics, AddSubFloatNonBlock) {
 void *thr_add_sub_double_nonblocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(double);
 
-    // int tid =  addInfo->tid;
     double baseValue = 2222555577778888.3333;
     double testAddValue = 1111.2222;
     double testExpectedValue = 2222555577779999.5555;
     EXPECT_NE((void *)NULL, item);
     double result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(my_fam->fam_add(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_double(item, offset));
     EXPECT_DOUBLE_EQ(testExpectedValue, result);
     EXPECT_NO_THROW(my_fam->fam_subtract(item, offset, testAddValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_double(item, offset));
     EXPECT_DOUBLE_EQ(baseValue, result);
     pthread_exit(NULL);
@@ -425,16 +499,20 @@ TEST(FamArithmaticAtomics, AddSubDoubleNonBlock) {
 void *thr_add_sub_int32_blocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int32_t);
 
-    // int tid =  addInfo->tid;
     int32_t baseValue = 0x1234;
     int32_t testAddValue = 0x1234;
     int32_t testExpectedValue = 0x2468;
     EXPECT_NE((void *)NULL, item);
     int32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_add(item, offset, testAddValue));
     EXPECT_EQ(baseValue, result);
     EXPECT_NO_THROW(result =
@@ -475,21 +553,26 @@ TEST(FamArithmaticAtomics, AddSubInt32Blocking) {
         pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    free(info);
 }
 
 void *thr_add_sub_uint32_blocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint32_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint32_t);
 
-    // int tid =  addInfo->tid;
     uint32_t baseValue = 0x54321;
     uint32_t testAddValue = 0x54321;
     uint32_t testExpectedValue = 0xA8642;
     EXPECT_NE((void *)NULL, item);
     uint32_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_add(item, offset, testAddValue));
     EXPECT_EQ(baseValue, result);
     EXPECT_NO_THROW(result =
@@ -530,18 +613,24 @@ TEST(FamArithmaticAtomics, AddSubUInt32Blocking) {
         pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    free(info);
 }
 void *thr_add_sub_int64_blocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(int64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(int64_t);
     int64_t baseValue = 0x1111222233334321;
     int64_t testAddValue = 0x1111222233334321;
     int64_t testExpectedValue = 0x2222444466668642;
     int64_t result;
     EXPECT_NE((void *)NULL, item);
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_add(item, offset, testAddValue));
     EXPECT_EQ(baseValue, result);
     EXPECT_NO_THROW(result =
@@ -580,14 +669,15 @@ TEST(FamArithmaticAtomics, AddSubInt64Blocking) {
         pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    free(info);
 }
 
 void *thr_add_sub_uint64_blocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(uint64_t);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(uint64_t);
 
-    // int tid =  addInfo->tid;
     uint64_t baseValue = 0x7fffffffffffffff;
     uint64_t testAddValue = 0x1;
     uint64_t testExpectedValue = 0x8000000000000000;
@@ -595,7 +685,11 @@ void *thr_add_sub_uint64_blocking(void *arg) {
 
     uint64_t result;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_add(item, offset, testAddValue));
     EXPECT_EQ(baseValue, result);
     EXPECT_NO_THROW(result =
@@ -635,20 +729,25 @@ TEST(FamArithmaticAtomics, AddSubUInt64Blocking) {
         pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    free(info);
 }
 
 void *thr_add_sub_float_blocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(float);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(float);
 
-    // int tid =  addInfo->tid;
     float baseValue = 99999.99f;
     float testAddValue = 0.01f;
     float testExpectedValue = 100000.00f;
     float result = 0.0f;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_add(item, offset, testAddValue));
     EXPECT_FLOAT_EQ(baseValue, result);
     EXPECT_NO_THROW(result =
@@ -688,21 +787,26 @@ TEST(FamArithmaticAtomics, AddSubFloatBlocking) {
         pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    free(info);
 }
 
 void *thr_add_sub_double_blocking(void *arg) {
     ValueInfo *addInfo = (ValueInfo *)arg;
     Fam_Descriptor *item = addInfo->item;
-    uint64_t offset = addInfo->tid * sizeof(double);
+    int tid = addInfo->tid;
+    uint64_t offset = tid * sizeof(double);
 
-    // int tid =  addInfo->tid;
     double baseValue = 2222555577778888.3333;
     double testAddValue = 1111.2222;
     double testExpectedValue = 2222555577779999.5555;
     EXPECT_NE((void *)NULL, item);
     double result = 0.0;
     EXPECT_NO_THROW(my_fam->fam_set(item, offset, baseValue));
-    EXPECT_NO_THROW(my_fam->fam_quiet());
+    pthread_barrier_wait(&barrier);
+    if (tid == 0) {
+        EXPECT_NO_THROW(my_fam->fam_quiet());
+    }
+    pthread_barrier_wait(&barrier);
     EXPECT_NO_THROW(result = my_fam->fam_fetch_add(item, offset, testAddValue));
     EXPECT_DOUBLE_EQ(baseValue, result);
     EXPECT_NO_THROW(result =
@@ -742,6 +846,7 @@ TEST(FamArithmaticAtomics, AddSubDoubleBlocking) {
         pthread_join(thr[i], NULL);
     }
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    free(info);
 }
 
 int main(int argc, char **argv) {
@@ -757,10 +862,12 @@ int main(int argc, char **argv) {
     testRegionStr = get_uniq_str("test", my_fam);
 
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, REGION_PERM, RAID1));
+                        testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
+    pthread_barrier_init(&barrier, NULL, NUM_THREADS);
     ret = RUN_ALL_TESTS();
+    pthread_barrier_destroy(&barrier);
 
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
     delete testRegionDesc;

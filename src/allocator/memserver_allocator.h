@@ -51,6 +51,10 @@
 
 #define MIN_OBJ_SIZE 128
 #define MIN_REGION_SIZE (1UL << 20)
+#define MIN_INFO_SIZE (1UL << 8)
+#define BACKUP_META_SIZE (1UL << 12)
+
+#define _IS_VALID(offset) (offset == 0) ? false : true
 
 using namespace std;
 using namespace nvmm;
@@ -84,14 +88,29 @@ class Memserver_Allocator {
     void resize_region(uint64_t regionId, size_t nbytes);
     uint64_t allocate(uint64_t regionId, size_t nbytes);
     void deallocate(uint64_t regionId, uint64_t offset);
-    void copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t destRegionId,
-              uint64_t destOffset, uint64_t size);
+    void copy(void *src, void *destOffset, uint64_t size);
+
+    void backup(uint64_t srcRegionId, uint64_t srcOffset, uint64_t size,
+                uint64_t chunkSize, uint64_t usedMemserverCnt,
+                uint64_t fileStartPos, const string BackupName, uint32_t uid,
+                uint32_t gid, mode_t mode, const string dataitemName,
+                uint64_t itemSize, bool writeMetadata);
+
+    void restore(uint64_t destRegionId, uint64_t destOffset, uint64_t size,
+                 uint64_t chunkSize, uint64_t usedMemserverCnt,
+                 uint64_t fileStartPos, string BackupName);
+    Fam_Backup_Info get_backup_info(const string BackupName, uint32_t uid,
+                                    uint32_t gid, uint32_t op);
+    std::string list_backup(const string BackupName, uint32_t uid, uint32_t gid,
+                            uint32_t mode);
+    void delete_backup(const string BackupName);
+    bool validate_backup(Fam_Backup_Info info, uint32_t uid, uint32_t gid,
+                         mode_t op);
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
     void open_heap(uint64_t regionId);
     void create_ATL_root(size_t nbytes);
     Fam_Heap_Info_t *remove_heap_from_list(uint64_t regionId);
     void delayed_free_th(uint64_t thread_index);
-
   private:
     MemoryManager *memoryManager;
     EpochManager *em;

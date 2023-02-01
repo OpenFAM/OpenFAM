@@ -96,8 +96,9 @@ Fam_Metadata_Service_Client::Fam_Metadata_Service_Client(const char *name,
     /** sending a start signal to server **/
     ::grpc::Status status = stub->signal_start(&ctx, req, &res);
     if (!status.ok()) {
-        throw Metadata_Service_Exception(FAM_ERR_RPC,
-                                         (status.error_message()).c_str());
+        message << "Fam Metadata Service: "<<status.error_message().c_str()<<":"<<name_s;
+        throw Metadata_Service_Exception(FAM_ERR_RPC, message.str().c_str());
+
     }
 }
 
@@ -150,6 +151,9 @@ void Fam_Metadata_Service_Client::metadata_insert_region(
     req.set_perm(region->perm);
     req.set_uid(region->uid);
     req.set_gid(region->gid);
+    req.set_redundancylevel(region->redundancyLevel);
+    req.set_memorytype(region->memoryType);
+    req.set_interleaveenable(region->interleaveEnable);
     req.set_memsrv_cnt(region->used_memsrv_cnt);
     for (int i = 0; i < (int)region->used_memsrv_cnt; i++) {
         req.add_memsrv_list(region->memServerIds[i]);
@@ -306,12 +310,18 @@ void Fam_Metadata_Service_Client::metadata_insert_dataitem(
     req.set_key_dataitem_name(dataitemName);
     req.set_region_id(regionId);
     req.set_name(dataitem->name);
-    req.set_offset(dataitem->offset);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_offsets(dataitem->offsets[i]);
+    }
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
     req.set_uid(dataitem->uid);
     req.set_gid(dataitem->gid);
-    req.set_memsrv_id(dataitem->memoryServerId);
+    req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    req.set_interleave_size(dataitem->interleaveSize);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_memsrv_list(dataitem->memoryServerIds[i]);
+    }
 
     ::grpc::Status status = stub->metadata_insert_dataitem(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
@@ -331,12 +341,18 @@ void Fam_Metadata_Service_Client::metadata_insert_dataitem(
     req.set_key_dataitem_name(dataitemName);
     req.set_region_id(dataitem->regionId);
     req.set_name(dataitem->name);
-    req.set_offset(dataitem->offset);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_offsets(dataitem->offsets[i]);
+    }
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
     req.set_uid(dataitem->uid);
     req.set_gid(dataitem->gid);
-    req.set_memsrv_id(dataitem->memoryServerId);
+    req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    req.set_interleave_size(dataitem->interleaveSize);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_memsrv_list(dataitem->memoryServerIds[i]);
+    }
 
     ::grpc::Status status = stub->metadata_insert_dataitem(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
@@ -418,13 +434,19 @@ bool Fam_Metadata_Service_Client::metadata_find_dataitem(
     STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         dataitem.regionId = res.region_id();
-        dataitem.offset = res.offset();
+        for (int i = 0; i < res.offsets_size(); i++) {
+            dataitem.offsets[i] = res.offsets(i);
+        }
         dataitem.size = res.size();
         dataitem.perm = (mode_t)res.perm();
         strncpy(dataitem.name, res.name().c_str(), res.maxkeylen());
         dataitem.uid = res.uid();
         dataitem.gid = res.gid();
-        dataitem.memoryServerId = res.memsrv_id();
+        dataitem.used_memsrv_cnt = res.memsrv_list_size();
+        dataitem.interleaveSize = res.interleave_size();
+        for (int i = 0; i < res.memsrv_list_size(); i++) {
+            dataitem.memoryServerIds[i] = res.memsrv_list(i);
+        }
     }
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_find_dataitem);
     return res.isfound();
@@ -445,13 +467,18 @@ bool Fam_Metadata_Service_Client::metadata_find_dataitem(
     STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         dataitem.regionId = res.region_id();
-        dataitem.offset = res.offset();
+        for (uint64_t i = 0; i < res.memsrv_cnt(); i++) {
+            dataitem.offsets[i] = res.offsets((int)i);
+        }
         dataitem.size = res.size();
         dataitem.perm = (mode_t)res.perm();
         strncpy(dataitem.name, res.name().c_str(), res.maxkeylen());
         dataitem.uid = res.uid();
         dataitem.gid = res.gid();
-        dataitem.memoryServerId = res.memsrv_id();
+        dataitem.used_memsrv_cnt = res.memsrv_cnt();
+        for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+            dataitem.memoryServerIds[i] = res.memsrv_list(i);
+        }
     }
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_find_dataitem);
     return res.isfound();
@@ -472,13 +499,19 @@ bool Fam_Metadata_Service_Client::metadata_find_dataitem(
     STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         dataitem.regionId = res.region_id();
-        dataitem.offset = res.offset();
+        for (uint64_t i = 0; i < res.memsrv_cnt(); i++) {
+            dataitem.offsets[i] = res.offsets((int)i);
+        }
+
         dataitem.size = res.size();
         dataitem.perm = (mode_t)res.perm();
         strncpy(dataitem.name, res.name().c_str(), res.maxkeylen());
         dataitem.uid = res.uid();
         dataitem.gid = res.gid();
-        dataitem.memoryServerId = res.memsrv_id();
+        dataitem.used_memsrv_cnt = res.memsrv_cnt();
+        for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+            dataitem.memoryServerIds[i] = res.memsrv_list(i);
+        }
     }
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_find_dataitem);
     return res.isfound();
@@ -499,13 +532,18 @@ bool Fam_Metadata_Service_Client::metadata_find_dataitem(
     STATUS_CHECK(Metadata_Service_Exception)
     if (res.isfound()) {
         dataitem.regionId = res.region_id();
-        dataitem.offset = res.offset();
+        for (uint64_t i = 0; i < res.memsrv_cnt(); i++) {
+            dataitem.offsets[i] = res.offsets((int)i);
+        }
         dataitem.size = res.size();
         dataitem.perm = (mode_t)res.perm();
         strncpy(dataitem.name, res.name().c_str(), res.maxkeylen());
         dataitem.uid = res.uid();
         dataitem.gid = res.gid();
-        dataitem.memoryServerId = res.memsrv_id();
+        dataitem.used_memsrv_cnt = res.memsrv_cnt();
+        for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+            dataitem.memoryServerIds[i] = res.memsrv_list(i);
+        }
     }
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_find_dataitem);
     return res.isfound();
@@ -523,12 +561,17 @@ void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     req.set_key_dataitem_id(dataitemId);
     req.set_region_id(regionId);
     req.set_name(dataitem->name);
-    req.set_offset(dataitem->offset);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_offsets(dataitem->offsets[i]);
+    }
     req.set_uid(dataitem->uid);
     req.set_gid(dataitem->gid);
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
-    req.set_memsrv_id(dataitem->memoryServerId);
+    req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_memsrv_list(dataitem->memoryServerIds[i]);
+    }
 
     ::grpc::Status status = stub->metadata_modify_dataitem(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
@@ -547,12 +590,17 @@ void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     req.set_key_dataitem_id(dataitemId);
     req.set_region_id(dataitem->regionId);
     req.set_name(dataitem->name);
-    req.set_offset(dataitem->offset);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_offsets(dataitem->offsets[i]);
+    }
     req.set_uid(dataitem->uid);
     req.set_gid(dataitem->gid);
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
-    req.set_memsrv_id(dataitem->memoryServerId);
+    req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_memsrv_list(dataitem->memoryServerIds[i]);
+    }
 
     ::grpc::Status status = stub->metadata_modify_dataitem(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
@@ -571,12 +619,17 @@ void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     req.set_key_dataitem_name(dataitemName);
     req.set_region_id(dataitem->regionId);
     req.set_name(dataitem->name);
-    req.set_offset(dataitem->offset);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_offsets(dataitem->offsets[i]);
+    }
     req.set_uid(dataitem->uid);
     req.set_gid(dataitem->gid);
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
-    req.set_memsrv_id(dataitem->memoryServerId);
+    req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_memsrv_list(dataitem->memoryServerIds[i]);
+    }
 
     ::grpc::Status status = stub->metadata_modify_dataitem(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
@@ -595,12 +648,17 @@ void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     req.set_key_dataitem_name(dataitemName);
     req.set_region_id(dataitem->regionId);
     req.set_name(dataitem->name);
-    req.set_offset(dataitem->offset);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_offsets(dataitem->offsets[i]);
+    }
     req.set_uid(dataitem->uid);
     req.set_gid(dataitem->gid);
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
-    req.set_memsrv_id(dataitem->memoryServerId);
+    req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
+        req.add_memsrv_list(dataitem->memoryServerIds[i]);
+    }
 
     ::grpc::Status status = stub->metadata_modify_dataitem(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
@@ -662,14 +720,19 @@ size_t Fam_Metadata_Service_Client::metadata_maxkeylen() {
 }
 
 void Fam_Metadata_Service_Client::metadata_update_memoryserver(
-    int nmemServers, std::vector<uint64_t> memsrv_id_list) {
+    int nmemServersPersistent, std::vector<uint64_t> memsrv_persistent_id_list,
+    int nmemServersVolatile, std::vector<uint64_t> memsrv_volatile_id_list) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Memservcnt_Request req;
     Fam_Metadata_Gen_Response res;
     ::grpc::ClientContext ctx;
-    req.set_nmemservers(nmemServers);
-    for (int i = 0; i < (int)nmemServers; i++) {
-        req.add_memsrv_list(memsrv_id_list[i]);
+    req.set_nmemserverspersistent(nmemServersPersistent);
+    for (int i = 0; i < (int)nmemServersPersistent; i++) {
+        req.add_memsrv_persistent_list(memsrv_persistent_id_list[i]);
+    }
+    req.set_nmemserversvolatile(nmemServersVolatile);
+    for (int i = 0; i < (int)nmemServersVolatile; i++) {
+        req.add_memsrv_volatile_list(memsrv_volatile_id_list[i]);
     }
 
     ::grpc::Status status = stub->metadata_update_memoryserver(&ctx, req, &res);
@@ -688,7 +751,8 @@ void Fam_Metadata_Service_Client::metadata_reset_bitmap(uint64_t regionId) {
 
 void Fam_Metadata_Service_Client::metadata_validate_and_create_region(
     const std::string regionname, size_t size, uint64_t *regionid,
-    std::list<int> *memory_server_list, int user_policy) {
+    Fam_Region_Attributes *regionAttributes, std::list<int> *memory_server_list,
+    int user_policy) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
     Fam_Metadata_Region_Info_Response res;
@@ -697,15 +761,18 @@ void Fam_Metadata_Service_Client::metadata_validate_and_create_region(
     req.set_name(regionname);
     req.set_size(size);
     req.set_user_policy(user_policy);
+    req.set_redundancylevel(regionAttributes->redundancyLevel);
+    req.set_memorytype(regionAttributes->memoryType);
+    req.set_interleaveenable(regionAttributes->interleaveEnable);
 
     ::grpc::Status status =
         stub->metadata_validate_and_create_region(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
 
     *regionid = res.region_id();
-    int memsrv_count = res.memserv_list_size();
+    int memsrv_count = res.memsrv_list_size();
     for (int i = 0; i < memsrv_count; i++) {
-        memory_server_list->push_back((res.memserv_list(i)));
+        memory_server_list->push_back((res.memsrv_list(i)));
     }
 
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_validate_and_create_region);
@@ -727,9 +794,9 @@ void Fam_Metadata_Service_Client::metadata_validate_and_destroy_region(
     ::grpc::Status status =
         stub->metadata_validate_and_destroy_region(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
-    int memsrv_count = res.memserv_list_size();
+    int memsrv_count = res.memsrv_list_size();
     for (int i = 0; i < memsrv_count; i++) {
-        memory_server_list->push_back((res.memserv_list(i)));
+        memory_server_list->push_back((res.memsrv_list(i)));
     }
     METADATA_CLIENT_PROFILE_END_OPS(
         client_metadata_validate_and_destroy_region);
@@ -758,6 +825,10 @@ void Fam_Metadata_Service_Client::metadata_find_region_and_check_permissions(
     region.uid = res.uid();
     region.gid = res.gid();
     region.used_memsrv_cnt = res.memsrv_cnt();
+    region.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+    region.memoryType = (Fam_Memory_Type)res.memorytype();
+    region.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
+    region.interleaveSize = res.interleavesize();
     for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
         region.memServerIds[i] = res.memsrv_list(i);
     }
@@ -789,6 +860,10 @@ void Fam_Metadata_Service_Client::metadata_find_region_and_check_permissions(
     region.uid = res.uid();
     region.gid = res.gid();
     region.used_memsrv_cnt = res.memsrv_cnt();
+    region.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+    region.memoryType = (Fam_Memory_Type)res.memorytype();
+    region.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
+    region.interleaveSize = res.interleavesize();
     for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
         region.memServerIds[i] = res.memsrv_list(i);
     }
@@ -815,13 +890,20 @@ void Fam_Metadata_Service_Client::metadata_find_dataitem_and_check_permissions(
         stub->metadata_find_dataitem_and_check_permissions(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
     dataitem.regionId = res.region_id();
-    dataitem.offset = res.offset();
+    dataitem.used_memsrv_cnt = res.memsrv_list_size();
+    for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+        dataitem.offsets[i] = res.offsets((int)i);
+    }
+
     dataitem.size = res.size();
     dataitem.perm = (mode_t)res.perm();
     strncpy(dataitem.name, res.name().c_str(), res.maxkeylen());
     dataitem.uid = res.uid();
     dataitem.gid = res.gid();
-    dataitem.memoryServerId = res.memsrv_id();
+    dataitem.interleaveSize = res.interleave_size();
+    for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+        dataitem.memoryServerIds[i] = res.memsrv_list(i);
+    }
     METADATA_CLIENT_PROFILE_END_OPS(
         client_metadata_find_dataitem_and_check_permissions);
 }
@@ -844,20 +926,27 @@ void Fam_Metadata_Service_Client::metadata_find_dataitem_and_check_permissions(
         stub->metadata_find_dataitem_and_check_permissions(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
     dataitem.regionId = res.region_id();
-    dataitem.offset = res.offset();
+    dataitem.used_memsrv_cnt = res.memsrv_list_size();
+    for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+        dataitem.offsets[i] = res.offsets((int)i);
+    }
     dataitem.size = res.size();
     dataitem.perm = (mode_t)res.perm();
     strncpy(dataitem.name, res.name().c_str(), res.maxkeylen());
     dataitem.uid = res.uid();
     dataitem.gid = res.gid();
-    dataitem.memoryServerId = res.memsrv_id();
+    dataitem.interleaveSize = res.interleave_size();
+    for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+        dataitem.memoryServerIds[i] = res.memsrv_list(i);
+    }
     METADATA_CLIENT_PROFILE_END_OPS(
         client_metadata_find_dataitem_and_check_permissions);
 }
 
 void Fam_Metadata_Service_Client::metadata_validate_and_allocate_dataitem(
     const std::string dataitemName, const uint64_t regionId, uint32_t uid,
-    uint32_t gid, uint64_t *memoryServerId) {
+    uint32_t gid, size_t size, std::list<int> *memory_server_list,
+    size_t *interleaveSize, int user_policy) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
     Fam_Metadata_Response res;
@@ -867,18 +956,25 @@ void Fam_Metadata_Service_Client::metadata_validate_and_allocate_dataitem(
     req.set_region_id(regionId);
     req.set_uid(uid);
     req.set_gid(gid);
+    req.set_size(size);
+    req.set_user_policy(user_policy);
+
     ::grpc::Status status =
         stub->metadata_validate_and_allocate_dataitem(&ctx, req, &res);
 
     STATUS_CHECK(Metadata_Service_Exception)
-    *memoryServerId = res.memsrv_id();
+    int memsrv_count = res.memsrv_list_size();
+    *interleaveSize = res.interleave_size();
+    for (int i = 0; i < memsrv_count; i++) {
+        memory_server_list->push_back((int)(res.memsrv_list(i)));
+    }
     METADATA_CLIENT_PROFILE_END_OPS(
         client_metadata_validate_and_allocate_dataitem);
 }
 
 void Fam_Metadata_Service_Client::metadata_validate_and_deallocate_dataitem(
     const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
-    uint32_t gid) {
+    uint32_t gid, Fam_DataItem_Metadata &dataitem) {
 
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
@@ -892,6 +988,19 @@ void Fam_Metadata_Service_Client::metadata_validate_and_deallocate_dataitem(
     ::grpc::Status status =
         stub->metadata_validate_and_deallocate_dataitem(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
+    dataitem.regionId = res.region_id();
+    dataitem.used_memsrv_cnt = res.memsrv_list_size();
+    for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+        dataitem.offsets[i] = res.offsets((int)i);
+    }
+    dataitem.size = res.size();
+    dataitem.perm = (mode_t)res.perm();
+    strncpy(dataitem.name, res.name().c_str(), res.maxkeylen());
+    dataitem.uid = res.uid();
+    dataitem.gid = res.gid();
+    for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
+        dataitem.memoryServerIds[i] = res.memsrv_list(i);
+    }
     METADATA_CLIENT_PROFILE_END_OPS(
         client_metadata_validate_and_deallocate_dataitem);
 }
@@ -909,9 +1018,9 @@ Fam_Metadata_Service_Client::get_memory_server_list(uint64_t regionId) {
     ::grpc::Status status = stub->get_memory_server_list(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
 
-    int memsrv_count = res.memserv_list_size();
+    int memsrv_count = res.memsrv_list_size();
     for (int i = 0; i < memsrv_count; i++) {
-        memory_server_list.push_back((res.memserv_list(i)));
+        memory_server_list.push_back((res.memsrv_list(i)));
     }
 
     METADATA_CLIENT_PROFILE_END_OPS(client_get_memory_server_list);

@@ -1,9 +1,0 @@
--n=1
---model=memory_server
---cisinterface=rpc
---memserverinterface=rpc
---metaserverinterface=rpc
---cisrpcaddr=127.0.0.1:8787
---memserverlist=0:127.0.0.1:8795,1:127.0.0.1:8796,2:127.0.0.1:8797,3:127.0.0.1:8798
---metaserverlist=0:127.0.0.1:8788
---regionspanningsize=1048576

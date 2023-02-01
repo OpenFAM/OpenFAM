@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -22,7 +22,7 @@
 function (add_fam_test file_name)
     add_executable(${file_name} ${file_name}.cpp)
     target_link_libraries(${file_name} openfam gtest)
-	add_test(NAME ${file_name} COMMAND COMMAND ${PROJECT_SOURCE_DIR}/run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
+	add_test(NAME ${file_name} COMMAND COMMAND python3 ${PROJECT_SOURCE_DIR}/run_test.py ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
 	IF (${CMAKE_MAJOR_VERSION} GREATER 2)
         set_tests_properties(${file_name} PROPERTIES SKIP_RETURN_CODE ${TEST_SKIP_STATUS})
     ENDIF()
@@ -75,6 +75,9 @@ add_fam_test(fam_put_get_negative_test)
 add_fam_test(fam_fence_reg_test)
 add_fam_test(fam_invalidkey_reg_test)
 add_fam_test(fam_barrier_reg_test)
+add_fam_test(fam_backup_restore_reg_test)
+add_fam_test(fam_dataitem_interleave_test)
+add_fam_test(fam_dataitem_interleave_advanced_test)
 #add_fam_test(fam_put_get)
 #add_fam_test(fam_put_get_multiple)
 #add_fam_test(fam_put_get_region_ctx)
@@ -98,16 +101,18 @@ add_fam_test(fam_barrier_reg_test)
 #add_fam_test(fam_noperm_test)
 # Following tests have been commented as there are some issues with non-blocking calls.
 # Will be uncommented after the issue has been addressed.
-#add_fam_test(fam_arithmetic_atomics_mt_reg_test)
-#add_fam_test(fam_cas_atomics_mt_reg_test)
-#add_fam_test(fam_compare_swap_atomics_mt_reg_test)
-#add_fam_test(fam_fetch_arithmetic_atomics_mt_reg_test)
-#add_fam_test(fam_fetch_logical_atomics_mt_reg_test)
-#add_fam_test(fam_fetch_min_max_atomics_mt_reg_test)
-#add_fam_test(fam_min_max_atomics_mt_reg_test)
-#add_fam_test(fam_nonfetch_arithmetic_atomics_mt_reg_test)
-#add_fam_test(fam_nonfetch_logical_atomics_mt_reg_test)
-#add_fam_test(fam_nonfetch_min_max_atomics_mt_reg_test)
-#add_fam_test(fam_put_get_nb_mt_reg_test)
-#add_fam_test(fam_scatter_gather_nonblocking_mt_reg_test)
-#add_fam_test(fam_swap_atomics_mt_reg_test)
+add_fam_test(fam_arithmetic_atomics_mt_reg_test)
+add_fam_test(fam_cas_atomics_mt_reg_test)
+add_fam_test(fam_compare_swap_atomics_mt_reg_test)
+add_fam_test(fam_fetch_arithmetic_atomics_mt_reg_test)
+add_fam_test(fam_fetch_logical_atomics_mt_reg_test)
+add_fam_test(fam_fetch_min_max_atomics_mt_reg_test)
+add_fam_test(fam_min_max_atomics_mt_reg_test)
+add_fam_test(fam_nonfetch_arithmetic_atomics_mt_reg_test)
+add_fam_test(fam_nonfetch_logical_atomics_mt_reg_test)
+add_fam_test(fam_nonfetch_min_max_atomics_mt_reg_test)
+add_fam_test(fam_put_get_nb_mt_reg_test)
+add_fam_test(fam_scatter_gather_nonblocking_mt_reg_test)
+add_fam_test(fam_swap_atomics_mt_reg_test)
+add_fam_test(fam_context_reg_test)
+add_fam_test(fam_context_mt_reg_test)

@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -22,7 +22,7 @@
 function (add_fam_test file_name)
     add_executable(${file_name} ${file_name}.cpp)
     target_link_libraries(${file_name} openfam pmix pmi2)
-	add_test(NAME ${file_name} COMMAND ${PROJECT_SOURCE_DIR}/run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
+	add_test(NAME ${file_name} COMMAND python3 ${PROJECT_SOURCE_DIR}/run_test.py ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
 	IF (${CMAKE_MAJOR_VERSION} GREATER 2)
         set_tests_properties(${file_name} PROPERTIES SKIP_RETURN_CODE ${TEST_SKIP_STATUS})
     ENDIF()
@@ -39,8 +39,8 @@ add_fam_test(fam_scatter_gather_stride_user_desc)
 add_fam_test(fam_put_get_user_desc)
 add_fam_test(fam_scatter_gather_index_blocking)
 add_fam_test(fam_scatter_gather_stride_blocking)
-add_fam_test(fam_put_get_region_ctx)
 add_fam_test(fam_quiet_put_get_nonblocking)
+add_fam_test(fam_progress)
 add_fam_test(fam_scatter_gather_index_nonblocking)
 add_fam_test(fam_scatter_gather_stride_nonblocking)
 add_fam_test(fam_scatter_gather_stride_blocking_with_validation)
@@ -67,3 +67,5 @@ add_fam_test(fam_fence_test)
 add_fam_test(fam_allocate_map_nvmm)
 add_fam_test(fam_compare_swap_atomics_nvmm_test)
 add_fam_test(fam_fetch_arithmatic_atomics_nvmm_test)
+add_fam_test(fam_context_open_close)
+add_fam_test(fam_progress_mt)

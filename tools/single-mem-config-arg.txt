@@ -1,0 +1,12 @@
+#Mention all OpenFAM configuration parameters in this file
+#Please check "openfam_adm --help" command for more details
+--model=memory_server                   #Openfam model
+--cisinterface=rpc                      #Interface for CIS (rpc/direct)
+--memserverinterface=rpc                #Interface for Memory service (rpc/direct)
+--metaserverinterface=rpc               #Interface for Metadata service (rpc/direct)
+--metapath=/dev/shm/fam_metadata 		#Path to create metadata 
+--cisserver={rpc_interface:127.0.0.1,rpc_port:8880} #CIS Service parameters
+#Memory service parameters. Add a new line for each memory server 
+--memservers=0:{memory_type:volatile,fam_path:/dev/shm/vol1,rpc_interface:127.0.0.1,rpc_port:8790,libfabric_port:7521,if_device:eth0}
+--metaservers=0:{rpc_interface:127.0.0.1,rpc_port:8881} #Metadata service parameters
+--test_args={num_pes:1} #Parameters for running tests

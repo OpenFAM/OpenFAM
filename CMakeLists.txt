@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -64,6 +64,11 @@ if(ENABLE_MEMORYSERVER_PROFILING)
         add_definitions(-DMEMSERVER_PROFILE)
 endif()
 
+if(ENABLE_CHECK_OFFSETS)
+	message(STATUS "Offset checks enabled")
+	add_definitions(-DCHECK_OFFSETS)
+endif()
+
 message(STATUS "====================")
 
 #
@@ -87,7 +92,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS} -g -O2")
 #
 # gcc flags for debug build
 #
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -DDEBUG -O0 -g")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS} -DDEBUG -DCHECK_OFFSETS -O0 -g")
 
 #
 # gcc flags for debug build
@@ -109,6 +114,7 @@ include_directories(${PROJECT_SOURCE_DIR}/third-party/googletest/include)
 #
 include_directories(${PROJECT_SOURCE_DIR}/include) # public headers (include)
 include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/build/include) # third-party headers (include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/grpc/third_party/abseil-cpp/)
 include_directories(${PROJECT_SOURCE_DIR}/test/util) # utility functions
 include_directories(${PROJECT_SOURCE_DIR}/src) # private headers (src)
 include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
@@ -116,11 +122,23 @@ include_directories(${PROJECT_SOURCE_DIR}/src/pmi) # private headers (src)
 # library directories
 #
 link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib) # third-party libraries
+link_directories(${PROJECT_SOURCE_DIR}/third-party/build/lib64) # third-party libraries
+
+if(LIBFABRIC_PATH)
+    include_directories(${LIBFABRIC_PATH}/include)
+    link_directories(${LIBFABRIC_PATH}/lib64)
+    link_directories(${LIBFABRIC_PATH}/lib)
+endif()
+if(PMIX_PATH)
+    include_directories(${PMIX_PATH}/include)
+    link_directories(${PMIX_PATH}/lib)
+endif()
 
 #
 # default system include and link directories
 #
 link_directories(/usr/lib)
+link_directories(/usr/lib64)
 include_directories(/usr/include)
 link_directories(/usr/local/lib)
 include_directories(/usr/local/include)
@@ -128,20 +146,23 @@ include_directories(/usr/local/include)
 #
 # Set openFAM options to be used only by test. Some individual test cases might override these options.
 # To use the following OpenFAM options set USE_FAM_OPTION flag
-set( TEST_RUNTIME "PMIX" )
 set( TEST_NPE 1 ) #Number of pe used with mpirun
-set( TEST_DEFAULT_REGION "Default" )
-set( TEST_CIS_SERVER "127.0.0.1" )
-set( TEST_GRPC_PORT "8787" )
-set( TEST_LIBFABRIC_PROVIDER "sockets" )
-set( TEST_FAM_THREAD_MODEL "FAM_THREAD_SERIALIZE" )
-set( TEST_FAM_CONTEXT_MODEL "FAM_CONTEXT_DEFAULT" )
-set( TEST_NUM_CONSUMER "1" )
+set( TEST_RUNTIME "PMIX" )
 
-if (USE_CONFIG_OPTION)
-	add_definitions(-DUSE_CONFIG_OPTION)	
+if (SET_FAM_OPTION)
+       set( TEST_DEFAULT_REGION "Default" )
+       set( TEST_CIS_SERVER "127.0.0.1" )
+       set( TEST_GRPC_PORT "8787" )
+       set( TEST_LIBFABRIC_PROVIDER "sockets" )
+       set( TEST_FAM_THREAD_MODEL "FAM_THREAD_SERIALIZE" )
+       set( TEST_FAM_CONTEXT_MODEL "FAM_CONTEXT_DEFAULT" )
+       set( TEST_NUM_CONSUMER "1" )
+       message(STATUS "Using pre-defined test configuratin")
+else()
+       set (USE_CONFIG_OPTIONS "1")
+       message(STATUS "Tests use Fam options/config files")
 endif()
-	
+
 IF (${CMAKE_MAJOR_VERSION} GREATER 2)
         set( TEST_SKIP_STATUS 77 )
 ELSE ()
@@ -190,25 +211,15 @@ add_subdirectory(test/coverage)
 add_subdirectory(test/microbench)
 add_subdirectory(test/apps)
 add_subdirectory(test/permission-test)
+add_subdirectory(test/services-test)
+add_subdirectory(test/wrappers-test)
 add_subdirectory(examples/api)
 
-file(READ ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt.in CONTENTS)
-file(WRITE ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "")
-file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${CONTENTS}")
-file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/\n")
-file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/test/config_files/multi-mem/\n")
-file(APPEND ${PROJECT_SOURCE_DIR}/scripts/multi-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/\n")
-
-file(READ ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt.in CONTENTS)
-file(WRITE ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "")
-file(APPEND ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "${CONTENTS}")
-file(APPEND ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/\n")
-file(APPEND ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/test/config_files/single-mem/\n")
-file(APPEND ${PROJECT_SOURCE_DIR}/test/microbench/fam-api-mb/scripts/single-mem-test-arg.txt "${PROJECT_SOURCE_DIR}/build/\n")
-
-install (FILES "${PROJECT_SOURCE_DIR}/test/setup.sh" PERMISSIONS OWNER_READ OWNER_WRITE
-        OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-        DESTINATION ${PROJECT_BINARY_DIR})
+#install openfam_adm in bin directory
+install (SCRIPT openfam_adm_install.cmake)
+#install template config files in install path
+install (DIRECTORY "${PROJECT_SOURCE_DIR}/config" USE_SOURCE_PERMISSIONS
+		DESTINATION ${PROJECT_BINARY_DIR}/)
 
 install (FILES "${PROJECT_SOURCE_DIR}/test/unit-test/config/sample_config" PERMISSIONS OWNER_READ OWNER_WRITE
         GROUP_READ WORLD_READ

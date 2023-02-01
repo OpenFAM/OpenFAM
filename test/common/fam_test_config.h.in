@@ -40,7 +40,6 @@
 
 using namespace std;
 using namespace openfam;
-
 // Fam_Options
 #cmakedefine TEST_DEFAULT_REGION "${TEST_DEFAULT_REGION}"
 #cmakedefine TEST_OPENFAM_MODEL "${TEST_OPENFAM_MODEL}"
@@ -52,7 +51,7 @@ using namespace openfam;
 #cmakedefine TEST_FAM_CONTEXT_MODEL "${TEST_FAM_CONTEXT_MODEL}"
 #cmakedefine TEST_RUNTIME "${TEST_RUNTIME}"
 #cmakedefine TEST_NUM_CONSUMER "${TEST_NUM_CONSUMER}"
-
+#cmakedefine USE_CONFIG_OPTIONS "${USE_CONFIG_OPTIONS}"
 #ifdef MEMSERVER_PROFILE
 #cmakedefine TEST_MEMSERVER_IP "0:127.0.0.1"
 #endif

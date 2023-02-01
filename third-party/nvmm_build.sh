@@ -56,22 +56,7 @@ case $OS in
 esac
 
 mkdir build
-cd third-party/
-git clone https://github.com/FabricAttachedMemory/nvml.git
-cd nvml
-make -j
-if [[ $? > 0 ]]
-then
-        echo "nvml make failed, exiting..."
-        exit 1
-fi
-make install prefix="$CWD/../build"
-if [[ $? > 0 ]]
-then
-        echo "nvml make install failed, exiting..."
-        exit 1
-fi
-cd ../../build
+cd build
 cmake .. -DFAME=OFF
 make -j
 if [[ $? > 0 ]]

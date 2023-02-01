@@ -162,7 +162,7 @@ Fam_Region_Descriptor *spmv_fam_initialize(size_t size) {
         // ignore
     }
     try {
-        region = my_fam->fam_create_region(REGION_NAME, size, 0777, NONE);
+        region = my_fam->fam_create_region(REGION_NAME, size, 0777, NULL);
     } catch (Fam_Exception &e) {
         cout << "fam initialization failed:" << e.fam_error_msg() << endl;
         exit(1);

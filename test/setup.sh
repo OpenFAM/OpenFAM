@@ -40,7 +40,7 @@ cisserver=
 cisrpcport=8787
 metarpcport=8788
 memrpcport=8789
-libfabricport=7500
+libfabricport=
 provider=sockets
 npe=1
 print_help() {
@@ -76,6 +76,9 @@ print_help() {
 	echo "  --provider      : Libfabric provider"
 	echo ""
 	echo "  --fam_path      : Location of FAM"
+	echo ""
+	echo ""
+	echo "  --memserver_id      : Location of FAM"
 	echo ""
 	echo "  --init          : Initializes NVMM (use this option for shared memory model)"
 	echo ""
@@ -154,6 +157,12 @@ while :; do
 		--fam_path=)
 			echo 'ERROR: "--fam_path" requires a non-empty option argument.'
             ;;
+		--memserver_id=?*)
+			memserver_id=${1#*=}
+            ;;
+		--memserver_id=)
+			echo 'ERROR: "--memserver_id" requires a non-empty option argument.'
+            ;;
 		-?*)
 			echo "WARN: Unknown option (ignored): ${1}"
 			;;
@@ -180,7 +189,10 @@ if [ "$initialize" ]; then
 	if [ "$fam_path" ]; then
             fam_path_ARG="-f ${fam_path}"
     fi
-    ./memory_server -i $fam_path_ARG
+	if [ "$memserver_id" ]; then
+            memserver_id_ARG="-m ${memserver_id}"
+    fi
+    ./memory_server -i $fam_path_ARG $memserver_id_ARG 
 fi 
 
 #Run Metadata Service
@@ -196,7 +208,14 @@ if [ "$memserver" ]; then
 	if [ "$fam_path" ]; then
          	fam_path_ARG="-f ${fam_path}"		
 	fi
-	./memory_server -a ${memserver} -r ${memrpcport} -l ${libfabricport} -p ${provider} $fam_path_ARG &
+	if [ "$memserver_id" ]; then
+         	memserver_id_ARG="-m ${memserver_id}"		
+	fi
+	if [ "$libfabricport" ]; then
+         	libfabricport_ARG="-l ${libfabricport}"
+	fi		
+	
+	./memory_server -a ${memserver} -r ${memrpcport} $libfabricport_ARG -p ${provider} $fam_path_ARG $memserver_id_ARG &
 	sleep 1
 fi
 

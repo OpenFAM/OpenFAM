@@ -55,12 +55,12 @@ void signal_handler(int signum) {
 Fam_Memory_Service_Server *memoryService;
 
 int main(int argc, char *argv[]) {
-    uint64_t rpcPort = 8789;
-    char *name = strdup("127.0.0.1");
-    char *libfabricPort = strdup("7500");
-    char *provider = strdup("");
+    uint64_t memserver_id = 0;
+    // char *name = strdup("127.0.0.1");
     char *fam_path = NULL;
-	bool initFlag = false;
+    bool initFlag = false;
+    ostringstream message;
+    int startNvmmStatus = 0;
 
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
@@ -74,54 +74,46 @@ int main(int argc, char *argv[]) {
                 << "\t./memory_server <options> \n"
                 << "\n"
                 << "Options : \n"
-                << "\t-a/--address   : Address of the memory server "
-                   "(default value is localhost) \n"
-                << "\n"
-                << "\t-r/--rpcport        : RPC port (default value is 8789)\n"
-                << "\n"
-                << "\t-l/--libfabricport  : Libfabric port (default value is "
-                   "7500)\n"
-                << "\n"
-                << "\t-p/--provider       : Libfabric provider (default value "
-                   "is sockets)\n"
-                << "\n"
                 << "\t-f/--fam_path       : Location of FAM (default value "
                    "is /dev/shm/<username>)\n"
                 << "\n"
+                << "\t-m/--memserver_id   : MemoryServer Id (default value is "
+                   "0)\n"
+                << "\n"
                 << "\t-v/--version        : Display metadata server version  \n"
                 << "\n"
-				<< "\t-i/--init			  : Initialize the root shelf \n"
-				<< "\n"
+                << "\t-i/--init			  : Initialize the root shelf "
+                   "\n"
+                << "\n"
                 << endl;
             exit(0);
 		} else if ((std::string(argv[i]) == "-i") ||
                    (std::string(argv[i]) == "--init")) {
         	initFlag = true;
-		} else if ((std::string(argv[i]) == "-a") ||
-                   (std::string(argv[i]) == "--address")) {
-            name = strdup(argv[++i]);
-        } else if ((std::string(argv[i]) == "-r") ||
-                   (std::string(argv[i]) == "--rpcport")) {
-            rpcPort = atoi(argv[++i]);
-        } else if ((std::string(argv[i]) == "-l") ||
-                   (std::string(argv[i]) == "--libfabricport")) {
-            libfabricPort = strdup(argv[++i]);
-        } else if ((std::string(argv[i]) == "-p") ||
-                   (std::string(argv[i]) == "--provider")) {
-            provider = strdup(argv[++i]);
         } else if ((std::string(argv[i]) == "-f") ||
                    (std::string(argv[i]) == "--fam_path")) {
             fam_path = strdup(argv[++i]);
+        } else if ((std::string(argv[i]) == "-m") ||
+                   (std::string(argv[i]) == "--memserver_id")) {
+            memserver_id = atoi(argv[++i]);
         }
     }
 
-	if(initFlag) {
+    if(initFlag) {
+        std::string userName = login_username();
         if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
-            StartNVMM();
-        } else
-            StartNVMM(fam_path);
+            startNvmmStatus = StartNVMM();
+        } else {
+            startNvmmStatus = StartNVMM(fam_path, userName);
+        }
+        if (startNvmmStatus != 0) {
+            message << "Starting of memory server failed";
+            THROW_ERRNO_MSG(Memory_Service_Exception,
+                            MEMORY_SERVER_START_FAILED, message.str().c_str());
+        }
+
         exit(0);
-	}
+    }
 
 #ifdef COVERAGE
     signal(SIGINT, signal_handler);
@@ -131,8 +123,7 @@ int main(int argc, char *argv[]) {
 
     memoryService = NULL;
     try {
-        memoryService = new Fam_Memory_Service_Server(
-            rpcPort, name, libfabricPort, provider, fam_path);
+        memoryService = new Fam_Memory_Service_Server(memserver_id);
         memoryService->run();
     } catch (Fam_Exception &e) {
         if (memoryService) {

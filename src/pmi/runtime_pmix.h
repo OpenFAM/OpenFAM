@@ -61,7 +61,7 @@ class Pmix_Runtime : public Fam_Runtime {
             return rc;
         }
         mInitrc = rc;
-        (void)strncpy(proc.nspace, mProc.nspace, PMIX_MAX_NSLEN);
+        PMIX_LOAD_NSPACE(proc.nspace, mProc.nspace);
         proc.rank = PMIX_RANK_WILDCARD;
 
         if (PMIX_SUCCESS ==
@@ -130,7 +130,7 @@ class Pmix_Runtime : public Fam_Runtime {
 
         /* call fence to sync */
         PMIX_PROC_CONSTRUCT(&proc);
-        (void)strncpy(proc.nspace, mProc.nspace, PMIX_MAX_NSLEN);
+        PMIX_LOAD_NSPACE(proc.nspace, mProc.nspace);
         proc.rank = PMIX_RANK_WILDCARD;
 
         if (PMIX_SUCCESS != (rc = PMIx_Fence(&proc, 1, NULL, 0))) {

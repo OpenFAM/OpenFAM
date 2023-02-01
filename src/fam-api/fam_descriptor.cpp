@@ -44,71 +44,110 @@ class Fam_Descriptor::FamDescriptorImpl_ {
   public:
     FamDescriptorImpl_(Fam_Global_Descriptor globalDesc, uint64_t itemSize) {
         gDescriptor = globalDesc;
-        key = FAM_KEY_UNINITIALIZED;
+        // key = FAM_KEY_UNINITIALIZED;
+        keys = NULL;
         context = NULL;
-        base = NULL;
+        base_addr_list = NULL;
         desc_update_status = DESC_UNINITIALIZED;
         size = itemSize;
+        interleaveSize = 0;
         perm = 0;
         name = NULL;
+        memserver_ids = NULL;
+        used_memsrv_cnt = 0;
+        uid = 0;
+        gid = 0;
     }
 
     FamDescriptorImpl_(Fam_Global_Descriptor globalDesc) {
         gDescriptor = globalDesc;
-        key = FAM_KEY_UNINITIALIZED;
+        // key = FAM_KEY_UNINITIALIZED;
+        keys = NULL;
         context = NULL;
-        base = NULL;
+        base_addr_list = NULL;
         desc_update_status = DESC_UNINITIALIZED;
         size = 0;
+        interleaveSize = 0;
         perm = 0;
         name = NULL;
+        memserver_ids = NULL;
+        used_memsrv_cnt = 0;
+        uid = 0;
+        gid = 0;
     }
 
     FamDescriptorImpl_() {
         gDescriptor = {FAM_INVALID_REGION, 0};
-        key = FAM_KEY_UNINITIALIZED;
+        // key = FAM_KEY_UNINITIALIZED;
+        keys = NULL;
         context = NULL;
-        base = NULL;
+        base_addr_list = NULL;
         desc_update_status = DESC_UNINITIALIZED;
         size = 0;
+        interleaveSize = 0;
         perm = 0;
         name = NULL;
+        memserver_ids = NULL;
+        used_memsrv_cnt = 0;
+        uid = 0;
+        gid = 0;
     }
 
     ~FamDescriptorImpl_() {
         gDescriptor = {FAM_INVALID_REGION, 0};
-        key = FAM_KEY_UNINITIALIZED;
         context = NULL;
-        base = NULL;
+        base_addr_list = NULL;
         desc_update_status = DESC_INVALID;
         size = 0;
+        interleaveSize = 0;
         perm = 0;
-        name = NULL;
+        if (name)
+            free(name);
+        if (memserver_ids)
+            free(memserver_ids);
+        if (keys)
+            free(keys);
+        if (base_addr_list)
+            free(base_addr_list);
+        used_memsrv_cnt = 0;
+        uid = 0;
+        gid = 0;
     }
 
     Fam_Global_Descriptor get_global_descriptor() { return this->gDescriptor; }
 
-    void bind_key(uint64_t tempKey) {
-        if (key == FAM_KEY_UNINITIALIZED)
-            key = tempKey;
+    void bind_keys(uint64_t *tempKeys, uint64_t cnt) {
+        if (!keys) {
+            keys = (uint64_t *)malloc(cnt * sizeof(uint64_t));
+            memcpy(keys, tempKeys, sizeof(uint64_t) * cnt);
+        }
         //      key = check_permissions_get_key(gDescriptor.regionID,
         //      gDescriptor.offset);
     }
 
-    uint64_t get_key() { return key; }
+    uint64_t *get_keys() { return keys; }
 
     void set_context(void *ctx) { context = ctx; }
 
     void *get_context() { return context; }
 
-    void set_base_address(void *address) { base = address; }
+    void set_base_address_list(void **addressList, uint64_t cnt) {
+        base_addr_list = (void **)malloc(cnt * sizeof(uint64_t));
+        memcpy(base_addr_list, addressList, sizeof(uint64_t) * cnt);
+    }
 
-    void *get_base_address() { return base; }
+    void **get_base_address_list() { return base_addr_list; }
 
     void set_desc_status(int update_status) {
         desc_update_status = update_status;
     }
     int get_desc_status() { return desc_update_status; }
+
+    void set_interleave_size(uint64_t interleaveSize_) {
+        interleaveSize = interleaveSize_;
+    }
+
+    uint64_t get_interleave_size() { return interleaveSize; }
 
     void set_size(uint64_t itemSize) {
         if (size == 0)
@@ -125,26 +164,52 @@ class Fam_Descriptor::FamDescriptorImpl_ {
     mode_t get_perm() { return perm; }
 
     void set_name(char *itemName) {
-        if (name == NULL)
-            name = itemName;
+        if (name == NULL) {
+            name = (char *)malloc(RadixTree::MAX_KEY_LEN);
+            memcpy(name, itemName, RadixTree::MAX_KEY_LEN);
+        }
     }
 
     char *get_name() { return name; }
 
-    uint64_t get_memserver_id() {
+    void set_used_memsrv_cnt(uint64_t cnt) { used_memsrv_cnt = cnt; }
+
+    uint64_t get_used_memsrv_cnt() { return used_memsrv_cnt; }
+
+    void set_memserver_ids(uint64_t *ids) {
+        memserver_ids = (uint64_t *)malloc(used_memsrv_cnt * sizeof(uint64_t));
+        memcpy(memserver_ids, ids, used_memsrv_cnt * sizeof(uint64_t));
+    }
+
+    uint64_t *get_memserver_ids() { return memserver_ids; }
+
+    uint64_t get_first_memserver_id() {
         return (gDescriptor.regionId) >> MEMSERVERID_SHIFT;
     }
+
+    void set_uid(uint32_t uid_) { uid = uid_; }
+
+    uint32_t get_uid() { return uid; }
+
+    void set_gid(uint32_t gid_) { gid = gid_; }
+
+    uint32_t get_gid() { return gid; }
 
   private:
     Fam_Global_Descriptor gDescriptor;
     /* libfabric access key*/
-    uint64_t key;
+    uint64_t *keys;
     void *context;
-    void *base;
+    void **base_addr_list;
     int desc_update_status;
     mode_t perm;
+    uint32_t uid;
+    uint32_t gid;
     char *name;
+    uint64_t interleaveSize;
     uint64_t size;
+    uint64_t *memserver_ids;
+    uint64_t used_memsrv_cnt;
 };
 
 Fam_Descriptor::Fam_Descriptor(Fam_Global_Descriptor gDescriptor,
@@ -164,24 +229,36 @@ Fam_Global_Descriptor Fam_Descriptor::get_global_descriptor() {
     return fdimpl_->get_global_descriptor();
 }
 
-void Fam_Descriptor::bind_key(uint64_t tempkey) { fdimpl_->bind_key(tempkey); }
+void Fam_Descriptor::bind_keys(uint64_t *tempkeys, uint64_t cnt) {
+    fdimpl_->bind_keys(tempkeys, cnt);
+}
 
-uint64_t Fam_Descriptor::get_key() { return fdimpl_->get_key(); }
+uint64_t *Fam_Descriptor::get_keys() { return fdimpl_->get_keys(); }
 
 void Fam_Descriptor::set_context(void *ctx) { fdimpl_->set_context(ctx); }
 
 void *Fam_Descriptor::get_context() { return fdimpl_->get_context(); }
 
-void Fam_Descriptor::set_base_address(void *address) {
-    fdimpl_->set_base_address(address);
+void Fam_Descriptor::set_base_address_list(void **addressList, uint64_t cnt) {
+    fdimpl_->set_base_address_list(addressList, cnt);
 }
 
-void *Fam_Descriptor::get_base_address() { return fdimpl_->get_base_address(); }
+void **Fam_Descriptor::get_base_address_list() {
+    return fdimpl_->get_base_address_list();
+}
 
 void Fam_Descriptor::set_desc_status(int desc_update_status) {
     return fdimpl_->set_desc_status(desc_update_status);
 }
 int Fam_Descriptor::get_desc_status() { return fdimpl_->get_desc_status(); }
+
+void Fam_Descriptor::set_interleave_size(uint64_t interleaveSize_) {
+    return fdimpl_->set_interleave_size(interleaveSize_);
+}
+
+uint64_t Fam_Descriptor::get_interleave_size() {
+    return fdimpl_->get_interleave_size();
+}
 
 void Fam_Descriptor::set_size(uint64_t itemSize) {
     return fdimpl_->set_size(itemSize);
@@ -189,11 +266,28 @@ void Fam_Descriptor::set_size(uint64_t itemSize) {
 
 uint64_t Fam_Descriptor::get_size() { return fdimpl_->get_size(); }
 
-uint64_t Fam_Descriptor::get_memserver_id() {
-    return fdimpl_->get_memserver_id();
-}
 void Fam_Descriptor::set_perm(mode_t regionPerm) {
     fdimpl_->set_perm(regionPerm);
+}
+
+void Fam_Descriptor::set_used_memsrv_cnt(uint64_t cnt) {
+    return fdimpl_->set_used_memsrv_cnt(cnt);
+}
+
+uint64_t Fam_Descriptor::get_used_memsrv_cnt() {
+    return fdimpl_->get_used_memsrv_cnt();
+}
+
+void Fam_Descriptor::set_memserver_ids(uint64_t *ids) {
+    return fdimpl_->set_memserver_ids(ids);
+}
+
+uint64_t *Fam_Descriptor::get_memserver_ids() {
+    return fdimpl_->get_memserver_ids();
+}
+
+uint64_t Fam_Descriptor::get_first_memserver_id() {
+    return fdimpl_->get_first_memserver_id();
 }
 
 mode_t Fam_Descriptor::get_perm() { return fdimpl_->get_perm(); }
@@ -202,6 +296,11 @@ void Fam_Descriptor::set_name(char *itemName) { fdimpl_->set_name(itemName); }
 
 char *Fam_Descriptor::get_name() { return fdimpl_->get_name(); }
 
+void Fam_Descriptor::set_uid(uint32_t uid_) { fdimpl_->set_uid(uid_); }
+uint32_t Fam_Descriptor::get_uid() { return fdimpl_->get_uid(); }
+
+void Fam_Descriptor::set_gid(uint32_t gid_) { fdimpl_->set_gid(gid_); }
+uint32_t Fam_Descriptor::get_gid() { return fdimpl_->get_gid(); }
 /*
  * Internal implementation of Fam_Region_Descriptor
  */
@@ -274,11 +373,31 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
     mode_t get_perm() { return perm; }
 
     void set_name(char *itemName) {
-        if (name == 0)
-            name = itemName;
+        if (name == NULL) {
+            name = (char *)malloc(RadixTree::MAX_KEY_LEN);
+            memcpy(name, itemName, RadixTree::MAX_KEY_LEN);
+        }
     }
 
     char *get_name() { return name; }
+
+    void set_redundancyLevel(Fam_Redundancy_Level reg_redundancyLevel) {
+        redundancyLevel = reg_redundancyLevel;
+    }
+
+    void set_memoryType(Fam_Memory_Type reg_memoryType) {
+        memoryType = reg_memoryType;
+    }
+
+    void set_interleaveEnable(Fam_Interleave_Enable reg_interleaveEnable) {
+        interleaveEnable = reg_interleaveEnable;
+    }
+
+    Fam_Redundancy_Level get_redundancyLevel() { return redundancyLevel; }
+
+    Fam_Memory_Type get_memoryType() { return memoryType; }
+
+    Fam_Interleave_Enable get_interleaveEnable() { return interleaveEnable; }
 
   private:
     Fam_Global_Descriptor gDescriptor;
@@ -287,6 +406,9 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
     char *name;
     uint64_t size;
     mode_t perm;
+    Fam_Redundancy_Level redundancyLevel;
+    Fam_Memory_Type memoryType;
+    Fam_Interleave_Enable interleaveEnable;
 };
 
 Fam_Region_Descriptor::Fam_Region_Descriptor(Fam_Global_Descriptor gDescriptor,
@@ -342,4 +464,25 @@ char *Fam_Region_Descriptor::get_name() { return frdimpl_->get_name(); }
 
 uint64_t Fam_Region_Descriptor::get_memserver_id() {
     return frdimpl_->get_memserver_id();
+}
+
+void Fam_Region_Descriptor::set_redundancyLevel(
+    Fam_Redundancy_Level redundancyLevel) {
+    frdimpl_->set_redundancyLevel(redundancyLevel);
+}
+void Fam_Region_Descriptor::set_memoryType(Fam_Memory_Type memoryType) {
+    frdimpl_->set_memoryType(memoryType);
+}
+void Fam_Region_Descriptor::set_interleaveEnable(
+    Fam_Interleave_Enable interleaveEnable) {
+    frdimpl_->set_interleaveEnable(interleaveEnable);
+}
+Fam_Redundancy_Level Fam_Region_Descriptor::get_redundancyLevel() {
+    return frdimpl_->get_redundancyLevel();
+}
+Fam_Memory_Type Fam_Region_Descriptor::get_memoryType() {
+    return frdimpl_->get_memoryType();
+}
+Fam_Interleave_Enable Fam_Region_Descriptor::get_interleaveEnable() {
+    return frdimpl_->get_interleaveEnable();
 }

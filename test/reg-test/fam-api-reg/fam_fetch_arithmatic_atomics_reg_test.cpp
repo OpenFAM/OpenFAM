@@ -51,7 +51,7 @@ TEST(FamArithAtomicInt32, ArithAtomicInt32Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -102,7 +102,7 @@ TEST(FamArithAtomicInt64, ArithAtomicInt64Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -154,7 +154,7 @@ TEST(FamArithAtomicUint32, ArithAtomicUint32Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -212,7 +212,7 @@ TEST(FamArithAtomicUint64, ArithAtomicUint64Success) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -270,7 +270,7 @@ TEST(FamArithAtomicFloat, ArithAtomiciFloatSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -322,7 +322,7 @@ TEST(FamArithAtomiciDouble, ArithAtomicDoubleSuccess) {
     const char *firstItem = get_uniq_str("first", my_fam);
 
     EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, RAID1));
+        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -365,6 +365,28 @@ TEST(FamArithAtomiciDouble, ArithAtomicDoubleSuccess) {
 
     free((void *)testRegion);
     free((void *)firstItem);
+}
+
+TEST(FamArithAtomic, ArithAtomicInvalidDescriptor) {
+    Fam_Descriptor *item = NULL;
+
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (int32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (int64_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (uint32_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (uint64_t)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (float)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_add(item, 0, (double)0), Fam_Exception);
+
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (int32_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (int64_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (uint32_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (uint64_t)0),
+                 Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (float)0), Fam_Exception);
+    EXPECT_THROW(my_fam->fam_fetch_subtract(item, 0, (double)0), Fam_Exception);
 }
 
 int main(int argc, char **argv) {

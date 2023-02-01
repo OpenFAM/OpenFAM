@@ -22,8 +22,10 @@
 function (add_fam_test file_name)
     add_executable(${file_name} ${file_name}.cpp)
     target_link_libraries(${file_name} openfam gtest)
-	add_test(NAME ${file_name} COMMAND COMMAND ${PROJECT_SOURCE_DIR}/run_test.sh ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
+	add_test(NAME ${file_name} COMMAND COMMAND python3 ${PROJECT_SOURCE_DIR}/run_test.py ${CMAKE_CURRENT_BINARY_DIR}/${file_name})
 endfunction()
 
 #add tests
 add_fam_test(fam_mm_maxconfig_test)
+add_fam_test(fam_put_get_test_largeio)
+add_fam_test(fam_put_get_quiet_nonblock_test_largeio)

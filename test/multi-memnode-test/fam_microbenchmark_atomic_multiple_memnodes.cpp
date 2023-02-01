@@ -341,7 +341,7 @@ int main(int argc, char **argv) {
 
     if ((*peId % numsrv) == *peId) {
         EXPECT_NO_THROW(desc = my_fam->fam_create_region(
-                            testRegion, BIG_REGION_SIZE, 0777, RAID1));
+                            testRegion, BIG_REGION_SIZE, 0777, NULL));
         my_fam->fam_barrier_all();
 
     } else {

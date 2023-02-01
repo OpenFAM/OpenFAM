@@ -52,6 +52,7 @@ enum Fam_Error {
     FAM_ERR_RPC,
     FAM_ERR_PMI,
     FAM_ERR_OUTOFRANGE,
+    FAM_ERR_NO_SPACE,
     FAM_ERR_NULLPTR,
     FAM_ERR_UNIMPL,
     FAM_ERR_RESOURCE,
@@ -64,7 +65,11 @@ enum Fam_Error {
     FAM_ERR_ATL_QUEUE_FULL,
     FAM_ERR_ATL_QUEUE_INSERT,
     FAM_ERR_ATL_NOT_ENABLED,
-    FAM_ERR_ATL
+    FAM_ERR_ATL,
+    FAM_BACKUP_NOT_CREATED,
+    FAM_BACKUP_NOTFOUND,
+    FAM_BACKUP_INFO_NOTFOUND,
+    FAM_ERR_NOT_PWR_TWO
 };
 
 class Fam_Exception : public std::exception {

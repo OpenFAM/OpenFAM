@@ -1,8 +1,9 @@
 /*
  * fam_memory_service_client.h
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -65,11 +66,28 @@ class Fam_Memory_Service_Client : public Fam_Memory_Service {
     Fam_Region_Item_Info allocate(uint64_t regionId, size_t nbytes);
 
     void deallocate(uint64_t regionId, uint64_t offset);
+    void copy(uint64_t srcRegionId, uint64_t *srcOffsets,
+              uint64_t srcUsedMemsrvCnt, uint64_t srcCopyStart,
+              uint64_t srcCopyEnd, uint64_t *srcKeys, uint64_t *srcBaseAddrList,
+              uint64_t destRegionId, uint64_t destOffset,
+              uint64_t destUsedMemsrvCnt, uint64_t *srcMemserverIds,
+              uint64_t srcInterleaveSize, uint64_t destInterleaveSize,
+              uint64_t size);
 
-    void copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcKey,
-              uint64_t srcCopyStart, const char *srcAddr, uint32_t srcAddrLen,
-              uint64_t destRegionId, uint64_t destOffset, uint64_t size,
-              uint64_t srcMemserverId, uint64_t destMemserverId);
+    void backup(uint64_t srcRegionId, uint64_t srcOffset, uint64_t size,
+                uint64_t chunkSize, uint64_t usedMemserverCnt,
+                uint64_t fileStartPos, const string BackupName, uint32_t uid,
+                uint32_t gid, mode_t mode, const string dataitemName,
+                uint64_t itemSize, bool writeMetadata);
+
+    void restore(uint64_t destRegionId, uint64_t destOffset, uint64_t size,
+                 uint64_t chunkSize, uint64_t usedMemserverCnt,
+                 uint64_t fileStartPos, string BackupName);
+    Fam_Backup_Info get_backup_info(std::string BackupName, uint32_t uid,
+                                    uint32_t gid, uint32_t mode);
+    std::string list_backup(std::string BackupName, uint32_t uid, uint32_t gid,
+                            uint32_t mode);
+    void delete_backup(std::string BackupName);
 
     void *get_local_pointer(uint64_t regionId, uint64_t offset);
 
@@ -78,44 +96,53 @@ class Fam_Memory_Service_Client : public Fam_Memory_Service {
 
     size_t get_addr_size();
     void *get_addr();
+    Fam_Memory_Type get_memtype();
 
     uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
                      bool rwFlag);
 
     void get_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
-                    uint64_t nbytes, uint64_t key, const char *nodeAddr,
-                    uint32_t nodeAddrSize);
+                    uint64_t nbytes, uint64_t key, uint64_t srcBaseAddr,
+                    const char *nodeAddr, uint32_t nodeAddrSize);
 
     void put_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
-                    uint64_t nbytes, uint64_t key, const char *nodeAddr,
-                    uint32_t nodeAddrSize, const char *data);
+                    uint64_t nbytes, uint64_t key, uint64_t srcBaseAddr,
+                    const char *nodeAddr, uint32_t nodeAddrSize,
+                    const char *data);
 
     void scatter_strided_atomic(uint64_t regionId, uint64_t offset,
                                 uint64_t nElements, uint64_t firstElement,
                                 uint64_t stride, uint64_t elementSize,
-                                uint64_t key, const char *nodeAddr,
-                                uint32_t nodeAddrSize);
+                                uint64_t key, uint64_t srcBaseAddr,
+                                const char *nodeAddr, uint32_t nodeAddrSize);
 
     void gather_strided_atomic(uint64_t regionId, uint64_t offset,
                                uint64_t nElements, uint64_t firstElement,
                                uint64_t stride, uint64_t elementSize,
-                               uint64_t key, const char *nodeAddr,
-                               uint32_t nodeAddrSize);
+                               uint64_t key, uint64_t srcBaseAddr,
+                               const char *nodeAddr, uint32_t nodeAddrSize);
 
     void scatter_indexed_atomic(uint64_t regionId, uint64_t offset,
                                 uint64_t nElements, const void *elementIndex,
                                 uint64_t elementSize, uint64_t key,
-                                const char *nodeAddr, uint32_t nodeAddrSize);
+                                uint64_t srcBaseAddr, const char *nodeAddr,
+                                uint32_t nodeAddrSize);
 
     void gather_indexed_atomic(uint64_t regionId, uint64_t offset,
                                uint64_t nElements, const void *elementIndex,
                                uint64_t elementSize, uint64_t key,
-                               const char *nodeAddr, uint32_t nodeAddrSize);
+                               uint64_t srcBaseAddr, const char *nodeAddr,
+                               uint32_t nodeAddrSize);
+
+    void update_memserver_addrlist(void *memServerInfoBuffer,
+                                   size_t memServerInfoSize,
+                                   uint64_t memoryServerCount);
 
   private:
     std::unique_ptr<Fam_Memory_Service_Rpc::Stub> stub;
     size_t memServerFabricAddrSize;
     char *memServerFabricAddr;
+    Fam_Memory_Type memServermemType;
 };
 
 } // namespace openfam

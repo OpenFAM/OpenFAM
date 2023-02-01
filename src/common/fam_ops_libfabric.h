@@ -1,6 +1,6 @@
 /*
  * fam_ops_libfabric.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -80,12 +80,16 @@ class Fam_Ops_Libfabric : public Fam_Ops {
      */
 
     Fam_Ops_Libfabric(bool is_source, const char *provider,
-                      Fam_Thread_Model famTM, Fam_Allocator_Client *famAlloc,
+                      const char *if_device, Fam_Thread_Model famTM,
+                      Fam_Allocator_Client *famAlloc,
                       Fam_Context_Model famCM = FAM_CONTEXT_DEFAULT);
     Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
-                      Fam_Thread_Model famTM, Fam_Allocator_Client *famAlloc,
-                      Fam_Context_Model famCM, const char *memServerName,
-                      const char *libfabricPort);
+                      const char *if_device, Fam_Thread_Model famTM,
+                      Fam_Allocator_Client *famAlloc, Fam_Context_Model famCM,
+                      const char *memServerName, const char *libfabricPort);
+    Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps);
+    void reset_profile() {}
+    void dump_profile() {}
     /**
      * Initialize the libfabric library. This method is required to be the first
      * method called when a process uses the OpenFAM library.
@@ -98,6 +102,10 @@ class Fam_Ops_Libfabric : public Fam_Ops {
      * work, but it is disconnected from the OpenFAM library functions.
      */
     void finalize();
+
+    void populate_address_vector(void *memServerInfoBuffer = NULL,
+                                 size_t memServerInfoSize = 0,
+                                 uint64_t numMemNodes = 0, uint64_t myId = 0);
 
     void abort(int status);
 
@@ -143,14 +151,19 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                              uint64_t nElements, uint64_t *elementIndex,
                              uint64_t elementSize);
 
+    void quiet(Fam_Region_Descriptor *descriptor = NULL);
     void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
                uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
+    void *backup(Fam_Descriptor *desc, const char *BackupName);
+    void *restore(const char *BackupName, Fam_Descriptor *dest);
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
 
     void fence(Fam_Region_Descriptor *descriptor = NULL);
 
-    void quiet(Fam_Region_Descriptor *descriptor = NULL);
+    uint64_t progress();
     void check_progress(Fam_Region_Descriptor *descriptor = NULL);
 
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, int32_t value);
@@ -161,6 +174,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                     uint64_t value);
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, float value);
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset, double value);
+
     void atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                     int128_t value);
 
@@ -248,8 +262,10 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                              int32_t value);
     int64_t atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                              int64_t value);
+
     uint32_t atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                               uint32_t value);
+
     uint64_t atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                               uint64_t value);
     float atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
@@ -310,6 +326,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
                               uint32_t value);
     uint64_t atomic_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
                               uint64_t value);
+    void context_open(uint64_t contextId, Fam_Ops *famOpsObj);
+    void context_close(uint64_t contextId);
     /**
      * Routines to access protected members
      *
@@ -323,6 +341,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     };
     std::vector<fi_addr_t> *get_fiAddrs() { return fiAddrs; };
     std::map<uint64_t, Fam_Region_Map_t *> *get_fiMrs() { return fiMrs; };
+
+    // Use context_id instead of nodeID
     Fam_Context *get_defaultCtx(uint64_t nodeId) {
         auto obj = defContexts->find(nodeId);
         if (obj == defContexts->end())
@@ -331,22 +351,33 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         else
             return obj->second;
     }
+
+    // TODO: Lets not use this two varients of get_defautlCtx
+    //      To be deleted.
     Fam_Context *get_defaultCtx(Fam_Region_Descriptor *descriptor) {
-        auto obj = defContexts->find(descriptor->get_memserver_id());
+        auto obj = defContexts->find(get_context_id());
         if (obj == defContexts->end())
             THROW_ERR_MSG(Fam_Datapath_Exception,
                           "Context for memserver not found");
         else
             return obj->second;
     };
+
     Fam_Context *get_defaultCtx(Fam_Descriptor *descriptor) {
-        auto obj = defContexts->find(descriptor->get_memserver_id());
+        auto obj = defContexts->find(get_context_id());
         if (obj == defContexts->end())
             THROW_ERR_MSG(Fam_Datapath_Exception,
                           "Context for memserver not found");
         else
             return obj->second;
     };
+
+    uint64_t get_context_id() { return ctxId; };
+
+    void set_context_id(uint64_t contextID) { ctxId = contextID; };
+    Fam_Context *get_context() { return ctxObj; };
+    void set_context(Fam_Context *ctx) { ctxObj = ctx; };
+
     pthread_rwlock_t *get_mr_lock() { return &fiMrLock; };
 
     pthread_rwlock_t *get_memsrvaddr_lock() { return &fiMemsrvAddrLock; };
@@ -356,6 +387,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     Fam_Context *get_context(Fam_Descriptor *descriptor);
 
     void quiet_context(Fam_Context *context);
+
+    uint64_t progress_context();
 
     size_t get_addr_size() { return serverAddrNameLen; };
 
@@ -373,11 +406,22 @@ class Fam_Ops_Libfabric : public Fam_Ops {
 
     std::map<uint64_t, fi_addr_t> *get_fiMemsrvMap() { return fiMemsrvMap; }
 
+    uint64_t get_next_ctxId(uint64_t cnt) {
+        uint64_t nextId;
+        nextId = __sync_fetch_and_add(&nextCtxId, cnt);
+        return nextId;
+    }
+    std::map<uint64_t, Fam_Context *> *get_defcontexts() { return defContexts; }
+
+    size_t get_fabric_iov_limit() { return fabric_iov_limit; }
+    size_t get_fabric_max_msg_size() { return fabric_max_msg_size; }
+
   protected:
     // Server_Map name;
     char *memoryServerName;
     char *service;
     char *provider;
+    char *if_device;
     bool isSource;
     uint64_t numMemoryNodes;
     struct fi_info *fi;
@@ -388,12 +432,15 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     size_t fabric_iov_limit;
     size_t serverAddrNameLen;
     void *serverAddrName;
+    size_t fabric_max_msg_size;
     std::map<uint64_t, std::pair<void *, size_t>> *memServerAddrs;
     std::map<uint64_t, fi_addr_t> *fiMemsrvMap;
     pthread_rwlock_t fiMemsrvAddrLock;
 
     pthread_rwlock_t fiMrLock;
     pthread_mutex_t ctxLock;
+    uint64_t nextCtxId;
+    uint64_t ctxId;
 
     std::vector<fi_addr_t> *fiAddrs;
     std::map<uint64_t, Fam_Region_Map_t *> *fiMrs;
@@ -403,6 +450,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     Fam_Thread_Model famThreadModel;
     Fam_Context_Model famContextModel;
     Fam_Allocator_Client *famAllocator;
+    Fam_Context *ctxObj;
 };
 } // namespace openfam
 #endif

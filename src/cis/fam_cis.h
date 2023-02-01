@@ -1,8 +1,9 @@
 /*
  * fam_cis.h
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -46,6 +47,7 @@ using namespace std;
 
 namespace openfam {
 
+enum { BACKUP_READ = 0, BACKUP_WRITE, BACKUP_EXEC };
 /**
  * structure for keeping state and data information of fam copy
  */
@@ -60,7 +62,7 @@ typedef struct {
     // Storage for the status of the RPC upon completion.
     ::grpc::Status status;
 
-    // falg for completion
+    // flag for completion
     bool isCompleted;
 
     uint64_t memServerId;
@@ -70,6 +72,72 @@ typedef struct {
 
     Fam_Copy_Tag *tag;
 } Fam_Copy_Wait_Object;
+
+typedef struct {
+    // Container for the data we expect from the server.
+    Fam_Backup_Restore_Response res;
+
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    ::grpc::ClientContext ctx;
+
+    // Storage for the status of the RPC upon completion.
+    ::grpc::Status status;
+
+    // flag for completion
+    bool isCompleted;
+
+    uint64_t memServerId;
+
+    std::unique_ptr< ::grpc::ClientAsyncResponseReader<
+        Fam_Backup_Restore_Response> > responseReader;
+
+    Fam_Backup_Tag *tag;
+} Fam_Backup_Wait_Object;
+
+typedef struct {
+    // Container for the data we expect from the server.
+    Fam_Backup_Restore_Response res;
+
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    ::grpc::ClientContext ctx;
+
+    // Storage for the status of the RPC upon completion.
+    ::grpc::Status status;
+
+    // flag for completion
+    bool isCompleted;
+
+    uint64_t memServerId;
+
+    std::unique_ptr< ::grpc::ClientAsyncResponseReader<
+        Fam_Backup_Restore_Response> > responseReader;
+
+    Fam_Restore_Tag *tag;
+} Fam_Restore_Wait_Object;
+
+typedef struct {
+    // Container for the data we expect from the server.
+    Fam_Backup_List_Response res;
+
+    // Context for the client. It could be used to convey extra information to
+    // the server and/or tweak certain RPC behaviors.
+    ::grpc::ClientContext ctx;
+
+    // Storage for the status of the RPC upon completion.
+    ::grpc::Status status;
+
+    // flag for completion
+    bool isCompleted;
+
+    uint64_t memServerId;
+
+    std::unique_ptr<::grpc::ClientAsyncResponseReader<Fam_Backup_List_Response>>
+        responseReader;
+
+    Fam_Delete_Backup_Tag *tag;
+} Fam_Delete_Backup_Wait_Object;
 
 class Fam_CIS {
   public:
@@ -93,7 +161,7 @@ class Fam_CIS {
      **/
     virtual Fam_Region_Item_Info
     create_region(string name, size_t nbytes, mode_t permission,
-                  Fam_Redundancy_Level redundancyLevel, uint32_t uid,
+                  Fam_Region_Attributes *regionAttributes, uint32_t uid,
                   uint32_t gid) = 0;
 
     /**
@@ -246,6 +314,7 @@ class Fam_CIS {
      * @param srcOffset - offset of source dataitem
      * @param srcCopyStart - start position in source dataitem
      * @param srcKey - source dataitem key
+     * @param srcBaseAddr - source Base Address
      * @param srcAddr - source memory server address
      * @param srcAddrLen - source memory server address size
      * @param destRegionId - region Id of destination dataitem
@@ -257,20 +326,35 @@ class Fam_CIS {
      * @param uid - uid of user
      * @param gid - gid of user
      **/
-    virtual void *copy(uint64_t srcRegionId, uint64_t srcOffset,
-                       uint64_t srcCopyStart, uint64_t srcKey,
-                       const char *srcAddr, uint32_t srcAddrLen,
-                       uint64_t destRegionId, uint64_t destOffset,
-                       uint64_t destCopyStar, uint64_t nbytes,
-                       uint64_t srcMemoryServerId, uint64_t destMemoryServerId,
-                       uint32_t uid, uint32_t gid) = 0;
-
+    virtual void *
+    copy(uint64_t srcRegionId, uint64_t srcOffset, uint64_t srcUsedMemsrvCnt,
+         uint64_t srcCopyStart, uint64_t *srcKeys, uint64_t *srcBaseAddrList,
+         uint64_t destRegionId, uint64_t destOffset, uint64_t destCopyStart,
+         uint64_t size, uint64_t firstSrcMemserverId,
+         uint64_t firstDestMemserverId, uint32_t uid, uint32_t gid) = 0;
     /**
      * wait for particular copy issued earlier corresponding to wait object
      * @param waitObj - wait object
      **/
     virtual void wait_for_copy(void *waitObj) = 0;
 
+    virtual void *backup(uint64_t srcRegionId, uint64_t srcOffset,
+                         uint64_t srcMemoryServerId, string BackupName,
+                         uint32_t uid, uint32_t gid) = 0;
+    virtual void *restore(uint64_t destRegionId, uint64_t destOffset,
+                          uint64_t destMemoryServerId, string BackupName,
+                          uint32_t uid, uint32_t gid) = 0;
+
+    virtual string list_backup(std::string BackupName, uint64_t memoryServerId,
+                               uint32_t uid, uint32_t gid) = 0;
+    virtual void *delete_backup(string BackupName, uint64_t memoryServerId,
+                                uint32_t uid, uint32_t gid) = 0;
+    virtual Fam_Backup_Info get_backup_info(std::string BackupName,
+                                            uint64_t memoryServerId,
+                                            uint32_t uid, uint32_t gid) = 0;
+    virtual void wait_for_backup(void *waitObj) = 0;
+    virtual void wait_for_restore(void *waitObj) = 0;
+    virtual void wait_for_delete_backup(void *waitObj) = 0;
     /**
      * Map a data item in FAM to the local virtual address space, and return its
      * pointer.
@@ -312,26 +396,30 @@ class Fam_CIS {
 
     virtual int get_atomic(uint64_t regionId, uint64_t srcOffset,
                            uint64_t dstOffset, uint64_t nbytes, uint64_t key,
-                           const char *nodeAddr, uint32_t nodeAddrSize,
-                           uint64_t memoryServerId, uint32_t uid,
-                           uint32_t gid) = 0;
+                           uint64_t srcBaseAddr, const char *nodeAddr,
+                           uint32_t nodeAddrSize, uint64_t memoryServerId,
+                           uint32_t uid, uint32_t gid) = 0;
 
     virtual int put_atomic(uint64_t regionId, uint64_t srcOffset,
                            uint64_t dstOffset, uint64_t nbytes, uint64_t key,
-                           const char *nodeAddr, uint32_t nodeAddrSize,
-                           const char *data, uint64_t memoryServerId,
-                           uint32_t uid, uint32_t gid) = 0;
+                           uint64_t srcBaseAddr, const char *nodeAddr,
+                           uint32_t nodeAddrSize, const char *data,
+                           uint64_t memoryServerId, uint32_t uid,
+                           uint32_t gid) = 0;
 
-    virtual int scatter_strided_atomic(
-        uint64_t regionId, uint64_t offset, uint64_t nElements,
-        uint64_t firstElement, uint64_t stride, uint64_t elementSize,
-        uint64_t key, const char *nodeAddr, uint32_t nodeAddrSize,
-        uint64_t memoryServerId, uint32_t uid, uint32_t gid) = 0;
+    virtual int
+    scatter_strided_atomic(uint64_t regionId, uint64_t offset,
+                           uint64_t nElements, uint64_t firstElement,
+                           uint64_t stride, uint64_t elementSize, uint64_t key,
+                           uint64_t srcBaseAddr, const char *nodeAddr,
+                           uint32_t nodeAddrSize, uint64_t memoryServerId,
+                           uint32_t uid, uint32_t gid) = 0;
 
     virtual int gather_strided_atomic(uint64_t regionId, uint64_t offset,
                                       uint64_t nElements, uint64_t firstElement,
                                       uint64_t stride, uint64_t elementSize,
-                                      uint64_t key, const char *nodeAddr,
+                                      uint64_t key, uint64_t srcBaseAddr,
+                                      const char *nodeAddr,
                                       uint32_t nodeAddrSize,
                                       uint64_t memoryServerId, uint32_t uid,
                                       uint32_t gid) = 0;
@@ -339,14 +427,14 @@ class Fam_CIS {
     virtual int scatter_indexed_atomic(
         uint64_t regionId, uint64_t offset, uint64_t nElements,
         const void *elementIndex, uint64_t elementSize, uint64_t key,
-        const char *nodeAddr, uint32_t nodeAddrSize, uint64_t memoryServerId,
-        uint32_t uid, uint32_t gid) = 0;
+        uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize,
+        uint64_t memoryServerId, uint32_t uid, uint32_t gid) = 0;
 
     virtual int gather_indexed_atomic(
         uint64_t regionId, uint64_t offset, uint64_t nElements,
         const void *elementIndex, uint64_t elementSize, uint64_t key,
-        const char *nodeAddr, uint32_t nodeAddrSize, uint64_t memoryServerId,
-        uint32_t uid, uint32_t gid) = 0;
+        uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize,
+        uint64_t memoryServerId, uint32_t uid, uint32_t gid) = 0;
 };
 
 } // namespace openfam

@@ -1,8 +1,9 @@
 /*
  * fam_allocator_client.h
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -48,9 +49,9 @@ class Fam_Allocator_Client {
     void allocator_finalize();
 
     uint64_t get_num_memory_servers();
-    Fam_Region_Descriptor *create_region(const char *name, uint64_t nbytes,
-                                         mode_t permissions,
-                                         Fam_Redundancy_Level redundancyLevel);
+    Fam_Region_Descriptor *
+    create_region(const char *name, uint64_t nbytes, mode_t permissions,
+                  Fam_Region_Attributes *regionAttributes);
     void destroy_region(Fam_Region_Descriptor *descriptor);
     void resize_region(Fam_Region_Descriptor *descriptor, uint64_t nbytes);
 
@@ -72,12 +73,17 @@ class Fam_Allocator_Client {
 
     Fam_Region_Item_Info get_stat_info(Fam_Descriptor *descriptor);
 
-    void *copy(Fam_Descriptor *src, uint64_t srcOffset, const char *srcAddr,
-               uint32_t srcAddrLen, Fam_Descriptor *dest, uint64_t destOffset,
-               uint64_t nbytes);
+    void *copy(Fam_Descriptor *src, uint64_t srcOffset, Fam_Descriptor *dest,
+               uint64_t destOffset, uint64_t nbytes);
 
     void wait_for_copy(void *waitObj);
-
+    void *backup(Fam_Descriptor *descriptor, const char *BackupName);
+    void *restore(Fam_Descriptor *dest, const char *BackupName);
+    void wait_for_backup(void *waitObj);
+    void wait_for_restore(void *waitObj);
+    void *delete_backup(const char *BackupName);
+    void wait_for_delete_backup(void *waitObj);
+    char *list_backup(const char *BackupName);
     /**
      * fam_map - Map a data item in FAM to the process address space.
      * @param descriptor - Descriptor associated with the data item in FAM.
@@ -100,17 +106,20 @@ class Fam_Allocator_Client {
      * 128-bit CAS operation.
      * @param descriptor - Descriptor associated with the data item in FAM
      */
-    void acquire_CAS_lock(Fam_Descriptor *descriptor);
+    void acquire_CAS_lock(Fam_Descriptor *descriptor, uint64_t memserverId);
     /**
      * release_CAS_lock - Release the mutex lock acquired to perform
      * 128-bit CAS operation.
      * @param descriptor - Descriptor associated with the data item in FAM
      */
-    void release_CAS_lock(Fam_Descriptor *descriptor);
+    void release_CAS_lock(Fam_Descriptor *descriptor, uint64_t memserverId);
 
     int get_addr_size(size_t *addrSize, uint64_t nodeId);
 
     int get_addr(void *addr, size_t addrSize, uint64_t nodeId);
+
+    Fam_Backup_Info get_backup_info(string BackupName,
+                                    Fam_Region_Descriptor *destRegion);
 
     int get_memserverinfo_size(size_t *memServerInfoSize);
 

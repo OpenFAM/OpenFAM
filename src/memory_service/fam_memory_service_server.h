@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_server.h
- * Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -57,8 +57,7 @@ using grpc::Status;
 
 class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
   public:
-    Fam_Memory_Service_Server(uint64_t rpcPort, char *name, char *libfabricPort,
-                              char *libfabricProvider, char *fam_path);
+    Fam_Memory_Service_Server(uint64_t memserver_id);
 
     ~Fam_Memory_Service_Server();
 
@@ -115,6 +114,30 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                         ::Fam_Memory_Copy_Response *response) override;
 
     ::grpc::Status
+    backup(::grpc::ServerContext *context,
+           const ::Fam_Memory_Backup_Restore_Request *request,
+           ::Fam_Memory_Backup_Restore_Response *response) override;
+
+    ::grpc::Status
+    restore(::grpc::ServerContext *context,
+            const ::Fam_Memory_Backup_Restore_Request *request,
+            ::Fam_Memory_Backup_Restore_Response *response) override;
+
+    ::grpc::Status
+    get_backup_info(::grpc::ServerContext *context,
+                    const ::Fam_Memory_Backup_Info_Request *request,
+                    ::Fam_Memory_Backup_Info_Response *response) override;
+    ::grpc::Status
+    list_backup(::grpc::ServerContext *context,
+                const ::Fam_Memory_Backup_List_Request *request,
+                ::Fam_Memory_Backup_List_Response *response) override;
+
+    ::grpc::Status
+    delete_backup(::grpc::ServerContext *context,
+                  const ::Fam_Memory_Backup_List_Request *request,
+                  ::Fam_Memory_Backup_List_Response *response) override;
+
+    ::grpc::Status
     acquire_CAS_lock(::grpc::ServerContext *context,
                      const ::Fam_Memory_Service_Request *request,
                      ::Fam_Memory_Service_Response *response) override;
@@ -161,9 +184,12 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                           const ::Fam_Memory_Atomic_SG_Indexed_Request *request,
                           ::Fam_Memory_Atomic_Response *response) override;
 
+    ::grpc::Status update_memserver_addrlist(
+        ::grpc::ServerContext *context,
+        const ::Fam_Memory_Service_Addr_Info *request,
+        ::Fam_Memory_Service_General_Response *response) override;
+
   protected:
-    char *serverAddress;
-    uint64_t port;
     int numClients;
     Fam_Memory_Service_Rpc::Service *service;
     std::unique_ptr<Server> server;

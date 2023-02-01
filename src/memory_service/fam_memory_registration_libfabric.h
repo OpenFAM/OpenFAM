@@ -56,13 +56,18 @@ struct Fam_Region_Map_t;
 class Fam_Memory_Registration_Libfabric : public Fam_Memory_Registration {
   public:
     Fam_Memory_Registration_Libfabric(const char *name, const char *service,
-                                  const char *provider);
+                                      const char *provider,
+                                      const char *if_device);
 
     ~Fam_Memory_Registration_Libfabric();
 
     void reset_profile();
 
     void dump_profile();
+
+    void update_memserver_addrlist(void *memServerInfoBuffer,
+                                   size_t memServerInfoSize,
+                                   uint64_t memoryServerCount, uint64_t myId);
 
     uint64_t generate_access_key(uint64_t regionId, uint64_t dataitemId,
                                  bool permission);

@@ -60,7 +60,7 @@ int main() {
 
     // Create Region
     bool pass = true;
-    create_region(pass, my_fam, desc, "test", 8192, 0444, RAID1);
+    create_region(pass, my_fam, desc, "test", 8192, 0444, NULL);
     if (!pass) {
         if (desc != NULL)
             destroy_region(pass, my_fam, desc);

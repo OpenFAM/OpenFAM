@@ -88,7 +88,8 @@ void Fam_Memory_Registration_Libfabric::progress_thread() {
 }
 
 Fam_Memory_Registration_Libfabric::Fam_Memory_Registration_Libfabric(
-    const char *name, const char *service, const char *provider) {
+    const char *name, const char *service, const char *provider,
+    const char *if_device) {
     MEMSERVER_PROFILE_INIT(MEMORY_REG_FABRIC)
     MEMSERVER_PROFILE_START_TIME(MEMORY_REG_FABRIC)
     ostringstream message;
@@ -96,13 +97,15 @@ Fam_Memory_Registration_Libfabric::Fam_Memory_Registration_Libfabric(
     fiMrs = NULL;
     fenceMr = 0;
 
-    famOps = new Fam_Ops_Libfabric(true, provider, FAM_THREAD_MULTIPLE, NULL,
-                                   FAM_CONTEXT_DEFAULT, name, service);
+    famOps =
+        new Fam_Ops_Libfabric(true, provider, if_device, FAM_THREAD_MULTIPLE,
+                              NULL, FAM_CONTEXT_DEFAULT, name, service);
     int ret = famOps->initialize();
     if (ret < 0) {
         message << "famOps initialization failed";
         throw Memory_Service_Exception(OPS_INIT_FAILED, message.str().c_str());
     }
+
     struct fi_info *fi = famOps->get_fi();
     if (fi->domain_attr->control_progress == FI_PROGRESS_MANUAL ||
         fi->domain_attr->data_progress == FI_PROGRESS_MANUAL) {
@@ -145,6 +148,14 @@ void Fam_Memory_Registration_Libfabric::reset_profile() {
 void Fam_Memory_Registration_Libfabric::dump_profile() {
     MEMORY_REG_FABRIC_PROFILE_DUMP();
     fabric_dump_profile();
+}
+
+void Fam_Memory_Registration_Libfabric::update_memserver_addrlist(
+    void *memServerInfoBuffer, size_t memServerInfoSize,
+    uint64_t memoryServerCount, uint64_t myId) {
+    ostringstream message;
+    famOps->populate_address_vector(memServerInfoBuffer, memServerInfoSize,
+                                    memoryServerCount, myId);
 }
 
 uint64_t Fam_Memory_Registration_Libfabric::generate_access_key(uint64_t regionId,

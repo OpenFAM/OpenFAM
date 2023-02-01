@@ -73,9 +73,10 @@
 #include "radixtree/kvs.h"
 #include "radixtree/radix_tree.h"
 
+#include "fam/fam.h"
+#include "fam/fam_exception.h"
 #include "nvmm/epoch_manager.h"
 #include "nvmm/memory_manager.h"
-#include "fam/fam_exception.h"
 #include <nvmm/fam.h>
 
 #include <grpcpp/grpcpp.h>
@@ -102,6 +103,7 @@ namespace openfam {
 #define FAM_FENCE_KEY ((uint64_t)-4)
 #define INVALID_OFFSET ((uint64_t)-1)
 #define FAM_INVALID_REGION ((uint64_t)-1)
+#define MAX_MEMORY_SERVERS_CNT 256
 /*
  * Region id 5-15 are reserved for MODC
  * Region id 16-20 are reserved for OpenFAM
@@ -119,6 +121,14 @@ namespace openfam {
 
 #define ADDR_SIZE 20
 
+#define FAM_UNIMPLEMENTED_MEMSRVMODEL()                                        \
+    {                                                                          \
+        std::ostringstream message;                                            \
+        message << __func__                                                    \
+                << " is Not Yet Implemented for memory server model !!!";      \
+        throw Fam_Unimplemented_Exception(message.str().c_str());              \
+    }
+
 #define STATUS_CHECK(exception)                                                \
     {                                                                          \
         if (status.ok()) {                                                     \
@@ -131,6 +141,9 @@ namespace openfam {
         }                                                                      \
     }
 
+#define FAM_DEFAULT_CTX_ID (uint64_t(0))
+#define FAM_CTX_ID_UNINITIALIZED ((uint64_t)-1)
+
 using Server_Map = std::map<uint64_t, std::pair<std::string, uint64_t>>;
 
 /**
@@ -140,13 +153,34 @@ typedef struct {
     uint64_t regionId;
     uint64_t offset;
     uint64_t key;
+    uint64_t keys[MAX_MEMORY_SERVERS_CNT];
     uint64_t size;
+    uint32_t uid;
+    uint32_t gid;
     mode_t perm;
+    Fam_Redundancy_Level redundancyLevel;
+    Fam_Memory_Type memoryType;
+    Fam_Interleave_Enable interleaveEnable;
     void *base;
+    void *baseAddressList[MAX_MEMORY_SERVERS_CNT];
     char name[RadixTree::MAX_KEY_LEN];
-    uint64_t memoryServerId;
+    // uint64_t memoryServerId;
+    uint64_t used_memsrv_cnt;
+    uint64_t memoryServerIds[MAX_MEMORY_SERVERS_CNT];
     size_t maxNameLen;
+    uint64_t interleaveSize;
 } Fam_Region_Item_Info;
+
+typedef struct {
+    string bname; // Backup Name
+    string dname; // Data Item Name
+    int64_t size; // Backup Size
+    uid_t uid;    // User ID of owner
+    gid_t gid;    // Group ID of owner
+    mode_t mode;  // File Type and Mode
+    string backupTime;
+
+} Fam_Backup_Info;
 
 // Input string contains <node-id>:<ipaddr>:<grpc-port>,<node-id>:...
 inline Server_Map parse_server_list(std::string memServer,

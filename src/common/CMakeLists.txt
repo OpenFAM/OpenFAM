@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -22,6 +22,7 @@
 
 set(LIBOPENFAM_SRC
   ${LIBOPENFAM_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_context.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_async_qhandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
@@ -33,6 +34,7 @@ set(LIBOPENFAM_SRC
 
 set(CIS_SERVER_SRC
   ${CIS_SERVER_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_context.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_async_qhandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
@@ -44,6 +46,7 @@ set(CIS_SERVER_SRC
 
 set(MEMORY_SERVER_SRC
   ${MEMORY_SERVER_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_context.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_libfabric.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_async_qhandler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
@@ -66,6 +69,12 @@ set(METADATA_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
+  PARENT_SCOPE
+  )
+
+set(LIBOPENFAM_C_SRC
+  ${LIBOPENFAM_C_SRC}
+  ${CMAKE_CURRENT_SOURCE_DIR}/c_api.cpp
   PARENT_SCOPE
   )
 

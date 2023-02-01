@@ -549,7 +549,7 @@ int main(int argc, char **argv) {
 	uint64_t regionSize = gDataSize * NUM_DATAITEMS * *numPEs;
 	regionSize = regionSize < BIG_REGION_SIZE ? BIG_REGION_SIZE : regionSize;
 	EXPECT_NO_THROW(descLocal = 
-		  my_fam->fam_create_region("test0", regionSize , 0777, RAID1));
+		  my_fam->fam_create_region("test0", regionSize , 0777, NULL));
         EXPECT_NE((void *)NULL, descLocal);
     }
    
@@ -578,8 +578,9 @@ int main(int argc, char **argv) {
 	        EXPECT_NO_THROW(itemLocal[i] = my_fam->fam_allocate(
 				    itemInfo, gDataSize * 1, 0777, descLocal));
 		EXPECT_NE((void *)NULL, itemLocal[i]);
-        	cout << "PE" <<  *myPE << "," << itemInfo << "," << itemLocal[i]->get_memserver_id() << endl;
-	}		
+                // cout << "PE" <<  *myPE << "," << itemInfo << "," <<
+                // itemLocal[i]->get_memserver_id() << endl;
+            }
 
     } else if ( config_type.compare("specific") == 0 ) {
 	    for (int i = 0; i < number_of_dataitems_per_pe; i++) {
@@ -591,8 +592,9 @@ int main(int argc, char **argv) {
 		EXPECT_NO_THROW(itemLocal[i] = my_fam->fam_allocate(
 				    itemInfo, gDataSize * 1 , 0777, descLocal));
 		EXPECT_NE((void *)NULL, itemLocal[i]);
-		cout << "PE" <<  *myPE << "," << itemInfo << "," << itemLocal[i]->get_memserver_id() << endl;
-	    } 
+                // cout << "PE" <<  *myPE << "," << itemInfo << "," <<
+                // itemLocal[i]->get_memserver_id() << endl;
+            }
 
     } else {
 
@@ -604,10 +606,9 @@ int main(int argc, char **argv) {
 		EXPECT_NO_THROW(itemLocal[i] = my_fam->fam_allocate(
 				    itemInfo, gDataSize * 1, 0777, descLocal));
 		EXPECT_NE((void *)NULL, itemLocal[i]);
-		cout << "PE" <<  *myPE << "," << itemInfo << "," << itemLocal[i]->get_memserver_id() << endl;
-	    }
-
-
+                // cout << "PE" <<  *myPE << "," << itemInfo << "," <<
+                // itemLocal[i]->get_memserver_id() << endl;
+            }
     }
     EXPECT_NO_THROW(my_fam->fam_barrier_all());
     ret = RUN_ALL_TESTS();
