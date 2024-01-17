@@ -1,6 +1,6 @@
 /*
  * fam_put_get_negative_test.cpp
- * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019, 2022,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -52,8 +52,11 @@ TEST(FamPutGetT, PutGetFail) {
     const char *testRegion = get_uniq_str("negtest", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 8192, 0777,
+                                                     regionAttributes));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -149,8 +152,11 @@ TEST(FamPutGetT, ScatterGatherIndexFail) {
     const char *testRegion = get_uniq_str("sgstridetest", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 8192, 0777,
+                                                     regionAttributes));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region
@@ -257,8 +263,11 @@ TEST(FamPutGetT, ScatterGatherStrideFail) {
     const char *testRegion = get_uniq_str("sgstridetest", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 8192, 0777,
+                                                     regionAttributes));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region

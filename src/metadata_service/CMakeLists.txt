@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2020,2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -24,12 +24,18 @@ execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/
 	--plugin=protoc-gen-grpc=${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.proto
                 COMMAND  ${CMAKE_CURRENT_SOURCE_DIR}/../../third-party/build/bin/protoc --cpp_out=${CMAKE_CURRENT_SOURCE_DIR} --proto_path=${CMAKE_CURRENT_SOURCE_DIR}                       ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.proto)
 
+if(ENABLE_THALLIUM)
+	set(METADATA_THALLIUM_CLIENT ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_thallium_client.cpp)
+	set(METADATA_THALLIUM_SERVER ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_thallium_server.cpp)
+endif()
+
 set(CIS_SERVER_SRC
   ${CIS_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.grpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_direct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_client.cpp
+  ${METADATA_THALLIUM_CLIENT}
   PARENT_SCOPE
   )
 
@@ -39,6 +45,7 @@ set(MEMORY_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_direct.cpp  
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_client.cpp
+  ${METADATA_THALLIUM_CLIENT}
   PARENT_SCOPE
   )
 
@@ -48,6 +55,7 @@ set(METADATA_CLIENT_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_direct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_client.cpp
+  ${METADATA_THALLIUM_CLIENT}
   PARENT_SCOPE
   )
 
@@ -57,5 +65,6 @@ set(METADATA_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_rpc.pb.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_direct.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_metadata_service_server.cpp
+  ${METADATA_THALLIUM_SERVER}
   PARENT_SCOPE
   )

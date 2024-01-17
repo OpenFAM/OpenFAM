@@ -62,7 +62,7 @@ int main(void) {
             "myRegion", (uint64_t)10000000, 0777, NULL);
         // use the created region...
         if (rd != NULL)
-            printf("fam_create_region successfull\n");
+            printf("fam_create_region successful\n");
         descriptor = myFam->fam_allocate("myItem", (uint64_t)(50 * sizeof(int)),
                                          0600, rd);
         std::cout << "Calling IO operations" << std::endl;
@@ -78,7 +78,7 @@ int main(void) {
         // ... continuation code here
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(rd);
-        printf("fam_destroy_region successfull\n");
+        printf("fam_destroy_region successful\n");
 
     } catch (Fam_Exception &e) {
         printf("Create/Destroy region failed: %d: %s\n", e.fam_error(),

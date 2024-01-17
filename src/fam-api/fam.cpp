@@ -1,6 +1,6 @@
 /*
  * fam.cpp
- * Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -78,22 +78,24 @@ using namespace std;
  * Defined as static list of option array.
  */
 const char *supportedOptionList[] = {
-    "VERSION",             // index #0
-    "DEFAULT_REGION_NAME", // index #1
-    "CIS_SERVER",          // index #2
-    "GRPC_PORT",           // index #3
-    "LIBFABRIC_PROVIDER",  // index #4
-    "FAM_THREAD_MODEL",    // index #5
-    "CIS_INTERFACE_TYPE",  // index #6
-    "OPENFAM_MODEL",       // index #7
-    "FAM_CONTEXT_MODEL",   // index #8
-    "PE_COUNT",            // index #9
-    "PE_ID",               // index #10
-    "RUNTIME",             // index #11
-    "NUM_CONSUMER",        // index #12
+    "VERSION",                 // index #0
+    "DEFAULT_REGION_NAME",     // index #1
+    "CIS_SERVER",              // index #2
+    "GRPC_PORT",               // index #3
+    "LIBFABRIC_PROVIDER",      // index #4
+    "FAM_THREAD_MODEL",        // index #5
+    "CIS_INTERFACE_TYPE",      // index #6
+    "OPENFAM_MODEL",           // index #7
+    "FAM_CONTEXT_MODEL",       // index #8
+    "PE_COUNT",                // index #9
+    "PE_ID",                   // index #10
+    "RUNTIME",                 // index #11
+    "NUM_CONSUMER",            // index #12
     "FAM_DEFAULT_MEMORY_TYPE", // index #13
-    "IF_DEVICE",           // index #14
-    NULL                   // index #15
+    "IF_DEVICE",               // index #14
+    "LOC_BUF_ADDR",            // index #15
+    "LOC_BUF_SIZE",            // index #16
+    NULL                       // index #17
 };
 
 namespace openfam {
@@ -131,6 +133,10 @@ class fam::Impl_ {
             famOps = new Fam_Ops_Libfabric((Fam_Ops_Libfabric *)pimpl->famOps);
             ctxId = famOps->get_context_id();
             pimpl->famOps->context_open(ctxId, famOps);
+            if (((pimpl->famOptions).local_buf_size != 0) &&
+                    ((pimpl->famOptions).local_buf_addr != NULL))
+                famOps->register_heap((pimpl->famOptions).local_buf_addr,
+                                  (pimpl->famOptions).local_buf_size);
         }
         famAllocator = pimpl->famAllocator;
         famRuntime = pimpl->famRuntime;
@@ -190,6 +196,8 @@ class fam::Impl_ {
                                  Fam_Region_Descriptor *region);
 
     void fam_deallocate(Fam_Descriptor *descriptor);
+
+    void fam_close(Fam_Descriptor *descriptor);
 
     void fam_change_permissions(Fam_Descriptor *descriptor,
                                 mode_t accessPermissions);
@@ -442,6 +450,7 @@ class fam::Impl_ {
     Fam_Runtime *famRuntime;
     std::list<fam_context *> *ctxList;
     uint64_t ctxId;
+    bool enableResourceRelease;
 
 #ifdef FAM_PROFILE
     Fam_Counter_St profileData[fam_counter_max][FAM_CNTR_TYPE_MAX];
@@ -669,6 +678,9 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     int *peId;
     famRuntime = NULL;
     FAM_PROFILE_INIT();
+    FAM_PROFILE_START_TIME();
+    FAM_CNTR_INC_API(fam_initialize);
+    FAM_PROFILE_START_ALLOCATOR(fam_initialize);
     peCnt = (int *)malloc(sizeof(int));
     peId = (int *)malloc(sizeof(int));
     if (grpName)
@@ -689,18 +701,11 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     configFileParams file_options;
     // Check for config file in or in path mentioned
     // by OPENFAM_ROOT environment variable or in /opt/OpenFAM.
-    try {
-        config_file_path = find_config_file(strdup("fam_pe_config.yaml"));
-    } catch (Fam_InvalidOption_Exception &e) {
-        // If the config_file is not present, then ignore the exception.
-        // All the parameters will be obtained from validate_fam_options
-        // function.
-    }
+    config_file_path = find_config_file(strdup("fam_pe_config.yaml"));
     // Get the configuration info from the configruation file.
     if (!config_file_path.empty()) {
         file_options = get_info_from_config_file(config_file_path);
     }
-
     ret = validate_fam_options(options, file_options);
 
     if (strcmp(famOptions.runtime, FAM_OPTIONS_RUNTIME_NONE_STR) == 0) {
@@ -748,23 +753,41 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         optValueMap->insert({supportedOptionList[PE_ID], peId});
     }
 
+    if (strcmp(file_options["resource_release"].c_str(), "enable") == 0) {
+        enableResourceRelease = true;
+    } else {
+        enableResourceRelease = false;
+    }
+
+    // If thallium rpc framework is used, then it is essential to configure the
+    // device upfront.
+    if (famOptions.if_device != NULL &&
+        (strcmp(famOptions.if_device, "") != 0)) {
+        if ((strncmp(famOptions.libfabricProvider, "verbs", 5) == 0)) {
+            setenv("FI_VERBS_IFACE", famOptions.if_device, 0);
+        }
+    }
     if (strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) == 0) {
         // initialize shared memory client
-        famAllocator = new Fam_Allocator_Client(true);
+        famAllocator = new Fam_Allocator_Client(true, enableResourceRelease);
         famOps = new Fam_Ops_SHM(famThreadModel, famContextModel, famAllocator,
                                  atoi(famOptions.numConsumer));
         ret = famOps->initialize();
     } else {
         if (strcmp(famOptions.cisInterfaceType, FAM_OPTIONS_RPC_STR) == 0) {
-            famAllocator = new Fam_Allocator_Client(famOptions.cisServer,
-                                                    atoi(famOptions.grpcPort));
+            famAllocator = new Fam_Allocator_Client(
+                famOptions.cisServer, atoi(famOptions.grpcPort),
+                file_options["rpc_framework_type"], file_options["provider"],
+                enableResourceRelease);
         } else {
-            famAllocator = new Fam_Allocator_Client();
+            famAllocator =
+                new Fam_Allocator_Client(false, enableResourceRelease);
         }
         famOps = new Fam_Ops_Libfabric(false, famOptions.libfabricProvider,
                                        famOptions.if_device, famThreadModel,
                                        famAllocator, famContextModel);
         ret = famOps->initialize();
+
         if (ret < 0) {
             message << "Fam libfabric initialization failed: "
                     << fabric_strerror(ret);
@@ -772,8 +795,14 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
                 famRuntime->runtime_fini();
             THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
         }
+        else {
+            if(famOptions.local_buf_size != 0 &&
+                    famOptions.local_buf_addr != NULL) {
+                famOps->register_heap(famOptions.local_buf_addr , famOptions.local_buf_size);
+            }
+        }
     }
-    FAM_PROFILE_START_TIME();
+    FAM_PROFILE_END_ALLOCATOR(fam_initialize);
 }
 
 /**
@@ -784,8 +813,26 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
                                      configFileParams config_file_fam_options) {
 
     int ret = 0;
-
     std::ostringstream message;
+    if (options && options->local_buf_addr && options->local_buf_size) {
+        famOptions.local_buf_addr = options->local_buf_addr;
+        famOptions.local_buf_size = options->local_buf_size;
+    } else {
+        famOptions.local_buf_addr = NULL;
+        famOptions.local_buf_size = 0;
+    }
+    char *addr_str = (char *)malloc(20 * sizeof(char));
+    if (famOptions.local_buf_addr != NULL)
+        sprintf(addr_str, "%p", (void *)famOptions.local_buf_addr);
+    else
+        sprintf(addr_str, "0");
+    optValueMap->insert({supportedOptionList[LOC_BUF_ADDR], addr_str});
+
+    uint64_t *local_buf_size_opt = (uint64_t *)malloc(sizeof(uint64_t));
+    *local_buf_size_opt = famOptions.local_buf_size;
+    optValueMap->insert(
+        {supportedOptionList[LOC_BUF_SIZE], local_buf_size_opt});
+
     if (options && options->defaultRegionName)
         famOptions.defaultRegionName = strdup(options->defaultRegionName);
     else
@@ -997,6 +1044,12 @@ void fam::Impl_::clean_fam_options() {
  * */
 int fam::Impl_::validate_item(Fam_Descriptor *descriptor) {
     std::ostringstream message;
+    if (descriptor->get_desc_status() == DESC_INVALID) {
+        std::ostringstream message;
+        message << "Descriptor is no longer valid" << endl;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    }
+
     uint64_t *keys = descriptor->get_keys();
 
     if (keys == NULL) {
@@ -1036,6 +1089,21 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
             // If the parameter client_interface_type is not present, then
             // ignore the exception. This parameter will be obtained from
             // validate_fam_options function.
+        }
+        try {
+            options["provider"] =
+                (char *)strdup((info->get_key_value("provider")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["provider"] = (char *)strdup("sockets");
+        }
+        // fetch rpc_framework type
+        try {
+            options["rpc_framework_type"] = (char *)strdup(
+                (info->get_key_value("rpc_framework_type")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["rpc_framework_type"] = (char *)strdup("grpc");
         }
         try {
             options["libfabricProvider"] =
@@ -1085,6 +1153,13 @@ configFileParams fam::Impl_::get_info_from_config_file(std::string filename) {
             // exception. This parameter will be obtained from
             // validate_fam_options function.
         }
+        try {
+            options["resource_release"] = (char *)strdup(
+                (info->get_key_value("resource_release")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["resource_release"] = (char *)strdup("enable");
+        }
     }
     return options;
 }
@@ -1099,8 +1174,10 @@ void fam::Impl_::fam_finalize(const char *groupName) {
     FAM_PROFILE_END();
 
     // Calling destructor for allocator
-    if (famAllocator != NULL)
+    if (famAllocator != NULL) {
+        famAllocator->close_all_regions();
         famAllocator->allocator_finalize();
+    }
 
     // Free up all the options strings
     clean_fam_options();
@@ -1179,6 +1256,11 @@ const void *fam::Impl_::fam_get_option(char *optionName) {
             int *optVal = (int *)malloc(sizeof(int));
             *optVal = *((int *)opt->second);
             return optVal;
+        }
+        if (strncmp(optionName, "LOC_BUF_SIZE", 12) == 0) {
+            uint64_t *optVal = (uint64_t *)malloc(sizeof(uint64_t));
+            *optVal = *((uint64_t *)opt->second);
+            return optVal;
         } else
             return strdup((const char *)opt->second);
     }
@@ -1251,15 +1333,17 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
     Fam_Region_Descriptor *region = NULL;
     std::ostringstream message;
     if ((regionAttributes == NULL) ||
-        (regionAttributes->redundancyLevel == REDUNDANCY_LEVEL_DEFAULT ||
-         regionAttributes->memoryType == MEMORY_TYPE_DEFAULT ||
-         regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT)) {
+        (regionAttributes->redundancyLevel == REDUNDANCY_LEVEL_DEFAULT) ||
+        (regionAttributes->memoryType == MEMORY_TYPE_DEFAULT) ||
+        (regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT) ||
+        (regionAttributes->permissionLevel == PERMISSION_LEVEL_DEFAULT)) {
         regionAttributesParam =
             (Fam_Region_Attributes *)malloc(sizeof(Fam_Region_Attributes));
         memset(regionAttributesParam, 0, sizeof(Fam_Region_Attributes));
         if (regionAttributes == NULL) {
             regionAttributesParam->redundancyLevel = NONE;
             regionAttributesParam->interleaveEnable = ENABLE;
+            regionAttributesParam->permissionLevel = REGION;
             if (!(famOptions.fam_default_memory_type) ||
                 (strcmp(famOptions.fam_default_memory_type, "") == 0) ||
                 (strcmp(famOptions.fam_default_memory_type, "volatile") == 0)) {
@@ -1338,6 +1422,20 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
                 regionAttributesParam->memoryType =
                     regionAttributes->memoryType;
             }
+            if (regionAttributes->permissionLevel == PERMISSION_LEVEL_DEFAULT)
+                regionAttributesParam->permissionLevel = REGION;
+            else {
+                if (!(regionAttributes->permissionLevel == REGION ||
+                      regionAttributes->permissionLevel == DATAITEM)) {
+                    std::ostringstream message;
+                    message << "Permission level option provided is not valid"
+                            << endl;
+                    THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                                  message.str().c_str());
+                }
+                regionAttributesParam->permissionLevel =
+                    regionAttributes->permissionLevel;
+            }
         }
         region = famAllocator->create_region(name, size, permissions,
                                              regionAttributesParam);
@@ -1361,7 +1459,12 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
             message << "InterleaveEnable option provided is not valid" << endl;
             THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
         }
-
+        if (!(regionAttributes->permissionLevel == REGION ||
+              regionAttributes->permissionLevel == DATAITEM)) {
+            std::ostringstream message;
+            message << "Permission level option provided is not valid" << endl;
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
         region = famAllocator->create_region(name, size, permissions,
                                              regionAttributes);
     }
@@ -1449,6 +1552,24 @@ void fam::Impl_::fam_deallocate(Fam_Descriptor *descriptor) {
     FAM_PROFILE_START_ALLOCATOR(fam_deallocate);
     famAllocator->deallocate(descriptor);
     FAM_PROFILE_END_ALLOCATOR(fam_deallocate);
+    return;
+}
+
+/**
+ * Close the Fam_Descriptor. This API helps to relinquish resources internally.
+ * @param descriptor - descriptor associated with the space.
+ */
+void fam::Impl_::fam_close(Fam_Descriptor *descriptor) {
+    std::ostringstream message;
+    FAM_CNTR_INC_API(fam_close);
+    FAM_PROFILE_START_ALLOCATOR(fam_close);
+    if (descriptor->get_desc_status() == DESC_INVALID) {
+        std::ostringstream message;
+        message << "Descriptor is no longer valid" << endl;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    }
+    famAllocator->close(descriptor);
+    FAM_PROFILE_END_ALLOCATOR(fam_close);
     return;
 }
 
@@ -5496,6 +5617,17 @@ void fam::fam_deallocate(Fam_Descriptor *descriptor) {
 }
 
 /**
+ * Close the Fam_Descriptor. This API helps to relinquish resources internally.
+ * @param descriptor - descriptor associated with the space.
+ * @throws Fam_Allocator_Exception
+ */
+void fam::fam_close(Fam_Descriptor *descriptor) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_close(descriptor);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+/**
  * Change permissions associated with a data item descriptor.
  * @param descriptor - descriptor associated with some data item
  * @param accessPermissions - new permissions for the data item
@@ -6922,6 +7054,11 @@ Fam_Descriptor *fam_context::fam_allocate(const char *name, uint64_t nbytes,
 void fam_context::fam_deallocate(Fam_Descriptor *descriptor) {
     THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
                     "fam_deallocate cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_close(Fam_Descriptor *descriptor) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_close cannot be invoked from fam_context object");
 }
 
 void fam_context::fam_change_permissions(Fam_Descriptor *descriptor,

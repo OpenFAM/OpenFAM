@@ -18,7 +18,7 @@ export LD_LIBRARY_PATH=$THIRDPARTY_BUILD/lib/:$THIRDPARTY_BUILD/lib64/:$LD_LIBRA
 #Build and run test with MemoryServer allocator
 cd $BUILD_DIR
 
-cmake ..; $MAKE_CMD ; make install
+cmake .. -DCMAKE_BUILD_TYPE=Release -DENABLE_CHECK_OFFSETS=1 -DENABLE_THALLIUM=1 -DLIBFABRIC_PATH=/usr/lib64 -DPMIX_PATH=/usr/lib64; $MAKE_CMD ; make install
 if [[ $? > 0 ]]
 then
         echo "OpenFAM build with memoryserver version failed.. exit..."

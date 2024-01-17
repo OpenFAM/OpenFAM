@@ -1,8 +1,9 @@
 /*
  * fam_context.cpp
- * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2022-2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -139,6 +140,9 @@ Fam_Context::Fam_Context(struct fi_info *fi, struct fid_domain *domain,
 
 Fam_Context::~Fam_Context() {
     if (!isNVMM) {
+        free(mr_descs);
+        if (mr != NULL)
+            fi_close(&mr->fid);
         fi_close(&ep->fid);
         fi_close(&txcq->fid);
         fi_close(&rxcq->fid);
@@ -166,6 +170,31 @@ int Fam_Context::initialize_cntr(struct fid_domain *domain,
     }
 
     return ret;
+}
+
+void Fam_Context::register_heap(void *base, size_t len,
+                                struct fid_domain *domain, size_t iov_limit) {
+    std::ostringstream message;
+    int ret;
+    local_buf_base = base;
+    local_buf_size = len;
+
+    if (mr || mr_descs) {
+        message << "Fam_Context register_heap() called more than once";
+        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+    }
+    mr_descs = (void **)calloc(iov_limit, sizeof(*mr_descs));
+    if (!mr_descs) {
+        message << "Fam_Context register_heap() failed to allocate memory";
+        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+    }
+    ret = fi_mr_reg(domain, base, len, FI_READ | FI_WRITE, 0, 0, 0, &mr, 0);
+    if (ret < 0) {
+        message << "Fam libfabric fi_mr_reg failed: " << fabric_strerror(ret);
+        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
+    }
+    for (size_t i = 0; i < iov_limit; i++)
+        mr_descs[i] = fi_mr_desc(mr);
 }
 
 } // namespace openfam

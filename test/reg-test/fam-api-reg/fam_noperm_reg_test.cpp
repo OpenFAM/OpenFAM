@@ -1,8 +1,9 @@
 /*
  * fam_noperm_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -51,8 +52,12 @@ TEST(FamNoPerm, NoPermSuccess) {
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 8192, 0777,
+                                                     regionAttributes));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region

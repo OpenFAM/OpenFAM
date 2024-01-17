@@ -137,11 +137,11 @@ rm -fr googletest_v1_10_x
 #TODO: Replace with right NVMM branch before release
 cd $CURRENT_DIR
 echo "Downloading NVMM source"
-git clone https://github.com/HewlettPackard/gull.git nvmm
-#git clone -b devel https://github.com/HewlettPackard/gull.git nvmm
+#git clone https://github.com/HewlettPackard/gull.git nvmm
+git clone -b devel https://github.com/HewlettPackard/gull.git nvmm
 cd nvmm
-git fetch --all --tags --prune
-git checkout tags/v0.2 -b openfam
+#git fetch --all --tags --prune
+#git checkout tags/v0.2 -b openfam
 
 #Radixtree
 cd $CURRENT_DIR

@@ -1,7 +1,7 @@
 /*
  *   fam_metadata_service_client.cpp
- *   Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- *   reserved. Redistribution and use in source and binary forms, with or
+ *   Copyright (c) 2020, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
  *   are met:
  *   1. Redistributions of source code must retain the above copyright notice,
@@ -100,6 +100,24 @@ Fam_Metadata_Service_Client::Fam_Metadata_Service_Client(const char *name,
         throw Metadata_Service_Exception(FAM_ERR_RPC, message.str().c_str());
 
     }
+    size_t FabricAddrSize = res.addrnamelen();
+    char *fabricAddr = (char *)calloc(1, FabricAddrSize);
+    uint32_t lastBytes = 0;
+    int lastBytesCount = (int)(FabricAddrSize % sizeof(uint32_t));
+    int readCount = res.addrname_size();
+
+    if (lastBytesCount > 0)
+        readCount -= 1;
+
+    for (int ndx = 0; ndx < readCount; ndx++) {
+        *((uint32_t *)fabricAddr + ndx) = res.addrname(ndx);
+    }
+
+    if (lastBytesCount > 0) {
+        lastBytes = res.addrname(readCount);
+        memcpy(((uint32_t *)fabricAddr + readCount), &lastBytes,
+               lastBytesCount);
+    }
 }
 
 Fam_Metadata_Service_Client::~Fam_Metadata_Service_Client() {
@@ -142,8 +160,6 @@ void Fam_Metadata_Service_Client::metadata_insert_region(
     Fam_Metadata_Response res;
     ::grpc::ClientContext ctx;
 
-    req.set_key_region_id(regionId);
-    req.set_key_region_name(regionName);
     req.set_region_id(region->regionId);
     req.set_name(region->name);
     req.set_offset(region->offset);
@@ -154,6 +170,7 @@ void Fam_Metadata_Service_Client::metadata_insert_region(
     req.set_redundancylevel(region->redundancyLevel);
     req.set_memorytype(region->memoryType);
     req.set_interleaveenable(region->interleaveEnable);
+    req.set_permission_level(region->permissionLevel);
     req.set_memsrv_cnt(region->used_memsrv_cnt);
     for (int i = 0; i < (int)region->used_memsrv_cnt; i++) {
         req.add_memsrv_list(region->memServerIds[i]);
@@ -212,6 +229,11 @@ bool Fam_Metadata_Service_Client::metadata_find_region(
         region.uid = res.uid();
         region.gid = res.gid();
         region.used_memsrv_cnt = res.memsrv_cnt();
+        region.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+        region.memoryType = (Fam_Memory_Type)res.memorytype();
+        region.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
+        region.interleaveSize = res.interleavesize();
+        region.permissionLevel = (Fam_Permission_Level)res.permission_level();
         for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
             region.memServerIds[i] = res.memsrv_list(i);
         }
@@ -240,6 +262,11 @@ bool Fam_Metadata_Service_Client::metadata_find_region(
         region.uid = res.uid();
         region.gid = res.gid();
         region.used_memsrv_cnt = res.memsrv_cnt();
+        region.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
+        region.memoryType = (Fam_Memory_Type)res.memorytype();
+        region.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
+        region.interleaveSize = res.interleavesize();
+        region.permissionLevel = (Fam_Permission_Level)res.permission_level();
         for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
             region.memServerIds[i] = res.memsrv_list(i);
         }
@@ -256,17 +283,23 @@ void Fam_Metadata_Service_Client::metadata_modify_region(
     ::grpc::ClientContext ctx;
 
     req.set_key_region_id(regionId);
-    req.set_region_id(regionId);
+    req.set_region_id(region->regionId);
     req.set_name(region->name);
     req.set_offset(region->offset);
     req.set_size(region->size);
     req.set_perm(region->perm);
     req.set_uid(region->uid);
     req.set_gid(region->gid);
+    req.set_redundancylevel(region->redundancyLevel);
+    req.set_memorytype(region->memoryType);
+    req.set_interleaveenable(region->interleaveEnable);
+    req.set_interleavesize(region->interleaveSize);
+    req.set_permission_level(region->permissionLevel);
     req.set_memsrv_cnt(region->used_memsrv_cnt);
     for (int i = 0; i < (int)region->used_memsrv_cnt; i++) {
         req.add_memsrv_list(region->memServerIds[i]);
     }
+
     ::grpc::Status status = stub->metadata_modify_region(&ctx, req, &res);
     STATUS_CHECK(Metadata_Service_Exception)
     METADATA_CLIENT_PROFILE_END_OPS(client_metadata_modify_region);
@@ -281,12 +314,17 @@ void Fam_Metadata_Service_Client::metadata_modify_region(
 
     req.set_key_region_name(regionName);
     req.set_region_id(region->regionId);
-    req.set_name(regionName);
+    req.set_name(region->name);
     req.set_offset(region->offset);
     req.set_size(region->size);
     req.set_perm(region->perm);
     req.set_uid(region->uid);
     req.set_gid(region->gid);
+    req.set_redundancylevel(region->redundancyLevel);
+    req.set_memorytype(region->memoryType);
+    req.set_interleaveenable(region->interleaveEnable);
+    req.set_interleavesize(region->interleaveSize);
+    req.set_permission_level(region->permissionLevel);
     req.set_memsrv_cnt(region->used_memsrv_cnt);
     for (int i = 0; i < (int)region->used_memsrv_cnt; i++) {
         req.add_memsrv_list(region->memServerIds[i]);
@@ -306,10 +344,9 @@ void Fam_Metadata_Service_Client::metadata_insert_dataitem(
     ::grpc::ClientContext ctx;
 
     req.set_key_region_id(regionId);
-    req.set_key_dataitem_id(dataitemId);
-    req.set_key_dataitem_name(dataitemName);
+    req.set_dataitem_id(dataitemId);
+    req.set_name(dataitemName);
     req.set_region_id(regionId);
-    req.set_name(dataitem->name);
     for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
         req.add_offsets(dataitem->offsets[i]);
     }
@@ -319,6 +356,7 @@ void Fam_Metadata_Service_Client::metadata_insert_dataitem(
     req.set_gid(dataitem->gid);
     req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
     req.set_interleave_size(dataitem->interleaveSize);
+    req.set_permission_level(dataitem->permissionLevel);
     for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
         req.add_memsrv_list(dataitem->memoryServerIds[i]);
     }
@@ -337,10 +375,9 @@ void Fam_Metadata_Service_Client::metadata_insert_dataitem(
     ::grpc::ClientContext ctx;
 
     req.set_key_region_name(regionName);
-    req.set_key_dataitem_id(dataitemId);
-    req.set_key_dataitem_name(dataitemName);
+    req.set_dataitem_id(dataitemId);
+    req.set_name(dataitemName);
     req.set_region_id(dataitem->regionId);
-    req.set_name(dataitem->name);
     for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
         req.add_offsets(dataitem->offsets[i]);
     }
@@ -350,6 +387,7 @@ void Fam_Metadata_Service_Client::metadata_insert_dataitem(
     req.set_gid(dataitem->gid);
     req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
     req.set_interleave_size(dataitem->interleaveSize);
+    req.set_permission_level(dataitem->permissionLevel);
     for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
         req.add_memsrv_list(dataitem->memoryServerIds[i]);
     }
@@ -444,6 +482,7 @@ bool Fam_Metadata_Service_Client::metadata_find_dataitem(
         dataitem.gid = res.gid();
         dataitem.used_memsrv_cnt = res.memsrv_list_size();
         dataitem.interleaveSize = res.interleave_size();
+        dataitem.permissionLevel = (Fam_Permission_Level)res.permission_level();
         for (int i = 0; i < res.memsrv_list_size(); i++) {
             dataitem.memoryServerIds[i] = res.memsrv_list(i);
         }
@@ -476,6 +515,8 @@ bool Fam_Metadata_Service_Client::metadata_find_dataitem(
         dataitem.uid = res.uid();
         dataitem.gid = res.gid();
         dataitem.used_memsrv_cnt = res.memsrv_cnt();
+        dataitem.interleaveSize = res.interleave_size();
+        dataitem.permissionLevel = (Fam_Permission_Level)res.permission_level();
         for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
             dataitem.memoryServerIds[i] = res.memsrv_list(i);
         }
@@ -509,6 +550,8 @@ bool Fam_Metadata_Service_Client::metadata_find_dataitem(
         dataitem.uid = res.uid();
         dataitem.gid = res.gid();
         dataitem.used_memsrv_cnt = res.memsrv_cnt();
+        dataitem.interleaveSize = res.interleave_size();
+        dataitem.permissionLevel = (Fam_Permission_Level)res.permission_level();
         for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
             dataitem.memoryServerIds[i] = res.memsrv_list(i);
         }
@@ -541,6 +584,8 @@ bool Fam_Metadata_Service_Client::metadata_find_dataitem(
         dataitem.uid = res.uid();
         dataitem.gid = res.gid();
         dataitem.used_memsrv_cnt = res.memsrv_cnt();
+        dataitem.interleaveSize = res.interleave_size();
+        dataitem.permissionLevel = (Fam_Permission_Level)res.permission_level();
         for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
             dataitem.memoryServerIds[i] = res.memsrv_list(i);
         }
@@ -569,6 +614,8 @@ void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
     req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    req.set_interleave_size(dataitem->interleaveSize);
+    req.set_permission_level(dataitem->permissionLevel);
     for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
         req.add_memsrv_list(dataitem->memoryServerIds[i]);
     }
@@ -598,6 +645,8 @@ void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
     req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    req.set_interleave_size(dataitem->interleaveSize);
+    req.set_permission_level(dataitem->permissionLevel);
     for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
         req.add_memsrv_list(dataitem->memoryServerIds[i]);
     }
@@ -627,6 +676,8 @@ void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
     req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    req.set_interleave_size(dataitem->interleaveSize);
+    req.set_permission_level(dataitem->permissionLevel);
     for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
         req.add_memsrv_list(dataitem->memoryServerIds[i]);
     }
@@ -656,6 +707,8 @@ void Fam_Metadata_Service_Client::metadata_modify_dataitem(
     req.set_size(dataitem->size);
     req.set_perm(dataitem->perm);
     req.set_memsrv_cnt(dataitem->used_memsrv_cnt);
+    req.set_interleave_size(dataitem->interleaveSize);
+    req.set_permission_level(dataitem->permissionLevel);
     for (uint64_t i = 0; i < dataitem->used_memsrv_cnt; i++) {
         req.add_memsrv_list(dataitem->memoryServerIds[i]);
     }
@@ -758,12 +811,13 @@ void Fam_Metadata_Service_Client::metadata_validate_and_create_region(
     Fam_Metadata_Region_Info_Response res;
     ::grpc::ClientContext ctx;
     req.set_region_id(*regionid);
-    req.set_name(regionname);
+    req.set_name(regionname.c_str(), regionname.size());
     req.set_size(size);
     req.set_user_policy(user_policy);
     req.set_redundancylevel(regionAttributes->redundancyLevel);
     req.set_memorytype(regionAttributes->memoryType);
     req.set_interleaveenable(regionAttributes->interleaveEnable);
+    req.set_permission_level(regionAttributes->permissionLevel);
 
     ::grpc::Status status =
         stub->metadata_validate_and_create_region(&ctx, req, &res);
@@ -829,6 +883,7 @@ void Fam_Metadata_Service_Client::metadata_find_region_and_check_permissions(
     region.memoryType = (Fam_Memory_Type)res.memorytype();
     region.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     region.interleaveSize = res.interleavesize();
+    region.permissionLevel = (Fam_Permission_Level)res.permission_level();
     for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
         region.memServerIds[i] = res.memsrv_list(i);
     }
@@ -864,6 +919,7 @@ void Fam_Metadata_Service_Client::metadata_find_region_and_check_permissions(
     region.memoryType = (Fam_Memory_Type)res.memorytype();
     region.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     region.interleaveSize = res.interleavesize();
+    region.permissionLevel = (Fam_Permission_Level)res.permission_level();
     for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
         region.memServerIds[i] = res.memsrv_list(i);
     }
@@ -946,7 +1002,8 @@ void Fam_Metadata_Service_Client::metadata_find_dataitem_and_check_permissions(
 void Fam_Metadata_Service_Client::metadata_validate_and_allocate_dataitem(
     const std::string dataitemName, const uint64_t regionId, uint32_t uid,
     uint32_t gid, size_t size, std::list<int> *memory_server_list,
-    size_t *interleaveSize, int user_policy) {
+    size_t *interleaveSize, Fam_Permission_Level *permissionLevel,
+    mode_t *regionPermission, int user_policy) {
     METADATA_CLIENT_PROFILE_START_OPS()
     Fam_Metadata_Request req;
     Fam_Metadata_Response res;
@@ -965,6 +1022,8 @@ void Fam_Metadata_Service_Client::metadata_validate_and_allocate_dataitem(
     STATUS_CHECK(Metadata_Service_Exception)
     int memsrv_count = res.memsrv_list_size();
     *interleaveSize = res.interleave_size();
+    *permissionLevel = (Fam_Permission_Level)res.permission_level();
+    *regionPermission = (mode_t)res.region_permission();
     for (int i = 0; i < memsrv_count; i++) {
         memory_server_list->push_back((int)(res.memsrv_list(i)));
     }

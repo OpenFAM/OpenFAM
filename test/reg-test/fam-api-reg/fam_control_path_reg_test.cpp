@@ -1,8 +1,9 @@
 /*
  * fam_control_path_reg_test.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -131,8 +132,12 @@ TEST(FamControlPath, DataItemChangePermission) {
     const char *firstItemLocal = get_uniq_str("firstLocal", my_fam);
     const char *testRegionLocal = get_uniq_str("testLocal", my_fam);
 
-    EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(
-                        testRegionLocal, BIG_REGION_SIZE, 0777, NULL));
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(descLocal = my_fam->fam_create_region(testRegionLocal,
+                                                          BIG_REGION_SIZE, 0777,
+                                                          regionAttributes));
     EXPECT_NE((void *)NULL, descLocal);
 
     mode_t perm;

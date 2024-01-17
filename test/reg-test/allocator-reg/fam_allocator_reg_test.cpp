@@ -1,8 +1,9 @@
 /*
  * fam_allocator_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -50,8 +51,37 @@ TEST(FamAllocator, AllocatorSuccess) {
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(
-        desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
+    // Test with REGION level permission.(Default is REGIONlevel permission)
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = REGION;
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 8192, 0777,
+                                                     regionAttributes));
+    EXPECT_NE((void *)NULL, desc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024, 0777, desc));
+    EXPECT_NE((void *)NULL, item);
+
+    EXPECT_NO_THROW(my_fam->fam_change_permissions(desc, 0444));
+
+    // If permission level is Region, dataitem permission can not be changed
+    EXPECT_THROW(my_fam->fam_change_permissions(item, 0444), Fam_Exception);
+
+    EXPECT_NO_THROW(my_fam->fam_lookup_region(testRegion));
+
+    EXPECT_NO_THROW(my_fam->fam_lookup(firstItem, testRegion));
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+    // Test with DATAITEM level permission
+    regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 8192, 0777,
+                                                     regionAttributes));
     EXPECT_NE((void *)NULL, desc);
 
     // Allocating data items in the created region

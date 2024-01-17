@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_direct.h
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -35,12 +35,11 @@
 
 #include "allocator/memserver_allocator.h"
 #include "memory_service/fam_memory_service.h"
-#include "memory_service/fam_memory_registration.h"
-#include "memory_service/fam_memory_registration_libfabric.h"
-#include "memory_service/fam_memory_registration_shm.h"
+#include "memory_service/fam_server_resource_manager.h"
 
 namespace openfam {
-
+class Fam_Server_Resource_Manager;
+class Fam_Ops_Libfabric;
 #define CAS_LOCK_CNT 128
 #define LOCKHASH(offset) (offset >> 7) % CAS_LOCK_CNT
 
@@ -57,7 +56,7 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
 
     void create_region(uint64_t regionId, size_t nbytes);
 
-    void destroy_region(uint64_t regionId);
+    void destroy_region(uint64_t regionId, uint64_t *resourceStatus);
 
     void resize_region(uint64_t regionId, size_t nbytes);
 
@@ -96,8 +95,21 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
     Fam_Memory_Type get_memtype();
     std::string get_rpcaddr();
     Fam_Backup_Info get_backup_info(std::string BackupName);
-    uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
-                     bool rwFlag);
+
+    void register_region_memory(uint64_t regionId, bool accessType);
+
+    Fam_Region_Memory get_region_memory(uint64_t regionId, bool accessType);
+
+    Fam_Region_Memory open_region_with_registration(uint64_t regionId,
+                                                    bool accessType);
+
+    void open_region_without_registration(uint64_t regionId);
+
+    uint64_t close_region(uint64_t regionId);
+
+    Fam_Dataitem_Memory get_dataitem_memory(uint64_t regionId, uint64_t offset,
+                                            uint64_t size, bool accessType);
+
     configFileParams get_config_info(std::string filename);
 
     void init_atomic_queue();
@@ -138,13 +150,29 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
                                    size_t memServerInfoSize,
                                    uint64_t memoryServerCount);
 
+    uint64_t get_memory_server_id() { return memory_server_id; }
+
+    // get and set controlpath address definitions
+    void set_controlpath_addr(string addr);
+    string get_controlpath_addr();
+
+    // get and set get_rpc_framework_type and thallium_protocol definitions
+    void set_rpc_framework_protocol(configFileParams file_options);
+    string get_rpc_framework_type();
+    string get_rpc_protocol_type();
+
+    void create_region_failure_cleanup(uint64_t regionId);
+
   private:
     Memserver_Allocator *allocator;
     pthread_mutex_t casLock[CAS_LOCK_CNT];
-    Fam_Memory_Registration *memoryRegistration;
+    Fam_Server_Resource_Manager *famResourceManager;
     std::string fam_backup_path;
     Fam_Memory_Type memServermemType;
     uint64_t memory_server_id;
+    bool isSharedMemory;
+    bool enableResourceRelease;
+    bool isBaseRequire;
     std::string fam_path;
     std::string libfabricPort;
     std::string libfabricProvider;
@@ -152,6 +180,16 @@ class Fam_Memory_Service_Direct : public Fam_Memory_Service {
     std::string rpc_interface;
     std::string if_device;
     std::vector<std::tuple<uint64_t, size_t, void *>> *memServerInfoV;
+    string controlpath_addr, rpc_framework_type, rpc_protocol_type;
+
+    Fam_Ops_Libfabric *famOps;
+    int libfabricProgressMode;
+    std::thread progressThread;
+    boost::atomic<bool> haltProgress;
+    void fabric_initialize(const char *name, const char *service,
+                           const char *provider, const char *if_device);
+    void fabric_finalize();
+    void progress_thread();
 };
 
 } // namespace openfam

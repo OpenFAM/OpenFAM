@@ -1,6 +1,6 @@
 /*
  * fam_cis_client.cpp
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -121,6 +121,7 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     req.set_redundancylevel(regionAttributes->redundancyLevel);
     req.set_memorytype(regionAttributes->memoryType);
     req.set_interleaveenable(regionAttributes->interleaveEnable);
+    req.set_permissionlevel(regionAttributes->permissionLevel);
     req.set_uid(uid);
     req.set_gid(gid);
 
@@ -130,9 +131,7 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     Fam_Region_Item_Info info;
     info.regionId = res.regionid();
     info.offset = res.offset();
-    info.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
-    info.memoryType = (Fam_Memory_Type)res.memorytype();
-    info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
+
     return info;
 }
 
@@ -192,13 +191,27 @@ Fam_Region_Item_Info Fam_CIS_Client::allocate(string name, size_t nbytes,
     Fam_Region_Item_Info info;
     info.regionId = res.regionid();
     info.used_memsrv_cnt = res.memsrv_list_size();
-    info.offset = res.offset();
     info.interleaveSize = res.interleave_size();
+    info.permissionLevel = (Fam_Permission_Level)res.permission_level();
     for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
         info.memoryServerIds[i] = res.memsrv_list((int)i);
-        info.baseAddressList[i] = (void *)res.base_addr_list((int)i);
-        info.keys[i] = res.keys((int)i);
     }
+
+    if (info.permissionLevel == REGION) {
+        for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+            info.dataitemOffsets[i] = res.offsets((int)i);
+        }
+    } else {
+        if (res.item_registration_status()) {
+            for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+                info.dataitemKeys[i] = res.keys((int)i);
+                info.baseAddressList[i] = res.base_addr_list((int)i);
+            }
+        }
+        info.itemRegistrationStatus = res.item_registration_status();
+        info.dataitemOffsets[0] = res.offsets(0);
+    }
+    info.perm = (mode_t)res.perm();
     return info;
 }
 
@@ -283,6 +296,7 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name, uint32_t uid,
     info.redundancyLevel = (Fam_Redundancy_Level)res.redundancylevel();
     info.memoryType = (Fam_Memory_Type)res.memorytype();
     info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
+    info.permissionLevel = (Fam_Permission_Level)res.permissionlevel();
     return info;
 }
 
@@ -311,6 +325,7 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup(string itemName, string regionName,
     info.uid = res.uid();
     info.gid = res.gid();
     info.interleaveSize = res.interleave_size();
+    info.permissionLevel = (Fam_Permission_Level)res.permission_level();
     for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
         info.memoryServerIds[i] = res.memsrv_list((int)i);
     }
@@ -342,6 +357,7 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
     info.memoryType = (Fam_Memory_Type)res.memorytype();
     info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     info.interleaveSize = res.interleavesize();
+    info.permissionLevel = (Fam_Permission_Level)res.permissionlevel();
     info.used_memsrv_cnt = res.memsrv_list_size();
     for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
         info.memoryServerIds[i] = res.memsrv_list((int)i);
@@ -369,17 +385,29 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_item_info(
     STATUS_CHECK(CIS_Exception)
 
     Fam_Region_Item_Info info;
-    info.base = (void *)res.base();
+    info.base = res.base();
     info.size = res.size();
     info.perm = (mode_t)res.perm();
     info.used_memsrv_cnt = res.memsrv_list_size();
     strncpy(info.name, (res.name()).c_str(), res.maxnamelen());
     info.offset = res.offset();
     info.interleaveSize = res.interleave_size();
+    info.permissionLevel = (Fam_Permission_Level)res.permission_level();
     for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
         info.memoryServerIds[i] = res.memsrv_list((int)i);
-        info.baseAddressList[i] = (void *)res.base_addr_list((int)i);
-        info.keys[i] = res.keys((int)i);
+    }
+
+    if (info.permissionLevel == REGION) {
+        for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+            info.dataitemOffsets[i] = res.offsets((int)i);
+        }
+    } else {
+        for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
+            info.dataitemKeys[i] = res.keys((int)i);
+            info.baseAddressList[i] = res.base_addr_list((int)i);
+        }
+        info.itemRegistrationStatus = res.item_registration_status();
+        info.dataitemOffsets[0] = res.offsets(0);
     }
     return info;
 }
@@ -409,6 +437,7 @@ Fam_Region_Item_Info Fam_CIS_Client::get_stat_info(uint64_t regionId,
     info.gid = res.gid();
     info.used_memsrv_cnt = res.memsrv_list_size();
     info.interleaveSize = res.interleave_size();
+    info.permissionLevel = (Fam_Permission_Level)res.permission_level();
     for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
         info.memoryServerIds[i] = res.memsrv_list((int)i);
     }
@@ -1106,6 +1135,105 @@ int Fam_CIS_Client::gather_indexed_atomic(
 
     STATUS_CHECK(CIS_Exception)
     return 0;
+}
+
+void Fam_CIS_Client::open_region_with_registration(
+    uint64_t regionId, uint32_t uid, uint32_t gid,
+    std::vector<uint64_t> *memserverIds,
+    Fam_Region_Memory_Map *regionMemoryMap) {
+    ::grpc::ClientContext ctx;
+    Fam_Region_Request req;
+    Fam_Region_Response res;
+
+    req.set_regionid(regionId);
+    req.set_uid(uid);
+    req.set_gid(gid);
+
+    ::grpc::Status status =
+        stub->open_region_with_registration(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+
+    for (int i = 0; i < res.region_key_map_size(); i++) {
+        ::Fam_Region_Response::Region_Key_Map regionKeyMap =
+            res.region_key_map(i);
+        std::vector<uint64_t> keyVector;
+        std::vector<uint64_t> baseVector;
+        for (int j = 0; j < regionKeyMap.region_keys_size(); j++) {
+            keyVector.push_back(regionKeyMap.region_keys(j));
+            baseVector.push_back(regionKeyMap.region_base(j));
+        }
+        Fam_Region_Memory regionMemory;
+        regionMemory.keys = keyVector;
+        regionMemory.base = baseVector;
+        regionMemoryMap->insert({regionKeyMap.memserver_id(), regionMemory});
+        memserverIds->push_back(res.memsrv_list(i));
+    }
+}
+
+void Fam_CIS_Client::open_region_without_registration(
+    uint64_t regionId, std::vector<uint64_t> *memserverIds) {
+    ::grpc::ClientContext ctx;
+    Fam_Region_Request req;
+    Fam_Region_Response res;
+
+    req.set_regionid(regionId);
+
+    ::grpc::Status status =
+        stub->open_region_without_registration(&ctx, req, &res);
+
+    for (int i = 0; i < res.memsrv_list_size(); i++) {
+        memserverIds->push_back(res.memsrv_list(i));
+    }
+
+    STATUS_CHECK(CIS_Exception)
+}
+
+void Fam_CIS_Client::get_region_memory(uint64_t regionId, uint32_t uid,
+                                       uint32_t gid,
+                                       Fam_Region_Memory_Map *regionMemoryMap) {
+    ::grpc::ClientContext ctx;
+    Fam_Region_Request req;
+    Fam_Region_Response res;
+
+    req.set_regionid(regionId);
+    req.set_uid(uid);
+    req.set_gid(gid);
+
+    ::grpc::Status status = stub->get_region_memory(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
+
+    for (int i = 0; i < res.region_key_map_size(); i++) {
+        ::Fam_Region_Response::Region_Key_Map regionKeyMap =
+            res.region_key_map(i);
+        std::vector<uint64_t> keyVector;
+        std::vector<uint64_t> baseVector;
+        for (int j = 0; j < regionKeyMap.region_keys_size(); j++) {
+            keyVector.push_back(regionKeyMap.region_keys(j));
+            baseVector.push_back(regionKeyMap.region_base(j));
+        }
+        Fam_Region_Memory regionMemory;
+        regionMemory.keys = keyVector;
+        regionMemory.base = baseVector;
+        regionMemoryMap->insert({regionKeyMap.memserver_id(), regionMemory});
+    }
+}
+
+void Fam_CIS_Client::close_region(uint64_t regionId,
+                                  std::vector<uint64_t> memserverIds) {
+    ::grpc::ClientContext ctx;
+    Fam_Region_Request req;
+    Fam_Region_Response res;
+
+    req.set_regionid(regionId);
+    for (auto id : memserverIds) {
+        req.add_memsrv_list(id);
+    }
+
+    ::grpc::Status status = stub->close_region(&ctx, req, &res);
+
+    STATUS_CHECK(CIS_Exception)
 }
 
 } // namespace openfam

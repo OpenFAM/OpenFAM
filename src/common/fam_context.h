@@ -1,8 +1,9 @@
 /*
  * fam_context.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -92,12 +93,12 @@ class Fam_Context {
 
     int initialize_cntr(struct fid_domain *domain, struct fid_cntr **cntr);
 
-    void aquire_RDLock() {
+    void acquire_RDLock() {
         if (famThreadModel == FAM_THREAD_MULTIPLE)
             pthread_rwlock_rdlock(&ctxRWLock);
     }
 
-    void aquire_WRLock() {
+    void acquire_WRLock() {
         if (famThreadModel == FAM_THREAD_MULTIPLE)
             pthread_rwlock_wrlock(&ctxRWLock);
     }
@@ -118,6 +119,17 @@ class Fam_Context {
     void inc_num_rx_fail_cnt(uint64_t cnt) {
         __sync_fetch_and_add(&numLastRxFailCnt, cnt);
     }
+    void register_heap(void *base, size_t len, struct fid_domain *domain,
+                       size_t iov_limit);
+    void **get_mr_descs(const void *local_addr, size_t local_size) {
+        if (local_buf_size != 0 &&
+            (char *)local_addr >= (char *)local_buf_base &&
+            (char *)local_addr + local_size <=
+                (char *)local_buf_base + local_buf_size)
+            return mr_descs;
+        else
+            return 0;
+    }
 
   private:
     struct fid_ep *ep;
@@ -125,6 +137,10 @@ class Fam_Context {
     struct fid_cq *rxcq;
     struct fid_cntr *txCntr;
     struct fid_cntr *rxCntr;
+    void **mr_descs = NULL;
+    void *local_buf_base = NULL;
+    size_t local_buf_size = 0;
+    struct fid_mr *mr = NULL;
 
     uint64_t numTxOps;
     uint64_t numRxOps;

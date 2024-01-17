@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # build.sh
-# Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All rights
+# Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All rights
 # reserved. Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
 # 1. Redistributions of source code must retain the above copyright notice,
@@ -32,7 +32,7 @@
 #This script assumes you have NOPASSWD access to sudo command
 #If it doesnt work, encourage you to copy paste the command and workaround,
 #Or you can edit sudoers file to give NOPASSWD access.
-#This script should work on ubunutu 18.04 and centos 7.x. (We have tested on centos 7.8). 
+#This script should work on ubuntu 18.04 and centos 7.x. (We have tested on centos 7.8).
 #
 print_help() {
     tput bold
@@ -96,7 +96,7 @@ INCLUDE_DIR="$BUILD_DIR/include"
 CURRENT_DIR=`pwd`
 PMIX_OBJ_DIR="$CURRENT_DIR/$BUILD_DIR"
 ABS_BUILD_DIR="$CURRENT_DIR/$BUILD_DIR"
-#For parallel compilation, make -j is selected. For systems with limited DRAM, 
+#For parallel compilation, make -j is selected. For systems with limited DRAM,
 #avoid using -j option for all make commands
 #TODO: set no_parallel_make by looking at system configuration
 if [ "$no_parallel_make" == "true" ]
@@ -159,10 +159,10 @@ case $OS in
 		   	            exit 1
 		                fi
 			fi
-	    		;;		    
+			;;
     		    *18.04*)
 			if [ "$no_package_install" != "true" ]
-			then	
+			then
 			    sudo apt-get install --assume-yes ${ubuntu18_package_list}
 		            if [[ $? > 0 ]]
       	                    then
@@ -196,7 +196,7 @@ case $OS in
 			;;
 	"opensuse-leap" | "sles")
 		case $(get_os_release_version) in
-                     *15*SP3*)
+                     *15*SP3* | *15*SP4*)
 		         if [ "$no_package_install" != "true" ]
 		         then
                             sudo zypper --non-interactive install ${sles15_sp3_package_list}
@@ -204,11 +204,11 @@ case $OS in
 		            then
 			       echo "zypper install failed, exiting..."
 			    exit 1
-		         fi 
+		         fi
 	                fi
 	             ;;
 	             *)
-			     echo "Unsupported os version, Supported SLES version : 15 SP3"
+			     echo "Unsupported os version, Supported SLES version : 15 SP3 & SP4"
 			     exit 1
 			     ;;
 	             esac
@@ -218,8 +218,8 @@ case $OS in
 		exit 1
 		;;
 
-esac		
-if [ "$no_package_install" != "true" ] 
+esac
+if [ "$no_package_install" != "true" ]
 then
 	pip3 install ruamel.yaml
 	pip3 install tabulate
@@ -246,7 +246,7 @@ then
 fi
 
 #installing gRPC
-make install 
+make install
 if [[ $? > 0 ]]
 then
         echo "Make install of grpc failed.. exit..."

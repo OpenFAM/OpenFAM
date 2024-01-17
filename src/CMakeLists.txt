@@ -42,14 +42,19 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_library(fammetadata SHARED ${METADATA_CLIENT_SRC})
 add_definitions(-DFAM_ATOMIC_NATIVE)
 
-target_link_libraries(fammetadata yaml-cpp nvmm radixtree grpc grpc++ grpc++_reflection boost_system grpc_plugin_support gpr protobuf)
+if (ENABLE_THALLIUM)
+	set (thallium_lib "thallium")
+else()
+	set (thallium_lib "")
+endif()
+target_link_libraries(fammetadata yaml-cpp nvmm radixtree grpc grpc++ grpc++_reflection boost_system grpc_plugin_support gpr protobuf ${thallium_lib})
 
 add_library(openfam SHARED ${LIBOPENFAM_SRC})
 
 if(USE_BOOST_FIBER)
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection gpr yaml-cpp nvmm boost_fiber boost_context pmix pmi2 fambitmap)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection gpr yaml-cpp nvmm boost_fiber boost_context pmix pmi2 fambitmap ${thallium_lib})
 else()
-	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection gpr yaml-cpp nvmm boost_context pmix pmi2 fambitmap)
+	target_link_libraries(openfam fabric fammetadata grpc grpc++ grpc++_reflection gpr yaml-cpp nvmm boost_context pmix pmi2 fambitmap ${thallium_lib})
 endif()
 
 
@@ -62,22 +67,22 @@ set_target_properties(openfam PROPERTIES
 add_executable(cis_server ${CIS_SERVER_SRC})
 
 if(USE_BOOST_FIBER)
-	target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection gpr protobuf yaml-cpp nvmm boost_system boost_thread boost_fiber boost_context fambitmap radixtree)
+	target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection gpr protobuf yaml-cpp nvmm boost_system boost_thread boost_fiber boost_context fambitmap radixtree ${thallium_lib})
 else()
-	target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection gpr protobuf yaml-cpp nvmm boost_system boost_thread boost_context fambitmap radixtree)
+	target_link_libraries(cis_server fabric grpc grpc++ grpc++_reflection gpr protobuf yaml-cpp nvmm boost_system boost_thread boost_context fambitmap radixtree ${thallium_lib})
 endif()
 
 add_executable (memory_server ${MEMORY_SERVER_SRC})
 
 if(USE_BOOST_FIBER)
-	target_link_libraries(memory_server fabric radixtree grpc grpc++ grpc++_reflection gpr protobuf yaml-cpp nvmm boost_system boost_thread boost_fiber boost_context fambitmap)
+	target_link_libraries(memory_server fabric radixtree grpc grpc++ grpc++_reflection gpr protobuf yaml-cpp nvmm boost_system boost_thread boost_fiber boost_context fambitmap ${thallium_lib})
 else()
-	target_link_libraries(memory_server fabric radixtree grpc grpc++ grpc++_reflection gpr protobuf yaml-cpp nvmm boost_system boost_thread boost_context fambitmap)
+	target_link_libraries(memory_server fabric radixtree grpc grpc++ grpc++_reflection gpr protobuf yaml-cpp nvmm boost_system boost_thread boost_context fambitmap ${thallium_lib})
 endif()
 
 add_executable (metadata_server ${METADATA_SERVER_SRC})
 
-target_link_libraries(metadata_server yaml-cpp nvmm radixtree grpc grpc++ grpc++_reflection gpr protobuf boost_system fambitmap)
+target_link_libraries(metadata_server yaml-cpp nvmm radixtree grpc grpc++ grpc++_reflection gpr protobuf boost_system fambitmap ${thallium_lib})
 
 add_library(openfam_c SHARED ${LIBOPENFAM_C_SRC})
 

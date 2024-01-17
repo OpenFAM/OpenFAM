@@ -85,7 +85,7 @@ int main(void) {
 
         // The first integer in FAM is now less than or equal to 10
         printf("Old value of first integer element in FAM: %d\n", oldValue);
-        printf("fam_fetch_min API successfull!!\n");
+        printf("fam_fetch_min API successful!!\n");
 
         // ... subsequent code here
     } catch (Fam_Exception &e) {
@@ -98,7 +98,7 @@ int main(void) {
     try {
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(region);
-        // printf("fam_destroy_region successfull\n");
+        // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());

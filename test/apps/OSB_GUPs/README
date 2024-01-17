@@ -29,7 +29,7 @@ Modifications copyright (C) 2021 Advanced Micro Devices, Inc. All rights reserve
 5.	How to run
 	5.1	Copy OSB_GUPs files to the following directory: ../OpenFAM-master/test/apps/
 	5.2	Go to ../OpenFAM-master/build/test/apps/OSB_GUPs to build it via "make clean", "make"
-	5.3	Run the OpenFAM servers: "source ../OpenFAM-master/build/setup.sh --memserver=127.0.0.1 --metaserver=127.0.0.1 --cisserver=127.0.0.1"
+	5.3	Run the OpenFAM servers using openfam_adm
 	5.4	Load data to FAM: "../OpenFAM-master/third-party/build/bin/mpirun -np 1 ./fam_GUPS 0 2 0"
 	5.5	Run: "../OpenFAM-master/third-party/build/bin/mpirun -np 2 ./fam_GUPS 1 2 0"
 	    where ../OpenFAM-master/third-party/build/bin/mpirun -np  arg_0 ./fam_GUPS arg_1 arg_2 arg_3

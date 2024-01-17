@@ -1,6 +1,6 @@
 /*
  * fam_swap_atomics_reg_test.cpp
- * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019, 2022, 2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -79,7 +79,7 @@ TEST(FamSwapAtomics, SwapInt32) {
                      << testOffset[ofs] << ", oldValue=" << hex << oldValue[i]
                      << ", newValue=" << hex << newValue[i] << endl;
 
-                int32_t result;
+                int32_t result = 0;
                 EXPECT_NO_THROW(
                     my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
                 EXPECT_NO_THROW(my_fam->fam_quiet());
@@ -127,7 +127,7 @@ TEST(FamSwapAtomics, SwapUInt32) {
                      << ", oldValue=" << hex << oldValue[i]
                      << ", newValue=" << hex << newValue[i] << endl;
 
-                uint32_t result;
+                uint32_t result = 0;
                 EXPECT_NO_THROW(
                     my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
                 EXPECT_NO_THROW(my_fam->fam_quiet());
@@ -177,7 +177,7 @@ TEST(FamSwapAtomics, SwapInt64) {
                      << ", oldValue=" << hex << oldValue[i]
                      << ", newValue=" << hex << newValue[i] << endl;
 
-                int64_t result;
+                int64_t result = 0;
                 EXPECT_NO_THROW(
                     my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
                 EXPECT_NO_THROW(my_fam->fam_quiet());
@@ -227,7 +227,7 @@ TEST(FamSwapAtomics, SwapUInt64) {
                      << ", oldValue=" << hex << oldValue[i]
                      << ", newValue=" << hex << newValue[i] << endl;
 
-                uint64_t result;
+                uint64_t result = 0;
                 EXPECT_NO_THROW(
                     my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
                 EXPECT_NO_THROW(my_fam->fam_quiet());

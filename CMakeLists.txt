@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -23,6 +23,7 @@
 cmake_minimum_required(VERSION 2.8.11)
 project(OpenFAM)
 
+set (CMAKE_CXX_STANDARD 14)
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release")
 endif()
@@ -64,11 +65,30 @@ if(ENABLE_MEMORYSERVER_PROFILING)
         add_definitions(-DMEMSERVER_PROFILE)
 endif()
 
-if(ENABLE_CHECK_OFFSETS)
+# Region Registration requires offset checks to be enabled.
+# However it is not mandatory for data item registrations.
+# As a temporary fix, enabling CHECK_OFFSETS as a default
+# for both PERMISSION_LEVELS.
+# TODO: Change these in OpenFAM code as per permission
+# levels in future releases.
+
+if(ENABLE_CHECK_OFFSETS EQUAL 0)
+	message(STATUS "Offset checks disabled")
+else()
 	message(STATUS "Offset checks enabled")
 	add_definitions(-DCHECK_OFFSETS)
 endif()
 
+if(ENABLE_THALLIUM)
+        message(STATUS "Thallium RPC enabled")
+        add_definitions(-DUSE_THALLIUM)
+        find_package (thallium REQUIRED)
+endif()
+
+if(ENABLE_RESOURCE_RELEASE_ITEM_PERM)
+	message(STATUS "Enabling resource relinquishment for region with DATAITEM permission")
+	add_definitions(-DENABLE_RESOURCE_RELEASE_ITEM_PERM)
+endif()
 message(STATUS "====================")
 
 #
@@ -77,12 +97,14 @@ message(STATUS "====================")
 # To Be Fixed :
 # -Wcast-qual : grpc headers throw up these warning during build
 # of gRPC generated files
-set(CMAKE_CXX_FLAGS "-std=c++11 -pthread")
+set(CMAKE_CXX_FLAGS "-std=c++14 -pthread")
 set(CMAKE_CXX_FLAGS
         "${CMAKE_CXX_FLAGS} -Wall -W -Wextra -Wredundant-decls -Wunused -Wunused-macros -Wno-unused-parameter -Wcast-align -Wwrite-strings -Wmissing-field-initializers -Wendif-labels -Winit-self -Wlogical-op -Wpacked -Wstack-protector -Wformat=2 -Wswitch-enum -Wstrict-overflow=5 -Wpointer-arith -Wnormalized=nfc -Wno-long-long -Wconversion -Wunreachable-code")
 # Convert all warnings to errors
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror")
-
+if(ENABLE_THALLIUM)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fconcepts-ts")
+endif()
 
 #
 # gcc flags for release build
@@ -107,7 +129,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 set(GTEST_ROOT ${PROJECT_SOURCE_DIR}/third-party/googletest)
 
 add_subdirectory(third-party)
-include_directories(${PROJECT_SOURCE_DIR}/third-party/googletest/include)
+include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/third-party/googletest/include)
 
 #
 # include directories

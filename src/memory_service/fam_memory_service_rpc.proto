@@ -1,8 +1,9 @@
 /*
  * fam_memory_service_rpc.proto
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -69,7 +70,22 @@ service Fam_Memory_Service_Rpc {
     rpc get_local_pointer(Fam_Memory_Service_Request)
         returns (Fam_Memory_Service_Response) {}
 
-    rpc get_key(Fam_Memory_Service_Request)
+    rpc register_region_memory(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+
+    rpc get_region_memory(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+
+    rpc open_region_with_registration(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+
+    rpc open_region_without_registration(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+
+    rpc close_region(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
+
+    rpc get_dataitem_memory(Fam_Memory_Service_Request)
         returns (Fam_Memory_Service_Response) {}
 
     rpc get_atomic(Fam_Memory_Atomic_Get_Request)
@@ -86,6 +102,8 @@ service Fam_Memory_Service_Rpc {
         returns (Fam_Memory_Atomic_Response) {}
     rpc update_memserver_addrlist(Fam_Memory_Service_Addr_Info)
         returns (Fam_Memory_Service_General_Response) {}
+    rpc create_region_failure_cleanup(Fam_Memory_Service_Request)
+        returns (Fam_Memory_Service_Response) {}
 }
 
 /*
@@ -109,7 +127,10 @@ message Fam_Memory_Service_General_Response {
 message Fam_Memory_Service_Start_Response {
     repeated fixed32 addrname = 1;
     uint64 addrnamelen = 2;
-    uint32 memorytype = 3; 
+    uint32 memorytype = 3;
+    uint64 memserver_id = 4;
+    repeated fixed32 rpc_addrname = 5;
+    uint64 rpc_addrnamelen = 6;
 }
 
 /*
@@ -131,8 +152,9 @@ message Fam_Memory_Service_Addr_Info {
 message Fam_Memory_Service_Request {
     uint64 region_id = 1;
     uint64 offset = 2;
-    bool rw_flag = 5;
-    uint64 size = 7;
+    bool rw_flag = 3;
+    uint64 size = 4;
+    bool unregister_memory = 5;
 }
 
 /*
@@ -145,8 +167,11 @@ message Fam_Memory_Service_Response {
     uint64 offset = 2;
     uint64 key = 3;
     uint64 base = 4;
-    uint32 errorcode = 5;
-    string errormsg = 6;
+    repeated uint64 region_keys = 5;
+    repeated uint64 region_base = 6;
+    uint32 errorcode = 7;
+    string errormsg = 8;
+    uint64 resource_status = 9;
 }
 
 message Fam_Memory_Copy_Request {

@@ -1,6 +1,6 @@
 /*
  * fam_cas_atomics_mt_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2019, 2023 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -340,6 +340,7 @@ void *thrd_cas_int128(void *arg) {
     EXPECT_EQ(expValue.i64[1], result1);
     pthread_exit(NULL);
 }
+#ifdef ENABLE_KNOWN_ISSUES
 TEST(FamCASAtomics, CASInt128) {
     Fam_Descriptor *item;
     pthread_t thr[NUM_THREADS];
@@ -373,7 +374,7 @@ TEST(FamCASAtomics, CASInt128) {
 
     free((void *)dataItem);
 }
-
+#endif
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

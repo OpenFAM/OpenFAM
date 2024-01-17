@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_direct.cpp
- * Copyright (c) 2020-2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -31,6 +31,7 @@
 #include "fam_memory_service_direct.h"
 #include "common/atomic_queue.h"
 #include "common/fam_config_info.h"
+#include "common/fam_internal.h"
 #include "common/fam_memserver_profile.h"
 #include <thread>
 
@@ -106,6 +107,8 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(uint64_t memserver_id,
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
 
+    set_rpc_framework_protocol(config_options);
+
     std::string memType = config_options["Memservers:memory_type"];
     fam_path = (char *)strdup(config_options["Memservers:fam_path"].c_str());
     // default case??
@@ -141,12 +144,23 @@ Fam_Memory_Service_Direct::Fam_Memory_Service_Direct(uint64_t memserver_id,
                   S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
         }
     }
-    if (isSharedMemory) {
-        memoryRegistration = new Fam_Memory_Registration_SHM();
+
+    if (strcmp(config_options["resource_release"].c_str(), "enable") == 0) {
+        enableResourceRelease = true;
     } else {
-        memoryRegistration = new Fam_Memory_Registration_Libfabric(
-            addr.c_str(), libfabricPort.c_str(), libfabricProvider.c_str(),
-            if_device.c_str());
+        enableResourceRelease = false;
+    }
+
+    this->isSharedMemory = isSharedMemory;
+    if (isSharedMemory) {
+        famResourceManager =
+            new Fam_Server_Resource_Manager(allocator, enableResourceRelease);
+        isBaseRequire = true;
+    } else {
+        fabric_initialize(addr.c_str(), libfabricPort.c_str(),
+                          libfabricProvider.c_str(), if_device.c_str());
+        famResourceManager = new Fam_Server_Resource_Manager(
+            allocator, enableResourceRelease, false, famOps);
     }
 
     for (int i = 0; i < CAS_LOCK_CNT; i++) {
@@ -170,8 +184,67 @@ Fam_Memory_Service_Direct::~Fam_Memory_Service_Direct() {
     for (int i = 0; i < CAS_LOCK_CNT; i++) {
         (void)pthread_mutex_destroy(&casLock[i]);
     }
+
+    if (!isSharedMemory) {
+        fabric_finalize();
+    }
+
     delete allocator;
-    delete memoryRegistration;
+    delete famResourceManager;
+}
+
+void Fam_Memory_Service_Direct::fabric_initialize(const char *name,
+                                                  const char *service,
+                                                  const char *provider,
+                                                  const char *if_device) {
+    ostringstream message;
+    famOps =
+        new Fam_Ops_Libfabric(true, provider, if_device, FAM_THREAD_MULTIPLE,
+                              NULL, FAM_CONTEXT_DEFAULT, name, service);
+    int ret = famOps->initialize();
+    if (ret < 0) {
+        message << "famOps initialization failed";
+        throw Memory_Service_Exception(OPS_INIT_FAILED, message.str().c_str());
+    }
+
+    struct fi_info *fi = famOps->get_fi();
+    if (fi->domain_attr->control_progress == FI_PROGRESS_MANUAL ||
+        fi->domain_attr->data_progress == FI_PROGRESS_MANUAL) {
+        libfabricProgressMode = FI_PROGRESS_MANUAL;
+    }
+
+    if (libfabricProgressMode == FI_PROGRESS_MANUAL) {
+        haltProgress = false;
+        progressThread =
+            std::thread(&Fam_Memory_Service_Direct::progress_thread, this);
+    }
+
+    if (strncmp(famOps->get_provider(), "verbs", 5) == 0)
+        isBaseRequire = true;
+    else
+        isBaseRequire = false;
+    famOpsLibfabricQ = famOps;
+}
+
+void Fam_Memory_Service_Direct::fabric_finalize() {
+    if (libfabricProgressMode == FI_PROGRESS_MANUAL) {
+        haltProgress = true;
+        progressThread.join();
+    }
+
+    famOps->finalize();
+    delete famOps;
+}
+
+void Fam_Memory_Service_Direct::progress_thread() {
+    if (libfabricProgressMode == FI_PROGRESS_MANUAL) {
+        while (1) {
+            if (!haltProgress)
+                famOps->check_progress();
+            else
+                break;
+        }
+    }
 }
 
 void Fam_Memory_Service_Direct::reset_profile() {
@@ -179,23 +252,23 @@ void Fam_Memory_Service_Direct::reset_profile() {
     MEMSERVER_PROFILE_INIT(MEMORY_SERVICE_DIRECT)
     MEMSERVER_PROFILE_START_TIME(MEMORY_SERVICE_DIRECT)
     allocator->reset_profile();
-    memoryRegistration->reset_profile();
     return;
 }
 
 void Fam_Memory_Service_Direct::dump_profile() {
     MEMORY_SERVICE_DIRECT_PROFILE_DUMP();
     allocator->dump_profile();
-    memoryRegistration->dump_profile();
 }
 
 void Fam_Memory_Service_Direct::update_memserver_addrlist(
     void *memServerInfoBuffer, size_t memServerInfoSize,
     uint64_t memoryServerCount) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    memoryRegistration->update_memserver_addrlist(
-        memServerInfoBuffer, memServerInfoSize, memoryServerCount,
-        memory_server_id);
+    // This function is used only in memory server model
+    if (isSharedMemory)
+        return;
+    famOps->populate_address_vector(memServerInfoBuffer, memServerInfoSize,
+                                    memoryServerCount, memory_server_id);
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_update_memserver_addrlist);
 }
 
@@ -208,13 +281,47 @@ void Fam_Memory_Service_Direct::create_region(uint64_t regionId,
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_create_region);
 }
 
-void Fam_Memory_Service_Direct::destroy_region(uint64_t regionId) {
+void Fam_Memory_Service_Direct::destroy_region(uint64_t regionId,
+                                               uint64_t *resourceStatus) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
 
     allocator->destroy_region(regionId);
-
-    memoryRegistration->deregister_region_memory(regionId);
-
+    if (!isSharedMemory) {
+        if (!enableResourceRelease) {
+            Fam_Server_Resource *famResource =
+                famResourceManager->find_resource(regionId);
+            if (famResource) {
+                famResourceManager->unregister_region_memory(famResource);
+                famResource->statusAndRefcount =
+                    CONCAT_STATUS_REFCNT(RELEASED, 0);
+            }
+            *resourceStatus = RELEASED;
+        } else {
+            Fam_Server_Resource *famResource =
+                famResourceManager->find_resource(regionId);
+            if (famResource) {
+                if (famResource->permissionLevel == DATAITEM) {
+#ifdef ENABLE_RESOURCE_RELEASE_ITEM_PERM
+                    uint64_t readValue =
+                        ATOMIC_READ(&famResource->statusAndRefcount);
+                    *resourceStatus = GET_STATUS(readValue);
+                    ATOMIC_WRITE(&famResource->destroyed, true);
+#else
+                    famResourceManager->unregister_region_memory(famResource);
+                    famResource->statusAndRefcount =
+                        CONCAT_STATUS_REFCNT(RELEASED, 0);
+                    *resourceStatus = RELEASED;
+#endif
+                } else {
+                    uint64_t readValue =
+                        ATOMIC_READ(&famResource->statusAndRefcount);
+                    *resourceStatus = GET_STATUS(readValue);
+                }
+            } else {
+                *resourceStatus = RELEASED;
+            }
+        }
+    }
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_destroy_region);
 }
 
@@ -223,8 +330,27 @@ void Fam_Memory_Service_Direct::resize_region(uint64_t regionId,
 
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
 
-    allocator->resize_region(regionId, nbytes);
+    int newExtentIdx;
+    allocator->resize_region(regionId, nbytes, &newExtentIdx);
 
+    // Register the newly added extent if region registration is enabled for the
+    // region
+    if (!isSharedMemory) {
+        Fam_Server_Resource *famResource =
+            famResourceManager->find_resource(regionId);
+        if (famResource) {
+            if (famResource->permissionLevel == REGION) {
+                // get the updated extent details
+                Fam_Region_Extents_t extents;
+                allocator->get_region_extents(regionId, &extents);
+                famResourceManager->register_memory(
+                    regionId, newExtentIdx - 1,
+                    extents.addrList[newExtentIdx - 1],
+                    extents.sizes[newExtentIdx - 1], famResource->accessType,
+                    famResource);
+            }
+        }
+    }
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_resize_region);
 }
 
@@ -234,12 +360,6 @@ Fam_Region_Item_Info Fam_Memory_Service_Direct::allocate(uint64_t regionId,
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
 
     info.offset = allocator->allocate(regionId, nbytes);
-
-    if (memoryRegistration->is_base_require() && (info.offset != 0)) {
-        info.base = allocator->get_local_pointer(regionId, info.offset);
-    } else {
-        info.base = NULL;
-    }
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_allocate);
     return info;
 }
@@ -248,10 +368,39 @@ void Fam_Memory_Service_Direct::deallocate(uint64_t regionId, uint64_t offset) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
     ostringstream message;
 
+    if (!isSharedMemory) {
+        Fam_Server_Resource *famResource =
+            famResourceManager->find_resource(regionId);
+        if (famResource) {
+            if (enableResourceRelease) {
+                if (famResource->permissionLevel == DATAITEM) {
+                    uint64_t dataitemId = offset / MIN_OBJ_SIZE;
+#ifdef ENABLE_RESOURCE_RELEASE_ITEM_PERM
+                    /*
+                     * If ENABLE_RESOURCE_RELEASE_ITEM_PERM is defined, resource
+                     * relinquishmeet is enabled for region with DATAITEM level
+                     * permission. In that case, the deallocation is delayed
+                     * until the region is closed. This is done to avoid offset
+                     * being reused because, offset is part of registration key.
+                     */
+                    famResourceManager->mark_deallocated(regionId, dataitemId,
+                                                         famResource);
+                    return;
+#else
+                    famResourceManager->unregister_memory(regionId, dataitemId,
+                                                          famResource);
+#endif
+                }
+            } else {
+                if (famResource->permissionLevel == DATAITEM) {
+                    uint64_t dataitemId = offset / MIN_OBJ_SIZE;
+                    famResourceManager->unregister_memory(regionId, dataitemId,
+                                                          famResource);
+                }
+            }
+        }
+    }
     allocator->deallocate(regionId, offset);
-
-    memoryRegistration->deregister_memory(regionId, offset);
-
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_deallocate);
 
     return;
@@ -261,7 +410,7 @@ void *Fam_Memory_Service_Direct::get_local_pointer(uint64_t regionId,
                                                    uint64_t offset) {
     void *base;
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    if (memoryRegistration->is_base_require())
+    if (isBaseRequire)
         base = allocator->get_local_pointer(regionId, offset);
     else
         base = NULL;
@@ -277,12 +426,12 @@ void Fam_Memory_Service_Direct::copy(
     uint64_t srcInterleaveSize, uint64_t destInterleaveSize, uint64_t size) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
 
-    Fam_Ops_Libfabric *famOps =
-        ((Fam_Memory_Registration_Libfabric *)memoryRegistration)->get_famOps();
+    // This function is used only in memory server model
+    if (isSharedMemory)
+        return;
     Fam_Context *famCtx = famOps->get_defaultCtx(uint64_t(0));
 
     std::vector<fi_addr_t> *fiAddr = famOps->get_fiAddrs();
-
     uint64_t destDisplacement = destOffset % destInterleaveSize;
     // Get the local pointer to destination FAM offset
     void *local = allocator->get_local_pointer(destRegionId, destOffset);
@@ -444,15 +593,15 @@ void Fam_Memory_Service_Direct::copy(
      * Iterate over the vector of fi_context to ensure the completion of all IOs
      */
     if (!fiCtxVector.empty()) {
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         for (auto ctx : fiCtxVector) {
             try {
                 fabric_completion_wait(famCtx, ctx, 0);
-            } catch (...) {
+            } catch (Fam_Exception &e) {
                 famCtx->inc_num_rx_fail_cnt(1l);
                 // Release Fam_Context read lock
                 famCtx->release_lock();
-                throw;
+                throw e;
             }
         }
         famCtx->release_lock();
@@ -557,7 +706,10 @@ void Fam_Memory_Service_Direct::delete_backup(std::string BackupName) {
 size_t Fam_Memory_Service_Direct::get_addr_size() {
     size_t addrSize;
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    addrSize = memoryRegistration->get_addr_size();
+    // This function is used only in memory server model
+    if (isSharedMemory)
+        return 0;
+    addrSize = famOps->get_addr_size();
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_addr_size);
     return addrSize;
 }
@@ -565,7 +717,10 @@ size_t Fam_Memory_Service_Direct::get_addr_size() {
 void *Fam_Memory_Service_Direct::get_addr() {
     void *addr;
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    addr = memoryRegistration->get_addr();
+    // This function is used only in memory server model
+    if (isSharedMemory)
+        return NULL;
+    addr = famOps->get_addr();
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_addr);
     return addr;
 }
@@ -600,15 +755,122 @@ void Fam_Memory_Service_Direct::release_CAS_lock(uint64_t offset) {
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_release_CAS_lock);
 }
 
-uint64_t Fam_Memory_Service_Direct::get_key(uint64_t regionId, uint64_t offset,
-                                            uint64_t size, bool rwFlag) {
-    uint64_t key;
+/*
+ * This function only register region memory.
+ */
+void Fam_Memory_Service_Direct::register_region_memory(uint64_t regionId,
+                                                       bool accessType) {
     MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
-    void *base = allocator->get_local_pointer(regionId, offset);
-    key = memoryRegistration->register_memory(regionId, offset, base, size,
-                                              rwFlag);
-    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_key);
-    return key;
+
+    if (enableResourceRelease) {
+        /*
+         * Open the resource associated with the region.
+         * here FAM_INIT_ONLY is set, so that the reference count is set to zero
+         * and not incremented. FAM_REGISTER_MEMORY flag is set to register the
+         * region memory.
+         */
+        famResourceManager->open_resource(regionId, REGION, accessType,
+                                          FAM_REGISTER_MEMORY | FAM_INIT_ONLY);
+    } else {
+        /*
+         * If resource relinquishment is not enabled, register region memory but
+         * reference counts are not maintained.
+         */
+        famResourceManager->register_region_memory(regionId, accessType);
+    }
+
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_register_region_memory);
+}
+
+/*
+ * This function open the region and register the region memory.
+ */
+Fam_Region_Memory
+Fam_Memory_Service_Direct::open_region_with_registration(uint64_t regionId,
+                                                         bool accessType) {
+    Fam_Region_Memory regionMemory;
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    /*
+     * Open the resource associated with the region.
+     */
+    Fam_Server_Resource *famResource = famResourceManager->open_resource(
+        regionId, REGION, accessType, FAM_REGISTER_MEMORY);
+
+    /*
+     * Get the region memory information
+     */
+    regionMemory = famResourceManager->get_region_memory_info(
+        regionId, accessType, famResource);
+
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_region_memory);
+    return regionMemory;
+}
+
+/*
+ * This function open the region, but does not register region memory.
+ */
+void Fam_Memory_Service_Direct::open_region_without_registration(
+    uint64_t regionId) {
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    /*
+     * Open the resource associated with the region.
+     */
+    famResourceManager->open_resource(regionId, DATAITEM, true,
+                                      FAM_RESOURCE_DEFAULT);
+
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_region_memory);
+}
+
+/*
+ * This function closes the region. Internally it reduces the reference count.
+ * If reference count reaches zero, the resources associated with the region are
+ * released back to the system.
+ */
+uint64_t Fam_Memory_Service_Direct::close_region(uint64_t regionId) {
+    uint64_t status;
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    /*
+     * close the resource
+     */
+    status = famResourceManager->close_resource(regionId);
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_close_region)
+    return status;
+}
+
+/*
+ * This function get memory registration details of already opened region.
+ */
+Fam_Region_Memory
+Fam_Memory_Service_Direct::get_region_memory(uint64_t regionId,
+                                             bool accessType) {
+    Fam_Region_Memory regionMemory;
+    ostringstream message;
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    /*
+     * Get the region memory information
+     */
+    regionMemory =
+        famResourceManager->get_region_memory_info(regionId, accessType);
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_region_memory);
+    return regionMemory;
+}
+
+/*
+ * This function does memory registration of dataitem.
+ * Here dataitem ID is used as registration ID.
+ */
+Fam_Dataitem_Memory Fam_Memory_Service_Direct::get_dataitem_memory(
+    uint64_t regionId, uint64_t offset, uint64_t size, bool accessType) {
+    Fam_Dataitem_Memory dataitemMemory;
+    ostringstream message;
+    MEMORY_SERVICE_DIRECT_PROFILE_START_OPS()
+    /*
+     * Get the data item memory information
+     */
+    dataitemMemory = famResourceManager->get_dataitem_memory_info(
+        regionId, offset, size, accessType);
+    MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_get_dataitem);
+    return dataitemMemory;
 }
 
 /*
@@ -672,6 +934,13 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
             options["fam_backup_path"] = (char *)strdup("");
         }
         try {
+            options["resource_release"] = (char *)strdup(
+                (info->get_key_value("resource_release")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["resource_release"] = (char *)strdup("enable");
+        }
+        try {
             options["Memservers:memory_type"] = (char *)strdup(
                 (info->get_map_value("Memservers", memory_server_id,
                                      "memory_type"))
@@ -715,6 +984,13 @@ Fam_Memory_Service_Direct::get_config_info(std::string filename) {
         } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["Memservers:if_device"] = (char *)strdup("");
+        }
+        try {
+            options["rpc_framework_type"] = (char *)strdup(
+                (info->get_key_value("rpc_framework_type")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["rpc_framework_type"] = (char *)strdup("grpc");
         }
     }
     return options;
@@ -1012,6 +1288,41 @@ void Fam_Memory_Service_Direct::gather_indexed_atomic(
         }
     }
     MEMORY_SERVICE_DIRECT_PROFILE_END_OPS(mem_direct_gather_indexed_atomic)
+}
+
+// get and set controlpath address functions
+string Fam_Memory_Service_Direct::get_controlpath_addr() {
+    return controlpath_addr;
+}
+
+void Fam_Memory_Service_Direct::set_controlpath_addr(string addr) {
+    controlpath_addr = addr;
+}
+
+// get and set rpc_framework and rpc_protocol type
+void Fam_Memory_Service_Direct::set_rpc_framework_protocol(
+    configFileParams file_options) {
+    rpc_framework_type = file_options["rpc_framework_type"];
+    rpc_protocol_type = protocol_map(file_options["provider"]);
+}
+
+string Fam_Memory_Service_Direct::get_rpc_framework_type() {
+    return rpc_framework_type;
+}
+
+string Fam_Memory_Service_Direct::get_rpc_protocol_type() {
+    return rpc_protocol_type;
+}
+
+void Fam_Memory_Service_Direct::create_region_failure_cleanup(
+    uint64_t regionId) {
+    // Destroy the region
+    allocator->destroy_region(regionId);
+
+    if (!isSharedMemory) {
+        // close the resources opened for the region
+        famResourceManager->close_resource(regionId);
+    }
 }
 
 } // namespace openfam
