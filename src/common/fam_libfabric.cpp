@@ -1,6 +1,6 @@
 /*
  * fam_libfabric.cpp
- * Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -719,7 +719,7 @@ int fabric_write(uint64_t key, const void *local, size_t nbytes,
     ctx->fam_internal[2] = (void *)1;
 
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = 0,
+                             .desc = famCtx->get_mr_descs(local, nbytes),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -732,7 +732,7 @@ int fabric_write(uint64_t key, const void *local, size_t nbytes,
     uint64_t incr = 0;
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {
@@ -780,7 +780,7 @@ int fabric_read(uint64_t key, const void *local, size_t nbytes, uint64_t offset,
     ctx->fam_internal[2] = (void *)1;
 
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = 0,
+                             .desc = famCtx->get_mr_descs(local, nbytes),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -793,7 +793,7 @@ int fabric_read(uint64_t key, const void *local, size_t nbytes, uint64_t offset,
     uint64_t incr = 0;
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {
@@ -850,18 +850,21 @@ struct fi_context *fabric_read_write_multi_msg(
     }
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (int64_t j = 0; j < iteration; j++) {
-        struct fi_msg_rma msg = {.msg_iov = &iov[j * iov_limit],
-                                 .desc = 0,
-                                 .iov_count = std::min<size_t>(iov_limit, count_remain),
-                                 .addr = fiAddr,
-                                 .rma_iov = &rma_iov[j * iov_limit],
-                                 .rma_iov_count = std::min<size_t>(iov_limit, count_remain),
-                                 .context =
-                                     (block ? (struct fi_context *)ctx : NULL),
-                                 .data = 0};
+        size_t len_count = std::min<size_t>(iov_limit, count_remain);
+        struct fi_msg_rma msg = {
+            .msg_iov = &iov[j * iov_limit],
+            .desc = famCtx->get_mr_descs(iov[j * iov_limit].iov_base,
+                                         (iov[j * iov_limit].iov_len) *
+                                             (len_count)),
+            .iov_count = std::min<size_t>(iov_limit, count_remain),
+            .addr = fiAddr,
+            .rma_iov = &rma_iov[j * iov_limit],
+            .rma_iov_count = std::min<size_t>(iov_limit, count_remain),
+            .context = (block ? (struct fi_context *)ctx : NULL),
+            .data = 0};
 
         uint32_t retry_cnt = 0;
         try {
@@ -916,8 +919,8 @@ fabric_write(std::vector<std::pair<iovec, fi_rma_iov>> ioInfo, fi_addr_t fiAddr,
     struct fi_context *fiCtx;
     fiCtx = fabric_read_write_multi_msg(ioInfo.size(), iov_limit, fiAddr,
                                         famCtx, iov, rma_iov, 1, block);
-    delete iov;
-    delete rma_iov;
+    delete[] iov;
+    delete[] rma_iov;
     return fiCtx;
 }
 
@@ -946,8 +949,8 @@ struct fi_context *fabric_read(std::vector<std::pair<iovec, fi_rma_iov>> ioInfo,
     struct fi_context *fiCtx;
     fiCtx = fabric_read_write_multi_msg(ioInfo.size(), iov_limit, fiAddr,
                                         famCtx, iov, rma_iov, 0, block);
-    delete iov;
-    delete rma_iov;
+    delete[] iov;
+    delete[] rma_iov;
     return fiCtx;
 }
 
@@ -987,7 +990,7 @@ struct fi_context *fabric_write(uint64_t key, const void *local, size_t nbytes,
     }
 
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = 0,
+                             .desc = famCtx->get_mr_descs(local, nbytes),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -1000,7 +1003,7 @@ struct fi_context *fabric_write(uint64_t key, const void *local, size_t nbytes,
     uint64_t incr = 0;
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {
@@ -1060,7 +1063,7 @@ struct fi_context *fabric_read(uint64_t key, const void *local, size_t nbytes,
     }
 
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = 0,
+                             .desc = famCtx->get_mr_descs(local, nbytes),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -1073,7 +1076,7 @@ struct fi_context *fabric_read(uint64_t key, const void *local, size_t nbytes,
     uint64_t incr = 0;
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {
@@ -1131,8 +1134,8 @@ struct fi_context *fabric_scatter_stride(uint64_t key, const void *local,
 
     struct fi_context *ctx = fabric_read_write_multi_msg(
         count, iov_limit, fiAddr, famCtx, iov, rma_iov, 1, block);
-    delete iov;
-    delete rma_iov;
+    delete[] iov;
+    delete[] rma_iov;
 
     return ctx;
 }
@@ -1177,8 +1180,8 @@ struct fi_context *fabric_gather_stride(uint64_t key, const void *local,
     struct fi_context *ctx = fabric_read_write_multi_msg(
         count, iov_limit, fiAddr, famCtx, iov, rma_iov, 0, block);
 
-    delete iov;
-    delete rma_iov;
+    delete[] iov;
+    delete[] rma_iov;
 
     return ctx;
 }
@@ -1217,8 +1220,8 @@ struct fi_context *fabric_scatter_index(uint64_t key, const void *local,
     struct fi_context *ctx = fabric_read_write_multi_msg(
         count, iov_limit, fiAddr, famCtx, iov, rma_iov, 1, block);
 
-    delete iov;
-    delete rma_iov;
+    delete[] iov;
+    delete[] rma_iov;
 
     return ctx;
 }
@@ -1258,8 +1261,8 @@ struct fi_context *fabric_gather_index(uint64_t key, const void *local,
     struct fi_context *ctx = fabric_read_write_multi_msg(
         count, iov_limit, fiAddr, famCtx, iov, rma_iov, 0, block);
 
-    delete iov;
-    delete rma_iov;
+    delete[] iov;
+    delete[] rma_iov;
 
     return ctx;
 }
@@ -1286,7 +1289,7 @@ void fabric_fence(fi_addr_t fiAddr, Fam_Context *famCtx) {
     struct fi_context *ctx = new struct fi_context();
 
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = 0,
+                             .desc = famCtx->get_mr_descs(local, nbytes),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -1295,7 +1298,7 @@ void fabric_fence(fi_addr_t fiAddr, Fam_Context *famCtx) {
                              .data = 0};
 
     // Take Fam_Context Write lock
-    famCtx->aquire_WRLock();
+    famCtx->acquire_WRLock();
 
     uint32_t retry_cnt = 0;
 
@@ -1429,7 +1432,7 @@ void fabric_get_quiet(Fam_Context *famCtx) {
 
 void fabric_quiet(Fam_Context *famCtx) {
     // Take Fam_Context Write lock
-    famCtx->aquire_WRLock();
+    famCtx->acquire_WRLock();
     try {
         fabric_put_quiet(famCtx);
         fabric_get_quiet(famCtx);
@@ -1488,7 +1491,7 @@ uint64_t fabric_progress(Fam_Context *famCtx) {
     uint64_t reads = 0;
     uint64_t writes = 0;
     // Take Fam_Context Read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
     try {
         writes = fabric_put_progress(famCtx);
         reads = fabric_get_progress(famCtx);
@@ -1510,22 +1513,23 @@ void fabric_atomic(uint64_t key, void *value, uint64_t offset, enum fi_op op,
 
     struct fi_rma_ioc rma_iov = {.addr = offset, .count = 1, .key = key};
 
-    struct fi_msg_atomic msg = {.msg_iov = &iov,
-                                .desc = 0,
-                                .iov_count = 1,
-                                .addr = fiAddr,
-                                .rma_iov = &rma_iov,
-                                .rma_iov_count = 1,
-                                .datatype = datatype,
-                                .op = op,
-                                .context = NULL,
-                                .data = 0};
+    struct fi_msg_atomic msg = {
+        .msg_iov = &iov,
+        .desc = famCtx->get_mr_descs(value, sizeof(datatype)),
+        .iov_count = 1,
+        .addr = fiAddr,
+        .rma_iov = &rma_iov,
+        .rma_iov_count = 1,
+        .datatype = datatype,
+        .op = op,
+        .context = NULL,
+        .data = 0};
 
     ssize_t ret;
     uint32_t retry_cnt = 0;
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {
@@ -1558,23 +1562,24 @@ void fabric_fetch_atomic(uint64_t key, void *value, void *result,
     memset(ctx, 0, sizeof(struct fam_fi_context));
     ctx->fam_internal[2] = (void *)1;
 
-    struct fi_msg_atomic msg = {.msg_iov = &iov,
-                                .desc = 0,
-                                .iov_count = 1,
-                                .addr = fiAddr,
-                                .rma_iov = &rma_iov,
-                                .rma_iov_count = 1,
-                                .datatype = datatype,
-                                .op = op,
-                                .context = (struct fi_context *)ctx,
-                                .data = 0};
+    struct fi_msg_atomic msg = {
+        .msg_iov = &iov,
+        .desc = famCtx->get_mr_descs(value, sizeof(datatype)),
+        .iov_count = 1,
+        .addr = fiAddr,
+        .rma_iov = &rma_iov,
+        .rma_iov_count = 1,
+        .datatype = datatype,
+        .op = op,
+        .context = (struct fi_context *)ctx,
+        .data = 0};
 
     ssize_t ret;
     uint32_t retry_cnt = 0;
     uint64_t incr = 0;
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {
@@ -1615,23 +1620,24 @@ void fabric_compare_atomic(uint64_t key, void *compare, void *result,
     memset(ctx, 0, sizeof(struct fam_fi_context));
     ctx->fam_internal[2] = (void *)1;
 
-    struct fi_msg_atomic msg = {.msg_iov = &iov,
-                                .desc = 0,
-                                .iov_count = 1,
-                                .addr = fiAddr,
-                                .rma_iov = &rma_iov,
-                                .rma_iov_count = 1,
-                                .datatype = datatype,
-                                .op = op,
-                                .context = (struct fi_context *)ctx,
-                                .data = 0};
+    struct fi_msg_atomic msg = {
+        .msg_iov = &iov,
+        .desc = famCtx->get_mr_descs(value, sizeof(datatype)),
+        .iov_count = 1,
+        .addr = fiAddr,
+        .rma_iov = &rma_iov,
+        .rma_iov_count = 1,
+        .datatype = datatype,
+        .op = op,
+        .context = (struct fi_context *)ctx,
+        .data = 0};
 
     ssize_t ret;
     uint32_t retry_cnt = 0;
     uint64_t incr = 0;
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {
@@ -1711,7 +1717,7 @@ void fabric_send_response(void *retStatus, fi_addr_t fiAddr,
     uint32_t retry_cnt = 0;
     uint64_t incr = 0;
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {
@@ -1759,7 +1765,7 @@ fi_context *fabric_post_response_buff(void *retStatus, fi_addr_t fiAddr,
     uint64_t incr = 0;
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     try {
         do {

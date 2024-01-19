@@ -1,6 +1,6 @@
 /*
  * fam_backup_restore_reg_test.cpp
- * Copyright (c) 2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2021, 2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -285,7 +285,7 @@ TEST(FamBackupRestore, RestoreFailureInsufficientDataSize) {
 }
 
 TEST(FamBackupRestore, ListBackupSuccess) {
-    char *binfo;
+    char *binfo = NULL;
     const char *backupName = get_uniq_str("test_backup_List_S", my_fam);
     Fam_Descriptor *item;
     Fam_Backup_Options *backupOptions =
@@ -311,7 +311,7 @@ TEST(FamBackupRestore, ListBackupSuccess) {
 }
 
 TEST(FamBackupRestore, ListBackupAllSuccess) {
-    char *binfo;
+    char *binfo = NULL;
     const char *backupName = get_uniq_str("test_backup_List_S_all", my_fam);
     Fam_Descriptor *item;
     Fam_Backup_Options *backupOptions =

@@ -88,7 +88,7 @@ int main(void) {
         // Wait for copy operation to complete.
         myFam->fam_copy_wait(waitObj);
         // 10 integer array is copied from myItem to a new location in FAM
-        printf("Copy to new location in FAM successfull\n");
+        printf("Copy to new location in FAM successful\n");
 
     } catch (Fam_Exception &e) {
         printf("fam API failed: %d: %s\n", e.fam_error(), e.fam_error_msg());
@@ -100,7 +100,7 @@ int main(void) {
     try {
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(region);
-        // printf("fam_destroy_region successfull\n");
+        // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());

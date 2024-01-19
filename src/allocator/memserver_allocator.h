@@ -1,6 +1,6 @@
 /*
  * memserver_allocator.h
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -75,6 +75,12 @@ typedef struct gc_th_struct {
     pthread_rwlock_t rwLock;
 } gc_th_struct_t;
 
+typedef struct Fam_Region_Extents {
+    int numExtents;
+    void **addrList;
+    size_t *sizes;
+} Fam_Region_Extents_t;
+
 class Memserver_Allocator {
   public:
     Memserver_Allocator(uint64_t num_delayed_free_threads,
@@ -85,7 +91,7 @@ class Memserver_Allocator {
     void dump_profile();
     void create_region(uint64_t regionId, size_t nbytes);
     void destroy_region(uint64_t regionId);
-    void resize_region(uint64_t regionId, size_t nbytes);
+    void resize_region(uint64_t regionId, size_t nbytes, int *newExtentIdx);
     uint64_t allocate(uint64_t regionId, size_t nbytes);
     void deallocate(uint64_t regionId, uint64_t offset);
     void copy(void *src, void *destOffset, uint64_t size);
@@ -111,6 +117,9 @@ class Memserver_Allocator {
     void create_ATL_root(size_t nbytes);
     Fam_Heap_Info_t *remove_heap_from_list(uint64_t regionId);
     void delayed_free_th(uint64_t thread_index);
+    void get_region_extents(uint64_t regionId,
+                            Fam_Region_Extents_t *regionExtents);
+
   private:
     MemoryManager *memoryManager;
     EpochManager *em;

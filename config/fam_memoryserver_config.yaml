@@ -5,7 +5,7 @@
 provider: sockets
 
 # Number of threads used for delayed free.
-delayed_free_threads: 0 
+delayed_free_threads: 1 
 
 # Atomic library threads count - default (0) indicates ATL disabled
 ATL_threads: 0 
@@ -16,6 +16,10 @@ ATL_queue_size: 1000
 # ATL data size per thread(MiB) - This will be used to allocate buffers and other queue related
 # data structures
 ATL_data_size: 1024
+
+# This option is to enable or disable resource relinquishment in FAM
+# Value can be "enable" or "disable"
+resource_release: enable
 
 # Path where data item backups are placed.
 # This path needs to be in a shared filesystem and accessible to  all memory servers.

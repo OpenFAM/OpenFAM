@@ -127,7 +127,7 @@ int atomicQueue::create(Memserver_Allocator *in_allocator,
             return MAPERROR;
         }
 
-    std::cout << "queue creation successfull " << qId << std::endl;
+    std::cout << "queue creation successful " << qId << std::endl;
     std::cout << "queue front " << lcqData->front << std::endl;
     std::cout << "queue rear " << lcqData->rear << std::endl;
     std::cout << "queue capacity " << lcqData->capacity << std::endl;

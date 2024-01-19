@@ -1,7 +1,7 @@
 /*
  *   fam_metadata_service_client.h
- *   Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- *   reserved. Redistribution and use in source and binary forms, with or
+ *   Copyright (c) 2020,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
  *   are met:
  *   1. Redistributions of source code must retain the above copyright notice,
@@ -147,7 +147,8 @@ class Fam_Metadata_Service_Client : public Fam_Metadata_Service {
     void metadata_validate_and_allocate_dataitem(
         const std::string dataitemName, const uint64_t regionId, uint32_t uid,
         uint32_t gid, size_t size, std::list<int> *memory_server_list,
-        size_t *interleaveSize, int user_policy = 0);
+        size_t *interleaveSize, Fam_Permission_Level *permissionLevel,
+        mode_t *regionPermission, int user_policy = 0);
 
     void metadata_find_region_and_check_permissions(
         metadata_region_item_op_t op, const uint64_t regionId, uint32_t uid,
@@ -170,6 +171,12 @@ class Fam_Metadata_Service_Client : public Fam_Metadata_Service {
     std::list<int> get_memory_server_list(uint64_t region);
     Fam_Metadata_Service_Client(const char *name, uint64_t port);
     ~Fam_Metadata_Service_Client();
+
+    // set and get controlpath definitions
+
+    void set_controlpath_addr(string addr) {}
+
+    string get_controlpath_addr() { return std::string(); }
 
   private:
     uint32_t uid;

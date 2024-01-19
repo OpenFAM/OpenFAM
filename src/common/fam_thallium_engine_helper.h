@@ -1,9 +1,8 @@
 /*
- * fam_memory_registration.h
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All
- * rights reserved. Redistribution and use in source and binary forms, with or
- * without modification, are permitted provided that the following conditions
- * are met:
+ * fam_thallium_engine_helper.h
+ * Copyright (c) 2023 Hewlett Packard Enterprise Development, LP. All rights
+ * reserved. Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -28,55 +27,37 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-
-#ifndef FAM_MEMORY_REGISTRATION_H
-#define FAM_MEMORY_REGISTRATION_H
+#ifndef FAM_THALLIUM_ENGINE_HELPER_H
+#define FAM_THALLIUM_ENGINE_HELPER_H
 
 #include <iostream>
 #include <map>
+#include <memory>
+#include <string>
+#include <thallium.hpp>
+#include <thallium/serialization/stl/string.hpp>
 #include <thread>
 #include <unistd.h>
 
-#include "common/fam_internal.h"
-#include "common/fam_internal_exception.h"
-#include "common/fam_options.h"
-
-#include <boost/atomic.hpp>
-
 using namespace std;
+namespace tl = thallium;
 
 namespace openfam {
 
-class Fam_Memory_Registration {
+class Thallium_Engine {
+  private:
+    tl::engine myEngine;
+    static Thallium_Engine *instancePtr;
+
+    Thallium_Engine(string thallium_protocol);
+
   public:
-    virtual ~Fam_Memory_Registration() {}
+    // Disable copy constructor
+    Thallium_Engine(const Thallium_Engine &obj) = delete;
 
-    virtual void reset_profile() = 0;
+    static Thallium_Engine *get_instance(string thallium_protocol);
 
-    virtual void dump_profile() = 0;
-
-    virtual void update_memserver_addrlist(void *memServerInfoBuffer,
-                                           size_t memServerInfoSize,
-                                           uint64_t memoryServerCount,
-                                           uint64_t myId) = 0;
-
-    virtual void deregister_memory(uint64_t regionId, uint64_t offset) = 0;
-
-    virtual void deregister_region_memory(uint64_t regionId) = 0;
-
-    virtual uint64_t register_memory(uint64_t regionId, uint64_t offset,
-                                     void *base, uint64_t size,
-                                     bool rwFlag) = 0;
-
-    virtual void register_fence_memory() = 0;
-
-    virtual void deregister_fence_memory() = 0;
-
-    virtual size_t get_addr_size() = 0;
-
-    virtual void *get_addr() = 0;
-
-    virtual bool is_base_require() = 0;
+    tl::engine get_engine();
 };
 
 } // namespace openfam

@@ -1,8 +1,9 @@
 /*
  * memory_server_main.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -32,8 +33,17 @@
 #include <signal.h>
 #endif
 
+#include "memory_service/fam_memory_service_direct.h"
 #include "memory_service/fam_memory_service_server.h"
 #include <iostream>
+
+#ifdef USE_THALLIUM
+#include "memory_service/fam_memory_service_thallium_server.h"
+#include <thallium.hpp>
+#include <thread>
+namespace tl = thallium;
+#endif
+
 using namespace std;
 using namespace metadata;
 
@@ -53,6 +63,18 @@ void signal_handler(int signum) {
 #endif
 
 Fam_Memory_Service_Server *memoryService;
+Fam_Memory_Service_Direct *direct_memoryService;
+
+#ifdef USE_THALLIUM
+Fam_Memory_Service_Thallium_Server *memoryThalliumService;
+void thallium_server() {
+    tl::engine myEngine(direct_memoryService->get_rpc_protocol_type(),
+                        THALLIUM_SERVER_MODE, false, -1);
+    memoryThalliumService =
+        new Fam_Memory_Service_Thallium_Server(direct_memoryService, myEngine);
+    memoryThalliumService->run();
+}
+#endif
 
 int main(int argc, char *argv[]) {
     uint64_t memserver_id = 0;
@@ -82,14 +104,14 @@ int main(int argc, char *argv[]) {
                 << "\n"
                 << "\t-v/--version        : Display metadata server version  \n"
                 << "\n"
-                << "\t-i/--init			  : Initialize the root shelf "
+                << "\t-i/--init                   : Initialize the root shelf "
                    "\n"
                 << "\n"
                 << endl;
             exit(0);
-		} else if ((std::string(argv[i]) == "-i") ||
+        } else if ((std::string(argv[i]) == "-i") ||
                    (std::string(argv[i]) == "--init")) {
-        	initFlag = true;
+            initFlag = true;
         } else if ((std::string(argv[i]) == "-f") ||
                    (std::string(argv[i]) == "--fam_path")) {
             fam_path = strdup(argv[++i]);
@@ -121,14 +143,30 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, signal_handler);
 #endif
 
-    memoryService = NULL;
     try {
-        memoryService = new Fam_Memory_Service_Server(memserver_id);
+        direct_memoryService =
+            new Fam_Memory_Service_Direct(memserver_id, false);
+        memoryService = new Fam_Memory_Service_Server(direct_memoryService);
+#ifdef USE_THALLIUM
+        std::thread thread_1;
+        // check rpc_framework_type and start server
+        if (strcmp(direct_memoryService->get_rpc_framework_type().c_str(),
+                   FAM_OPTIONS_THALLIUM_STR) == 0) {
+            // starting thallium server on a new thread
+            thread_1 = std::thread(&thallium_server);
+        }
+#endif
+        // starting only grpc server
         memoryService->run();
     } catch (Fam_Exception &e) {
         if (memoryService) {
             delete memoryService;
         }
+#ifdef USE_THALLIUM
+        else if (memoryThalliumService) {
+            delete memoryThalliumService;
+        }
+#endif
         cout << "Error code: " << e.fam_error() << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
     }
@@ -137,6 +175,12 @@ int main(int argc, char *argv[]) {
         delete memoryService;
         memoryService = NULL;
     }
+#ifdef USE_THALLIUM
+    else if (memoryThalliumService) {
+        delete memoryThalliumService;
+        memoryThalliumService = NULL;
+    }
+#endif
 
     return 0;
 }

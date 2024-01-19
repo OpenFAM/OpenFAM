@@ -23,6 +23,7 @@
 set(LIBOPENFAM_SRC
   ${LIBOPENFAM_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_client.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_client_resource_manager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/memserver_allocator.cpp
   PARENT_SCOPE
   )
@@ -30,6 +31,7 @@ set(LIBOPENFAM_SRC
 set(CIS_SERVER_SRC
   ${CIS_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_client.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_client_resource_manager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/memserver_allocator.cpp
   PARENT_SCOPE
   )
@@ -37,6 +39,7 @@ set(CIS_SERVER_SRC
 set(MEMORY_SERVER_SRC
   ${MEMORY_SERVER_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_allocator_client.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/fam_client_resource_manager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/memserver_allocator.cpp
   PARENT_SCOPE
   )

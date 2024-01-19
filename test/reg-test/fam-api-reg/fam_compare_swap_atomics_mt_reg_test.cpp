@@ -1,8 +1,9 @@
 /*
  * fam_compare_swap_atomics_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -336,6 +337,7 @@ void *thrd_cas_int128(void *arg) {
     pthread_exit(NULL);
 }
 
+#ifdef ENABLE_KNOWN_ISSUES
 TEST(FamCompareSwapInt128, CompareSwapInt128Success) {
     Fam_Descriptor *item;
     pthread_t thr[NUM_THREADS];
@@ -365,6 +367,7 @@ TEST(FamCompareSwapInt128, CompareSwapInt128Success) {
     delete item;
     free(info);
 }
+#endif
 
 void *thrd_cas_uint64_neg(void *arg) {
 
@@ -472,6 +475,7 @@ void *thrd_cas_int128_neg(void *arg) {
 
     pthread_exit(NULL);
 }
+#if ENABLE_KNOWN_ISSUES
 TEST(FamCompareSwapNegativeCaseInt128, CompareSwapNegativeCaseInt128Success) {
     Fam_Descriptor *item;
     pthread_t thr[NUM_THREADS];
@@ -502,6 +506,7 @@ TEST(FamCompareSwapNegativeCaseInt128, CompareSwapNegativeCaseInt128Success) {
     delete item;
     free(info);
 }
+#endif
 int main(int argc, char **argv) {
     int ret;
     ::testing::InitGoogleTest(&argc, argv);

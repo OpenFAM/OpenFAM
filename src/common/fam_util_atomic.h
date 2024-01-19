@@ -1,8 +1,9 @@
 /*
  * fam_util_atomic.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -41,7 +42,7 @@
 #define FAM_DEF_READWRITEEXT_NAME_32(op, type) fam_readwrite_##op##_##type,
 #define FAM_DEF_READWRITEEXT_FUNC_32(op, type)                                 \
     static void fam_readwrite_##op##_##type(void *dst, const void *src,        \
-                                            void *&res) {                      \
+                                            void *res) {                       \
         type *d = (type *)(dst);                                               \
         const type *s = (type *)(src);                                         \
         type val, readValue, oldValue;                                         \
@@ -51,13 +52,14 @@
             oldValue = fam_atomic_32_compare_store(                            \
                 (int32_t *)d, (int32_t)readValue, (int32_t)val);               \
         } while (oldValue != readValue);                                       \
-        res = (void *)&oldValue;                                               \
+        type *resP = (type *)res;                                              \
+        *resP = oldValue;                                                      \
     }
 
 #define FAM_DEF_READWRITEEXT_CMP_NAME_32(op, type) fam_readwrite_##op##_##type,
 #define FAM_DEF_READWRITEEXT_CMP_FUNC_32(op, type)                             \
     static void fam_readwrite_##op##_##type(void *dst, const void *src,        \
-                                            void *&res) {                      \
+                                            void *res) {                       \
         type *d = (type *)(dst);                                               \
         const type *s = (type *)(src);                                         \
         type readValue, oldValue;                                              \
@@ -70,13 +72,14 @@
                 break;                                                         \
             }                                                                  \
         } while (oldValue != readValue);                                       \
-        res = (void *)&readValue;                                              \
+        type *resP = (type *)res;                                              \
+        *resP = readValue;                                                     \
     }
 
 #define FAM_DEF_READWRITEEXT_NAME_64(op, type) fam_readwrite_##op##_##type,
 #define FAM_DEF_READWRITEEXT_FUNC_64(op, type)                                 \
     static void fam_readwrite_##op##_##type(void *dst, const void *src,        \
-                                            void *&res) {                      \
+                                            void *res) {                       \
         type *d = (type *)(dst);                                               \
         const type *s = (type *)(src);                                         \
         type val, readValue, oldValue;                                         \
@@ -86,13 +89,14 @@
             oldValue = fam_atomic_64_compare_store(                            \
                 (int64_t *)d, (int64_t)readValue, (int64_t)val);               \
         } while (oldValue != readValue);                                       \
-        res = (void *)&oldValue;                                               \
+        type *resP = (type *)res;                                              \
+        *resP = oldValue;                                                      \
     }
 
 #define FAM_DEF_READWRITEEXT_CMP_NAME_64(op, type) fam_readwrite_##op##_##type,
 #define FAM_DEF_READWRITEEXT_CMP_FUNC_64(op, type)                             \
     static void fam_readwrite_##op##_##type(void *dst, const void *src,        \
-                                            void *&res) {                      \
+                                            void *res) {                       \
         type *d = (type *)(dst);                                               \
         const type *s = (type *)(src);                                         \
         type readValue, oldValue;                                              \
@@ -105,13 +109,14 @@
                 break;                                                         \
             }                                                                  \
         } while (oldValue != readValue);                                       \
-        res = (void *)&readValue;                                              \
+        type *resP = (type *)res;                                              \
+        *resP = readValue;                                                     \
     }
 
 #define FAM_DEF_READWRITEEXT_NAME_float(op, type) fam_readwrite_##op##_##type,
 #define FAM_DEF_READWRITEEXT_FUNC_float(op, type)                              \
     static void fam_readwrite_##op##_##type(void *dst, const void *src,        \
-                                            void *&res) {                      \
+                                            void *res) {                       \
         int32_t *d = (int32_t *)(dst);                                         \
         const type *s = (type *)(src);                                         \
         int32_t readValue, oldValue, *writeValue;                              \
@@ -123,14 +128,15 @@
             writeValue = reinterpret_cast<int32_t *>(&val);                    \
             oldValue = fam_atomic_32_compare_store(d, readValue, *writeValue); \
         } while (oldValue != readValue);                                       \
-        res = (void *)readValueF;                                              \
+        type *resP = (type *)res;                                              \
+        *resP = *readValueF;                                                   \
     }
 
 #define FAM_DEF_READWRITEEXT_CMP_NAME_float(op, type)                          \
     fam_readwrite_##op##_##type,
 #define FAM_DEF_READWRITEEXT_CMP_FUNC_float(op, type)                          \
     static void fam_readwrite_##op##_##type(void *dst, const void *src,        \
-                                            void *&res) {                      \
+                                            void *res) {                       \
         int32_t *d = (int32_t *)(dst);                                         \
         const type *s = (type *)(src);                                         \
         int32_t readValue, oldValue, *writeValue;                              \
@@ -147,13 +153,14 @@
                 break;                                                         \
             }                                                                  \
         } while (oldValue != readValue);                                       \
-        res = (void *)readValueF;                                              \
+        type *resP = (type *)res;                                              \
+        *resP = *readValueF;                                                   \
     }
 
 #define FAM_DEF_READWRITEEXT_NAME_double(op, type) fam_readwrite_##op##_##type,
 #define FAM_DEF_READWRITEEXT_FUNC_double(op, type)                             \
     static void fam_readwrite_##op##_##type(void *dst, const void *src,        \
-                                            void *&res) {                      \
+                                            void *res) {                       \
         int64_t *d = (int64_t *)(dst);                                         \
         const type *s = (type *)(src);                                         \
         int64_t readValue, oldValue, *writeValue;                              \
@@ -165,14 +172,15 @@
             writeValue = reinterpret_cast<int64_t *>(&val);                    \
             oldValue = fam_atomic_64_compare_store(d, readValue, *writeValue); \
         } while (oldValue != readValue);                                       \
-        res = (void *)readValueD;                                              \
+        type *resP = (type *)res;                                              \
+        *resP = *readValueD;                                                   \
     }
 
 #define FAM_DEF_READWRITEEXT_CMP_NAME_double(op, type)                         \
     fam_readwrite_##op##_##type,
 #define FAM_DEF_READWRITEEXT_CMP_FUNC_double(op, type)                         \
     static void fam_readwrite_##op##_##type(void *dst, const void *src,        \
-                                            void *&res) {                      \
+                                            void *res) {                       \
         int64_t *d = (int64_t *)(dst);                                         \
         const type *s = (type *)(src);                                         \
         int64_t readValue, oldValue, *writeValue;                              \
@@ -189,7 +197,8 @@
                 break;                                                         \
             }                                                                  \
         } while (oldValue != readValue);                                       \
-        res = (void *)readValueD;                                              \
+        type *resP = (type *)res;                                              \
+        *resP = *readValueD;                                                   \
     }
 
 #define FAM_DEFINE_ALL_HANDLERS(ATOMICTYPE, FUNCNAME, op)                      \
@@ -215,7 +224,7 @@ FAM_DEFINE_INT_HANDLERS(READWRITEEXT, FUNC, FAM_OP_BXOR)
 FAM_DEFINE_ALL_HANDLERS(READWRITEEXT, FUNC, FAM_OP_SUM)
 
 void (*fam_atomic_readwrite_handlers[6][6])(void *dst, const void *src,
-                                            void *&res) = {
+                                            void *res) = {
     {FAM_DEFINE_ALL_HANDLERS(READWRITEEXT_CMP, NAME, FAM_OP_MIN)},
     {FAM_DEFINE_ALL_HANDLERS(READWRITEEXT_CMP, NAME, FAM_OP_MAX)},
     {FAM_DEFINE_INT_HANDLERS(READWRITEEXT, NAME, FAM_OP_BOR)},

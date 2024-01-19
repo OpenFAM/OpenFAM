@@ -1,8 +1,8 @@
 /*
  * fam_cas_atomics_reg_test.cpp
- * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All
- * rights reserved. Redistribution and use in source and binary forms, with or
- * without modification, are permitted provided that the following conditions
+ * Copyright (c) 2019, 2022, 2023 Hewlett Packard Enterprise Development, LP.
+ * All rights reserved. Redistribution and use in source and binary forms, with
+ * or without modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
@@ -84,7 +84,7 @@ TEST(FamCASAtomics, CASInt32) {
                      << ", newValue=" << hex << newValue[i]
                      << ", expected=" << hex << expValue[i] << endl;
 
-                int32_t result;
+                int32_t result = 0;
                 EXPECT_NO_THROW(
                     my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
                 EXPECT_NO_THROW(my_fam->fam_quiet());
@@ -135,7 +135,7 @@ TEST(FamCASAtomics, CASUInt32) {
                      << ", newValue=" << hex << newValue[i]
                      << ", expected=" << hex << expValue[i] << endl;
 
-                uint32_t result;
+                uint32_t result = 0;
                 EXPECT_NO_THROW(
                     my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
                 EXPECT_NO_THROW(my_fam->fam_quiet());
@@ -245,7 +245,7 @@ TEST(FamCASAtomics, CASUInt64) {
                      << ", newValue=" << hex << newValue[i]
                      << ", expected=" << hex << expValue[i] << endl;
 
-                uint64_t result;
+                uint64_t result = 0;
                 EXPECT_NO_THROW(
                     my_fam->fam_set(item, testOffset[ofs], oldValue[i]));
                 EXPECT_NO_THROW(my_fam->fam_quiet());

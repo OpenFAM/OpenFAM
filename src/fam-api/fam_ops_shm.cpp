@@ -1,6 +1,6 @@
 /*
  * fam_ops_shm.cpp
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -124,7 +124,7 @@ Fam_Context *Fam_Ops_SHM::get_context(Fam_Descriptor *descriptor) {
 
 int Fam_Ops_SHM::put_blocking(void *local, Fam_Descriptor *descriptor,
                               uint64_t offset, uint64_t nbytes) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -143,7 +143,7 @@ int Fam_Ops_SHM::put_blocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     memcpy(dest, local, nbytes);
     openfam_persist(dest, nbytes);
@@ -156,7 +156,7 @@ int Fam_Ops_SHM::put_blocking(void *local, Fam_Descriptor *descriptor,
 
 int Fam_Ops_SHM::get_blocking(void *local, Fam_Descriptor *descriptor,
                               uint64_t offset, uint64_t nbytes) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -175,7 +175,7 @@ int Fam_Ops_SHM::get_blocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     openfam_invalidate(src, nbytes);
     memcpy(local, src, nbytes);
@@ -189,7 +189,7 @@ int Fam_Ops_SHM::get_blocking(void *local, Fam_Descriptor *descriptor,
 int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
                                  uint64_t nElements, uint64_t firstElement,
                                  uint64_t stride, uint64_t elementSize) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -211,7 +211,7 @@ int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (uint64_t i = 0; i < nElements; i++) {
         src =
@@ -231,7 +231,7 @@ int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
 int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
                                  uint64_t nElements, uint64_t *elementIndex,
                                  uint64_t elementSize) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -257,7 +257,7 @@ int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (uint64_t i = 0; i < nElements; i++) {
         src = (void *)((uint64_t)base_addr_list[0] +
@@ -276,7 +276,7 @@ int Fam_Ops_SHM::gather_blocking(void *local, Fam_Descriptor *descriptor,
 int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
                                   uint64_t nElements, uint64_t firstElement,
                                   uint64_t stride, uint64_t elementSize) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -298,7 +298,7 @@ int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (uint64_t i = 0; i < nElements; i++) {
         src = (void *)((uint64_t)local + (i * elementSize));
@@ -318,7 +318,7 @@ int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
 int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
                                   uint64_t nElements, uint64_t *elementIndex,
                                   uint64_t elementSize) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -344,7 +344,7 @@ int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (uint64_t i = 0; i < nElements; i++) {
         src = (void *)((uint64_t)local + (i * elementSize));
@@ -362,7 +362,7 @@ int Fam_Ops_SHM::scatter_blocking(void *local, Fam_Descriptor *descriptor,
 
 void Fam_Ops_SHM::put_nonblocking(void *local, Fam_Descriptor *descriptor,
                                   uint64_t offset, uint64_t nbytes) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t itemSize = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
     uint64_t upperBound = offset + nbytes;
@@ -370,7 +370,7 @@ void Fam_Ops_SHM::put_nonblocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     void *dest = (void *)((uint64_t)base_addr_list[0] + offset);
     Fam_Ops_Info opsInfo = {WRITE,      local,   dest,     nbytes, offset,
@@ -386,7 +386,7 @@ void Fam_Ops_SHM::put_nonblocking(void *local, Fam_Descriptor *descriptor,
 
 void Fam_Ops_SHM::get_nonblocking(void *local, Fam_Descriptor *descriptor,
                                   uint64_t offset, uint64_t nbytes) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t itemSize = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
     uint64_t upperBound = offset + nbytes;
@@ -394,7 +394,7 @@ void Fam_Ops_SHM::get_nonblocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     void *src = (void *)((uint64_t)base_addr_list[0] + offset);
 
@@ -412,7 +412,7 @@ void Fam_Ops_SHM::get_nonblocking(void *local, Fam_Descriptor *descriptor,
 void Fam_Ops_SHM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
                                      uint64_t nElements, uint64_t firstElement,
                                      uint64_t stride, uint64_t elementSize) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t itemSize = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
     uint64_t offset = firstElement * elementSize;
@@ -424,7 +424,7 @@ void Fam_Ops_SHM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (uint64_t i = 0; i < nElements; i++) {
         src =
@@ -447,7 +447,7 @@ void Fam_Ops_SHM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
 void Fam_Ops_SHM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
                                      uint64_t nElements, uint64_t *elementIndex,
                                      uint64_t elementSize) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t itemSize = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
     uint64_t upperBound;
@@ -458,7 +458,7 @@ void Fam_Ops_SHM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (uint64_t i = 0; i < nElements; i++) {
         src = (void *)((uint64_t)base_addr_list[0] +
@@ -481,7 +481,7 @@ void Fam_Ops_SHM::gather_nonblocking(void *local, Fam_Descriptor *descriptor,
 void Fam_Ops_SHM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
                                       uint64_t nElements, uint64_t firstElement,
                                       uint64_t stride, uint64_t elementSize) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t itemSize = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
     uint64_t offset = firstElement * elementSize;
@@ -493,7 +493,7 @@ void Fam_Ops_SHM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (uint64_t i = 0; i < nElements; i++) {
         src = (void *)((uint64_t)local + (i * elementSize));
@@ -516,7 +516,7 @@ void Fam_Ops_SHM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
                                       uint64_t nElements,
                                       uint64_t *elementIndex,
                                       uint64_t elementSize) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t itemSize = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
     uint64_t upperBound;
@@ -526,7 +526,7 @@ void Fam_Ops_SHM::scatter_nonblocking(void *local, Fam_Descriptor *descriptor,
     Fam_Context *famCtx = get_context(descriptor);
 
     // Take Fam_Context read lock
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
 
     for (uint64_t i = 0; i < nElements; i++) {
         src = (void *)((uint64_t)local + (i * elementSize));
@@ -554,7 +554,7 @@ void Fam_Ops_SHM::check_progress(Fam_Region_Descriptor *descriptor) {
 void Fam_Ops_SHM::quiet_context(Fam_Context *famCtx) {
 
     // Take Fam_Context write lock
-    famCtx->aquire_WRLock();
+    famCtx->acquire_WRLock();
 
     asyncQHandler->quiet(famCtx);
 
@@ -603,7 +603,7 @@ void Fam_Ops_SHM::quiet(Fam_Region_Descriptor *descriptor) {
 
 uint64_t Fam_Ops_SHM::progress_context(Fam_Context *famCtx) {
     uint64_t pending = 0;
-    famCtx->aquire_RDLock();
+    famCtx->acquire_RDLock();
     pending = asyncQHandler->progress(famCtx);
     famCtx->release_lock();
     return pending;
@@ -616,8 +616,8 @@ void Fam_Ops_SHM::abort(int status) FAM_OPS_UNIMPLEMENTED(void__);
 void *Fam_Ops_SHM::copy(Fam_Descriptor *src, uint64_t srcOffset,
                         Fam_Descriptor *dest, uint64_t destOffset,
                         uint64_t nbytes) {
-    void **baseSrc = src->get_base_address_list();
-    void **baseDest = dest->get_base_address_list();
+    uint64_t *baseSrc = src->get_base_address_list();
+    uint64_t *baseDest = dest->get_base_address_list();
     Fam_Region_Item_Info srcInfo = famAllocator->check_permission_get_info(src);
     Fam_Region_Item_Info destInfo =
         famAllocator->check_permission_get_info(dest);
@@ -689,7 +689,7 @@ void Fam_Ops_SHM::fence(Fam_Region_Descriptor *descriptor)
  */
 void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                              int32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -708,7 +708,7 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
 
 void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                              int64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -727,7 +727,7 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
 
 void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                              int128_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -749,7 +749,7 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
 
 void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                              uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -768,7 +768,7 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
 
 void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                              uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -787,7 +787,7 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
 
 void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                              float value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -806,7 +806,7 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
 
 void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
                              double value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -826,7 +826,7 @@ void Fam_Ops_SHM::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
 void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
                              int32_t value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -846,7 +846,7 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
 void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
                              int64_t value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -866,7 +866,7 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
 void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
                              uint32_t value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -886,7 +886,7 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
 void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
                              uint64_t value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -906,7 +906,7 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
 void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
                              float value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -919,15 +919,15 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    float result;
     fam_atomic_readwrite_handlers[FAM_SUM][FLOAT](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
                              double value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -940,9 +940,9 @@ void Fam_Ops_SHM::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    double result;
     fam_atomic_readwrite_handlers[FAM_SUM][DOUBLE](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
@@ -972,7 +972,7 @@ void Fam_Ops_SHM::atomic_subtract(Fam_Descriptor *descriptor, uint64_t offset,
 
 void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                              int32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -986,14 +986,14 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to write into dataitem");
     }
 
-    void *result;
+    int32_t result;
     fam_atomic_readwrite_handlers[FAM_MIN][INT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                              int64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1006,14 +1006,14 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    int64_t result;
     fam_atomic_readwrite_handlers[FAM_MIN][INT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                              uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1027,14 +1027,14 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to write into dataitem");
     }
 
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_MIN][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                              uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1047,14 +1047,14 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_MIN][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                              float value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1067,14 +1067,14 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    float result;
     fam_atomic_readwrite_handlers[FAM_MIN][FLOAT](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                              double value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1088,14 +1088,14 @@ void Fam_Ops_SHM::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to write into dataitem");
     }
 
-    void *result;
+    double result;
     fam_atomic_readwrite_handlers[FAM_MIN][DOUBLE](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                              int32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1109,14 +1109,14 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to write into dataitem");
     }
 
-    void *result;
+    int32_t result;
     fam_atomic_readwrite_handlers[FAM_MAX][INT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                              int64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1129,14 +1129,14 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    int64_t result;
     fam_atomic_readwrite_handlers[FAM_MAX][INT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                              uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1150,14 +1150,14 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to write into dataitem");
     }
 
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_MAX][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                              uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1170,14 +1170,14 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_MAX][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                              float value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1190,14 +1190,14 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    float result;
     fam_atomic_readwrite_handlers[FAM_MAX][FLOAT](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                              double value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1211,14 +1211,14 @@ void Fam_Ops_SHM::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to write into dataitem");
     }
 
-    void *result;
+    double result;
     fam_atomic_readwrite_handlers[FAM_MAX][DOUBLE](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
                              uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1232,14 +1232,14 @@ void Fam_Ops_SHM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to write into dataitem");
     }
 
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_BAND][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
                              uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1252,14 +1252,14 @@ void Fam_Ops_SHM::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_BAND][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
                             uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1272,14 +1272,14 @@ void Fam_Ops_SHM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_BOR][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
                             uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1292,14 +1292,14 @@ void Fam_Ops_SHM::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_BOR][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
                              uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1312,14 +1312,14 @@ void Fam_Ops_SHM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_BXOR][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 void Fam_Ops_SHM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
                              uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1332,15 +1332,15 @@ void Fam_Ops_SHM::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
         THROW_ERRNO_MSG(Fam_Datapath_Exception, FAM_ERR_NOPERM,
                         "not permitted to write into dataitem");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_BXOR][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
 }
 
 int32_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                   int32_t oldValue, int32_t newValue) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1361,7 +1361,7 @@ int32_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
 int64_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                   int64_t oldValue, int64_t newValue) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1383,7 +1383,7 @@ int64_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
 int128_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                    int128_t oldValue, int128_t newValue) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1410,7 +1410,7 @@ int128_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 uint32_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                    uint32_t oldValue, uint32_t newValue) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1431,7 +1431,7 @@ uint32_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 uint64_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
                                    uint64_t oldValue, uint64_t newValue) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1452,7 +1452,7 @@ uint64_t Fam_Ops_SHM::compare_swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 int32_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
                           int32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1472,7 +1472,7 @@ int32_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 int64_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
                           int64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1492,7 +1492,7 @@ int64_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 uint32_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
                            uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1512,7 +1512,7 @@ uint32_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 uint64_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
                            uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1532,7 +1532,7 @@ uint64_t Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 float Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
                         float value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1555,7 +1555,7 @@ float Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 double Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
                          double value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1578,7 +1578,7 @@ double Fam_Ops_SHM::swap(Fam_Descriptor *descriptor, uint64_t offset,
 
 int32_t Fam_Ops_SHM::atomic_fetch_int32(Fam_Descriptor *descriptor,
                                         uint64_t offset) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1597,7 +1597,7 @@ int32_t Fam_Ops_SHM::atomic_fetch_int32(Fam_Descriptor *descriptor,
 
 int64_t Fam_Ops_SHM::atomic_fetch_int64(Fam_Descriptor *descriptor,
                                         uint64_t offset) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1616,7 +1616,7 @@ int64_t Fam_Ops_SHM::atomic_fetch_int64(Fam_Descriptor *descriptor,
 
 int128_t Fam_Ops_SHM::atomic_fetch_int128(Fam_Descriptor *descriptor,
                                           uint64_t offset) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1639,7 +1639,7 @@ int128_t Fam_Ops_SHM::atomic_fetch_int128(Fam_Descriptor *descriptor,
 
 uint32_t Fam_Ops_SHM::atomic_fetch_uint32(Fam_Descriptor *descriptor,
                                           uint64_t offset) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1658,7 +1658,7 @@ uint32_t Fam_Ops_SHM::atomic_fetch_uint32(Fam_Descriptor *descriptor,
 
 uint64_t Fam_Ops_SHM::atomic_fetch_uint64(Fam_Descriptor *descriptor,
                                           uint64_t offset) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1677,7 +1677,7 @@ uint64_t Fam_Ops_SHM::atomic_fetch_uint64(Fam_Descriptor *descriptor,
 
 float Fam_Ops_SHM::atomic_fetch_float(Fam_Descriptor *descriptor,
                                       uint64_t offset) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1698,7 +1698,7 @@ float Fam_Ops_SHM::atomic_fetch_float(Fam_Descriptor *descriptor,
 
 double Fam_Ops_SHM::atomic_fetch_double(Fam_Descriptor *descriptor,
                                         uint64_t offset) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1720,7 +1720,7 @@ double Fam_Ops_SHM::atomic_fetch_double(Fam_Descriptor *descriptor,
 int32_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
                                       uint64_t offset, int32_t value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1741,7 +1741,7 @@ int32_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
 int64_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
                                       uint64_t offset, int64_t value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1762,7 +1762,7 @@ int64_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
 uint32_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint32_t value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1783,7 +1783,7 @@ uint32_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
 uint64_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint64_t value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1804,7 +1804,7 @@ uint64_t Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
 float Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                                     float value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1818,17 +1818,16 @@ float Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    float result;
     fam_atomic_readwrite_handlers[FAM_SUM][FLOAT](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    float *oldValue = (float *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 double Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
                                      uint64_t offset, double value) {
 
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1842,11 +1841,10 @@ double Fam_Ops_SHM::atomic_fetch_add(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    double result;
     fam_atomic_readwrite_handlers[FAM_SUM][DOUBLE](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    double *oldValue = (double *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 int32_t Fam_Ops_SHM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
@@ -1881,7 +1879,7 @@ double Fam_Ops_SHM::atomic_fetch_subtract(Fam_Descriptor *descriptor,
 
 int32_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                                       uint64_t offset, int32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1896,16 +1894,15 @@ int32_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                         "need both read and write permission");
     }
 
-    void *result;
+    int32_t result;
     fam_atomic_readwrite_handlers[FAM_MIN][INT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    int32_t *oldValue = (int32_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 int64_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                                       uint64_t offset, int64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1919,16 +1916,15 @@ int64_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_MIN][INT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    int64_t *oldValue = (int64_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint32_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1943,16 +1939,15 @@ uint32_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                         "need both read and write permission");
     }
 
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_MIN][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint32_t *oldValue = (uint32_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint64_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1966,16 +1961,15 @@ uint64_t Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_MIN][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint64_t *oldValue = (uint64_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 float Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
                                     float value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -1989,16 +1983,15 @@ float Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    float result;
     fam_atomic_readwrite_handlers[FAM_MIN][FLOAT](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    float *oldValue = (float *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 double Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                                      uint64_t offset, double value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2013,16 +2006,15 @@ double Fam_Ops_SHM::atomic_fetch_min(Fam_Descriptor *descriptor,
                         "need both read and write permission");
     }
 
-    void *result;
+    double result;
     fam_atomic_readwrite_handlers[FAM_MIN][DOUBLE](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    double *oldValue = (double *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 int32_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                                       uint64_t offset, int32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2037,16 +2029,15 @@ int32_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                         "need both read and write permission");
     }
 
-    void *result;
+    int32_t result;
     fam_atomic_readwrite_handlers[FAM_MAX][INT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    int32_t *oldValue = (int32_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 int64_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                                       uint64_t offset, int64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2060,16 +2051,15 @@ int64_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_MAX][INT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    int64_t *oldValue = (int64_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint32_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2084,16 +2074,15 @@ uint32_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                         "need both read and write permission");
     }
 
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_MAX][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint32_t *oldValue = (uint32_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint64_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2107,16 +2096,15 @@ uint64_t Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_MAX][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint64_t *oldValue = (uint64_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 float Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                                     float value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2130,16 +2118,15 @@ float Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    float result;
     fam_atomic_readwrite_handlers[FAM_MAX][FLOAT](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    float *oldValue = (float *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 double Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                                      uint64_t offset, double value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2154,16 +2141,15 @@ double Fam_Ops_SHM::atomic_fetch_max(Fam_Descriptor *descriptor,
                         "need both read and write permission");
     }
 
-    void *result;
+    double result;
     fam_atomic_readwrite_handlers[FAM_MAX][DOUBLE](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    double *oldValue = (double *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint32_t Fam_Ops_SHM::atomic_fetch_and(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2178,16 +2164,15 @@ uint32_t Fam_Ops_SHM::atomic_fetch_and(Fam_Descriptor *descriptor,
                         "need both read and write permission");
     }
 
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_BAND][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint32_t *oldValue = (uint32_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint64_t Fam_Ops_SHM::atomic_fetch_and(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2201,16 +2186,15 @@ uint64_t Fam_Ops_SHM::atomic_fetch_and(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_BAND][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint64_t *oldValue = (uint64_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint32_t Fam_Ops_SHM::atomic_fetch_or(Fam_Descriptor *descriptor,
                                       uint64_t offset, uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2224,16 +2208,15 @@ uint32_t Fam_Ops_SHM::atomic_fetch_or(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_BOR][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint32_t *oldValue = (uint32_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint64_t Fam_Ops_SHM::atomic_fetch_or(Fam_Descriptor *descriptor,
                                       uint64_t offset, uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2247,16 +2230,15 @@ uint64_t Fam_Ops_SHM::atomic_fetch_or(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_BOR][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint64_t *oldValue = (uint64_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint32_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint32_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2270,16 +2252,15 @@ uint32_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint32_t result;
     fam_atomic_readwrite_handlers[FAM_BXOR][UINT32](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint32_t *oldValue = (uint32_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 uint64_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
                                        uint64_t offset, uint64_t value) {
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t size = descriptor->get_size();
     uint64_t *keys = descriptor->get_keys();
 
@@ -2293,11 +2274,10 @@ uint64_t Fam_Ops_SHM::atomic_fetch_xor(Fam_Descriptor *descriptor,
                         "not permitted to either read or write, "
                         "need both read and write permission");
     }
-    void *result;
+    uint64_t result;
     fam_atomic_readwrite_handlers[FAM_BXOR][UINT64](
-        (void *)((char *)base_addr_list[0] + offset), (void *)&value, result);
-    uint64_t *oldValue = (uint64_t *)result;
-    return *oldValue;
+        (void *)((char *)base_addr_list[0] + offset), (void *)&value, &result);
+    return result;
 }
 
 void Fam_Ops_SHM::context_open(uint64_t contextId, Fam_Ops *famOpsObj) {

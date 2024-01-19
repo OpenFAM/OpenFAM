@@ -1,6 +1,6 @@
 /*
  * fam_rpc_server.h
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -87,9 +87,10 @@ enum RequestType { RT_COPY, RT_BACKUP, RT_RESTORE, RT_DELETE_BACKUP };
 
 class Fam_CIS_Async_Handler {
   public:
-    Fam_CIS_Async_Handler(uint64_t rpcPort, char *name)
+    Fam_CIS_Async_Handler(uint64_t rpcPort, char *name,
+                          Fam_CIS_Direct *direct_CIS_)
         : serverAddress(name), port(rpcPort) {
-        famCIS = new Fam_CIS_Direct(name);
+        famCIS = direct_CIS_;
         service = new sType();
         MEMSERVER_PROFILE_INIT(CIS_ASYNC);
         MEMSERVER_PROFILE_START_TIME(CIS_ASYNC);
@@ -294,6 +295,27 @@ class Fam_CIS_Async_Handler {
                     }
                     grpcStatus = Status::OK;
                 } catch (CIS_Exception &e) {
+                    switch (type) {
+                    case RT_COPY:
+                        copyresponse.set_errorcode(e.fam_error());
+                        copyresponse.set_errormsg(e.fam_error_msg());
+                        break;
+
+                    case RT_BACKUP:
+                        backupresponse.set_errorcode(e.fam_error());
+                        backupresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    case RT_RESTORE:
+                        restoreresponse.set_errorcode(e.fam_error());
+                        restoreresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    case RT_DELETE_BACKUP:
+                        delbackupresponse.set_errorcode(e.fam_error());
+                        delbackupresponse.set_errormsg(e.fam_error_msg());
+                        break;
+                    }
+                    grpcStatus = Status::OK;
+                } catch (Fam_Exception &e) {
                     switch (type) {
                     case RT_COPY:
                         copyresponse.set_errorcode(e.fam_error());

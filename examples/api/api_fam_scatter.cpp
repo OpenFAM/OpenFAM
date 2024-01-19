@@ -87,7 +87,7 @@ int main(void) {
         myFam->fam_scatter_blocking(local, descriptor, 5L, indexes,
                                     sizeof(int));
         // ... we now have the correct elements in FAM
-        printf("fam_scatter successfull. Correct elements are now in FAM.\n");
+        printf("fam_scatter successful. Correct elements are now in FAM.\n");
     } catch (Fam_Exception &e) {
         printf("fam API failed: %d: %s\n", e.fam_error(), e.fam_error_msg());
         ret = -1;
@@ -96,7 +96,7 @@ int main(void) {
     try {
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(region);
-        // printf("fam_destroy_region successfull\n");
+        // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());

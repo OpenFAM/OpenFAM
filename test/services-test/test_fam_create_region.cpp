@@ -1,6 +1,6 @@
 /*
  * test_fam_create_region.cpp
- * Copyright (c) 2022 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 202-2023 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -73,10 +73,16 @@ int main(int argc, char *argv[]) {
                   << std::endl;
         return -1;
     }
-    if (atoi(argv[5]) == 0)
+    if (atoi(argv[5]) == 0) {
         regionAttributes->redundancyLevel = NONE;
-    else if (atoi(argv[5]) == 1)
+    } else if (atoi(argv[5]) == 1) {
         regionAttributes->redundancyLevel = REDUNDANCY_LEVEL_DEFAULT;
+    }
+    if (atoi(argv[6]) == 0) {
+        regionAttributes->permissionLevel = REGION;
+    } else if (atoi(argv[6]) == 1) {
+        regionAttributes->permissionLevel = DATAITEM;
+    }
 
     init_fam_options(&fam_opts);
     fam_opts.runtime = strdup("NONE");

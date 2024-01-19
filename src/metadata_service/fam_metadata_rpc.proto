@@ -1,8 +1,9 @@
 /*
  * fam_metadata_rpc.proto
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -28,7 +29,7 @@
  *
  */
 
-syntax = "proto2";
+syntax = "proto3";
 
 /*
  *define services for RPC methods
@@ -65,23 +66,23 @@ service Fam_Metadata_Rpc {
     rpc dump_profile(Fam_Metadata_Gen_Request)
         returns (Fam_Metadata_Gen_Response) {}
     rpc metadata_update_memoryserver(Fam_Memservcnt_Request)
-	returns (Fam_Metadata_Gen_Response) {}
+        returns (Fam_Metadata_Gen_Response) {}
     rpc metadata_reset_bitmap(Fam_Metadata_Request)
-	returns (Fam_Metadata_Gen_Response) {}
+        returns (Fam_Metadata_Gen_Response) {}
     rpc metadata_validate_and_create_region(Fam_Metadata_Request)
-	returns (Fam_Metadata_Region_Info_Response) {}
+        returns (Fam_Metadata_Region_Info_Response) {}
     rpc metadata_validate_and_destroy_region(Fam_Metadata_Request)
-	returns (Fam_Metadata_Region_Info_Response) {}
+        returns (Fam_Metadata_Region_Info_Response) {}
     rpc metadata_validate_and_allocate_dataitem(Fam_Metadata_Request)
-	returns (Fam_Metadata_Response) {}
+        returns (Fam_Metadata_Response) {}
     rpc metadata_validate_and_deallocate_dataitem(Fam_Metadata_Request)
-	returns (Fam_Metadata_Response) {}
+        returns (Fam_Metadata_Response) {}
     rpc metadata_find_region_and_check_permissions(Fam_Metadata_Region_Request)
        returns (Fam_Metadata_Region_Response) {}
     rpc metadata_find_dataitem_and_check_permissions(Fam_Metadata_Request)
        returns (Fam_Metadata_Response) {}
-	rpc get_memory_server_list(Fam_Metadata_Request)
-	    returns (Fam_Metadata_Region_Info_Response) {}
+    rpc get_memory_server_list(Fam_Metadata_Request)
+        returns (Fam_Metadata_Region_Info_Response) {}
 }
 
 /*
@@ -90,92 +91,109 @@ service Fam_Metadata_Rpc {
 message Fam_Metadata_Gen_Request {}
 
 message Fam_Metadata_Region_Request {
-    optional uint64 key_region_id = 1;
-    optional uint64 key_dataitem_id = 2;
-    optional string key_region_name = 3;
-    optional string key_dataitem_name = 4;
-    optional uint64 region_id = 5;
-    optional string name = 6;
-    optional uint64 offset = 7;
-    optional uint32 uid = 8;
-    optional uint32 gid = 9;
-    optional uint64 perm = 10;
-    optional uint64 size = 11;
-    optional uint32 user_policy = 12;
-    optional uint64 memsrv_cnt = 13;
+    oneof metadata_key {
+        uint64 key_region_id = 1;
+        uint64 key_dataitem_id = 2;
+    }
+    string key_region_name = 3;
+    string key_dataitem_name = 4;
+    uint64 region_id = 5;
+    string name = 6;
+    uint64 offset = 7;
+    uint32 uid = 8;
+    uint32 gid = 9;
+    uint64 perm = 10;
+    uint64 size = 11;
+    uint32 user_policy = 12;
+    uint64 memsrv_cnt = 13;
     repeated uint64 memsrv_list = 14;
-    optional uint64 memsrv_id = 15;
-    optional uint32 op = 16;
-    optional uint32 redundancylevel = 17;
-    optional uint32 memorytype = 18;
-    optional uint32 interleaveenable = 19;
-    optional uint64 interleavesize = 20;
+    uint64 memsrv_id = 15;
+    uint32 op = 16;
+    uint32 redundancylevel = 17;
+    uint32 memorytype = 18;
+    uint32 interleaveenable = 19;
+    uint64 interleavesize = 20;
+    uint64 permission_level = 21;
 }
 
 message Fam_Metadata_Region_Response {
-    optional uint64 region_id = 1;
-    optional string name = 2;
-    optional uint64 offset = 3;
-    optional uint32 uid = 4;
-    optional uint32 gid = 5;
-    optional uint64 perm = 6;
-    optional uint64 size = 7;
-    optional uint64 maxkeylen = 8;
-    optional bool isfound = 9;
-    optional uint32 errorcode = 10;
-    optional string errormsg = 11;
-    optional uint64 memsrv_id = 12;
+    uint64 region_id = 1;
+    string name = 2;
+    uint64 offset = 3;
+    uint32 uid = 4;
+    uint32 gid = 5;
+    uint64 perm = 6;
+    uint64 size = 7;
+    uint64 maxkeylen = 8;
+    bool isfound = 9;
+    uint32 errorcode = 10;
+    string errormsg = 11;
+    uint64 memsrv_id = 12;
     repeated uint64 memsrv_list = 13;
-    optional uint64 memsrv_cnt = 14;
-    optional uint32 redundancylevel = 15;
-    optional uint32 memorytype = 16;
-    optional uint32 interleaveenable = 17;
-    optional uint64 interleavesize = 18;
+    uint64 memsrv_cnt = 14;
+    uint32 redundancylevel = 15;
+    uint32 memorytype = 16;
+    uint32 interleaveenable = 17;
+    uint64 interleavesize = 18;
+    uint64 permission_level = 19;
 }
 /*
  * Response message used by methods signal_start and signal_termination
  */
-message Fam_Metadata_Gen_Response {}
+message Fam_Metadata_Gen_Response {
+    repeated fixed32 addrname = 1;
+    uint64 addrnamelen = 2;
+}
 
 message Fam_Metadata_Request {
-    optional uint64 key_region_id = 1;
-    optional uint64 key_dataitem_id = 2;
-    optional string key_region_name = 3;
-    optional string key_dataitem_name = 4;
-    optional uint64 region_id = 5;
-    optional string name = 6;
-    repeated uint64 offsets = 7;
-    optional uint32 uid = 8;
-    optional uint32 gid = 9;
-    optional uint64 perm = 10;
-    optional uint64 size = 11;
-    optional uint32 user_policy = 12;
-    optional uint64 memsrv_id = 13;
-    optional uint32 op = 14;
-    optional uint32 redundancylevel = 15;
-    optional uint32 memorytype = 16;
-    optional uint32 interleaveenable = 17;
-    optional uint64 interleave_size = 18;
-    repeated uint64 memsrv_list = 19;
-    optional uint64 memsrv_cnt = 20;
+    oneof metadata_region_key {
+        uint64 key_region_id = 1;
+        string key_region_name = 2;
+    }
+    oneof metadata_dataitem_key {
+        uint64 key_dataitem_id = 3;
+        string key_dataitem_name = 4;
+    }
+    uint64 region_id = 5;
+    uint64 dataitem_id = 6;
+    string name = 7;
+    repeated uint64 offsets = 8;
+    uint32 uid = 9;
+    uint32 gid = 10;
+    uint64 perm = 11;
+    uint64 size = 12;
+    uint32 user_policy = 13;
+    uint64 memsrv_id = 14;
+    uint32 op = 15;
+    uint32 redundancylevel = 16;
+    uint32 memorytype = 17;
+    uint32 interleaveenable = 18;
+    uint64 interleave_size = 19;
+    repeated uint64 memsrv_list = 20;
+    uint64 memsrv_cnt = 21;
+    uint64 permission_level = 22;
 }
 
 message Fam_Metadata_Response {
-    optional uint64 region_id = 1;
-    optional string name = 2;
+    uint64 region_id = 1;
+    string name = 2;
     repeated uint64 offsets = 3;
-    optional uint32 uid = 4;
-    optional uint32 gid = 5;
-    optional uint64 perm = 6;
-    optional uint64 size = 7;
-    optional uint64 maxkeylen = 8;
-    optional bool isfound = 9;
-    optional uint32 errorcode = 10;
-    optional string errormsg = 11;
-    optional uint64 memsrv_id = 12;
-    optional uint64 interleave_size = 13;
+    uint32 uid = 4;
+    uint32 gid = 5;
+    uint64 perm = 6;
+    uint64 size = 7;
+    uint64 maxkeylen = 8;
+    bool isfound = 9;
+    uint32 errorcode = 10;
+    string errormsg = 11;
+    uint64 memsrv_id = 12;
+    uint64 interleave_size = 13;
     repeated uint64 memsrv_list = 14;
-    optional uint64 memsrv_cnt = 15;
+    uint64 memsrv_cnt = 15;
+    uint64 permission_level = 16;
+    uint64 region_permission = 17;
+    repeated fixed32 addrname = 18;
+    uint64 addrnamelen = 19;
 }
 
 message Fam_Permission_Request {
@@ -185,31 +203,31 @@ message Fam_Permission_Request {
         META_REGION_ITEM_EXEC = 2;
         META_REGION_ITEM_RW = 3;
     }
-    optional uint32 uid_meta = 1;
-    optional uint32 gid_meta = 2;
-    optional uint64 perm = 3;
-    optional uint32 uid_in = 4;
-    optional uint32 gid_in = 5;
-    optional uint32 ops = 6;
+    uint32 uid_meta = 1;
+    uint32 gid_meta = 2;
+    uint64 perm = 3;
+    uint32 uid_in = 4;
+    uint32 gid_in = 5;
+    uint32 ops = 6;
 }
 
 message Fam_Permission_Response {
-    optional bool is_permitted = 1;
-    optional uint32 errorcode = 2;
-    optional string errormsg = 3;
+    bool is_permitted = 1;
+    uint32 errorcode = 2;
+    string errormsg = 3;
 }
 
 message Fam_Memservcnt_Request {
-    optional uint32 nmemserverspersistent = 1;
+    uint32 nmemserverspersistent = 1;
     repeated uint64 memsrv_persistent_list = 2;
-    optional uint32 nmemserversvolatile = 3;
+    uint32 nmemserversvolatile = 3;
     repeated uint64 memsrv_volatile_list = 4;
 }
 
 message Fam_Metadata_Region_Info_Response {
-    optional uint64 region_id = 1;
+    uint64 region_id = 1;
     repeated uint32 memsrv_list = 2;
-    optional uint32 errorcode = 3;
-    optional string errormsg = 4;
-    optional uint64 memsrv_id = 5;
+    uint32 errorcode = 3;
+    string errormsg = 4;
+    uint64 memsrv_id = 5;
 }

@@ -1,8 +1,9 @@
 /*
  * fam_options_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -48,6 +49,9 @@ int main() {
     init_fam_options(&fam_opts);
     fam_opts.grpcPort = strdup("9500");
     fam_opts.runtime = strdup("NONE");
+    int *gBuf = (int *)malloc(sizeof(int));
+    fam_opts.local_buf_addr = gBuf;
+    fam_opts.local_buf_size = sizeof(int);
 
     try {
         // Throws grpc exception because of wrong grpc port.
@@ -73,13 +77,35 @@ int main() {
     while (optList[i]) {
         char *opt = strdup(optList[i]);
         if (strncmp(opt, "PE", 2) == 0) {
-            int *optIntValue = (int *)my_fam->fam_get_option(opt);
-            cout << optList[i] << ":" << *optIntValue << endl;
-            free(optIntValue);
+            try {
+                int *optIntValue = (int *)my_fam->fam_get_option(opt);
+                cout << optList[i] << ":" << *optIntValue << endl;
+                free(optIntValue);
+            } catch (Fam_Exception &e) {
+                cout << "Exception caught" << endl;
+                cout << "Error msg: " << e.fam_error_msg() << endl;
+                cout << "Error: " << e.fam_error() << endl;
+            }
+        } else if (strncmp(opt, "LOC_BUF_SIZE", 12) == 0) {
+            try {
+                size_t *optIntValue = (size_t *)my_fam->fam_get_option(opt);
+                cout << optList[i] << ":" << *optIntValue << endl;
+                free(optIntValue);
+            } catch (Fam_Exception &e) {
+                cout << "Exception caught" << endl;
+                cout << "Error msg: " << e.fam_error_msg() << endl;
+                cout << "Error: " << e.fam_error() << endl;
+            }
         } else {
-            char *optValue = (char *)my_fam->fam_get_option(opt);
-            cout << optList[i] << ":" << optValue << endl;
-            free(optValue);
+            try {
+                char *optValue = (char *)my_fam->fam_get_option(opt);
+                cout << optList[i] << ":" << optValue << endl;
+                free(optValue);
+            } catch (Fam_Exception &e) {
+                cout << "Exception caught" << endl;
+                cout << "Error msg: " << e.fam_error_msg() << endl;
+                cout << "Error: " << e.fam_error() << endl;
+            }
         }
         i++;
         free(opt);

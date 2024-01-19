@@ -1,6 +1,6 @@
 /*
  * fam_min_max_atomics_reg_test.cpp
- * Copyright (c) 2019, 2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019, 2022,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -1348,8 +1348,13 @@ int main(int argc, char **argv) {
 
     openFamModel = (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
 
-    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegionStr, REGION_SIZE, REGION_PERM, NULL));
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(
+        testRegionDesc = my_fam->fam_create_region(
+            testRegionStr, REGION_SIZE, REGION_PERM, regionAttributes));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     ret = RUN_ALL_TESTS();

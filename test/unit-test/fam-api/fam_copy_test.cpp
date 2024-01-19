@@ -1,6 +1,6 @@
 /*
  * fam_copy_test.cpp
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021, 2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -81,7 +81,7 @@ int main() {
         char itemInfo[255];
         sprintf(itemInfo, "second_%d", i);
         destItem[i] = my_fam->fam_allocate(itemInfo, 128, 0777, destDesc);
-        if (destItem == NULL) {
+        if (destItem[i] == NULL) {
             cout << "fam allocation of data item 'first' failed" << endl;
             exit(1);
         }

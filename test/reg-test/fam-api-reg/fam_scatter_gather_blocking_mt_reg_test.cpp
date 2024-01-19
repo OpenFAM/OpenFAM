@@ -1,8 +1,9 @@
 /*
  * fam_scatter_gather_index_blocking_mt_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -221,15 +222,19 @@ TEST(FamScatterGatherStrideBlockMT, ScatterGatherStrideBlockSuccess) {
 
 // Test case 3 - scatter gather index test.(Negative TestCase)
 TEST(FamScatterGatherIndexBlockMT, ScatterGatherIndexBlockFailure) {
-
+    Fam_Region_Descriptor *testRegionDesc;
     Fam_Descriptor *item;
     int i, rc;
     pthread_t thr[NUM_THREADS];
-    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *testRegion = get_uniq_str("test_item_perm", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, (8192 * NUM_THREADS), 0777, NULL));
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(
+        testRegionDesc = my_fam->fam_create_region(
+            testRegion, (8192 * NUM_THREADS), 0777, regionAttributes));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region
@@ -270,8 +275,12 @@ TEST(FamScatterGatherStrideBlockMT, ScatterGatherStrideBlockFailure) {
     const char *testRegion = get_uniq_str("test", my_fam);
     const char *firstItem = get_uniq_str("first", my_fam);
 
-    EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
-                        testRegion, (8192 * NUM_THREADS), 0777, NULL));
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(
+        testRegionDesc = my_fam->fam_create_region(
+            testRegion, (8192 * NUM_THREADS), 0777, regionAttributes));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
     // Allocating data items in the created region

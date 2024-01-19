@@ -1,6 +1,6 @@
 /*
  * fam_cis.h
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -52,13 +52,15 @@ class Fam_Memory_Service {
 
     virtual void create_region(uint64_t regionId, size_t nbytes) = 0;
 
-    virtual void destroy_region(uint64_t regionId) = 0;
+    virtual void destroy_region(uint64_t regionId,
+                                uint64_t *resourceStatus) = 0;
 
     virtual void resize_region(uint64_t regionId, size_t nbytes) = 0;
 
     virtual Fam_Region_Item_Info allocate(uint64_t regionId, size_t nbytes) = 0;
 
     virtual void deallocate(uint64_t regionId, uint64_t offset) = 0;
+
     virtual void copy(uint64_t srcRegionId, uint64_t *srcOffsets,
                       uint64_t srcUsedMemsrvCnt, uint64_t srcCopyStart,
                       uint64_t srcCopyEnd, uint64_t *srcKeys,
@@ -84,8 +86,23 @@ class Fam_Memory_Service {
                                uint32_t gid, mode_t mode) = 0;
     virtual void delete_backup(std::string BackupName) = 0;
 
-    virtual uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
-                             bool rwFlag) = 0;
+    virtual void register_region_memory(uint64_t regionId, bool accessType) = 0;
+
+    virtual Fam_Region_Memory get_region_memory(uint64_t regionId,
+                                                bool accessType) = 0;
+
+    virtual Fam_Region_Memory
+    open_region_with_registration(uint64_t regionId, bool accessType) = 0;
+
+    virtual void open_region_without_registration(uint64_t regionId) = 0;
+
+    virtual uint64_t close_region(uint64_t regionId) = 0;
+
+    virtual Fam_Dataitem_Memory get_dataitem_memory(uint64_t regionId,
+                                                    uint64_t offset,
+                                                    uint64_t size,
+                                                    bool accessType) = 0;
+
     virtual void *get_local_pointer(uint64_t regionId, uint64_t offset) = 0;
 
     virtual void acquire_CAS_lock(uint64_t offset) = 0;
@@ -134,6 +151,14 @@ class Fam_Memory_Service {
     virtual void update_memserver_addrlist(void *memServerInfoBuffer,
                                            size_t memServerInfoSize,
                                            uint64_t memoryServerCount) = 0;
+
+    virtual uint64_t get_memory_server_id() = 0;
+
+    virtual void set_controlpath_addr(string addr) = 0;
+
+    virtual string get_controlpath_addr() = 0;
+
+    virtual void create_region_failure_cleanup(uint64_t regionId) = 0;
 };
 
 } // namespace openfam

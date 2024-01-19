@@ -1,6 +1,6 @@
 /*
  * fam_ops_libfabric.cpp
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -58,7 +58,6 @@ Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
     delete fiAddrs;
     delete memServerAddrs;
     delete fiMemsrvMap;
-    delete fiMrs;
     free(service);
     free(provider);
     free(serverAddrName);
@@ -83,7 +82,6 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     fiAddrs = new std::vector<fi_addr_t>();
     memServerAddrs = new std::map<uint64_t, std::pair<void *, size_t>>();
     fiMemsrvMap = new std::map<uint64_t, fi_addr_t>();
-    fiMrs = new std::map<uint64_t, Fam_Region_Map_t *>();
     contexts = new std::map<uint64_t, Fam_Context *>();
     defContexts = new std::map<uint64_t, Fam_Context *>();
 
@@ -125,7 +123,6 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(bool source, const char *libfabricProvider,
     fiAddrs = new std::vector<fi_addr_t>();
     memServerAddrs = new std::map<uint64_t, std::pair<void *, size_t>>();
     fiMemsrvMap = new std::map<uint64_t, fi_addr_t>();
-    fiMrs = new std::map<uint64_t, Fam_Region_Map_t *>();
     contexts = new std::map<uint64_t, Fam_Context *>();
     defContexts = new std::map<uint64_t, Fam_Context *>();
 
@@ -161,7 +158,6 @@ Fam_Ops_Libfabric::Fam_Ops_Libfabric(Fam_Ops_Libfabric *famOps) {
     fiAddrs = famOps->fiAddrs;
     memServerAddrs = famOps->memServerAddrs;
     fiMemsrvMap = famOps->fiMemsrvMap;
-    fiMrs = famOps->fiMrs;
     contexts = famOps->contexts;
     defContexts = famOps->defContexts;
     ctxLock = famOps->ctxLock;
@@ -355,17 +351,6 @@ Fam_Context *Fam_Ops_Libfabric::get_context(Fam_Descriptor *descriptor) {
 
 void Fam_Ops_Libfabric::finalize() {
     fabric_finalize();
-    if (fiMrs != NULL) {
-        for (auto mr : *fiMrs) {
-            Fam_Region_Map_t *fiRegionMap = mr.second;
-            for (auto dmr : *(fiRegionMap->fiRegionMrs)) {
-                fi_close(&(dmr.second->fid));
-            }
-            fiRegionMap->fiRegionMrs->clear();
-            free(fiRegionMap);
-        }
-        fiMrs->clear();
-    }
 
     if (contexts != NULL) {
         for (auto fam_ctx : *contexts) {
@@ -412,7 +397,7 @@ int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     int ret = 0;
@@ -439,7 +424,7 @@ int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,
                              (uint64_t)(base_addr_list[0]) + currentOffset,
                              (*fiAddr)[memServerIds[0]], famCtx, true);
             // wait for IO to complete
-            famCtx->aquire_RDLock();
+            famCtx->acquire_RDLock();
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
                 delete ctx;
@@ -542,7 +527,7 @@ int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,
      * Iterate over the vector of fi_context to ensure the completion of all IOs
      */
     if (!fiCtxVector.empty()) {
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
@@ -564,7 +549,7 @@ int Fam_Ops_Libfabric::get_blocking(void *local, Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     int ret = 0;
@@ -592,7 +577,7 @@ int Fam_Ops_Libfabric::get_blocking(void *local, Fam_Descriptor *descriptor,
                             (*fiAddr)[memServerIds[0]], famCtx, true);
 
             // wait for IO to complete
-            famCtx->aquire_RDLock();
+            famCtx->acquire_RDLock();
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
                 delete ctx;
@@ -694,7 +679,7 @@ int Fam_Ops_Libfabric::get_blocking(void *local, Fam_Descriptor *descriptor,
      * Iterate over the vector of fi_context to ensure the completion of all IOs
      */
     if (!fiCtxVector.empty()) {
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
@@ -718,7 +703,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     int ret = 0;
@@ -741,7 +726,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
             stride, (*fiAddr)[memServerIds[0]], famCtx, fabric_iov_limit,
             (uint64_t)(base_addr_list[0]), true);
         // wait for IO to complete
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
             delete ctx;
@@ -842,7 +827,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
      * Iterate over the vector of fi_context to ensure the completion of all IOs
      */
     if (!fiCtxVector.empty()) {
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
@@ -866,7 +851,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     int ret = 0;
@@ -889,7 +874,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
             stride, (*fiAddr)[memServerIds[0]], famCtx, fabric_iov_limit,
             (uint64_t)(base_addr_list[0]), true);
         // wait for IO to complete
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
             delete ctx;
@@ -990,7 +975,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
      * Iterate over the vector of fi_context to ensure the completion of all IOs
      */
     if (!fiCtxVector.empty()) {
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
@@ -1014,7 +999,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     int ret = 0;
@@ -1037,7 +1022,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
             (*fiAddr)[memServerIds[0]], famCtx, fabric_iov_limit,
             (uint64_t)(base_addr_list[0]), true);
         // wait for IO to complete
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
             delete ctx;
@@ -1138,7 +1123,7 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
      * Iterate over the vector of fi_context to ensure the completion of all IOs
      */
     if (!fiCtxVector.empty()) {
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
@@ -1162,7 +1147,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     int ret = 0;
@@ -1185,7 +1170,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
             (*fiAddr)[memServerIds[0]], famCtx, fabric_iov_limit,
             (uint64_t)(base_addr_list[0]), true);
         // wait for IO to complete
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
             delete ctx;
@@ -1286,7 +1271,7 @@ int Fam_Ops_Libfabric::gather_blocking(void *local, Fam_Descriptor *descriptor,
      * Iterate over the vector of fi_context to ensure the completion of all IOs
      */
     if (!fiCtxVector.empty()) {
-        famCtx->aquire_RDLock();
+        famCtx->acquire_RDLock();
         for (auto ctx : fiCtxVector) {
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
@@ -1308,7 +1293,7 @@ void Fam_Ops_Libfabric::put_nonblocking(void *local, Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
@@ -1422,7 +1407,7 @@ void Fam_Ops_Libfabric::get_nonblocking(void *local, Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
@@ -1538,7 +1523,7 @@ void Fam_Ops_Libfabric::scatter_nonblocking(
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
@@ -1647,7 +1632,7 @@ void Fam_Ops_Libfabric::gather_nonblocking(
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
@@ -1758,7 +1743,7 @@ void Fam_Ops_Libfabric::scatter_nonblocking(void *local,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
@@ -1869,7 +1854,7 @@ void Fam_Ops_Libfabric::gather_nonblocking(void *local,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     Fam_Context *famCtx = get_context(descriptor);
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
@@ -2082,7 +2067,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2125,7 +2110,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2168,7 +2153,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2211,7 +2196,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2254,7 +2239,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2297,7 +2282,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2340,7 +2325,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2381,7 +2366,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2422,7 +2407,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2464,7 +2449,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2506,7 +2491,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2547,7 +2532,7 @@ void Fam_Ops_Libfabric::atomic_add(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2625,7 +2610,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2666,7 +2651,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2707,7 +2692,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2749,7 +2734,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2791,7 +2776,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2832,7 +2817,7 @@ void Fam_Ops_Libfabric::atomic_min(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2874,7 +2859,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2915,7 +2900,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2956,7 +2941,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -2998,7 +2983,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3040,7 +3025,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3081,7 +3066,7 @@ void Fam_Ops_Libfabric::atomic_max(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3123,7 +3108,7 @@ void Fam_Ops_Libfabric::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3165,7 +3150,7 @@ void Fam_Ops_Libfabric::atomic_and(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3207,7 +3192,7 @@ void Fam_Ops_Libfabric::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3249,7 +3234,7 @@ void Fam_Ops_Libfabric::atomic_or(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3291,7 +3276,7 @@ void Fam_Ops_Libfabric::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3333,7 +3318,7 @@ void Fam_Ops_Libfabric::atomic_xor(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -3375,7 +3360,7 @@ int32_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -3419,7 +3404,7 @@ int64_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -3463,7 +3448,7 @@ uint32_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -3507,7 +3492,7 @@ uint64_t Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -3551,7 +3536,7 @@ float Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float old;
@@ -3595,7 +3580,7 @@ double Fam_Ops_Libfabric::swap(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double old;
@@ -3640,7 +3625,7 @@ int32_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -3686,7 +3671,7 @@ int64_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -3732,7 +3717,7 @@ uint32_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -3778,7 +3763,7 @@ uint64_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -3825,7 +3810,7 @@ int128_t Fam_Ops_Libfabric::compare_swap(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int128_t local;
@@ -3908,7 +3893,7 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_int32(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t result;
@@ -3952,7 +3937,7 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_int64(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t result;
@@ -3996,7 +3981,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_uint32(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t result;
@@ -4040,7 +4025,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_uint64(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t result;
@@ -4084,7 +4069,7 @@ float Fam_Ops_Libfabric::atomic_fetch_float(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float result;
@@ -4128,7 +4113,7 @@ double Fam_Ops_Libfabric::atomic_fetch_double(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double result;
@@ -4172,7 +4157,7 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -4216,7 +4201,7 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -4260,7 +4245,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -4304,7 +4289,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -4348,7 +4333,7 @@ float Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float old;
@@ -4392,7 +4377,7 @@ double Fam_Ops_Libfabric::atomic_fetch_add(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double old;
@@ -4470,7 +4455,7 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -4514,7 +4499,7 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -4558,7 +4543,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -4602,7 +4587,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -4646,7 +4631,7 @@ float Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float old;
@@ -4690,7 +4675,7 @@ double Fam_Ops_Libfabric::atomic_fetch_min(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double old;
@@ -4734,7 +4719,7 @@ int32_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int32_t old;
@@ -4778,7 +4763,7 @@ int64_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     int64_t old;
@@ -4822,7 +4807,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -4866,7 +4851,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -4910,7 +4895,7 @@ float Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     float old;
@@ -4954,7 +4939,7 @@ double Fam_Ops_Libfabric::atomic_fetch_max(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     double old;
@@ -4998,7 +4983,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_and(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -5042,7 +5027,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_and(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -5086,7 +5071,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_or(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -5130,7 +5115,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_or(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -5174,7 +5159,7 @@ uint32_t Fam_Ops_Libfabric::atomic_fetch_xor(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint32_t old;
@@ -5218,7 +5203,7 @@ uint64_t Fam_Ops_Libfabric::atomic_fetch_xor(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     uint64_t old;
@@ -5264,7 +5249,7 @@ void Fam_Ops_Libfabric::atomic_set(Fam_Descriptor *descriptor, uint64_t offset,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
     std::vector<fi_addr_t> *fiAddr = get_fiAddrs();
     if (usedMemsrvCnt == 1) {
@@ -5321,7 +5306,7 @@ int128_t Fam_Ops_Libfabric::atomic_fetch_int128(Fam_Descriptor *descriptor,
     uint64_t *memServerIds = descriptor->get_memserver_ids();
     size_t interleaveSize = descriptor->get_interleave_size();
     uint64_t *keys = descriptor->get_keys();
-    void **base_addr_list = descriptor->get_base_address_list();
+    uint64_t *base_addr_list = descriptor->get_base_address_list();
     uint64_t usedMemsrvCnt = descriptor->get_used_memsrv_cnt();
 
     int128_t local;
@@ -5413,5 +5398,8 @@ void Fam_Ops_Libfabric::context_close(uint64_t contextId) {
         (void)pthread_mutex_unlock(&ctxLock);
     }
     return;
+}
+void Fam_Ops_Libfabric::register_heap(void *base, size_t len) {
+    get_context()->register_heap(base, len, domain, fabric_iov_limit);
 }
 } // namespace openfam

@@ -1,8 +1,9 @@
 /*
  * fam_put_get_mt_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -67,8 +68,10 @@ int rc;
 fam *my_fam;
 Fam_Options fam_opts;
 Fam_Region_Descriptor *testRegionDesc;
+Fam_Region_Descriptor *RegionDescItemPerm;
 Fam_Region_Descriptor *desc1, *desc2, *desc3;
 const char *testRegionStr;
+const char *RegionItemPermStr;
 Fam_Descriptor *items[NUM_THREADS];
 
 void *thr_func1(void *arg) {
@@ -417,9 +420,9 @@ void *thr_func5_no_put(void *arg) {
     mode_t test_perm_mode = 0444;
     size_t test_item_size = (1024 * NUM_THREADS);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item =
-                        my_fam->fam_allocate(dataItem, test_item_size,
-                                             test_perm_mode, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem, test_item_size,
+                                                test_perm_mode,
+                                                RegionDescItemPerm));
     EXPECT_NE((void *)NULL, item);
     items[msg_no] = item;
     *valInfo = {item, 0, 0, 0};
@@ -448,9 +451,9 @@ void *thr_func5_put_no_get(void *arg) {
     mode_t test_perm_mode = 0777;
     size_t test_item_size = (1024 * NUM_THREADS);
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item =
-                        my_fam->fam_allocate(dataItem, test_item_size,
-                                             test_perm_mode, testRegionDesc));
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem, test_item_size,
+                                                test_perm_mode,
+                                                RegionDescItemPerm));
     EXPECT_NE((void *)NULL, item);
     items[msg_no] = item;
     *valInfo = {item, 0, 0, 0};
@@ -594,10 +597,24 @@ int main(int argc, char **argv) {
                         testRegionStr, REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
 
+    RegionItemPermStr = get_uniq_str("test_item_perm", my_fam);
+
+    Fam_Region_Attributes *regionAttributes = new Fam_Region_Attributes();
+    regionAttributes->permissionLevel = DATAITEM;
+
+    EXPECT_NO_THROW(
+        RegionDescItemPerm = my_fam->fam_create_region(
+            RegionItemPermStr, REGION_SIZE, REGION_PERM, regionAttributes));
+    EXPECT_NE((void *)NULL, RegionDescItemPerm);
+
     ret = RUN_ALL_TESTS();
+
     EXPECT_NO_THROW(my_fam->fam_destroy_region(testRegionDesc));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(RegionDescItemPerm));
     delete testRegionDesc;
+    delete RegionDescItemPerm;
     free((void *)testRegionStr);
+    free((void *)RegionItemPermStr);
 
     EXPECT_NO_THROW(my_fam->fam_finalize("default"));
 
