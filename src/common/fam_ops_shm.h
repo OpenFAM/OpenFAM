@@ -1,6 +1,6 @@
 /*
  * fam_ops_shm.h
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021, 2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -307,6 +307,7 @@ class Fam_Ops_SHM : public Fam_Ops {
     void context_open(uint64_t contextId);
     void context_close(uint64_t contextId);
     uint64_t get_context_id();
+    void register_heap(void *base, size_t len) {}
 
   protected:
     Fam_Async_QHandler *asyncQHandler;

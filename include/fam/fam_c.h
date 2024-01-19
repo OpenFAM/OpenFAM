@@ -32,9 +32,10 @@
 #ifndef FAM_C_H_
 #define FAM_C_H_
 
+#include <fam/fam.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <sys/stat.h>
-#include <fam/fam.h>
 
 // This header is being used in both C & C++. Hence, the extern "C"
 // is kept under __cplusplus macro.
@@ -281,6 +282,15 @@ int c_fam_delete_backup_wait(c_fam* fam_obj, void* wait_obj);
  * @see #c_fam_allocate()
  */
 int  c_fam_deallocate(c_fam* fam_obj, c_fam_desc* desc);
+
+/**
+ * Close the Fam_Descriptor. This API helps to relinquish resources internally.
+ * @param fam_obj - FAM instance
+ * @param desc - descriptor associated with the data item.
+ * @return - 0 on success and -1 on failure
+ * @see #c_fam_allocate()
+ */
+int c_fam_close(c_fam *fam_obj, c_fam_desc *desc);
 
 /**
  * Initiate a copy of data from local memory to FAM, returning before copy

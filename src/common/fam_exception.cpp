@@ -49,6 +49,12 @@ Fam_Exception::Fam_Exception(const Fam_Exception &other) {
     famErr = other.famErr;
 }
 
+Fam_Exception &Fam_Exception::operator=(const Fam_Exception &other) {
+    famErrMsg = other.famErrMsg;
+    famErr = other.famErr;
+    return *this;
+}
+
 char const *Fam_Exception::fam_error_msg() { return famErrMsg.c_str(); }
 
 char const *Fam_Exception::what() { return famErrMsg.c_str(); }

@@ -1,8 +1,8 @@
 /*
  *   fam_metadata_service.h
- *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
- * rights reserved. Redistribution and use in source and binary forms, with or
- *   without modification, are permitted provided that the following conditions
+ *   Copyright (c) 2019-2020,2023 Hewlett Packard Enterprise Development, LP.
+ * All rights reserved. Redistribution and use in source and binary forms, with
+ * or without modification, are permitted provided that the following conditions
  *   are met:
  *   1. Redistributions of source code must retain the above copyright notice,
  *      this list of conditions and the following disclaimer.
@@ -107,6 +107,7 @@ typedef struct {
     uint64_t memServerIds[MAX_MEMORY_SERVERS_CNT];
     bool isHeapCreated;
     Fam_Redundancy_Level redundancyLevel;
+    Fam_Permission_Level permissionLevel;
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
     size_t interleaveSize;
@@ -132,6 +133,7 @@ typedef struct {
     uint64_t used_memsrv_cnt;
     uint64_t memoryServerIds[MAX_MEMORY_SERVERS_CNT];
     size_t interleaveSize;
+    Fam_Permission_Level permissionLevel;
 } Fam_DataItem_Metadata;
 
 typedef enum metadata_region_item_op {
@@ -251,7 +253,8 @@ class Fam_Metadata_Service {
     virtual void metadata_validate_and_allocate_dataitem(
         const std::string dataitemName, const uint64_t regionId, uint32_t uid,
         uint32_t gid, size_t size, std::list<int> *memory_server_list,
-        size_t *interleaveSize, int user_policy) = 0;
+        size_t *interleaveSize, Fam_Permission_Level *permissionLevel,
+        mode_t *regionPermission, int user_policy) = 0;
 
     virtual void metadata_validate_and_deallocate_dataitem(
         const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
@@ -277,6 +280,9 @@ class Fam_Metadata_Service {
         Fam_DataItem_Metadata &dataitem) = 0;
 
     virtual std::list<int> get_memory_server_list(uint64_t regionId) = 0;
+
+    virtual void set_controlpath_addr(string addr) = 0;
+    virtual string get_controlpath_addr() = 0;
 };
 
 } // namespace metadata

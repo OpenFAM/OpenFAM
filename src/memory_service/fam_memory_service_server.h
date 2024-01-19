@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_server.h
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -57,7 +57,7 @@ using grpc::Status;
 
 class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
   public:
-    Fam_Memory_Service_Server(uint64_t memserver_id);
+    Fam_Memory_Service_Server(Fam_Memory_Service_Direct *direct_memoryService_);
 
     ~Fam_Memory_Service_Server();
 
@@ -152,9 +152,35 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
                       const ::Fam_Memory_Service_Request *request,
                       ::Fam_Memory_Service_Response *response) override;
 
-    ::grpc::Status get_key(::grpc::ServerContext *context,
+    ::grpc::Status
+    register_region_memory(::grpc::ServerContext *context,
                            const ::Fam_Memory_Service_Request *request,
                            ::Fam_Memory_Service_Response *response) override;
+
+    ::grpc::Status open_region_with_registration(
+        ::grpc::ServerContext *context,
+        const ::Fam_Memory_Service_Request *request,
+        ::Fam_Memory_Service_Response *response) override;
+
+    ::grpc::Status open_region_without_registration(
+        ::grpc::ServerContext *context,
+        const ::Fam_Memory_Service_Request *request,
+        ::Fam_Memory_Service_Response *response) override;
+
+    ::grpc::Status
+    close_region(::grpc::ServerContext *context,
+                 const ::Fam_Memory_Service_Request *request,
+                 ::Fam_Memory_Service_Response *response) override;
+
+    ::grpc::Status
+    get_region_memory(::grpc::ServerContext *context,
+                      const ::Fam_Memory_Service_Request *request,
+                      ::Fam_Memory_Service_Response *response) override;
+
+    ::grpc::Status
+    get_dataitem_memory(::grpc::ServerContext *context,
+                        const ::Fam_Memory_Service_Request *request,
+                        ::Fam_Memory_Service_Response *response) override;
 
     ::grpc::Status get_atomic(::grpc::ServerContext *context,
                               const ::Fam_Memory_Atomic_Get_Request *request,
@@ -188,6 +214,11 @@ class Fam_Memory_Service_Server : public Fam_Memory_Service_Rpc::Service {
         ::grpc::ServerContext *context,
         const ::Fam_Memory_Service_Addr_Info *request,
         ::Fam_Memory_Service_General_Response *response) override;
+
+    ::grpc::Status create_region_failure_cleanup(
+        ::grpc::ServerContext *context,
+        const ::Fam_Memory_Service_Request *request,
+        ::Fam_Memory_Service_Response *response) override;
 
   protected:
     int numClients;

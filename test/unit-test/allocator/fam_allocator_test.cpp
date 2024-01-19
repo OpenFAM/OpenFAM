@@ -1,8 +1,9 @@
 /*
  * fam_allocator_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -60,7 +61,9 @@ int main() {
 
     // Create Region
     bool pass = true;
-    create_region(pass, my_fam, desc, "test", 8192, 0444, NULL);
+    Fam_Region_Attributes *regionAtributes = new Fam_Region_Attributes();
+    regionAtributes->permissionLevel = DATAITEM;
+    create_region(pass, my_fam, desc, "test", 8192, 0444, regionAtributes);
     if (!pass) {
         if (desc != NULL)
             destroy_region(pass, my_fam, desc);

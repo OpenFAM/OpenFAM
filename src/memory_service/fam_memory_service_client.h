@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_client.h
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -59,7 +59,7 @@ class Fam_Memory_Service_Client : public Fam_Memory_Service {
 
     void create_region(uint64_t regionId, size_t nbytes);
 
-    void destroy_region(uint64_t regionId);
+    void destroy_region(uint64_t regionId, uint64_t *resourceStatus);
 
     void resize_region(uint64_t regionId, size_t nbytes);
 
@@ -98,8 +98,19 @@ class Fam_Memory_Service_Client : public Fam_Memory_Service {
     void *get_addr();
     Fam_Memory_Type get_memtype();
 
-    uint64_t get_key(uint64_t regionId, uint64_t offset, uint64_t size,
-                     bool rwFlag);
+    void register_region_memory(uint64_t regionId, bool accessType);
+
+    Fam_Region_Memory get_region_memory(uint64_t regionId, bool accessType);
+
+    Fam_Region_Memory open_region_with_registration(uint64_t regionId,
+                                                    bool accessType);
+
+    void open_region_without_registration(uint64_t regionId);
+
+    uint64_t close_region(uint64_t regionId);
+
+    Fam_Dataitem_Memory get_dataitem_memory(uint64_t regionId, uint64_t offset,
+                                            uint64_t size, bool accessType);
 
     void get_atomic(uint64_t regionId, uint64_t srcOffset, uint64_t dstOffset,
                     uint64_t nbytes, uint64_t key, uint64_t srcBaseAddr,
@@ -138,10 +149,20 @@ class Fam_Memory_Service_Client : public Fam_Memory_Service {
                                    size_t memServerInfoSize,
                                    uint64_t memoryServerCount);
 
+    uint64_t get_memory_server_id() { return memoryServerId; }
+
+    // set and get controlpath address definitions
+    void set_controlpath_addr(string addr) {}
+
+    string get_controlpath_addr() { return std::string(); }
+
+    void create_region_failure_cleanup(uint64_t regionId);
+
   private:
     std::unique_ptr<Fam_Memory_Service_Rpc::Stub> stub;
     size_t memServerFabricAddrSize;
     char *memServerFabricAddr;
+    uint64_t memoryServerId;
     Fam_Memory_Type memServermemType;
 };
 

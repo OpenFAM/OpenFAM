@@ -82,6 +82,8 @@ class Fam_Exception : public std::exception {
 
     Fam_Exception(const Fam_Exception &other);
 
+    Fam_Exception &operator=(const Fam_Exception &other);
+
     virtual char const *fam_error_msg();
 
     virtual int fam_error();

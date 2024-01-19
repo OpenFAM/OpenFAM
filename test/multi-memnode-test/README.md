@@ -9,11 +9,7 @@
 
     * Then follow the build steps (a) - (c)
 
-    * start the memoryserver on all memory nodes using setup.sh
-
-    ```
-    $ ./setup.sh <memory server ip address>
-    ```
+    * start the memoryserver on all memory nodes using openfam_adm
 
     * Run the multi memory server test as follow
 

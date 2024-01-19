@@ -20,6 +20,10 @@
  #
  #
 
+if(ENABLE_THALLIUM)
+	set(THALLIUM_ENGINE_HELPER ${CMAKE_CURRENT_SOURCE_DIR}/fam_thallium_engine_helper.cpp)
+endif()
+
 set(LIBOPENFAM_SRC
   ${LIBOPENFAM_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_context.cpp
@@ -29,6 +33,7 @@ set(LIBOPENFAM_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
+  ${THALLIUM_ENGINE_HELPER}
   PARENT_SCOPE
   )
 
@@ -41,6 +46,7 @@ set(CIS_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
+  ${THALLIUM_ENGINE_HELPER}
   PARENT_SCOPE
 )
 
@@ -53,6 +59,7 @@ set(MEMORY_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
+  ${THALLIUM_ENGINE_HELPER}
   PARENT_SCOPE
   )
 
@@ -61,6 +68,7 @@ set(METADATA_CLIENT_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
+  ${THALLIUM_ENGINE_HELPER}
   PARENT_SCOPE
   )
 
@@ -69,12 +77,14 @@ set(METADATA_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_internal_exception.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
+  ${THALLIUM_ENGINE_HELPER}
   PARENT_SCOPE
   )
 
 set(LIBOPENFAM_C_SRC
   ${LIBOPENFAM_C_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/c_api.cpp
+  ${THALLIUM_ENGINE_HELPER}
   PARENT_SCOPE
   )
 

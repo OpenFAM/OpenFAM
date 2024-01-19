@@ -1,6 +1,6 @@
 /*
  * fam_allocator_client.h
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -31,6 +31,7 @@
 #ifndef FAM_ALLOCATOR_CLIENT_H_
 #define FAM_ALLOCATOR_CLIENT_H_
 
+#include "allocator/fam_client_resource_manager.h"
 #include "cis/fam_cis_client.h"
 #include "cis/fam_cis_direct.h"
 
@@ -38,9 +39,11 @@ namespace openfam {
 
 class Fam_Allocator_Client {
   public:
-    Fam_Allocator_Client(const char *name, uint64_t port);
+    Fam_Allocator_Client(const char *name, uint64_t port,
+                         string rpc_framework_type, string rpc_protocol_type,
+                         bool enableResourceRelease);
 
-    Fam_Allocator_Client(bool isSharedMemory = false);
+    Fam_Allocator_Client(bool isSharedMemory, bool enableResourceRelease);
 
     ~Fam_Allocator_Client();
 
@@ -59,6 +62,8 @@ class Fam_Allocator_Client {
                              mode_t accessPermissions,
                              Fam_Region_Descriptor *region);
     void deallocate(Fam_Descriptor *descriptor);
+
+    void close(Fam_Descriptor *descriptor);
 
     void change_permission(Fam_Region_Descriptor *descriptor,
                            mode_t accessPermissions);
@@ -125,8 +130,24 @@ class Fam_Allocator_Client {
 
     int get_memserverinfo(void *memServerInfoBuffer);
 
+    void open_region_without_registration(uint64_t regionId);
+
+    void
+    open_region_with_registration(uint64_t regionId,
+                                  Fam_Region_Memory_Map *famRegionMemoryMap);
+
+    void close_region(uint64_t regionId);
+
+    void close_all_regions();
+
   private:
+    void lookup_region_memory_map(Fam_Region_Memory_Map famRegionMemoryMap,
+                                  uint64_t memserverId,
+                                  Fam_Region_Memory *regionMemory);
+    Fam_Client_Resource_Manager *famResourceManager;
     Fam_CIS *famCIS;
+    bool isSharedMemory;
+    bool enableResourceRelease;
     uint32_t uid;
     uint32_t gid;
 };

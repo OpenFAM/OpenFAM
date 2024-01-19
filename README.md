@@ -10,11 +10,14 @@ OpenFAM is is an API designed for clusters that contain disaggregated memory. Th
 
 
 ## Supported OS
-* SUSE Linux Enterprise Server 15 SP3  
-* Ubuntu 20.04 LTS  
+* SUSE Linux Enterprise Server 15 SP4  
+* Ubuntu 22.04 LTS  
 * RHEL 8.x  
 
-## Building(Ubuntu 20.04 LTS)
+## Supported Compiler
+* gcc 11.2.0
+
+## Building(Ubuntu 22.04 LTS)
 
 1. Download the source code by cloning the repository. If you wish to contribute changes back to OpenFAM, follow the [contribution guidelines](/CONTRIBUTING.md).
 
@@ -51,6 +54,14 @@ $ cd OpenFAM
     $ cmake .. -DCMAKE_BUILD_TYPE=Coverage
     ```
 
+    To enable Thallium RPC framework, use the below command:
+
+    ```
+    $ cmake .. -DENABLE_THALLIUM=1
+
+    Note: [Mochi-thallium](https://mochi.readthedocs.io/en/latest/installing.html) package should be installed to use Thallium. 
+    ```
+
    c. make and install OpenFAM under the current build directory.
 
     ```
@@ -81,6 +92,7 @@ $ cd OpenFAM
 	--cisinterface=rpc
 	--memserverinterface=rpc
 	--metaserverinterface=rpc
+	--rpc_framework=grpc
 	--cisserver={rpc_interface:127.0.0.1,rpc_port:8787}
 	--memservers=0:{memory_type:volatile,fam_path:/dev/shm/vol,rpc_interface:127.0.0.1,rpc_port:8793,libfabric_port:7500,if_device:eth0}
 	--metaservers=0:{rpc_interface:127.0.0.1,rpc_port:8788}

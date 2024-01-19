@@ -1,8 +1,9 @@
 /*
  * fam_metadata_service_server.h
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -54,7 +55,9 @@ using grpc::Status;
 
 class Fam_Metadata_Service_Server : public Fam_Metadata_Rpc::Service {
   public:
-    Fam_Metadata_Service_Server(uint64_t rpcPort, char *name);
+    Fam_Metadata_Service_Server(
+        uint64_t rpcPort, char *name,
+        Fam_Metadata_Service_Direct *direct_metadataService_);
 
     ~Fam_Metadata_Service_Server();
 

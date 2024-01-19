@@ -86,7 +86,7 @@ int main(void) {
         // ensure that the OR operation is complete
         myFam->fam_quiet();
         // The first integer in FAM is now bitwise OR with a value of 0x444
-        printf("fam_or API successfull!!\n");
+        printf("fam_or API successful!!\n");
 
         // ... subsequent code here
     } catch (Fam_Exception &e) {
@@ -97,7 +97,7 @@ int main(void) {
     try {
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(region);
-        // printf("fam_destroy_region successfull\n");
+        // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());

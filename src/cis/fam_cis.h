@@ -1,6 +1,6 @@
 /*
  * fam_cis.h
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -435,6 +435,26 @@ class Fam_CIS {
         const void *elementIndex, uint64_t elementSize, uint64_t key,
         uint64_t srcBaseAddr, const char *nodeAddr, uint32_t nodeAddrSize,
         uint64_t memoryServerId, uint32_t uid, uint32_t gid) = 0;
+
+    virtual void
+    open_region_with_registration(uint64_t regionId, uint32_t uid, uint32_t gid,
+                                  std::vector<uint64_t> *memserverIds,
+                                  Fam_Region_Memory_Map *regionMemoryMap) = 0;
+
+    virtual void
+    open_region_without_registration(uint64_t regionId,
+                                     std::vector<uint64_t> *memserverIds) = 0;
+
+    virtual void close_region(uint64_t regionId,
+                              std::vector<uint64_t> memserverIds) = 0;
+
+    virtual void get_region_memory(uint64_t regionId, uint32_t uid,
+                                   uint32_t gid,
+                                   Fam_Region_Memory_Map *regionMemoryMap) = 0;
+
+    virtual void set_controlpath_addr(string addr) = 0;
+
+    virtual string get_controlpath_addr() = 0;
 };
 
 } // namespace openfam

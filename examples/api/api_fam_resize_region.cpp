@@ -57,15 +57,15 @@ int main(void) {
         Fam_Region_Descriptor *rd = myFam->fam_create_region(
             "myRegion21", (uint64_t)100000000, 0777, NULL);
         // use the created region...
-        printf("fam_create_region successfull\n");
+        printf("fam_create_region successful\n");
         // resize the region to 200 MB
         myFam->fam_resize_region(rd, (uint64_t)200000000);
         // use the re-sized region
-        printf("fam_resize_region successfull\n");
+        printf("fam_resize_region successful\n");
         // ... continuation code here
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(rd);
-        printf("fam_destroy_region successfull\n");
+        printf("fam_destroy_region successful\n");
 
     } catch (Fam_Exception &e) {
         printf("Create/Destroy region failed: %d: %s\n", e.fam_error(),

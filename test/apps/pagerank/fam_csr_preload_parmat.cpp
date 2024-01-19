@@ -1,6 +1,6 @@
 /*
  * fam_csr_preload_parmat.cpp
- * Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -76,25 +76,25 @@ int LoadGraphMatrix(std::istream& istream, size_t num_rows, size_t num_elements,
     // write rowptr to fam
     if (load_dataitem((char*)rowptr, "rowptr0", 0, 
                        (num_rows+1)*sizeof(int64_t), region, perm) < 0) {
-        delete rowptr;
-        delete colptr;
-        delete valptr;
+        delete[] rowptr;
+        delete[] colptr;
+        delete[] valptr;
         return -1;
     }
     // write colptr to fam
     if (load_dataitem((char*)colptr, "colptr0", 0,
                        (count)*sizeof(int64_t), region, perm) < 0) {
-        delete rowptr;
-        delete colptr;
-        delete valptr;
+        delete[] rowptr;
+        delete[] colptr;
+        delete[] valptr;
         return -1;
     }
     // write valptr to fam
     if (load_dataitem((char*)valptr, "valptr0", 0,
                        (count)*sizeof(int64_t), region, perm) < 0) {
-        delete rowptr;
-        delete colptr;
-        delete valptr;
+        delete[] rowptr;
+        delete[] colptr;
+        delete[] valptr;
         return -1;
     } 
                

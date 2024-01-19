@@ -83,7 +83,7 @@ int main(void) {
 
         // The first integer in FAM is now in local variable - value
         printf("First integer element from FAM: %d\n", value);
-        printf("fam_fetch_int32 API successfull!!\n");
+        printf("fam_fetch_int32 API successful!!\n");
         // ... subsequent code here
     } catch (Fam_Exception &e) {
         printf("fam API failed: %d: %s\n", e.fam_error(), e.fam_error_msg());
@@ -93,7 +93,7 @@ int main(void) {
     try {
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(region);
-        // printf("fam_destroy_region successfull\n");
+        // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());

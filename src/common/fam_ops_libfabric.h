@@ -1,6 +1,6 @@
 /*
  * fam_ops_libfabric.h
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -59,11 +59,6 @@ using namespace std;
 namespace openfam {
 
 class Fam_Allocator_Client;
-struct Fam_Region_Map_t {
-    uint64_t regionId;
-    std::map<uint64_t, fid_mr *> *fiRegionMrs;
-    pthread_rwlock_t fiRegionLock;
-};
 
 class Fam_Ops_Libfabric : public Fam_Ops {
   public:
@@ -340,7 +335,6 @@ class Fam_Ops_Libfabric : public Fam_Ops {
         return domain;
     };
     std::vector<fi_addr_t> *get_fiAddrs() { return fiAddrs; };
-    std::map<uint64_t, Fam_Region_Map_t *> *get_fiMrs() { return fiMrs; };
 
     // Use context_id instead of nodeID
     Fam_Context *get_defaultCtx(uint64_t nodeId) {
@@ -415,6 +409,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
 
     size_t get_fabric_iov_limit() { return fabric_iov_limit; }
     size_t get_fabric_max_msg_size() { return fabric_max_msg_size; }
+    void register_heap(void *base, size_t len);
 
   protected:
     // Server_Map name;
@@ -443,7 +438,6 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     uint64_t ctxId;
 
     std::vector<fi_addr_t> *fiAddrs;
-    std::map<uint64_t, Fam_Region_Map_t *> *fiMrs;
 
     std::map<uint64_t, Fam_Context *> *contexts;
     std::map<uint64_t, Fam_Context *> *defContexts;

@@ -1,6 +1,6 @@
 /*
  * fam_min_max_atomics_mt_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2019, 2023 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -765,12 +765,26 @@ TEST(FamMinMaxAtomics, MinMaxUInt64Block) {
     int i;
 
     ValueInfo *info = (ValueInfo *)malloc(sizeof(ValueInfo) * NUM_THREADS);
-
     // Allocating data items in the created region
-    EXPECT_NO_THROW(item = my_fam->fam_allocate(
-                        dataItem, 1024 * NUM_THREADS * sizeof(uint64_t), 0777,
-                        testRegionDesc));
-    EXPECT_NE((void *)NULL, item);
+    // Enabling delayed free threads may sometimes cause this
+    // fam_allocate to fail. In such cases, give enough time for the
+    // delayed free thread to run and then retry fam_allocate
+
+    try {
+        item = my_fam->fam_allocate(dataItem,
+                                    1024 * NUM_THREADS * sizeof(uint64_t), 0777,
+                                    testRegionDesc);
+        EXPECT_NE((void *)NULL, item);
+    } catch (Fam_Exception &e) {
+        cout << "Sleeping for 5 seconds" << endl;
+        sleep(5);
+
+        EXPECT_NO_THROW(item = my_fam->fam_allocate(dataItem,
+                                    1024 * NUM_THREADS * sizeof(uint64_t), 0777,
+                                    testRegionDesc));
+        EXPECT_NE((void *)NULL, item);
+    }
+
     for (i = 0; i < NUM_THREADS; ++i) {
         info[i].item = item;
         info[i].offset = (uint64_t)i;

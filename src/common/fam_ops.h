@@ -1,6 +1,6 @@
 /*
  * fam_ops.h
- * Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2021, 2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -747,6 +747,9 @@ class Fam_Ops {
      * ~fam() - destructor for fam class
      */
     virtual ~Fam_Ops(){};
+
+    /* Local Buffer heap register passed by application */
+    virtual void register_heap(void *base, size_t len) = 0;
 };
 
 #endif

@@ -85,7 +85,7 @@ int main(void) {
 
         // The first integer in FAM is now bitwise XOR with a value of 0x444
         printf("Old value of first integer element in FAM: %d\n", oldValue);
-        printf("fam_fetch_xor API successfull!!\n");
+        printf("fam_fetch_xor API successful!!\n");
 
         // ... subsequent code here
     } catch (Fam_Exception &e) {
@@ -96,7 +96,7 @@ int main(void) {
     try {
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(region);
-        // printf("fam_destroy_region successfull\n");
+        // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());

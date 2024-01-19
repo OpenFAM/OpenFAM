@@ -1,8 +1,9 @@
 /*
  * metadata_server_main.cpp
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -32,10 +33,19 @@
 #include <signal.h>
 #endif
 
+#include "common/fam_options.h"
+#include "metadata_service/fam_metadata_service_direct.h"
 #include "metadata_service/fam_metadata_service_server.h"
 #include <iostream>
+#include <thread>
 using namespace std;
 using namespace metadata;
+
+#ifdef USE_THALLIUM
+#include "metadata_service/fam_metadata_service_thallium_server.h"
+#include <thallium.hpp>
+namespace tl = thallium;
+#endif
 
 #ifdef OPENFAM_VERSION
 #define METADATASERVER_VERSION OPENFAM_VERSION
@@ -53,6 +63,18 @@ void signal_handler(int signum) {
 #endif
 
 Fam_Metadata_Service_Server *metadataService;
+Fam_Metadata_Service_Direct *direct_metadataService;
+
+#ifdef USE_THALLIUM
+Fam_Metadata_Service_Thallium_Server *metadataThalliumService;
+void thallium_server() {
+    tl::engine myEngine(direct_metadataService->get_rpc_protocol_type(),
+                        THALLIUM_SERVER_MODE, false, -1);
+    metadataThalliumService = new Fam_Metadata_Service_Thallium_Server(
+        direct_metadataService, myEngine);
+    metadataThalliumService->run();
+}
+#endif
 
 int main(int argc, char *argv[]) {
     uint64_t rpcPort = 8788;
@@ -95,14 +117,29 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, signal_handler);
 #endif
 
-    metadataService = NULL;
     try {
-        metadataService = new Fam_Metadata_Service_Server(rpcPort, name);
+        direct_metadataService = new Fam_Metadata_Service_Direct(false);
+        metadataService = new Fam_Metadata_Service_Server(
+            rpcPort, name, direct_metadataService);
+#ifdef USE_THALLIUM
+        std::thread thread_1;
+        if (strcmp(direct_metadataService->get_rpc_framework_type().c_str(),
+                   FAM_OPTIONS_THALLIUM_STR) == 0) {
+            // start thallium server on a new thread
+            thread_1 = std::thread(&thallium_server);
+        }
+#endif
+        // start grpc server
         metadataService->run();
     } catch (Fam_Exception &e) {
         if (metadataService) {
             delete metadataService;
         }
+#ifdef USE_THALLIUM
+        else if (metadataThalliumService) {
+            delete metadataThalliumService;
+        }
+#endif
         cout << "Error code: " << e.fam_error() << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
     }
@@ -111,6 +148,11 @@ int main(int argc, char *argv[]) {
         delete metadataService;
         metadataService = NULL;
     }
-
+#ifdef USE_THALLIUM
+    else if (metadataThalliumService) {
+        delete metadataThalliumService;
+        metadataThalliumService = NULL;
+    }
+#endif
     return 0;
 }

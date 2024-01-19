@@ -1,6 +1,6 @@
 /*
  * fam_cis_client.h
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -43,6 +43,7 @@
 
 #include "cis/fam_cis.h"
 #include "cis/fam_cis_rpc.grpc.pb.h"
+
 using namespace std;
 
 namespace openfam {
@@ -189,6 +190,24 @@ class Fam_CIS_Client : public Fam_CIS {
                               uint64_t srcBaseAddr, const char *nodeAddr,
                               uint32_t nodeAddrSize, uint64_t memoryServerId,
                               uint32_t uid, uint32_t gid);
+
+    void open_region_with_registration(uint64_t regionId, uint32_t uid,
+                                       uint32_t gid,
+                                       std::vector<uint64_t> *memserverIds,
+                                       Fam_Region_Memory_Map *regionMemoryMap);
+
+    void open_region_without_registration(uint64_t regionId,
+                                          std::vector<uint64_t> *memserverIds);
+
+    void get_region_memory(uint64_t regionId, uint32_t uid, uint32_t gid,
+                           Fam_Region_Memory_Map *regionMemoryMap);
+
+    // set and get controlpath address definitions
+    void set_controlpath_addr(string addr) {}
+
+    string get_controlpath_addr() { return std::string(); }
+
+    void close_region(uint64_t regionId, std::vector<uint64_t> memserverIds);
 
   private:
     std::unique_ptr<Fam_CIS_Rpc::Stub> stub;

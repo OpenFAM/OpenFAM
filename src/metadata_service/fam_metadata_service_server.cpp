@@ -1,7 +1,7 @@
 /*
  *   fam_metadata_service_server.cpp
- *   Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- *   reserved. Redistribution and use in source and binary forms, with or
+ *   Copyright (c) 2020,2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
  *   without modification, are permitted provided that the following conditions
  *   are met:
  *   1. Redistributions of source code must retain the above copyright notice,
@@ -69,10 +69,11 @@ void metadata_server_profile_dump() {
     MEMSERVER_DUMP_PROFILE_SUMMARY(METADATA_SERVER)
 }
 
-Fam_Metadata_Service_Server::Fam_Metadata_Service_Server(uint64_t rpcPort,
-                                                         char *name)
+Fam_Metadata_Service_Server::Fam_Metadata_Service_Server(
+    uint64_t rpcPort, char *name,
+    Fam_Metadata_Service_Direct *direct_metadataService_)
     : serverAddress(name), port(rpcPort) {
-    metadataService = new Fam_Metadata_Service_Direct(false);
+    metadataService = direct_metadataService_;
     numClients = 0;
     MEMSERVER_PROFILE_INIT(METADATA_SERVER)
     MEMSERVER_PROFILE_START_TIME(METADATA_SERVER)
@@ -122,6 +123,30 @@ void Fam_Metadata_Service_Server::run() {
     ::grpc::ServerContext *context, const ::Fam_Metadata_Gen_Request *request,
     ::Fam_Metadata_Gen_Response *response) {
     __sync_add_and_fetch(&numClients, 1);
+
+    char *addr = (char *)malloc(metadataService->get_controlpath_addr().size());
+    memcpy(addr, metadataService->get_controlpath_addr().c_str(),
+           metadataService->get_controlpath_addr().size());
+
+    size_t addrSize = metadataService->get_controlpath_addr().size();
+
+    response->set_addrnamelen(addrSize);
+    int count = (int)(addrSize / sizeof(uint32_t));
+    for (int ndx = 0; ndx < count; ndx++) {
+        response->add_addrname(*((uint32_t *)addr + ndx));
+    }
+
+    // Only if addrSize is not multiple of 4 (fixed32)
+    int lastBytesCount = 0;
+    uint32_t lastBytes = 0;
+
+    lastBytesCount = (int)(addrSize % sizeof(uint32_t));
+    if (lastBytesCount > 0) {
+        memcpy(&lastBytes, ((uint32_t *)addr + count), lastBytesCount);
+        response->add_addrname(lastBytes);
+    }
+
+    free(addr);
     return ::grpc::Status::OK;
 }
 
@@ -151,14 +176,15 @@ void Fam_Metadata_Service_Server::run() {
     region->memoryType = (Fam_Memory_Type)request->memorytype();
     region->interleaveEnable =
         (Fam_Interleave_Enable)request->interleaveenable();
+    region->permissionLevel = (Fam_Permission_Level)request->permission_level();
 
     for (int ndx = 0; ndx < (int)region->used_memsrv_cnt; ndx++) {
         region->memServerIds[ndx] = request->memsrv_list(ndx);
     }
 
     try {
-        metadataService->metadata_insert_region(
-            request->key_region_id(), request->key_region_name(), region);
+        metadataService->metadata_insert_region(request->region_id(),
+                                                request->name(), region);
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -215,7 +241,11 @@ void Fam_Metadata_Service_Server::run() {
         response->set_gid(region.gid);
         response->set_maxkeylen(metadataService->metadata_maxkeylen());
         response->set_memsrv_cnt(region.used_memsrv_cnt);
-
+        response->set_redundancylevel(region.redundancyLevel);
+        response->set_memorytype(region.redundancyLevel);
+        response->set_interleaveenable(region.redundancyLevel);
+        response->set_interleavesize(region.interleaveSize);
+        response->set_permission_level(region.permissionLevel);
         for (int id = 0; id < (int)region.used_memsrv_cnt; ++id) {
             response->add_memsrv_list(region.memServerIds[id]);
         }
@@ -239,9 +269,17 @@ void Fam_Metadata_Service_Server::run() {
     region->uid = request->uid();
     region->gid = request->gid();
     region->used_memsrv_cnt = request->memsrv_cnt();
-    for (int id = 0; id < (int)region->used_memsrv_cnt; ++id) {
-        region->memServerIds[id] = request->memsrv_list(id);
+    region->redundancyLevel = (Fam_Redundancy_Level)request->redundancylevel();
+    region->memoryType = (Fam_Memory_Type)request->memorytype();
+    region->interleaveEnable =
+        (Fam_Interleave_Enable)request->interleaveenable();
+    region->interleaveSize = request->interleavesize();
+    region->permissionLevel = (Fam_Permission_Level)request->permission_level();
+
+    for (int ndx = 0; ndx < (int)region->used_memsrv_cnt; ndx++) {
+        region->memServerIds[ndx] = request->memsrv_list(ndx);
     }
+
     try {
         if (request->has_key_region_id())
             metadataService->metadata_modify_region(request->key_region_id(),
@@ -275,18 +313,20 @@ void Fam_Metadata_Service_Server::run() {
     dataitem->uid = request->uid();
     dataitem->gid = request->gid();
     dataitem->interleaveSize = request->interleave_size();
+    dataitem->permissionLevel =
+        (Fam_Permission_Level)request->permission_level();
     for (int ndx = 0; ndx < (int)dataitem->used_memsrv_cnt; ndx++) {
         dataitem->memoryServerIds[ndx] = request->memsrv_list(ndx);
     }
     try {
-        if (request->has_key_region_id())
+        if (request->has_key_region_id()) {
             metadataService->metadata_insert_dataitem(
-                request->key_dataitem_id(), request->key_region_id(), dataitem,
-                request->key_dataitem_name());
-        else
+                request->dataitem_id(), request->key_region_id(), dataitem,
+                request->name());
+        } else
             metadataService->metadata_insert_dataitem(
-                request->key_dataitem_id(), request->key_region_name(),
-                dataitem, request->key_dataitem_name());
+                request->dataitem_id(), request->key_region_name(), dataitem,
+                request->name());
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -331,11 +371,11 @@ void Fam_Metadata_Service_Server::run() {
     Fam_DataItem_Metadata dataitem;
     bool ret;
     try {
-        if (request->has_key_dataitem_id() && request->has_key_region_id())
+        if (request->has_key_dataitem_id() && request->has_key_region_id()) {
             ret = metadataService->metadata_find_dataitem(
                 request->key_dataitem_id(), request->key_region_id(), dataitem);
-        else if (request->has_key_dataitem_id() &&
-                 request->has_key_region_name())
+        } else if (request->has_key_dataitem_id() &&
+                   request->has_key_region_name())
             ret = metadataService->metadata_find_dataitem(
                 request->key_dataitem_id(), request->key_region_name(),
                 dataitem);
@@ -366,6 +406,7 @@ void Fam_Metadata_Service_Server::run() {
         response->set_gid(dataitem.gid);
         response->set_maxkeylen(metadataService->metadata_maxkeylen());
         response->set_interleave_size(dataitem.interleaveSize);
+        response->set_permission_level(dataitem.permissionLevel);
         for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
             response->add_memsrv_list(dataitem.memoryServerIds[i]);
         }
@@ -390,6 +431,9 @@ void Fam_Metadata_Service_Server::run() {
     dataitem->perm = (mode_t)request->perm();
     dataitem->uid = request->uid();
     dataitem->gid = request->gid();
+    dataitem->interleaveSize = (size_t)request->interleave_size();
+    dataitem->permissionLevel =
+        (Fam_Permission_Level)request->permission_level();
     for (int ndx = 0; ndx < (int)dataitem->used_memsrv_cnt; ndx++) {
         dataitem->memoryServerIds[ndx] = request->memsrv_list(ndx);
     }
@@ -525,6 +569,8 @@ void Fam_Metadata_Service_Server::run() {
     regionAttributes->memoryType = (Fam_Memory_Type)request->memorytype();
     regionAttributes->interleaveEnable =
         (Fam_Interleave_Enable)request->interleaveenable();
+    regionAttributes->permissionLevel =
+        (Fam_Permission_Level)request->permission_level();
 
     uint64_t regionId;
     try {
@@ -576,11 +622,13 @@ Fam_Metadata_Service_Server::metadata_validate_and_allocate_dataitem(
     std::list<int> memoryServerIds;
     METADATA_SERVER_PROFILE_START_OPS();
     size_t interleaveSize;
+    Fam_Permission_Level permissionLevel;
+    mode_t regionPermission;
     try {
         metadataService->metadata_validate_and_allocate_dataitem(
             request->key_dataitem_name(), request->region_id(), request->uid(),
             request->gid(), request->size(), &memoryServerIds, &interleaveSize,
-            request->user_policy());
+            &permissionLevel, &regionPermission, request->user_policy());
     } catch (Fam_Exception &e) {
         response->set_errorcode(e.fam_error());
         response->set_errormsg(e.fam_error_msg());
@@ -588,6 +636,8 @@ Fam_Metadata_Service_Server::metadata_validate_and_allocate_dataitem(
     }
 
     response->set_interleave_size(interleaveSize);
+    response->set_permission_level(permissionLevel);
+    response->set_region_permission(regionPermission);
     for (auto it = memoryServerIds.begin(); it != memoryServerIds.end(); ++it) {
         response->add_memsrv_list(*it);
     }
@@ -666,6 +716,7 @@ Fam_Metadata_Service_Server::metadata_find_region_and_check_permissions(
     response->set_memorytype(region.redundancyLevel);
     response->set_interleaveenable(region.redundancyLevel);
     response->set_interleavesize(region.interleaveSize);
+    response->set_permission_level(region.permissionLevel);
     for (int id = 0; id < (int)region.used_memsrv_cnt; ++id) {
         response->add_memsrv_list(region.memServerIds[id]);
     }
@@ -709,6 +760,7 @@ Fam_Metadata_Service_Server::metadata_find_dataitem_and_check_permissions(
     response->set_gid(dataitem.gid);
     response->set_maxkeylen(metadataService->metadata_maxkeylen());
     response->set_interleave_size(dataitem.interleaveSize);
+    response->set_permission_level(dataitem.permissionLevel);
     for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
         response->add_memsrv_list(dataitem.memoryServerIds[i]);
     }

@@ -1,6 +1,6 @@
 /*
  * fam/fam_internal_exception.h
- * Copyright (c) 2019-2022 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -62,6 +62,13 @@ namespace openfam {
         throw exception(error_no, errMsgStr.str().c_str());                    \
     } while (0)
 
+#define HANDLE_ERROR(expr)                                                     \
+    try {                                                                      \
+        expr;                                                                  \
+    } catch (const std::exception &ex) {                                       \
+    } catch (...) {                                                            \
+    }
+
 enum Internal_Error {
     REGION_EXIST = MIN_ERR_VAL,
     DATAITEM_EXIST,
@@ -120,7 +127,10 @@ enum Internal_Error {
     ADDRVEC_POPULATION_FAILED,
     MEMSERVER_LIST_CREATE_FAILED,
     INTERLV_SIZE_NOT_PWR_TWO,
-    REGION_NO_SPACE
+    REGION_NO_SPACE,
+    DATAITEM_KEY_NOT_AVAILABLE,
+    REGISTRATION_FAILED,
+    UNREGISTRATION_FAILED
 };
 
 inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
@@ -210,6 +220,9 @@ inline enum Fam_Error convert_to_famerror(enum Internal_Error serverErr) {
     case ITEM_DEREGISTRATION_FAILED:
     case BACKUP_SIZE_TOO_LARGE:
     case MEMORY_SERVER_START_FAILED:
+    case DATAITEM_KEY_NOT_AVAILABLE:
+    case REGISTRATION_FAILED:
+    case UNREGISTRATION_FAILED:
         return FAM_ERR_MEMORY;
     default:
         return FAM_ERR_RESOURCE;

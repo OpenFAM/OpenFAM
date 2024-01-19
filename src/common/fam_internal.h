@@ -1,8 +1,8 @@
 /*
  * fam_internal.h
- * Copyright (c) 2017, 2018 Hewlett Packard Enterprise Development, LP. All
- * rights reserved. Redistribution and use in source and binary forms, with or
- * without modification, are permitted provided that the following conditions
+ * Copyright (c) 2017, 2018, 2023 Hewlett Packard Enterprise Development, LP.
+ * All rights reserved. Redistribution and use in source and binary forms, with
+ * or without modification, are permitted provided that the following conditions
  * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
@@ -69,6 +69,7 @@
 #include <stdint.h> // needed for uint64_t etc.
 #include <string>
 #include <sys/stat.h> // needed for mode_t
+#include <unordered_map>
 
 #include "radixtree/kvs.h"
 #include "radixtree/radix_tree.h"
@@ -78,6 +79,7 @@
 #include "nvmm/epoch_manager.h"
 #include "nvmm/memory_manager.h"
 #include <nvmm/fam.h>
+#include <nvmm/global_ptr.h>
 
 #include <grpcpp/grpcpp.h>
 
@@ -118,6 +120,9 @@ namespace openfam {
 #define DATAITEMID_BITS 33
 #define DATAITEMID_MASK ((1UL << DATAITEMID_BITS) - 1)
 #define DATAITEMID_SHIFT 1
+#define RPC_PROTOCOL_VERBS "ofi+verbs://"
+#define RPC_PROTOCOL_SOCKETS "ofi+sockets://"
+#define RPC_PROTOCOL_TCP "ofi+tcp://"
 
 #define ADDR_SIZE 20
 
@@ -141,10 +146,168 @@ namespace openfam {
         }                                                                      \
     }
 
+#define RPC_STATUS_CHECK(exception, response)                                  \
+    {                                                                          \
+        if (!response.get_status()) {                                          \
+            if (response.get_errorcode()) {                                    \
+                throw exception((enum Fam_Error)response.get_errorcode(),      \
+                                (response.get_errormsg()).c_str());            \
+            }                                                                  \
+        }                                                                      \
+    }
+
 #define FAM_DEFAULT_CTX_ID (uint64_t(0))
 #define FAM_CTX_ID_UNINITIALIZED ((uint64_t)-1)
 
+/*
+ * Maximum entries in the garbage queue used for resource relinquishment
+ */
+#define MAX_GARBAGE_ENTRY 1024
+
+/*
+ * States to represent FAM resource
+ *
+ * ACTIVE   : Fam resource is active and used by one more client
+ * INACTIVE : Fam resource is inactive, a new region resource is added in
+ * INACTIVE state BUSY     : This state signifies that the current resource is
+ * currently being updated by other client RELEASED : Resource is released back
+ * to the system
+ */
+#define ACTIVE 1UL
+#define INACTIVE 2UL
+#define BUSY 3UL
+#define RELEASED 4UL
+
+/* Read the value atomically */
+#define ATOMIC_READ(obj) std::atomic_load(obj)
+
+/* Write the value atomically */
+#define ATOMIC_WRITE(obj, value) std::atomic_store(obj, value)
+
+/* Atomic compare swap operation */
+#define ATOMIC_CAS(obj, expected, desired)                                     \
+    std::atomic_compare_exchange_weak(obj, expected, desired)
+
+/* Combines status and reference count fields */
+#define CONCAT_STATUS_REFCNT(status, refcnt)                                   \
+    ((uint64_t)status << 32) | ((uint64_t)refcnt & 0xffffffff)
+
+#define REFCNT_BITS 32
+#define STATUS_SHIFT REFCNT_BITS
+#define REFCNT_MASK ((1UL << REFCNT_BITS) - 1)
+
+/* Parse status from combined value */
+#define GET_STATUS(obj) obj >> STATUS_SHIFT
+/* Parse reference count from combined value */
+#define GET_REFCNT(obj) obj &REFCNT_MASK
+
+/*
+ * Lock the region resource to synchronize resource update operation.
+ * the resource state is changed to BUSY
+ */
+#define LOCK_REGION_RESOURCE(obj) lock_region_resource(obj)
+inline bool lock_region_resource(std::atomic<uint64_t> *obj) {
+    uint64_t readValue, newValue = 0;
+    do {
+        readValue = ATOMIC_READ(obj);
+        uint64_t status = GET_STATUS(readValue);
+        uint64_t refCount = GET_REFCNT(readValue);
+        if (status == BUSY) {
+            /*TODO: Add sleep here*/
+            continue;
+        }
+        if (status != ACTIVE) {
+            return false;
+        }
+        newValue = CONCAT_STATUS_REFCNT(BUSY, refCount);
+    } while (!ATOMIC_CAS(obj, &readValue, newValue));
+    return true;
+}
+
+/*
+ * Unlock the region resource, change state back from BUSY to ACTIVE.
+ */
+#define UNLOCK_REGION_RESOURCE(obj) unlock_region_resource(obj)
+inline void unlock_region_resource(std::atomic<uint64_t> *obj) {
+    uint64_t readValue, newValue;
+    do {
+        readValue = ATOMIC_READ(obj);
+        uint64_t status = GET_STATUS(readValue);
+        uint64_t refCount = GET_REFCNT(readValue);
+        if (status != BUSY) {
+            return;
+        }
+        newValue = CONCAT_STATUS_REFCNT(ACTIVE, refCount);
+    } while (!ATOMIC_CAS(obj, &readValue, newValue));
+}
+
+/*
+ * Helper to change status field in combined value
+ */
+#define CHANGE_STATUS(obj, newStatus)                                          \
+    {                                                                          \
+        uint64_t readValue, newValue;                                          \
+        do {                                                                   \
+            readValue = ATOMIC_READ(obj);                                      \
+            uint64_t status = GET_STATUS(readValue);                           \
+            uint64_t refCount = GET_REFCNT(readValue);                         \
+            if (status == RELEASED)                                            \
+                return false;                                                  \
+            if (status == BUSY)                                                \
+                /*TODO: Add sleep here*/                                       \
+                continue;                                                      \
+            newValue = CONCAT_STATUS_REFCNT(status, refCount);                 \
+        } while (!ATOMIC_CAS(obj, &readValue, newValue));                      \
+        return true;                                                           \
+    }
+
+/*
+ * Helper to change both status and reference count in combined value
+ */
+#define CHANGE_STATUS_REFCNT(obj, status, refCount)                            \
+    {                                                                          \
+        uint64_t readValue, newValue;                                          \
+        do {                                                                   \
+            readValue = ATOMIC_READ(obj);                                      \
+            newValue = CONCAT_STATUS_REFCNT(status, refCount);                 \
+        } while (!ATOMIC_CAS(obj, &readValue, newValue));                      \
+    }
+
+/*
+ * Flags used while opening the resources
+ */
+typedef enum {
+    FAM_RESOURCE_DEFAULT = 0,
+    FAM_REGISTER_MEMORY = 1 << 0,
+    FAM_INIT_ONLY = 2 << 1
+} Fam_Resource_Flag;
+
 using Server_Map = std::map<uint64_t, std::pair<std::string, uint64_t>>;
+
+/*
+ * This structure represent a region memory in FAM
+ * keys : This is a vector of memory registration keys, each element corresponds
+ * to a region
+ * extent base : This is a vector of base address of a region
+ * extent, each element corresponds to a region extent There is a one to one
+ * mapping between key vector to base address vector.
+ */
+typedef struct {
+    std::vector<uint64_t> keys;
+    std::vector<uint64_t> base;
+} Fam_Region_Memory;
+
+using Fam_Region_Memory_Map = std::unordered_map<uint64_t, Fam_Region_Memory>;
+
+/*
+ * This structure represent a dataitem in FAM
+ * key : Dataitem memory registration key
+ * base : Dataitem base address
+ */
+typedef struct {
+    uint64_t key;
+    uint64_t base;
+} Fam_Dataitem_Memory;
 
 /**
  *  DataItem Metadata descriptor
@@ -152,8 +315,9 @@ using Server_Map = std::map<uint64_t, std::pair<std::string, uint64_t>>;
 typedef struct {
     uint64_t regionId;
     uint64_t offset;
+    uint64_t dataitemOffsets[MAX_MEMORY_SERVERS_CNT];
     uint64_t key;
-    uint64_t keys[MAX_MEMORY_SERVERS_CNT];
+    uint64_t dataitemKeys[MAX_MEMORY_SERVERS_CNT];
     uint64_t size;
     uint32_t uid;
     uint32_t gid;
@@ -161,14 +325,17 @@ typedef struct {
     Fam_Redundancy_Level redundancyLevel;
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
-    void *base;
-    void *baseAddressList[MAX_MEMORY_SERVERS_CNT];
+    uint64_t base;
+    uint64_t baseAddressList[MAX_MEMORY_SERVERS_CNT];
     char name[RadixTree::MAX_KEY_LEN];
     // uint64_t memoryServerId;
     uint64_t used_memsrv_cnt;
     uint64_t memoryServerIds[MAX_MEMORY_SERVERS_CNT];
     size_t maxNameLen;
     uint64_t interleaveSize;
+    Fam_Permission_Level permissionLevel;
+    Fam_Region_Memory_Map regionMemoryMap;
+    bool itemRegistrationStatus;
 } Fam_Region_Item_Info;
 
 typedef struct {
@@ -234,6 +401,32 @@ inline void openfam_invalidate(void *addr, uint64_t size) {
 #endif
 }
 
+inline void decode_offset(uint64_t offset, int *extentIdx, uint64_t *startPos) {
+    *extentIdx = (int)GlobalPtr(offset).GetShelfId().GetShelfIndex();
+    *startPos = (uint64_t)GlobalPtr(offset).GetOffset();
+}
+
+inline string protocol_map(string provider) {
+    std::map<std::string, int> providertypes;
+    string protocol;
+    providertypes["verbs;ofi_rxm"] = 1;
+    providertypes["sockets"] = 2;
+    providertypes["tcp"] = 3;
+    int provider_num = providertypes[provider];
+
+    switch (provider_num) {
+    case 1:
+        protocol = RPC_PROTOCOL_VERBS;
+        break;
+    case 2:
+        protocol = RPC_PROTOCOL_SOCKETS;
+        break;
+    case 3:
+        protocol = RPC_PROTOCOL_TCP;
+        break;
+    }
+    return protocol;
+}
 
 } // namespace openfam
 

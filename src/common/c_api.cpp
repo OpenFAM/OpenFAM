@@ -305,6 +305,17 @@ int c_fam_deallocate(c_fam* fam_obj, c_fam_desc* desc) {
     return 0;
 }
 
+int c_fam_close(c_fam *fam_obj, c_fam_desc *desc) {
+    fam *fam_inst = (fam *)fam_obj;
+    try {
+        fam_inst->fam_close((Fd *)desc);
+    } catch (Fam_Exception &e) {
+        CAPTURE_EXCEPTION(e);
+        return -1;
+    }
+    return 0;
+}
+
 c_fam_desc* c_fam_lookup(c_fam* fam_obj, const char* name, const char* regionname) {
     Fd* fd = nullptr;
     fam* fam_inst = (fam*) fam_obj;

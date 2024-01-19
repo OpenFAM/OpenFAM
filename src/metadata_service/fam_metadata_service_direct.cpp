@@ -1,9 +1,8 @@
 /*
  *   fam_metadata_service_direct.cpp
- *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
- *   rights reserved.
- *   Redistribution and use in source and binary forms, with or without
- *   modification, are permitted provided that the following conditions
+ *   Copyright (c) 2019-2020,2023 Hewlett Packard Enterprise Development, LP.
+ * All rights reserved. Redistribution and use in source and binary forms, with
+ * or without modification, are permitted provided that the following conditions
  *   are met:
  *   1. Redistributions of source code must retain the above copyright
  *   notice, this list of conditions and the following disclaimer.
@@ -215,7 +214,8 @@ class Fam_Metadata_Service_Direct::Impl_ {
     void metadata_validate_and_allocate_dataitem(
         const std::string dataitemName, const uint64_t regionId, uint32_t uid,
         uint32_t gid, size_t size, std::list<int> *memory_server_list,
-        size_t *interleveSize, int user_policy);
+        size_t *interleaveSize, Fam_Permission_Level *permissionLevel,
+        mode_t *regionPermission, int user_policy);
 
     void metadata_validate_and_deallocate_dataitem(
         const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
@@ -2451,7 +2451,8 @@ void Fam_Metadata_Service_Direct::Impl_::
     metadata_validate_and_allocate_dataitem(
         const std::string dataitemName, const uint64_t regionId, uint32_t uid,
         uint32_t gid, size_t size, std::list<int> *memory_server_list,
-        size_t *interleaveSize, int user_policy = 0) {
+        size_t *interleaveSize, Fam_Permission_Level *permissionLevel,
+        mode_t *regionPermission, int user_policy = 0) {
     ostringstream message;
     bool ret;
     // Check if the name size is bigger than MAX_KEY_LEN supported
@@ -2513,6 +2514,8 @@ void Fam_Metadata_Service_Direct::Impl_::
     }
 
     *interleaveSize = region.interleaveSize;
+    *permissionLevel = region.permissionLevel;
+    *regionPermission = region.perm;
     bool isInterleaveEnabled;
     if (region.interleaveEnable == ENABLE) {
         isInterleaveEnabled = true;
@@ -2815,6 +2818,8 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_fam_path,
         enable_region_spanning = 0;
     }
 
+    set_rpc_framework_protocol(config_options);
+
     metadata_path = (const char *)(config_options["metadata_path"].c_str());
     region_span_size_per_memoryserver =
         atoi((const char *)(config_options["region_span_size_per_memoryserver"]
@@ -2839,7 +2844,10 @@ Fam_Metadata_Service_Direct::Fam_Metadata_Service_Direct(bool use_fam_path,
           metadata_path, use_fam_path);
 }
 
-Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() { Stop(); }
+Fam_Metadata_Service_Direct::~Fam_Metadata_Service_Direct() {
+    // free(controlpath_addr);
+    Stop();
+}
 
 void Fam_Metadata_Service_Direct::Stop() {
     int ret = pimpl_->Final();
@@ -3149,6 +3157,20 @@ Fam_Metadata_Service_Direct::get_config_info(std::string filename) {
             // If parameter is not present, then set the default.
             options["dataitem_interleave_size"] = (char *)strdup("1048576");
         }
+        try {
+            options["provider"] =
+                (char *)strdup((info->get_key_value("provider")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["provider"] = (char *)strdup("sockets");
+        }
+        try {
+            options["rpc_framework_type"] = (char *)strdup(
+                (info->get_key_value("rpc_framework_type")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["rpc_framework_type"] = (char *)strdup("grpc");
+        }
     }
     return options;
 }
@@ -3193,11 +3215,12 @@ void Fam_Metadata_Service_Direct::metadata_validate_and_destroy_region(
 void Fam_Metadata_Service_Direct::metadata_validate_and_allocate_dataitem(
     const std::string dataitemName, const uint64_t regionId, uint32_t uid,
     uint32_t gid, size_t size, std::list<int> *memory_server_list,
-    size_t *interleaveSize, int user_policy) {
+    size_t *interleaveSize, Fam_Permission_Level *permissionLevel,
+    mode_t *regionPermission, int user_policy) {
     METADATA_DIRECT_PROFILE_START_OPS()
     pimpl_->metadata_validate_and_allocate_dataitem(
         dataitemName, regionId, uid, gid, size, memory_server_list,
-        interleaveSize, user_policy);
+        interleaveSize, permissionLevel, regionPermission, user_policy);
     METADATA_DIRECT_PROFILE_END_OPS(
         direct_metadata_validate_and_allocate_dataitem);
 }
@@ -3270,4 +3293,28 @@ Fam_Metadata_Service_Direct::Impl_::align_to_address(uint64_t size,
     return (size + multiple - 1) & -multiple;
 }
 
-} // end namespace metadata
+// get and set controlpath address functions
+string Fam_Metadata_Service_Direct::get_controlpath_addr() {
+    return controlpath_addr;
+}
+
+void Fam_Metadata_Service_Direct::set_controlpath_addr(string addr) {
+    controlpath_addr = addr;
+}
+
+// get and set rpc_framework and rpc_protocol type
+void Fam_Metadata_Service_Direct::set_rpc_framework_protocol(
+    configFileParams file_options) {
+    rpc_framework_type = file_options["rpc_framework_type"];
+    rpc_protocol_type = protocol_map(file_options["provider"]);
+}
+
+string Fam_Metadata_Service_Direct::get_rpc_framework_type() {
+    return rpc_framework_type;
+}
+
+string Fam_Metadata_Service_Direct::get_rpc_protocol_type() {
+    return rpc_protocol_type;
+}
+} // namespace metadata
+// end namespace metadata

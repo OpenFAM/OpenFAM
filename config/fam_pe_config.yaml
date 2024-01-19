@@ -27,5 +27,9 @@ client_interface_type: rpc
 # Applicable only if client_interface_type is rpc.
 fam_client_interface_service_address: 127.0.0.1:8787
 
+# This option is to enable or disable resource relinquishment in FAM
+# Value can be "enable" or "disable"
+resource_release: enable
+
 # Default memory type for regions created.
 #default_memory_type: persistent
