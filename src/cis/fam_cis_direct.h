@@ -1,6 +1,6 @@
 /*
  * fam_cis_direct.h
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -31,7 +31,9 @@
 #ifndef FAM_CIS_DIRECT_H_
 #define FAM_CIS_DIRECT_H_
 
+#include <string>
 #include <sys/types.h>
+#include <unordered_map>
 
 #include "cis/fam_cis.h"
 #include "common/fam_config_info.h"
@@ -41,6 +43,13 @@
 #include "metadata_service/fam_metadata_service.h"
 #include "metadata_service/fam_metadata_service_client.h"
 #include "metadata_service/fam_metadata_service_direct.h"
+
+#ifdef USE_THALLIUM
+#include "memory_service/fam_memory_service_thallium_client.h"
+#include "metadata_service/fam_metadata_service_thallium_client.h"
+#include <thallium.hpp>
+namespace tl = thallium;
+#endif
 
 using namespace metadata;
 
@@ -74,6 +83,7 @@ class Fam_CIS_Direct : public Fam_CIS {
     Fam_Region_Item_Info allocate(string name, size_t nbytes, mode_t permission,
                                   uint64_t regionId, uint64_t memoryServerId,
                                   uint32_t uid, uint32_t gid);
+
     void deallocate(uint64_t regionId, uint64_t offset, uint64_t memoryServerId,
                     uint32_t uid, uint32_t gid);
 
@@ -85,17 +95,20 @@ class Fam_CIS_Direct : public Fam_CIS {
                                     mode_t permission, uint64_t memoryServerId,
                                     uint32_t uid, uint32_t gid);
     bool check_region_permission(Fam_Region_Metadata region, bool op,
-                                 uint64_t memoryServerId, uint32_t uid,
-                                 uint32_t gid);
+                                 Fam_Metadata_Service *metadataService,
+                                 uint32_t uid, uint32_t gid);
     bool check_dataitem_permission(Fam_DataItem_Metadata dataitem, bool op,
-                                   uint64_t memoryServerId, uint32_t uid,
-                                   uint32_t gid);
+                                   Fam_Metadata_Service *metadataService,
+                                   uint32_t uid, uint32_t gid);
     Fam_Region_Item_Info lookup_region(string name, uint32_t uid, uint32_t gid);
+
     Fam_Region_Item_Info lookup(string itemName, string regionName,
                                 uint32_t uid, uint32_t gid);
+
     Fam_Region_Item_Info
     check_permission_get_region_info(uint64_t regionId, uint64_t memoryServerId,
                                      uint32_t uid, uint32_t gid);
+
     Fam_Region_Item_Info check_permission_get_item_info(uint64_t regionId,
                                                         uint64_t offset,
                                                         uint64_t memoryServerId,
@@ -195,6 +208,28 @@ class Fam_CIS_Direct : public Fam_CIS {
 
     memoryServerMap *get_memory_service_map() { return memoryServers; }
 
+    void open_region_with_registration(uint64_t regionId, uint32_t uid,
+                                       uint32_t gid,
+                                       std::vector<uint64_t> *memserverIds,
+                                       Fam_Region_Memory_Map *regionMemoryMap);
+
+    void open_region_without_registration(uint64_t regionId,
+                                          std::vector<uint64_t> *memserverIds);
+
+    void get_region_memory(uint64_t regionId, uint32_t uid, uint32_t gid,
+                           Fam_Region_Memory_Map *regionMemoryMap);
+
+    // get and set controlpath address definitions
+    void set_controlpath_addr(string addr);
+    string get_controlpath_addr();
+
+    // get and set rpc_framework_type and protocol definitions
+    void set_rpc_framework_protocol(configFileParams file_options);
+    string get_rpc_framework_type();
+    string get_rpc_protocol_type();
+
+    void close_region(uint64_t regionId, std::vector<uint64_t> memserverIds);
+
   private:
     Fam_Async_QHandler *asyncQHandler;
     memoryServerMap *memoryServers;
@@ -208,8 +243,9 @@ class Fam_CIS_Direct : public Fam_CIS {
     void *memServerInfoBuffer;
     bool useAsyncCopy;
     size_t metadataMaxKeyLen;
-    void *get_local_pointer(uint64_t regionId, uint64_t offset,
-                            uint64_t memoryServerId);
+    string controlpath_addr, rpc_framework_type, rpc_protocol_type;
+    Fam_CIS_Direct *direct_CIS;
+    bool isSharedMemory;
 
     uint64_t generate_memory_server_id(const char *name) {
         std::uint64_t hashVal = std::hash<std::string> {}
@@ -225,6 +261,18 @@ class Fam_CIS_Direct : public Fam_CIS {
         std::vector<int> allocate_success_list,
         std::vector<Fam_Memory_Service *> memoryServiceList, uint64_t regionId,
         uint64_t *offsets);
+
+    void register_region_memory(
+        Fam_Region_Metadata region, Fam_Metadata_Service *metadataService,
+        std::vector<Fam_Memory_Service *> regionMemoryServiceList, uint32_t uid,
+        uint32_t gid);
+
+    void register_dataitem_memory(
+        Fam_DataItem_Metadata dataitem, Fam_Metadata_Service *metadataService,
+        std::vector<Fam_Memory_Service *> memoryServiceList, uint32_t uid,
+        uint32_t gid, Fam_Region_Item_Info *info);
+
+    std::string rpc_type;
 };
 
 } // namespace openfam

@@ -1,8 +1,9 @@
 /*
  * fam_descriptor.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -57,6 +58,7 @@ class Fam_Descriptor::FamDescriptorImpl_ {
         used_memsrv_cnt = 0;
         uid = 0;
         gid = 0;
+        permissionLevel = PERMISSION_LEVEL_DEFAULT;
     }
 
     FamDescriptorImpl_(Fam_Global_Descriptor globalDesc) {
@@ -74,6 +76,7 @@ class Fam_Descriptor::FamDescriptorImpl_ {
         used_memsrv_cnt = 0;
         uid = 0;
         gid = 0;
+        permissionLevel = PERMISSION_LEVEL_DEFAULT;
     }
 
     FamDescriptorImpl_() {
@@ -91,6 +94,7 @@ class Fam_Descriptor::FamDescriptorImpl_ {
         used_memsrv_cnt = 0;
         uid = 0;
         gid = 0;
+        permissionLevel = PERMISSION_LEVEL_DEFAULT;
     }
 
     ~FamDescriptorImpl_() {
@@ -112,6 +116,7 @@ class Fam_Descriptor::FamDescriptorImpl_ {
         used_memsrv_cnt = 0;
         uid = 0;
         gid = 0;
+        permissionLevel = PERMISSION_LEVEL_DEFAULT;
     }
 
     Fam_Global_Descriptor get_global_descriptor() { return this->gDescriptor; }
@@ -131,12 +136,12 @@ class Fam_Descriptor::FamDescriptorImpl_ {
 
     void *get_context() { return context; }
 
-    void set_base_address_list(void **addressList, uint64_t cnt) {
-        base_addr_list = (void **)malloc(cnt * sizeof(uint64_t));
+    void set_base_address_list(uint64_t *addressList, uint64_t cnt) {
+        base_addr_list = (uint64_t *)malloc(cnt * sizeof(uint64_t));
         memcpy(base_addr_list, addressList, sizeof(uint64_t) * cnt);
     }
 
-    void **get_base_address_list() { return base_addr_list; }
+    uint64_t *get_base_address_list() { return base_addr_list; }
 
     void set_desc_status(int update_status) {
         desc_update_status = update_status;
@@ -195,12 +200,18 @@ class Fam_Descriptor::FamDescriptorImpl_ {
 
     uint32_t get_gid() { return gid; }
 
+    void set_permissionLevel(Fam_Permission_Level permissionLevel_) {
+        permissionLevel = permissionLevel_;
+    }
+
+    Fam_Permission_Level get_permissionLevel() { return permissionLevel; }
+
   private:
     Fam_Global_Descriptor gDescriptor;
     /* libfabric access key*/
     uint64_t *keys;
     void *context;
-    void **base_addr_list;
+    uint64_t *base_addr_list;
     int desc_update_status;
     mode_t perm;
     uint32_t uid;
@@ -210,6 +221,7 @@ class Fam_Descriptor::FamDescriptorImpl_ {
     uint64_t size;
     uint64_t *memserver_ids;
     uint64_t used_memsrv_cnt;
+    Fam_Permission_Level permissionLevel;
 };
 
 Fam_Descriptor::Fam_Descriptor(Fam_Global_Descriptor gDescriptor,
@@ -239,11 +251,12 @@ void Fam_Descriptor::set_context(void *ctx) { fdimpl_->set_context(ctx); }
 
 void *Fam_Descriptor::get_context() { return fdimpl_->get_context(); }
 
-void Fam_Descriptor::set_base_address_list(void **addressList, uint64_t cnt) {
+void Fam_Descriptor::set_base_address_list(uint64_t *addressList,
+                                           uint64_t cnt) {
     fdimpl_->set_base_address_list(addressList, cnt);
 }
 
-void **Fam_Descriptor::get_base_address_list() {
+uint64_t *Fam_Descriptor::get_base_address_list() {
     return fdimpl_->get_base_address_list();
 }
 
@@ -301,6 +314,16 @@ uint32_t Fam_Descriptor::get_uid() { return fdimpl_->get_uid(); }
 
 void Fam_Descriptor::set_gid(uint32_t gid_) { fdimpl_->set_gid(gid_); }
 uint32_t Fam_Descriptor::get_gid() { return fdimpl_->get_gid(); }
+
+void Fam_Descriptor::set_permissionLevel(
+    Fam_Permission_Level permissionLevel_) {
+    fdimpl_->set_permissionLevel(permissionLevel_);
+}
+
+Fam_Permission_Level Fam_Descriptor::get_permissionLevel() {
+    return fdimpl_->get_permissionLevel();
+}
+
 /*
  * Internal implementation of Fam_Region_Descriptor
  */
@@ -314,6 +337,7 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
         size = regionSize;
         perm = 0;
         name = NULL;
+        permissionLevel = PERMISSION_LEVEL_DEFAULT;
     }
 
     FamRegionDescriptorImpl_() {
@@ -323,6 +347,7 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
         size = 0;
         perm = 0;
         name = NULL;
+        permissionLevel = PERMISSION_LEVEL_DEFAULT;
     }
 
     FamRegionDescriptorImpl_(Fam_Global_Descriptor globalDesc) {
@@ -332,6 +357,7 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
         size = 0;
         perm = 0;
         name = NULL;
+        permissionLevel = PERMISSION_LEVEL_DEFAULT;
     }
 
     ~FamRegionDescriptorImpl_() {
@@ -341,6 +367,7 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
         size = 0;
         perm = 0;
         name = NULL;
+        permissionLevel = PERMISSION_LEVEL_DEFAULT;
     }
 
     Fam_Global_Descriptor get_global_descriptor() { return this->gDescriptor; }
@@ -393,11 +420,17 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
         interleaveEnable = reg_interleaveEnable;
     }
 
+    void set_permissionLevel(Fam_Permission_Level reg_permissionLevel) {
+        permissionLevel = reg_permissionLevel;
+    }
+
     Fam_Redundancy_Level get_redundancyLevel() { return redundancyLevel; }
 
     Fam_Memory_Type get_memoryType() { return memoryType; }
 
     Fam_Interleave_Enable get_interleaveEnable() { return interleaveEnable; }
+
+    Fam_Permission_Level get_permissionLevel() { return permissionLevel; }
 
   private:
     Fam_Global_Descriptor gDescriptor;
@@ -409,6 +442,7 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
     Fam_Redundancy_Level redundancyLevel;
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
+    Fam_Permission_Level permissionLevel;
 };
 
 Fam_Region_Descriptor::Fam_Region_Descriptor(Fam_Global_Descriptor gDescriptor,
@@ -477,6 +511,12 @@ void Fam_Region_Descriptor::set_interleaveEnable(
     Fam_Interleave_Enable interleaveEnable) {
     frdimpl_->set_interleaveEnable(interleaveEnable);
 }
+
+void Fam_Region_Descriptor::set_permissionLevel(
+    Fam_Permission_Level permissionLevel) {
+    frdimpl_->set_permissionLevel(permissionLevel);
+}
+
 Fam_Redundancy_Level Fam_Region_Descriptor::get_redundancyLevel() {
     return frdimpl_->get_redundancyLevel();
 }
@@ -485,4 +525,8 @@ Fam_Memory_Type Fam_Region_Descriptor::get_memoryType() {
 }
 Fam_Interleave_Enable Fam_Region_Descriptor::get_interleaveEnable() {
     return frdimpl_->get_interleaveEnable();
+}
+
+Fam_Permission_Level Fam_Region_Descriptor::get_permissionLevel() {
+    return frdimpl_->get_permissionLevel();
 }

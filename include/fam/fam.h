@@ -72,6 +72,7 @@
 #include <sys/stat.h> // needed for mode_t
 
 #ifdef __cplusplus
+namespace openfam {
 extern "C" {
 #endif
 /**
@@ -99,11 +100,28 @@ typedef enum {
     RAID5
 } Fam_Redundancy_Level;
 
+/**
+ * Enumeration defining permission level options for FAM. This enum defines
+ * redundancy The available options are : REGION : The permissions are set at
+ * region level and dataitem inherit permissions from region. DATAITEM : The
+ * dataitems can pocess seperate permissions than regions.
+ */
+typedef enum {
+    /** Deafault value **/
+    PERMISSION_LEVEL_DEFAULT = 0,
+    /** Region level permissions **/
+    REGION,
+    /** Seperate permissions for dataitems **/
+    DATAITEM
+} Fam_Permission_Level;
+
 typedef struct {
     Fam_Redundancy_Level redundancyLevel;
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
+    Fam_Permission_Level permissionLevel;
 } Fam_Region_Attributes;
+
 /**
  * Enumeration defining descriptor update on several  fields.
  */
@@ -182,6 +200,11 @@ typedef struct {
     char *fam_default_memory_type;
     /** Interface device used by the PE for communication */
     char *if_device;
+    /** Local buffer address to be registered via client */
+    void *local_buf_addr;
+    /** Local buffer size to be registered via client */
+    uint64_t local_buf_size;
+
 } Fam_Options;
 #ifdef __cplusplus
 }
@@ -191,7 +214,6 @@ typedef struct {
 /** C++ Header
  *  The header is defined as a single interface containing all desired methods
  */
-namespace openfam {
 
 #define FAM_SUCCESS 0
 
@@ -244,8 +266,8 @@ class Fam_Descriptor {
     void *get_context();
     // set context
     void set_context(void *context);
-    void set_base_address_list(void **addressList, uint64_t cnt);
-    void **get_base_address_list();
+    void set_base_address_list(uint64_t *addressList, uint64_t cnt);
+    uint64_t *get_base_address_list();
     // get status
     int get_desc_status();
     // put status
@@ -271,6 +293,8 @@ class Fam_Descriptor {
     void set_uid(uint32_t uid_);
     uint32_t get_gid();
     void set_gid(uint32_t gid_);
+    void set_permissionLevel(Fam_Permission_Level permissionLevel);
+    Fam_Permission_Level get_permissionLevel();
 
   private:
     class FamDescriptorImpl_;
@@ -311,9 +335,11 @@ class Fam_Region_Descriptor {
     void set_redundancyLevel(Fam_Redundancy_Level redundancyLevel);
     void set_memoryType(Fam_Memory_Type memoryType);
     void set_interleaveEnable(Fam_Interleave_Enable interleaveEnable);
+    void set_permissionLevel(Fam_Permission_Level permissionLevel);
     Fam_Redundancy_Level get_redundancyLevel();
     Fam_Memory_Type get_memoryType();
     Fam_Interleave_Enable get_interleaveEnable();
+    Fam_Permission_Level get_permissionLevel();
     // get size, perm and name.
     uint64_t get_size();
     mode_t get_perm();
@@ -481,6 +507,14 @@ class fam {
      * @see #fam_allocate()
      */
     void fam_deallocate(Fam_Descriptor *descriptor);
+
+    /**
+     * Close the Fam_Descriptor. This API helps to relinquish resources
+     * internally.
+     * @param descriptor - descriptor associated with the data item.
+     * @return - none
+     */
+    void fam_close(Fam_Descriptor *descriptor);
 
     /**
      * Change permissions associated with a data item descriptor.
@@ -1266,6 +1300,7 @@ class fam_context : public fam {
                                  mode_t accessPermissions,
                                  Fam_Region_Descriptor *region);
     void fam_deallocate(Fam_Descriptor *descriptor);
+    void fam_close(Fam_Descriptor *descriptor);
     void fam_change_permissions(Fam_Descriptor *descriptor,
                                 mode_t accessPermissions);
     fam_context *fam_context_open();
@@ -1274,6 +1309,15 @@ class fam_context : public fam {
 
 } // namespace openfam
 
+using Fam_Global_Descriptor=openfam::Fam_Global_Descriptor;
+using Fam_Options=openfam::Fam_Options;
+using Fam_Interleave_Enable=openfam::Fam_Interleave_Enable;
+using Fam_Memory_Type=openfam::Fam_Memory_Type;
+using Fam_Redundancy_Level=openfam::Fam_Redundancy_Level;
+using Fam_Permission_Level=openfam::Fam_Permission_Level;
+using Fam_Region_Attributes=openfam::Fam_Region_Attributes;
+using Fam_Stat=openfam::Fam_Stat;
+using Fam_Backup_Options=openfam::Fam_Backup_Options;
 #endif /* end of C/C11 Headers */
 
 #endif /* end of FAM_H_ */

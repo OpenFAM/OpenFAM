@@ -1,8 +1,9 @@
 /*
  * fam_config_info.h
- * Copyright (c) 2020 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2020, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -43,6 +44,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <vector>
+
+namespace openfam {
 
 #define FILE_MAX_LEN 255
 
@@ -93,11 +96,16 @@ inline std::string find_config_file(char *config_file) {
     if (openfam_root != NULL) {
         sprintf(config_file_path, "%s/%s/%s", openfam_root, "config",
                 config_file);
-    }
-    if (stat(config_file_path, &buffer) == 0) {
-        config_filename = config_file_path;
-        free(config_file_path);
-        return config_filename;
+
+        if (stat(config_file_path, &buffer) == 0) {
+            config_filename = config_file_path;
+            free(config_file_path);
+            return config_filename;
+        } else {
+            std::ostringstream message;
+            message << "Fam Config: Config file not found in $OPENFAM_ROOT";
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
     }
 
     // Look for config file in /opt
@@ -108,6 +116,12 @@ inline std::string find_config_file(char *config_file) {
         free(config_file_path);
         return config_filename;
     }
+
+    // TODO: Enable logging
+    // If the OPENFAM_ROOT is not set, and config file is not found, throw log
+    // messages and continue with default values FAM_LOG("Config file does not
+    // exist and OPENFAM_ROOT not set", error);
+
     free(config_file_path);
     config_filename.clear();
     return config_filename;
@@ -135,4 +149,5 @@ inline std::string login_username(void) {
     else
         return std::string(strdup(""));
 }
+} // namespace openfam
 #endif

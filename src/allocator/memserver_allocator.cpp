@@ -1,6 +1,6 @@
 /*
  * memserver_allocator.cpp
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -338,7 +338,8 @@ void Memserver_Allocator::destroy_region(uint64_t regionId) {
  * regionId - region Id of the region to be resized.
  * nbytes - new size of the region
  */
-void Memserver_Allocator::resize_region(uint64_t regionId, size_t nbytes) {
+void Memserver_Allocator::resize_region(uint64_t regionId, size_t nbytes,
+                                        int *newExtentIdx) {
     ostringstream message;
     message << "Error while resizing the region";
     int ret;
@@ -356,15 +357,17 @@ void Memserver_Allocator::resize_region(uint64_t regionId, size_t nbytes) {
         }
     }
 
+    ShelfIndex newShelfIdx;
     // Call NVMM to resize the heap
     NVMM_PROFILE_START_OPS()
-    ret = heap->Resize(nbytes);
+    ret = heap->Resize(nbytes, &newShelfIdx);
     NVMM_PROFILE_END_OPS(Heap_Resize)
     if (ret != NO_ERROR) {
         message << "heap resize failed";
         THROW_ERRNO_MSG(Memory_Service_Exception, RESIZE_FAILED,
                         message.str().c_str());
     }
+    *newExtentIdx = (int)newShelfIdx;
 }
 
 /*
@@ -825,6 +828,35 @@ inline bool Memserver_Allocator::validate_backup(Fam_Backup_Info info,
     }
 
     return true;
+}
+
+void Memserver_Allocator::get_region_extents(
+    uint64_t regionId, Fam_Region_Extents_t *regionExtents) {
+    ostringstream message;
+    message << "Error while obtaining region extent details : ";
+
+    Heap *heap = 0;
+
+    HeapMap::iterator it = get_heap(regionId, heap);
+    if (it == heapMap->end()) {
+        open_heap(regionId);
+        it = get_heap(regionId, heap);
+        if (it == heapMap->end()) {
+            message << "Can not find heap in map";
+            THROW_ERRNO_MSG(Memory_Service_Exception, HEAPMAP_HEAP_NOT_FOUND,
+                            message.str().c_str());
+        }
+    }
+
+    int numShelves;
+    void **shelfAddrList;
+    size_t *shelfsizes;
+
+    heap->getStartAddress(numShelves, shelfAddrList, shelfsizes);
+
+    regionExtents->numExtents = numShelves;
+    regionExtents->addrList = shelfAddrList;
+    regionExtents->sizes = shelfsizes;
 }
 
 void *Memserver_Allocator::get_local_pointer(uint64_t regionId,

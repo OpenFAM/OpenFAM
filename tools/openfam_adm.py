@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # openfam_adm.py
-# Copyright (c) 2022 Hewlett Packard Enterprise Development, LP. All rights reserved.
+# Copyright (c) 2022-2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
 # Redistribution and use in source and binary forms, with or without modification, are permitted provided
 # that the following conditions are met:
 # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -271,6 +271,27 @@ my_parser.add_argument(
     metavar=''
 )
 
+my_parser.add_argument(
+    "--delayed_free_threads", action="store", default="1",type=str,  help="Delayed free threads", metavar=''
+)
+
+#new argument for rpc framework
+my_parser.add_argument(
+    "--rpc_framework",
+    action="store",
+    type=str,
+    help="RPC Framework type(grpc/thallium)",
+    choices=["grpc", "thallium"],
+    metavar=''
+)
+
+my_parser.add_argument(
+    "--disable_resource_release",
+    default=False,
+    action="store_true",
+    help="Disable the resource relinquishment in FAM",
+)
+
 args = my_parser.parse_args()
 
 # set error count and warning to 0
@@ -347,6 +368,8 @@ if args.create_config_files:
     if args.provider is not None:
         pe_config_doc["provider"] = args.provider
         memservice_config_doc["provider"] = args.provider
+        cis_config_doc["provider"] = args.provider
+        metaservice_config_doc["provider"] = args.provider
     if args.runtime is not None:
         pe_config_doc["runtime"] = args.runtime
     if args.cisinterface is not None:
@@ -384,6 +407,12 @@ if args.create_config_files:
             args.regionspanningsize
         )
 
+    if args.delayed_free_threads is not None:
+        memservice_config_doc["delayed_free_threads"] = int(
+            args.delayed_free_threads
+        )
+
+
     if args.interleaveblocksize is not None:
         metaservice_config_doc["dataitem_interleave_size"] = int(
             args.interleaveblocksize)
@@ -392,6 +421,19 @@ if args.create_config_files:
         openfam_admin_tool_config_doc["install_path"] = args.install_path
     if args.sleep is not None:
         openfam_admin_tool_config_doc["sleep_time"] = args.sleep
+    if args.rpc_framework is not None:
+        cis_config_doc["rpc_framework_type"] = args.rpc_framework
+        pe_config_doc["rpc_framework_type"] = args.rpc_framework
+        metaservice_config_doc["rpc_framework_type"] = args.rpc_framework
+        memservice_config_doc["rpc_framework_type"] = args.rpc_framework
+
+    if args.disable_resource_release:
+        pe_config_doc["resource_release"] = "disable"
+        memservice_config_doc["resource_release"] = "disable"
+    else:
+        pe_config_doc["resource_release"] = "enable"
+        memservice_config_doc["resource_release"] = "enable"
+
 # Parsing Memory server arguments
     '''
     In config file the memory server details are stored as given below (as map of map):

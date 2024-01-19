@@ -1,6 +1,6 @@
 /*
  * fam_cis_direct.cpp
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -30,17 +30,30 @@
  */
 #include "cis/fam_cis_direct.h"
 #include "common/fam_config_info.h"
+#include "common/fam_internal.h"
 #include "common/fam_memserver_profile.h"
-#include <thread>
-
 #include <boost/atomic.hpp>
-
+#include <boost/thread.hpp>
 #include <chrono>
+#include <cis/fam_cis_client.h>
 #include <future>
 #include <iomanip>
+#include <iostream>
+#include <memory_service/fam_memory_service_client.h>
+#include <metadata_service/fam_metadata_service_client.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
+#include <thread>
 #include <unistd.h>
+
+#ifdef USE_THALLIUM
+#include <common/fam_thallium_engine_helper.h>
+#include <memory_service/fam_memory_service_thallium_client.h>
+#include <metadata_service/fam_metadata_service_thallium_client.h>
+#include <thallium.hpp>
+#include <thallium/serialization/stl/string.hpp>
+#endif
 
 #define MIN_REGION_SIZE (1UL << 20)
 #define MIN_OBJ_SIZE 128
@@ -104,6 +117,9 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
         config_options = get_config_info(config_file_path);
     }
 
+    // set rpc_framework and protocol options
+    set_rpc_framework_protocol(config_options);
+
     if (cisName == NULL) {
         // Use localhost/127.0.0.1 as name;
         cisName = strdup("127.0.0.1");
@@ -112,6 +128,8 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
     if (useAsyncCopy) {
         asyncQHandler = new Fam_Async_QHandler(1);
     }
+
+    this->isSharedMemory = isSharedMemory;
 
     memoryServerCount = 0;
     memServerInfoSize = 0;
@@ -151,16 +169,39 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
         for (auto obj = memoryServerList.begin(); obj != memoryServerList.end();
              ++obj) {
             std::pair<std::string, uint64_t> service = obj->second;
-            Fam_Memory_Service *memoryService = new Fam_Memory_Service_Client(
-                (service.first).c_str(), service.second);
-            memoryServers->insert({ obj->first, memoryService });
+            Fam_Memory_Service *memoryService;
+            if (strcmp(config_options["rpc_framework_type"].c_str(),
+                       FAM_OPTIONS_GRPC_STR) == 0) {
+                memoryService = new Fam_Memory_Service_Client(
+                    (service.first).c_str(), service.second);
+            }
+#ifdef USE_THALLIUM
+            else if (strcmp(config_options["rpc_framework_type"].c_str(),
+                            FAM_OPTIONS_THALLIUM_STR) == 0) {
+                // initialize thallium engine
+                string provider_protocol =
+                    protocol_map(config_options["provider"]);
+                Thallium_Engine *thal_engine_gen =
+                    Thallium_Engine::get_instance(provider_protocol);
+                tl::engine engine = thal_engine_gen->get_engine();
+                memoryService = new Fam_Memory_Service_Thallium_Client(
+                    engine, (service.first).c_str(), service.second);
+            }
+#endif
+            else {
+                // Raise an exception
+                message << "Invalid value specified for Fam config "
+                           "option:rpc_framework_type.";
+                THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                              message.str().c_str());
+            }
+            memoryServers->insert({obj->first, memoryService});
 
             size_t addrSize = get_addr_size(obj->first);
             Fam_Memory_Type memory_type = memoryService->get_memtype();
             if (memory_type == PERSISTENT) {
                 memsrv_persistent_id_list.push_back(obj->first);
                 memoryServerPersistentCount++;
-
             } else {
                 memsrv_volatile_id_list.push_back(obj->first);
                 memoryServerVolatileCount++;
@@ -248,17 +289,39 @@ Fam_CIS_Direct::Fam_CIS_Direct(char *cisName, bool useAsyncCopy_,
         for (auto obj = metadataServerList.begin();
              obj != metadataServerList.end(); ++obj) {
             std::pair<std::string, uint64_t> service = obj->second;
-            Fam_Metadata_Service *metadataService =
-                new Fam_Metadata_Service_Client((service.first).c_str(),
-                                                service.second);
-            metadataServers->insert({ obj->first, metadataService });
+            Fam_Metadata_Service *metadataService;
+            if (strcmp(config_options["rpc_framework_type"].c_str(),
+                       FAM_OPTIONS_GRPC_STR) == 0) {
+                metadataService = new Fam_Metadata_Service_Client(
+                    (service.first).c_str(), service.second);
+            }
+#ifdef USE_THALLIUM
+            else if (strcmp(config_options["rpc_framework_type"].c_str(),
+                            FAM_OPTIONS_THALLIUM_STR) == 0) {
+                // get thallium engine singleton instance and object
+                string provider_protocol =
+                    protocol_map(config_options["provider"]);
+                Thallium_Engine *thal_engine_gen =
+                    Thallium_Engine::get_instance(provider_protocol);
+                tl::engine engine = thal_engine_gen->get_engine();
+                metadataService = new Fam_Metadata_Service_Thallium_Client(
+                    engine, (service.first).c_str(), service.second);
+            }
+#endif
+            else {
+                // Raise an exception
+                message << "Invalid value specified for Fam config "
+                           "option:rpc_interface_type.";
+                THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                              message.str().c_str());
+            }
+            metadataServers->insert({obj->first, metadataService});
             memoryServerCount = memoryServers->size();
-
-            // TODO: This code needs to be revisited. Currently
-            // memoryserverCount will be updated to all metadata servers.
             metadataService->metadata_update_memoryserver(
                 (int)memoryServerPersistentCount, memsrv_persistent_id_list,
                 (int)memoryServerVolatileCount, memsrv_volatile_id_list);
+            // TODO: This code needs to be revisited. Currently
+            // memoryserverCount will be updated to all metadata servers.
         }
     } else if (strcmp(config_options["metadata_interface_type"].c_str(),
                       FAM_OPTIONS_DIRECT_STR) == 0) {
@@ -383,25 +446,27 @@ inline int Fam_CIS_Direct::create_region_failure_cleanup(
     std::vector<int> create_region_success_list,
     std::vector<Fam_Memory_Service *> memoryServiceList, uint64_t regionId) {
 
-    std::list<std::shared_future<void> > destroyList;
-    int destroy_failed = 0;
+    std::list<std::shared_future<void>> cleanupList;
+    int cleanupFailed = 0;
+    // Request all memory servers to cleanup asynchronously
     for (int n : create_region_success_list) {
         Fam_Memory_Service *memoryService = memoryServiceList[n];
-        std::future<void> destroy_result(std::async(
-            std::launch::async, &openfam::Fam_Memory_Service::destroy_region,
+        std::future<void> cleanupResult(std::async(
+            std::launch::async,
+            &openfam::Fam_Memory_Service::create_region_failure_cleanup,
             memoryService, regionId));
-        destroyList.push_back(destroy_result.share());
+        cleanupList.push_back(cleanupResult.share());
     }
-    for (auto result : destroyList) {
-        // Wait for destroy region in other memory servers to complete.
+    // Wait for all memory server to complete asynchronous call
+    for (auto result : cleanupList) {
         try {
             result.get();
         }
         catch (...) {
-            destroy_failed++;
+            cleanupFailed++;
         }
     }
-    return destroy_failed;
+    return cleanupFailed;
 }
 
 inline int Fam_CIS_Direct::allocate_failure_cleanup(
@@ -458,9 +523,8 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
         metadataService->metadata_validate_and_create_region(
             name, nbytes, &regionId, regionAttributes, &memory_server_list,
             user_policy);
-    }
-    catch (...) {
-        throw;
+    } catch (Fam_Exception &e) {
+        throw e;
     }
     // Code for spanning region across multiple memory servers.
     // Asyncronously create regions in multiple memory servers for given region
@@ -538,19 +602,30 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     region.redundancyLevel = regionAttributes->redundancyLevel;
     region.memoryType = regionAttributes->memoryType;
     region.interleaveEnable = regionAttributes->interleaveEnable;
+    region.permissionLevel = regionAttributes->permissionLevel;
     region.used_memsrv_cnt = used_memsrv_cnt;
     memcpy(region.memServerIds, memServerIds,
            used_memsrv_cnt * sizeof(uint64_t));
     try {
         metadataService->metadata_insert_region(regionId, name, &region);
-    }
-    catch (...) {
+    } catch (Fam_Exception &e) {
         int ret = create_region_failure_cleanup(create_region_success_list,
                                                 memoryServiceList, regionId);
         if (ret == 0) {
             metadataService->metadata_reset_bitmap(regionId);
         }
-        throw;
+        throw e;
+    }
+
+    std::unordered_map<int, Fam_Exception> failureList;
+    std::vector<int> successList;
+
+    // Region memory intialization of region memory, registers the region memory
+    // with libfabric in memory server. This operation is performed only if
+    // region is set to REGION level permission in memory server model.
+    if (!isSharedMemory && regionAttributes->permissionLevel == REGION) {
+        register_region_memory(region, metadataService, memoryServiceList, uid,
+                               gid);
     }
     info.regionId = regionId;
     info.offset = INVALID_OFFSET;
@@ -576,26 +651,56 @@ void Fam_CIS_Direct::destroy_region(uint64_t regionId, uint64_t memoryServerId,
          ++it) {
         memoryServiceList.push_back(get_memory_service(*it));
     }
-    std::list<std::shared_future<void> > resultList;
+    std::list<std::shared_future<void>> resultList;
+    uint64_t *resourceStatus = new uint64_t[memoryServiceList.size()];
+    int idx = 0;
     for (auto memsrv : memoryServiceList) {
         Fam_Memory_Service *memoryService = memsrv;
         std::future<void> result(std::async(
             std::launch::async, &openfam::Fam_Memory_Service::destroy_region,
-            memoryService, regionId));
+            memoryService, regionId, &resourceStatus[idx++]));
         resultList.push_back(result.share());
     }
 
-    // Wait for region destroy to complete.
-    try {
-        for (auto result : resultList) {
+    uint64_t statusAccumulate = (uint64_t)-1;
+    int failCount = 0;
+    idx = 0;
+    Fam_Exception exception(FAM_ERR_UNKNOWN,
+                            "Unknown error occured while closing the region");
+
+    // Wait for all memory servers to complete asynchronous call
+    for (auto result : resultList) {
+        try {
             result.get();
+            // Accumulate releaseRegionId flag from all memory server into index
+            // 0 by AND operation
+            statusAccumulate &= resourceStatus[idx];
+        } catch (Fam_Exception &e) {
+            failCount++;
+            exception = e;
+        } catch (...) {
+            failCount++;
         }
-    }
-    catch (...) {
-        throw;
+        idx++;
     }
 
-    metadataService->metadata_reset_bitmap(regionId);
+    switch (failCount) {
+    // If all memory server successfully close the region
+    case 0:
+        // If the accumulated status from all the memory server is RELEASED,
+        // release the region ID to free pool
+        if (statusAccumulate == RELEASED) {
+            metadataService->metadata_reset_bitmap(regionId);
+        }
+        return;
+    // If only one memory server fails to close the region
+    case 1:
+        throw exception;
+    // If multiple memory servers fail to close the region
+    default:
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RESOURCE,
+                        "Multiple memory servers failed to destroy the region");
+    }
     CIS_DIRECT_PROFILE_END_OPS(cis_destroy_region);
     return;
 }
@@ -622,7 +727,7 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
             THROW_ERRNO_MSG(CIS_Exception, REGION_RESIZE_NOT_PERMITTED,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
     used_memsrv_cnt = region.used_memsrv_cnt;
     std::list<std::shared_future<void> > resultList;
@@ -647,9 +752,8 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
         for (auto result : resultList) {
             result.get();
         }
-    }
-    catch (...) {
-        throw;
+    } catch (Fam_Exception &e) {
+        throw e;
     }
 
     region.size = nbytes;
@@ -677,6 +781,8 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     int used_memsrv_cnt = 0;
     int user_policy = 0;
     size_t interleaveSize;
+    Fam_Permission_Level permissionLevel;
+    mode_t regionPermission;
     std::list<int> memory_server_list;
     std::vector<Fam_Memory_Service *> memoryServiceList;
 
@@ -685,8 +791,19 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     // Check with metadata service if the given data item can be allocated.
     metadataService->metadata_validate_and_allocate_dataitem(
         name, regionId, uid, gid, nbytes, &memory_server_list, &interleaveSize,
-        user_policy);
+        &permissionLevel, &regionPermission, user_policy);
 
+// TODO:The following piece of code will be enabled in future.
+#ifdef ENABLE_PERMISSION_COMPARE
+    if (permissionLevel == REGION) {
+        if (regionPermission != permission) {
+            message << "Dataitem permission must be same as region permission, "
+                       "if REGION level permission is set for a region";
+            THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM,
+                            message.str().c_str());
+        }
+    }
+#endif
     memServerIds =
         (uint64_t *)malloc(sizeof(uint64_t) * memory_server_list.size());
     for (auto it = memory_server_list.begin(); it != memory_server_list.end();
@@ -743,7 +860,6 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         try {
             Fam_Region_Item_Info itemInfo = result.get();
             dataitem.offsets[id] = itemInfo.offset;
-            info.baseAddressList[id] = itemInfo.base;
             allocate_success_list.push_back(id++);
         } catch (Fam_Exception &e) {
             if (e.fam_error() == REGION_NO_SPACE) {
@@ -772,12 +888,15 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
                             message.str().c_str());
         }
     }
-    info.offset = dataitem.offsets[0];
-    uint64_t dataitemId = get_dataitem_id(info.offset, memServerIds[0]);
+    uint64_t dataitemId = get_dataitem_id(dataitem.offsets[0], memServerIds[0]);
 
     dataitem.regionId = regionId;
     strncpy(dataitem.name, name.c_str(), metadataMaxKeyLen);
-    dataitem.perm = permission;
+    dataitem.permissionLevel = permissionLevel;
+    if (permissionLevel == REGION)
+        dataitem.perm = regionPermission;
+    else
+        dataitem.perm = permission;
     dataitem.gid = gid;
     dataitem.uid = uid;
     dataitem.size = nbytes;
@@ -792,79 +911,30 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
         metadataService->metadata_insert_dataitem(dataitemId, regionId,
                                                   &dataitem, name);
     }
-    bool rwFlag;
-    if (check_dataitem_permission(dataitem, 1, metadataServiceId, uid, gid)) {
-        rwFlag = 1;
-    } else if (check_dataitem_permission(dataitem, 0, metadataServiceId, uid,
-                                         gid)) {
-        rwFlag = 0;
+
+    // return other data item information
+    if (!isSharedMemory && permissionLevel == REGION) {
+        // In case of REGION level permission, offset from all the memory server
+        // is required at the client to get actual offset and base address of
+        // the data item
+        memcpy(info.dataitemOffsets, dataitem.offsets,
+               dataitem.used_memsrv_cnt * sizeof(uint64_t));
     } else {
-        message << "Not permitted to use this dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
-    }
-    std::list<std::shared_future<uint64_t>> resultRegList;
-    int idx = 0;
-    if (interleaveSize) {
-        extraBlocks = blocks % used_memsrv_cnt;
-    }
-    for (auto memsrv : memoryServiceList) {
-        Fam_Memory_Service *memoryService = memsrv;
-        size_t size;
-        if ((interleaveSize != 0) && (nbytes > interleaveSize)) {
-            size = numBlocksPerServer * interleaveSize;
-            if (extraBlocks) {
-                size += interleaveSize;
-                extraBlocks--;
-            }
-        } else {
-            size = nbytes;
-        }
-        size_t aligned_size =
-            align_to_address(size, 64); // align the size to a 64-bit boundary.
-        size = (aligned_size > size ? aligned_size : size);
-        if (size < MIN_OBJ_SIZE)
-            size = MIN_OBJ_SIZE;
-        std::future<uint64_t> result(std::async(
-            std::launch::async, &openfam::Fam_Memory_Service::get_key,
-            memoryService, regionId, dataitem.offsets[idx], size, rwFlag));
-        resultRegList.push_back(result.share());
-        idx++;
-    }
-
-    id = 0;
-    allocate_success_list.clear();
-    allocate_failed_list.clear();
-    for (auto result : resultRegList) {
+        // In case of DATAITEM level permission, register the dataitem memory
         try {
-            info.keys[id] = result.get();
-            allocate_success_list.push_back(id++);
-        } catch (Fam_Exception &e) {
-            allocate_failed_list.push_back(id++);
-            create_ErrMsg = e.fam_error_msg();
-            create_famErr = (Fam_Error)e.fam_error();
+            register_dataitem_memory(dataitem, metadataService,
+                                     memoryServiceList, uid, gid, &info);
+            info.itemRegistrationStatus = true;
         } catch (...) {
-            allocate_failed_list.push_back(id++);
+            info.itemRegistrationStatus = false;
         }
+        // offset from only first memory server is required at the client
+        info.dataitemOffsets[0] = dataitem.offsets[0];
     }
-
-    if (allocate_failed_list.size() > 0) {
-        ostringstream message;
-        allocate_failure_cleanup(allocate_success_list, memoryServiceList,
-                                 regionId, dataitem.offsets);
-        metadataService->metadata_delete_dataitem(dataitemId, regionId);
-        if (allocate_failed_list.size() == 1) {
-            THROW_ERRNO_MSG(CIS_Exception, create_famErr, create_ErrMsg);
-        } else {
-            message
-                << "Multiple memory servers failed to register the dataitem";
-            THROW_ERRNO_MSG(CIS_Exception, REGION_NOT_CREATED,
-                            message.str().c_str());
-        }
-    }
-
-    info.regionId = regionId;
     info.used_memsrv_cnt = used_memsrv_cnt;
     info.interleaveSize = interleaveSize;
+    info.permissionLevel = permissionLevel;
+    info.perm = dataitem.perm;
     memcpy(info.memoryServerIds, memServerIds,
            used_memsrv_cnt * sizeof(uint64_t));
     info.size = nbytes;
@@ -873,13 +943,435 @@ Fam_Region_Item_Info Fam_CIS_Direct::allocate(string name, size_t nbytes,
     return info;
 }
 
+/*
+ * This function open the region and get the memory registration details (key,
+ * base address etc.) from memory server. If not registered already, at first,
+ * register the region memory and then returns the registration details.
+ */
+void Fam_CIS_Direct::open_region_with_registration(
+    uint64_t regionId, uint32_t uid, uint32_t gid,
+    std::vector<uint64_t> *memserverIds,
+    Fam_Region_Memory_Map *regionMemoryMap) {
+    ostringstream message;
+    // Look for region metadata and get the list of memory servers it is
+    // spread across
+    int metadataServiceId = 0;
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(metadataServiceId);
+    Fam_Region_Metadata region;
+    metadataService->metadata_find_region(regionId, region);
+
+    // Create a vector of memory service objects for all memory services in the
+    // list
+    std::vector<Fam_Memory_Service *> regionMemoryServiceList;
+    for (uint64_t i = 0; i < region.used_memsrv_cnt; i++) {
+        regionMemoryServiceList.push_back(
+            get_memory_service(region.memServerIds[i]));
+        memserverIds->push_back(region.memServerIds[i]);
+    }
+
+    bool rwFlag;
+    if (check_region_permission(region, 1, metadataService, uid, gid)) {
+        rwFlag = 1;
+    } else if (check_region_permission(region, 0, metadataService, uid, gid)) {
+        rwFlag = 0;
+    } else {
+        message << "Not permitted to use this dataitem";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
+    }
+
+    // Open region and also register memory on all memory servers asynchronously
+    std::list<std::shared_future<Fam_Region_Memory>> resultList;
+    int idx = 0;
+    for (auto memsrv : regionMemoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        std::future<Fam_Region_Memory> result(std::async(
+            std::launch::async,
+            &openfam::Fam_Memory_Service::open_region_with_registration,
+            memoryService, regionId, rwFlag));
+        resultList.push_back(result.share());
+        idx++;
+    }
+    idx = 0;
+    int failCount = 0;
+    Fam_Exception exception(FAM_ERR_UNKNOWN,
+                            "Unknown error occured while opening the region");
+    // wait for all memory servers to complete the task
+    for (auto result : resultList) {
+        try {
+            Fam_Region_Memory regionMemory = result.get();
+            regionMemoryMap->insert(
+                {regionMemoryServiceList[idx]->get_memory_server_id(),
+                 regionMemory});
+        } catch (Fam_Exception &e) {
+            failCount++;
+            exception = e;
+        } catch (...) {
+            failCount++;
+        }
+        idx++;
+    }
+
+    switch (failCount) {
+    // If all memory server successfully open the region and fetch region memory
+    // registration information,
+    case 0:
+        return;
+    // If only one memory server fails to open the region and fetch region
+    // memory registration information,
+    case 1:
+        throw exception;
+    // If multiple memory servers fail to open the region and fetch region
+    // memory registration information,
+    default:
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RESOURCE,
+                        "Multiple memory servers failed to open the region");
+    }
+}
+
+/*
+ * This function open the region and does not register region memory
+ */
+void Fam_CIS_Direct::open_region_without_registration(
+    uint64_t regionId, std::vector<uint64_t> *memserverIds) {
+    ostringstream message;
+    // Look for region metadata and get the list of memory servers it is
+    // spread across
+    int metadataServiceId = 0;
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(metadataServiceId);
+    Fam_Region_Metadata region;
+    metadataService->metadata_find_region(regionId, region);
+
+    // Create a vector of memory service objects for all memory services in the
+    // list
+    std::vector<Fam_Memory_Service *> regionMemoryServiceList;
+    for (uint64_t i = 0; i < region.used_memsrv_cnt; i++) {
+        regionMemoryServiceList.push_back(
+            get_memory_service(region.memServerIds[i]));
+        memserverIds->push_back(region.memServerIds[i]);
+    }
+
+    // Open the region all memory server without registering it
+    std::list<std::shared_future<void>> resultList;
+    for (auto memsrv : regionMemoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        std::future<void> result(std::async(
+            std::launch::async,
+            &openfam::Fam_Memory_Service::open_region_without_registration,
+            memoryService, regionId));
+        resultList.push_back(result.share());
+    }
+    int failCount = 0;
+    Fam_Exception exception(FAM_ERR_UNKNOWN,
+                            "Unknown error occured while opening the region");
+    // Wait for all memory server to complete the asynchronous call
+    for (auto result : resultList) {
+        try {
+            result.get();
+        } catch (Fam_Exception &e) {
+            failCount++;
+            exception = e;
+        } catch (...) {
+            failCount++;
+        }
+    }
+
+    switch (failCount) {
+    // If all memory server successfully open the region
+    case 0:
+        return;
+    // If only one memory server fails to open the region
+    case 1:
+        throw exception;
+    // If multiple memory servers fail to open the region
+    default:
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RESOURCE,
+                        "Multiple memory servers failed to open the region");
+    }
+}
+
+/*
+ * This function register the region memory and does not return any registration
+ * details.
+ */
+void Fam_CIS_Direct::register_region_memory(
+    Fam_Region_Metadata region, Fam_Metadata_Service *metadataService,
+    std::vector<Fam_Memory_Service *> regionMemoryServiceList, uint32_t uid,
+    uint32_t gid) {
+    ostringstream message;
+    bool rwFlag;
+    if (check_region_permission(region, 1, metadataService, uid, gid)) {
+        rwFlag = 1;
+    } else if (check_region_permission(region, 0, metadataService, uid, gid)) {
+        rwFlag = 0;
+    } else {
+        message << "Not permitted to use this dataitem";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
+    }
+
+    std::list<std::shared_future<void>> resultList;
+    for (auto memsrv : regionMemoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        std::future<void> result(
+            std::async(std::launch::async,
+                       &openfam::Fam_Memory_Service::register_region_memory,
+                       memoryService, region.regionId, rwFlag));
+        resultList.push_back(result.share());
+    }
+
+    for (auto result : resultList) {
+        try {
+            result.get();
+        } catch (...) {
+        }
+    }
+}
+
+/*
+ * This function get the memory registration details (key, base address etc.) of
+ * already opened region
+ */
+void Fam_CIS_Direct::get_region_memory(uint64_t regionId, uint32_t uid,
+                                       uint32_t gid,
+                                       Fam_Region_Memory_Map *regionMemoryMap) {
+    ostringstream message;
+    // Look for region metadata and get the list of memory servers it is
+    // spread across
+    int metadataServiceId = 0;
+    Fam_Metadata_Service *metadataService =
+        get_metadata_service(metadataServiceId);
+    Fam_Region_Metadata region;
+    metadataService->metadata_find_region(regionId, region);
+
+    // Create a vector of memory service objects for all memory services in the
+    // list
+    std::vector<Fam_Memory_Service *> regionMemoryServiceList;
+    for (uint64_t i = 0; i < region.used_memsrv_cnt; i++) {
+        regionMemoryServiceList.push_back(
+            get_memory_service(region.memServerIds[i]));
+    }
+
+    bool rwFlag;
+    if (check_region_permission(region, 1, metadataService, uid, gid)) {
+        rwFlag = 1;
+    } else if (check_region_permission(region, 0, metadataService, uid, gid)) {
+        rwFlag = 0;
+    } else {
+        message << "Not permitted to use this dataitem";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
+    }
+
+    // Register region memory or get the key if already registered
+    std::list<std::shared_future<Fam_Region_Memory>> resultList;
+    int idx = 0;
+    // Request all memory servers for memory registration details of already
+    // opened region
+    for (auto memsrv : regionMemoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        std::future<Fam_Region_Memory> result(std::async(
+            std::launch::async, &openfam::Fam_Memory_Service::get_region_memory,
+            memoryService, regionId, rwFlag));
+        resultList.push_back(result.share());
+        idx++;
+    }
+    idx = 0;
+    int failCount = 0;
+    Fam_Exception exception(FAM_ERR_UNKNOWN,
+                            "Unknown error occured while fetching region "
+                            "memory registration information");
+    // Wait for all emmory servers to complete asynchronous call
+    for (auto result : resultList) {
+        try {
+            Fam_Region_Memory regionMemory = result.get();
+            regionMemoryMap->insert(
+                {regionMemoryServiceList[idx]->get_memory_server_id(),
+                 regionMemory});
+        } catch (Fam_Exception &e) {
+            failCount++;
+            exception = e;
+        } catch (...) {
+            failCount++;
+        }
+        idx++;
+    }
+
+    switch (failCount) {
+    // If all memory server successfully fetch region memory registration
+    // information,
+    case 0:
+        return;
+    // If only one memory server fails to fetch region memory registration
+    // information,
+    case 1:
+        throw exception;
+    // If multiple memory servers fail to fetch region memory registration
+    // information,
+    default:
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RESOURCE,
+                        "Multiple memory servers failed to get region memory "
+                        "registration information");
+    }
+}
+
+/*
+ * This function get dataitem registration details (key, base address etc.). If
+ * not registered already, Register the dataitem and then return back the
+ * registration details.
+ */
+void Fam_CIS_Direct::register_dataitem_memory(
+    Fam_DataItem_Metadata dataitem, Fam_Metadata_Service *metadataService,
+    std::vector<Fam_Memory_Service *> memoryServiceList, uint32_t uid,
+    uint32_t gid, Fam_Region_Item_Info *info) {
+    ostringstream message;
+    bool rwFlag;
+    if (check_dataitem_permission(dataitem, 1, metadataService, uid, gid)) {
+        rwFlag = 1;
+    } else if (check_dataitem_permission(dataitem, 0, metadataService, uid,
+                                         gid)) {
+        rwFlag = 0;
+    } else {
+        message << "Not permitted to use this dataitem";
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
+    }
+
+    std::list<std::shared_future<Fam_Dataitem_Memory>> resultList;
+    int idx = 0;
+    size_t blocks = 0, numBlocksPerServer = 0, extraBlocks = 0;
+    if (dataitem.interleaveSize) {
+        blocks = dataitem.size / dataitem.interleaveSize;
+        if (dataitem.size % dataitem.interleaveSize)
+            blocks++;
+        numBlocksPerServer = blocks / dataitem.used_memsrv_cnt;
+        extraBlocks = blocks % dataitem.used_memsrv_cnt;
+    }
+    for (auto memsrv : memoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        size_t size;
+        if ((dataitem.interleaveSize != 0) &&
+            (dataitem.size > dataitem.interleaveSize)) {
+            size = numBlocksPerServer * dataitem.interleaveSize;
+            if (extraBlocks) {
+                size += dataitem.interleaveSize;
+                extraBlocks--;
+            }
+        } else {
+            size = dataitem.size;
+        }
+        size_t aligned_size =
+            align_to_address(size, 64); // align the size to a 64-bit boundary.
+        size = (aligned_size > size ? aligned_size : size);
+        if (size < MIN_OBJ_SIZE)
+            size = MIN_OBJ_SIZE;
+        std::future<Fam_Dataitem_Memory> result(std::async(
+            std::launch::async,
+            &openfam::Fam_Memory_Service::get_dataitem_memory, memoryService,
+            dataitem.regionId, dataitem.offsets[idx], size, rwFlag));
+        resultList.push_back(result.share());
+        idx++;
+    }
+
+    int failCount = 0;
+    idx = 0;
+    Fam_Exception exception(FAM_ERR_UNKNOWN,
+                            "Unknown error occured while fetching dataitem "
+                            "memory registration information");
+    for (auto result : resultList) {
+        try {
+            Fam_Dataitem_Memory dataitemMemory = result.get();
+            info->dataitemKeys[idx] = dataitemMemory.key;
+            info->baseAddressList[idx] = dataitemMemory.base;
+        } catch (Fam_Exception &e) {
+            failCount++;
+            exception = e;
+        } catch (...) {
+            failCount++;
+        }
+        idx++;
+    }
+
+    switch (failCount) {
+    // If all memory server successfully fetch data item memory registration
+    // information,
+    case 0:
+        return;
+    // If only one memory server fails to fetch data item memory registration
+    // information,
+    case 1:
+        throw exception;
+    // If multiple memory servers fail to fetch data item memory registration
+    // information,
+    default:
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RESOURCE,
+                        "Multiple memory servers failed to get data item "
+                        "memory registration information");
+    }
+}
+
+/*
+ * This function close the region
+ */
+void Fam_CIS_Direct::close_region(uint64_t regionId,
+                                  std::vector<uint64_t> memserverIds) {
+    CIS_DIRECT_PROFILE_START_OPS()
+    Fam_Region_Metadata region;
+    ostringstream message;
+
+    // Create a vector of memory service objects for all memory services in the
+    // list
+    std::vector<Fam_Memory_Service *> regionMemoryServiceList;
+    for (auto id : memserverIds) {
+        regionMemoryServiceList.push_back(get_memory_service(id));
+    }
+
+    std::list<std::shared_future<uint64_t>> resultList;
+
+    // Send request to all memory servers to close the region
+    for (auto memsrv : regionMemoryServiceList) {
+        Fam_Memory_Service *memoryService = memsrv;
+        std::future<uint64_t> result(std::async(
+            std::launch::async, &openfam::Fam_Memory_Service::close_region,
+            memoryService, regionId));
+        resultList.push_back(result.share());
+    }
+
+    int failCount = 0;
+    Fam_Exception exception(FAM_ERR_UNKNOWN,
+                            "Unknown error occured while closing the region");
+
+    // Wait for all memory servers to complete asynchronous call
+    for (auto result : resultList) {
+        try {
+            result.get();
+        } catch (Fam_Exception &e) {
+            failCount++;
+            exception = e;
+        } catch (...) {
+            failCount++;
+        }
+    }
+
+    switch (failCount) {
+    // If all memory server successfully close the region
+    case 0:
+        return;
+    // If only one memory server fails to close the region
+    case 1:
+        throw exception;
+    // If multiple memory servers fail to close the region
+    default:
+        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_RESOURCE,
+                        "Multiple memory servers failed to close the region");
+    }
+}
+
 void Fam_CIS_Direct::deallocate(uint64_t regionId, uint64_t offset,
                                 uint64_t memoryServerId, uint32_t uid,
                                 uint32_t gid) {
     CIS_DIRECT_PROFILE_START_OPS()
     ostringstream message;
     uint64_t metadataServiceId = 0;
-    std::list<Fam_Memory_Service *> memoryServiceList;
+    std::vector<Fam_Memory_Service *> memoryServiceList;
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
     // Check with metadata service if data item with the requested name can be
@@ -892,23 +1384,25 @@ void Fam_CIS_Direct::deallocate(uint64_t regionId, uint64_t offset,
         memoryServiceList.push_back(
             get_memory_service(dataitem.memoryServerIds[i]));
     }
+
     std::list<std::shared_future<void>> resultList;
     int idx = 0;
-    for (auto memsrv : memoryServiceList) {
-        Fam_Memory_Service *memoryService = memsrv;
-        std::future<void> result(std::async(
-            std::launch::async, &openfam::Fam_Memory_Service::deallocate,
-            memoryService, regionId, dataitem.offsets[idx++]));
-        resultList.push_back(result.share());
-    }
+
+        for (auto memsrv : memoryServiceList) {
+            Fam_Memory_Service *memoryService = memsrv;
+            std::future<void> result(std::async(
+                std::launch::async, &openfam::Fam_Memory_Service::deallocate,
+                memoryService, regionId, dataitem.offsets[idx++]));
+            resultList.push_back(result.share());
+        }
 
     // Wait for region destroy to complete.
     try {
         for (auto result : resultList) {
             result.get();
         }
-    } catch (...) {
-        throw;
+    } catch (Fam_Exception &e) {
+        throw e;
     }
 
     CIS_DIRECT_PROFILE_END_OPS(cis_deallocate);
@@ -972,8 +1466,16 @@ void Fam_CIS_Direct::change_dataitem_permission(uint64_t regionId,
         THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
+
+    if (dataitem.permissionLevel == REGION) {
+        message << "Dataitem permission modification not permitted if the "
+                   "region is created with region level permission";
+        THROW_ERRNO_MSG(CIS_Exception, ITEM_PERM_MODIFY_NOT_PERMITTED,
+                        message.str().c_str());
+    }
     // Check with metadata service if the calling PE has the permission
-    // to modify permissions of the region, if not return error
+    // to modify perm
+    // issions of the region, if not return error
     if (uid != dataitem.uid) {
         message << "Dataitem permission modification not permitted";
         THROW_ERRNO_MSG(CIS_Exception, ITEM_PERM_MODIFY_NOT_PERMITTED,
@@ -991,13 +1493,10 @@ void Fam_CIS_Direct::change_dataitem_permission(uint64_t regionId,
 /*
  * Check if the given uid/gid has read or rw permissions.
  */
-bool Fam_CIS_Direct::check_region_permission(Fam_Region_Metadata region,
-                                             bool op,
-                                             uint64_t metadataServiceId,
-                                             uint32_t uid, uint32_t gid) {
+bool Fam_CIS_Direct::check_region_permission(
+    Fam_Region_Metadata region, bool op, Fam_Metadata_Service *metadataService,
+    uint32_t uid, uint32_t gid) {
     metadata_region_item_op_t opFlag;
-    Fam_Metadata_Service *metadataService =
-        get_metadata_service(metadataServiceId);
     if (op)
         opFlag = META_REGION_ITEM_RW;
     else
@@ -1011,15 +1510,12 @@ bool Fam_CIS_Direct::check_region_permission(Fam_Region_Metadata region,
  * Check if the given uid/gid has read or rw permissions for
  * a given dataitem.
  */
-bool Fam_CIS_Direct::check_dataitem_permission(Fam_DataItem_Metadata dataitem,
-                                               bool op,
-                                               uint64_t metadataServiceId,
-                                               uint32_t uid, uint32_t gid) {
+bool Fam_CIS_Direct::check_dataitem_permission(
+    Fam_DataItem_Metadata dataitem, bool op,
+    Fam_Metadata_Service *metadataService, uint32_t uid, uint32_t gid) {
 
     metadata_region_item_op_t opFlag;
 
-    Fam_Metadata_Service *metadataService =
-        get_metadata_service(metadataServiceId);
     if (op)
         opFlag = META_REGION_ITEM_RW;
     else
@@ -1050,7 +1546,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name, uint32_t uid,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     info.regionId = region.regionId;
@@ -1062,6 +1558,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name, uint32_t uid,
     info.redundancyLevel = region.redundancyLevel;
     info.memoryType = region.memoryType;
     info.interleaveEnable = region.interleaveEnable;
+    info.permissionLevel = region.permissionLevel;
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup_region);
     return info;
 }
@@ -1087,7 +1584,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     info.regionId = dataitem.regionId;
@@ -1102,6 +1599,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup(string itemName, string regionName,
            dataitem.used_memsrv_cnt * sizeof(uint64_t));
     info.maxNameLen = metadataMaxKeyLen;
     info.interleaveSize = dataitem.interleaveSize;
+    info.permissionLevel = dataitem.permissionLevel;
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup);
     return info;
 }
@@ -1128,7 +1626,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
     info.size = region.size;
     info.perm = region.perm;
@@ -1141,6 +1639,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     info.used_memsrv_cnt = region.used_memsrv_cnt;
     info.uid = region.uid;
     info.gid = region.gid;
+    info.permissionLevel = region.permissionLevel;
     memcpy(info.memoryServerIds, region.memServerIds,
            region.used_memsrv_cnt * sizeof(uint64_t));
     CIS_DIRECT_PROFILE_END_OPS(cis_check_permission_get_region_info);
@@ -1155,11 +1654,12 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
     Fam_Region_Item_Info info;
     CIS_DIRECT_PROFILE_START_OPS()
     uint64_t metadataServiceId = 0;
-    std::list<Fam_Memory_Service *> memoryServiceList;
+    std::vector<Fam_Memory_Service *> memoryServiceList;
     Fam_Metadata_Service *metadataService =
         get_metadata_service(metadataServiceId);
     Fam_DataItem_Metadata dataitem;
     message << "Error While locating dataitem : ";
+
     uint64_t dataitemId = get_dataitem_id(offset, memoryServerId);
 
     if (!metadataService->metadata_find_dataitem(dataitemId, regionId,
@@ -1169,88 +1669,30 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_item_info(
                         message.str().c_str());
     }
 
-    bool rwFlag;
-    if (check_dataitem_permission(dataitem, 1, metadataServiceId, uid, gid)) {
-        rwFlag = 1;
-    } else if (check_dataitem_permission(dataitem, 0, metadataServiceId, uid,
-                                         gid)) {
-        rwFlag = 0;
-    } else {
-        message << "Not permitted to use this dataitem";
-        THROW_ERRNO_MSG(CIS_Exception, FAM_ERR_NOPERM, message.str().c_str());
-    }
-
     for (int i = 0; i < (int)dataitem.used_memsrv_cnt; i++) {
         memoryServiceList.push_back(
             get_memory_service(dataitem.memoryServerIds[i]));
     }
-    std::list<std::shared_future<uint64_t>> keyResultList;
-    std::list<std::shared_future<void *>> baseResultList;
-    int idx = 0;
-    size_t blocks = 0, numBlocksPerServer = 0, extraBlocks = 0;
-    if (dataitem.interleaveSize) {
-        blocks = dataitem.size / dataitem.interleaveSize;
-        if (dataitem.size % dataitem.interleaveSize)
-            blocks++;
-        numBlocksPerServer = blocks / dataitem.used_memsrv_cnt;
-        extraBlocks = blocks % dataitem.used_memsrv_cnt;
-    }
-    for (auto memsrv : memoryServiceList) {
-        Fam_Memory_Service *memoryService = memsrv;
-        size_t size;
-        if ((dataitem.interleaveSize != 0) &&
-            (dataitem.size > dataitem.interleaveSize)) {
-            size = numBlocksPerServer * dataitem.interleaveSize;
-            if (extraBlocks) {
-                size += dataitem.interleaveSize;
-                extraBlocks--;
-            }
-        } else {
-            size = dataitem.size;
-        }
-        size_t aligned_size =
-            align_to_address(size, 64); // align the size to a 64-bit boundary.
-        size = (aligned_size > size ? aligned_size : size);
-        if (size < MIN_OBJ_SIZE)
-            size = MIN_OBJ_SIZE;
-        std::future<uint64_t> keyResult(std::async(
-            std::launch::async, &openfam::Fam_Memory_Service::get_key,
-            memoryService, regionId, dataitem.offsets[idx], size, rwFlag));
-        std::future<void *> baseResult(std::async(
-            std::launch::async, &openfam::Fam_Memory_Service::get_local_pointer,
-            memoryService, regionId, dataitem.offsets[idx]));
-        idx++;
-        keyResultList.push_back(keyResult.share());
-        baseResultList.push_back(baseResult.share());
+
+    if (!isSharedMemory && dataitem.permissionLevel == REGION) {
+        memcpy(info.dataitemOffsets, dataitem.offsets,
+               dataitem.used_memsrv_cnt * sizeof(uint64_t));
+    } else {
+        // Register the data item memory
+        register_dataitem_memory(dataitem, metadataService, memoryServiceList,
+                                 uid, gid, &info);
+        info.dataitemOffsets[0] = dataitem.offsets[0];
     }
 
-    idx = 0;
-    uint64_t keys[MAX_MEMORY_SERVERS_CNT];
-    void *baseAddressList[MAX_MEMORY_SERVERS_CNT];
-    // Wait for region destroy to complete.
-    try {
-        for (auto result : keyResultList) {
-            keys[idx++] = result.get();
-        }
-        idx = 0;
-        for (auto result : baseResultList) {
-            baseAddressList[idx++] = result.get();
-        }
-    } catch (...) {
-        throw;
-    }
-
+    // return all other data item information
     info.regionId = dataitem.regionId;
     info.used_memsrv_cnt = dataitem.used_memsrv_cnt;
-    info.offset = dataitem.offsets[0];
-    memcpy(info.keys, keys, dataitem.used_memsrv_cnt * sizeof(uint64_t));
     info.size = dataitem.size;
     info.perm = dataitem.perm;
     strncpy(info.name, dataitem.name, metadataMaxKeyLen);
     info.maxNameLen = metadataMaxKeyLen;
     info.interleaveSize = dataitem.interleaveSize;
-    memcpy(info.baseAddressList, baseAddressList,
-           dataitem.used_memsrv_cnt * sizeof(void *));
+    info.permissionLevel = dataitem.permissionLevel;
     memcpy(info.memoryServerIds, dataitem.memoryServerIds,
            dataitem.used_memsrv_cnt * sizeof(uint64_t));
 
@@ -1283,7 +1725,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     info.size = dataitem.size;
@@ -1294,17 +1736,13 @@ Fam_Region_Item_Info Fam_CIS_Direct::get_stat_info(uint64_t regionId,
     info.gid = dataitem.gid;
     info.interleaveSize = dataitem.interleaveSize;
     info.used_memsrv_cnt = dataitem.used_memsrv_cnt;
+    info.permissionLevel = dataitem.permissionLevel;
     memcpy(info.memoryServerIds, dataitem.memoryServerIds,
            dataitem.used_memsrv_cnt * sizeof(uint64_t));
     CIS_DIRECT_PROFILE_END_OPS(cis_get_stat_info);
     return info;
 }
 
-void *Fam_CIS_Direct::get_local_pointer(uint64_t regionId, uint64_t offset,
-                                        uint64_t memoryServerId) {
-    Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
-    return memoryService->get_local_pointer(regionId, offset);
-}
 
 void *Fam_CIS_Direct::fam_map(uint64_t regionId, uint64_t offset,
                               uint64_t memoryServerId, uint32_t uid,
@@ -1324,9 +1762,10 @@ void *Fam_CIS_Direct::fam_map(uint64_t regionId, uint64_t offset,
         THROW_ERRNO_MSG(CIS_Exception, DATAITEM_NOT_FOUND,
                         message.str().c_str());
     }
-    if (check_dataitem_permission(dataitem, 1, metadataServiceId, uid, gid) |
-        check_dataitem_permission(dataitem, 0, metadataServiceId, uid, gid)) {
-        localPointer = get_local_pointer(regionId, offset, memoryServerId);
+    if (check_dataitem_permission(dataitem, 1, metadataService, uid, gid) |
+        check_dataitem_permission(dataitem, 0, metadataService, uid, gid)) {
+        Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
+        localPointer = memoryService->get_local_pointer(regionId, offset);
     } else {
         THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                         "Not permitted to use this dataitem");
@@ -1376,7 +1815,7 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     try {
@@ -1391,15 +1830,15 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
-    if (!((srcCopyStart + size) < srcDataitem.size)) {
+    if (!((srcCopyStart + size) <= srcDataitem.size)) {
         message << "Source offset or size is beyond dataitem boundary";
         THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
 
-    if (!((destCopyStart + size) < destDataitem.size)) {
+    if (!((destCopyStart + size) <= destDataitem.size)) {
         message << "Destination offset or size is beyond dataitem boundary";
         THROW_ERRNO_MSG(CIS_Exception, OUT_OF_RANGE, message.str().c_str());
     }
@@ -1477,8 +1916,8 @@ void *Fam_CIS_Direct::copy(uint64_t srcRegionId, uint64_t srcOffset,
             for (auto result : resultList) {
                 result.get();
             }
-        } catch (...) {
-            throw;
+        } catch (Fam_Exception &e) {
+            throw e;
         }
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_copy);
@@ -1518,7 +1957,7 @@ void *Fam_CIS_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     // Get data item name and permission bits from Fam_DataItem_Metadata
@@ -1611,8 +2050,8 @@ void *Fam_CIS_Direct::backup(uint64_t srcRegionId, uint64_t srcOffset,
             for (auto result : resultList) {
                 result.get();
             }
-        } catch (...) {
-            throw;
+        } catch (Fam_Exception &e) {
+            throw e;
         }
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_backup);
@@ -1648,7 +2087,7 @@ void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
     Fam_Backup_Info info;
     try {
@@ -1656,7 +2095,7 @@ void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
             memoryService->get_backup_info(BackupName, uid, gid, BACKUP_READ);
 
     } catch (Fam_Exception &e) {
-        throw;
+        throw e;
     }
     if (destDataitem.size < (uint64_t)info.size) {
         message << "data item size is smaller than backup ";
@@ -1728,8 +2167,8 @@ void *Fam_CIS_Direct::restore(uint64_t destRegionId, uint64_t destOffset,
             for (auto result : resultList) {
                 result.get();
             }
-        } catch (...) {
-            throw;
+        } catch (Fam_Exception &e) {
+            throw e;
         }
     }
     CIS_DIRECT_PROFILE_END_OPS(cis_restore);
@@ -1742,9 +2181,13 @@ Fam_Backup_Info Fam_CIS_Direct::get_backup_info(std::string BackupName,
     Fam_Backup_Info info;
     ostringstream message;
     CIS_DIRECT_PROFILE_START_OPS()
-    auto obj = memoryServers->find(memoryServerId);
-    Fam_Memory_Service *memoryService =
-        get_memory_service((uint64_t)obj->first);
+    std::uint64_t hashVal = std::hash<std::string>{}(BackupName);
+    uint64_t memserverRandomIndex = hashVal % memoryServers->size();
+
+    auto it = memoryServers->begin();
+    std::advance(it, memserverRandomIndex);
+
+    Fam_Memory_Service *memoryService = get_memory_service((uint64_t)it->first);
     info = memoryService->get_backup_info(BackupName, uid, gid, BACKUP_READ);
     CIS_DIRECT_PROFILE_END_OPS(cis_get_backup_info);
     return info;
@@ -1755,9 +2198,13 @@ std::string Fam_CIS_Direct::list_backup(std::string BackupName,
                                         uint32_t gid) {
     ostringstream message;
     string info;
-    auto obj = memoryServers->find(memoryServerIdx);
-    Fam_Memory_Service *memoryService =
-        get_memory_service((uint64_t)obj->first);
+    std::uint64_t hashVal = std::hash<std::string>{}(BackupName);
+    uint64_t memserverRandomIndex = hashVal % memoryServers->size();
+
+    auto it = memoryServers->begin();
+    std::advance(it, memserverRandomIndex);
+
+    Fam_Memory_Service *memoryService = get_memory_service((uint64_t)it->first);
     info = memoryService->list_backup(BackupName, uid, gid, BACKUP_READ);
     return info;
 }
@@ -1765,15 +2212,19 @@ std::string Fam_CIS_Direct::list_backup(std::string BackupName,
 void *Fam_CIS_Direct::delete_backup(string BackupName, uint64_t memoryServerIdx,
                                     uint32_t uid, uint32_t gid) {
     ostringstream message;
-    auto obj = memoryServers->find(memoryServerIdx);
-    Fam_Memory_Service *memoryService =
-        get_memory_service((uint64_t)obj->first);
+    std::uint64_t hashVal = std::hash<std::string>{}(BackupName);
+    uint64_t memserverRandomIndex = hashVal % memoryServers->size();
+
+    auto it = memoryServers->begin();
+    std::advance(it, memserverRandomIndex);
+
+    Fam_Memory_Service *memoryService = get_memory_service((uint64_t)it->first);
     Fam_Backup_Info info;
     try {
         info =
             memoryService->get_backup_info(BackupName, uid, gid, BACKUP_WRITE);
     } catch (Fam_Exception &e) {
-        throw;
+        throw e;
     }
 
     Fam_Delete_Backup_Wait_Object *waitObj =
@@ -1840,7 +2291,9 @@ void Fam_CIS_Direct::release_CAS_lock(uint64_t offset,
 
 uint64_t Fam_CIS_Direct::get_dataitem_id(uint64_t offset,
                                          uint64_t memoryServerId) {
-    return ((memoryServerId << 32) + offset / MIN_OBJ_SIZE);
+    uint64_t dataitemId = memoryServerId << 48;
+    dataitemId |= offset / MIN_OBJ_SIZE;
+    return dataitemId;
 }
 
 size_t Fam_CIS_Direct::get_addr_size(uint64_t memoryServerId) {
@@ -1890,6 +2343,14 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
         std::string::npos) {
         info = new yaml_config_info(filename);
         try {
+            options["provider"] =
+                (char *)strdup((info->get_key_value("provider")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["provider"] = (char *)strdup("sockets");
+        }
+
+        try {
             options["memsrv_interface_type"] = (char *)strdup(
                 (info->get_key_value("memsrv_interface_type")).c_str());
         } catch (Fam_InvalidOption_Exception &e) {
@@ -1903,6 +2364,15 @@ configFileParams Fam_CIS_Direct::get_config_info(std::string filename) {
         } catch (Fam_InvalidOption_Exception &e) {
             // If parameter is not present, then set the default.
             options["metadata_interface_type"] = (char *)strdup("rpc");
+        }
+
+        // fetch rpc_framework type
+        try {
+            options["rpc_framework_type"] = (char *)strdup(
+                (info->get_key_value("rpc_framework_type")).c_str());
+        } catch (Fam_InvalidOption_Exception &e) {
+            // If parameter is not present, then set the default.
+            options["rpc_framework_type"] = (char *)strdup("grpc");
         }
 
         try {
@@ -1981,7 +2451,7 @@ int Fam_CIS_Direct::get_atomic(uint64_t regionId, uint64_t srcOffset,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     if (!((dstOffset + nbytes) <= dataitem.size)) {
@@ -2023,7 +2493,7 @@ int Fam_CIS_Direct::put_atomic(uint64_t regionId, uint64_t srcOffset,
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     if (!((dstOffset + nbytes) <= dataitem.size)) {
@@ -2064,7 +2534,7 @@ int Fam_CIS_Direct::scatter_strided_atomic(
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     memoryService->scatter_strided_atomic(
@@ -2103,7 +2573,7 @@ int Fam_CIS_Direct::gather_strided_atomic(
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     memoryService->gather_strided_atomic(regionId, offset, nElements,
@@ -2140,7 +2610,7 @@ int Fam_CIS_Direct::scatter_indexed_atomic(
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     memoryService->scatter_indexed_atomic(regionId, offset, nElements,
@@ -2177,7 +2647,7 @@ int Fam_CIS_Direct::gather_indexed_atomic(
             THROW_ERRNO_MSG(CIS_Exception, NO_PERMISSION,
                             message.str().c_str());
         }
-        throw;
+        throw e;
     }
 
     memoryService->gather_indexed_atomic(regionId, offset, nElements,
@@ -2191,5 +2661,22 @@ inline uint64_t Fam_CIS_Direct::align_to_address(uint64_t size, int multiple) {
     assert(multiple && ((multiple & (multiple - 1)) == 0));
     return (size + multiple - 1) & -multiple;
 }
+
+// get and set controlpath address functions
+string Fam_CIS_Direct::get_controlpath_addr() { return controlpath_addr; }
+
+void Fam_CIS_Direct::set_controlpath_addr(string addr) {
+    controlpath_addr = addr;
+}
+
+// get and set rpc_framework and protocol type
+void Fam_CIS_Direct::set_rpc_framework_protocol(configFileParams file_options) {
+    rpc_framework_type = file_options["rpc_framework_type"];
+    rpc_protocol_type = protocol_map(file_options["provider"]);
+}
+
+string Fam_CIS_Direct::get_rpc_framework_type() { return rpc_framework_type; }
+
+string Fam_CIS_Direct::get_rpc_protocol_type() { return rpc_protocol_type; }
 
 } // namespace openfam

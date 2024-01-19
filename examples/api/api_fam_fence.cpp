@@ -92,7 +92,7 @@ int main(void) {
         // update elements 11 - 20 in FAM using values in local memory
         myFam->fam_put_nonblocking(newLocal, descriptor, 10 * sizeof(int),
                                    sizeof(local));
-        printf("fam_fence API successfull!!\n");
+        printf("fam_fence API successful!!\n");
         // ... subsequent code here
 
     } catch (Fam_Exception &e) {
@@ -103,7 +103,7 @@ int main(void) {
     try {
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(region);
-        // printf("fam_destroy_region successfull\n");
+        // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());

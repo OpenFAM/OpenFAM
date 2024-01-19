@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_client.cpp
- * Copyright (c) 2020-2021 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -108,6 +108,8 @@ Fam_Memory_Service_Client::Fam_Memory_Service_Client(const char *name,
     }
 
     Fam_Memory_Type memory_type = (Fam_Memory_Type)res.memorytype();
+    memoryServerId = res.memserver_id();
+
     size_t FabricAddrSize = res.addrnamelen();
     char *fabricAddr = (char *)calloc(1, FabricAddrSize);
 
@@ -183,7 +185,8 @@ void Fam_Memory_Service_Client::create_region(uint64_t regionId,
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_create_region);
 }
 
-void Fam_Memory_Service_Client::destroy_region(uint64_t regionId) {
+void Fam_Memory_Service_Client::destroy_region(uint64_t regionId,
+                                               uint64_t *resourceStatus) {
     Fam_Memory_Service_Request req;
     Fam_Memory_Service_Response res;
     ::grpc::ClientContext ctx;
@@ -194,6 +197,8 @@ void Fam_Memory_Service_Client::destroy_region(uint64_t regionId) {
     ::grpc::Status status = stub->destroy_region(&ctx, req, &res);
 
     STATUS_CHECK(Memory_Service_Exception)
+    *resourceStatus = res.resource_status();
+
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_destroy_region);
 }
 
@@ -230,8 +235,6 @@ Fam_Region_Item_Info Fam_Memory_Service_Client::allocate(uint64_t regionId,
     STATUS_CHECK(Memory_Service_Exception)
 
     info.offset = res.offset();
-    info.base = (void *)res.base();
-    info.key = res.key();
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_allocate);
     return info;
 }
@@ -450,28 +453,131 @@ void *Fam_Memory_Service_Client::get_local_pointer(uint64_t regionId,
 
     STATUS_CHECK(Memory_Service_Exception)
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_local_pointer);
-
     return (void *)res.base();
 }
 
-uint64_t Fam_Memory_Service_Client::get_key(uint64_t regionId, uint64_t offset,
-                                            uint64_t size, bool rwFlag) {
+void Fam_Memory_Service_Client::register_region_memory(uint64_t regionId,
+                                                       bool accessType) {
     Fam_Memory_Service_Request req;
     Fam_Memory_Service_Response res;
     ::grpc::ClientContext ctx;
-
     MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
     req.set_region_id(regionId);
-    req.set_offset(offset);
-    req.set_size(size);
-    req.set_rw_flag(rwFlag);
+    req.set_rw_flag(accessType);
 
-    ::grpc::Status status = stub->get_key(&ctx, req, &res);
+    ::grpc::Status status = stub->register_region_memory(&ctx, req, &res);
 
     STATUS_CHECK(Memory_Service_Exception)
 
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_key);
-    return res.key();
+}
+
+Fam_Region_Memory
+Fam_Memory_Service_Client::open_region_with_registration(uint64_t regionId,
+                                                         bool accessType) {
+    Fam_Memory_Service_Request req;
+    Fam_Memory_Service_Response res;
+    ::grpc::ClientContext ctx;
+    Fam_Region_Memory regionMemory;
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_region_id(regionId);
+    req.set_rw_flag(accessType);
+
+    ::grpc::Status status =
+        stub->open_region_with_registration(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+
+    int numExtents = res.region_keys_size();
+    for (int i = 0; i < numExtents; i++) {
+        regionMemory.keys.push_back(res.region_keys(i));
+        regionMemory.base.push_back(res.region_base(i));
+    }
+
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_open_region_with_registration);
+    return regionMemory;
+}
+
+void Fam_Memory_Service_Client::open_region_without_registration(
+    uint64_t regionId) {
+    Fam_Memory_Service_Request req;
+    Fam_Memory_Service_Response res;
+    ::grpc::ClientContext ctx;
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_region_id(regionId);
+
+    ::grpc::Status status =
+        stub->open_region_without_registration(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_key);
+}
+
+uint64_t Fam_Memory_Service_Client::close_region(uint64_t regionId) {
+    Fam_Memory_Service_Request req;
+    Fam_Memory_Service_Response res;
+    ::grpc::ClientContext ctx;
+    uint64_t resourceStatus;
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_region_id(regionId);
+
+    ::grpc::Status status = stub->close_region(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+
+    resourceStatus = res.resource_status();
+
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_close_region);
+    return resourceStatus;
+}
+
+Fam_Region_Memory
+Fam_Memory_Service_Client::get_region_memory(uint64_t regionId,
+                                             bool accessType) {
+    Fam_Memory_Service_Request req;
+    Fam_Memory_Service_Response res;
+    ::grpc::ClientContext ctx;
+    Fam_Region_Memory regionMemory;
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_region_id(regionId);
+    req.set_rw_flag(accessType);
+
+    ::grpc::Status status = stub->get_region_memory(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+
+    int numExtents = res.region_keys_size();
+    for (int i = 0; i < numExtents; i++) {
+        regionMemory.keys.push_back(res.region_keys(i));
+        regionMemory.base.push_back(res.region_base(i));
+    }
+
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_get_region_memory);
+    return regionMemory;
+}
+
+Fam_Dataitem_Memory Fam_Memory_Service_Client::get_dataitem_memory(
+    uint64_t regionId, uint64_t offset, uint64_t size, bool accessType) {
+    Fam_Memory_Service_Request req;
+    Fam_Memory_Service_Response res;
+    ::grpc::ClientContext ctx;
+    Fam_Dataitem_Memory dataitemMemory;
+    MEMORY_SERVICE_CLIENT_PROFILE_START_OPS()
+    req.set_region_id(regionId);
+    req.set_offset(offset);
+    req.set_size(size);
+    req.set_rw_flag(accessType);
+
+    ::grpc::Status status = stub->get_dataitem_memory(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
+
+    dataitemMemory.key = res.key();
+    dataitemMemory.base = res.base();
+
+    MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_get_key);
+    return dataitemMemory;
 }
 
 void Fam_Memory_Service_Client::get_atomic(uint64_t regionId,
@@ -642,6 +748,19 @@ void Fam_Memory_Service_Client::update_memserver_addrlist(
 
     STATUS_CHECK(Memory_Service_Exception)
     MEMORY_SERVICE_CLIENT_PROFILE_END_OPS(mem_client_update_memserver_addrlist);
+}
+
+void Fam_Memory_Service_Client::create_region_failure_cleanup(
+    uint64_t regionId) {
+    Fam_Memory_Service_Request req;
+    Fam_Memory_Service_Response res;
+    ::grpc::ClientContext ctx;
+
+    req.set_region_id(regionId);
+    ::grpc::Status status =
+        stub->create_region_failure_cleanup(&ctx, req, &res);
+
+    STATUS_CHECK(Memory_Service_Exception)
 }
 
 } // namespace openfam

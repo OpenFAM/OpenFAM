@@ -1,8 +1,8 @@
 /*
  *   fam_metadata_service_direct.h
- *   Copyright (c) 2019-2020 Hewlett Packard Enterprise Development, LP. All
- *   rights reserved. Redistribution and use in source and binary forms, with or
- *   without modification, are permitted provided that the following conditions
+ *   Copyright (c) 2019-2020,2023 Hewlett Packard Enterprise Development, LP.
+ * All rights reserved. Redistribution and use in source and binary forms, with
+ * or without modification, are permitted provided that the following conditions
  *   are met:
  *   1. Redistributions of source code must retain the above copyright notice,
  *      this list of conditions and the following disclaimer.
@@ -159,7 +159,8 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
     void metadata_validate_and_allocate_dataitem(
         const std::string dataitemName, const uint64_t regionId, uint32_t uid,
         uint32_t gid, size_t size, std::list<int> *memory_server_list,
-        size_t *interleaveSize, int user_policy);
+        size_t *interleaveSize, Fam_Permission_Level *permissionLevel,
+        mode_t *regionPermission, int user_policy);
 
     void metadata_validate_and_deallocate_dataitem(
         const uint64_t regionId, const uint64_t dataitemId, uint32_t uid,
@@ -187,10 +188,21 @@ class Fam_Metadata_Service_Direct : public Fam_Metadata_Service {
     Fam_Metadata_Service_Direct(bool use_fam_path, bool use_meta_reg = 0);
     void metadata_reset_bitmap(uint64_t regionID);
     ~Fam_Metadata_Service_Direct();
+    // get and set controlpath address definitions
+    void set_controlpath_addr(string addr);
+    string get_controlpath_addr();
+
+    // get and set get_rpc_framework_type and protocol definitions
+    void set_rpc_framework_protocol(configFileParams file_options);
+    string get_rpc_framework_type();
+    string get_rpc_protocol_type();
 
   private:
     class Impl_;
     Impl_ *pimpl_;
+    string controlpath_addr, rpc_framework_type, rpc_protocol_type;
+    size_t controlpath_FabricAddrSize;
+    void *controlpath_FabricAddr;
 };
 
 } // namespace metadata

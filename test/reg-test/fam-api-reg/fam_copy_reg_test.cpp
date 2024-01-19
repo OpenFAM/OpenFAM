@@ -1,8 +1,9 @@
 /*
  * fam_copy_reg_test.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -363,6 +364,68 @@ TEST(FamCopy, CopyInvalidDescriptor) {
     EXPECT_THROW(my_fam->fam_copy(NULL, 0, NULL, 0, 10), Fam_Exception);
 
     EXPECT_THROW(my_fam->fam_copy_wait(NULL), Fam_Exception);
+}
+
+// Test case 7 - fam_copy same size test (success).
+TEST(FamCopy, CopySameSizeSuccess) {
+    Fam_Region_Descriptor *srcDesc, *destDesc;
+    Fam_Descriptor *srcItem;
+    Fam_Descriptor *destItem;
+
+    char *local = (char *)malloc(128);
+    memset(local, 'a', 128);
+
+    const char *srcRegionName = get_uniq_str("Src_Region", my_fam);
+    const char *srcItemName = get_uniq_str("Src_Itemt", my_fam);
+
+    const char *destRegionName = get_uniq_str("Dest_Region", my_fam);
+    const char *destItemName = get_uniq_str("Dest_Itemt", my_fam);
+
+    EXPECT_NO_THROW(
+        srcDesc = my_fam->fam_create_region(srcRegionName, 8192, 0777, NULL));
+    EXPECT_NE((void *)NULL, srcDesc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(srcItem =
+                        my_fam->fam_allocate(srcItemName, 128, 0777, srcDesc));
+    EXPECT_NE((void *)NULL, srcItem);
+
+    EXPECT_NO_THROW(
+        destDesc = my_fam->fam_create_region(destRegionName, 8192, 0777, NULL));
+    EXPECT_NE((void *)NULL, destDesc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(
+        destItem = my_fam->fam_allocate(destItemName, 128, 0777, destDesc));
+    EXPECT_NE((void *)NULL, destItem);
+    EXPECT_NO_THROW(my_fam->fam_put_blocking(local, srcItem, 0, 128));
+
+    void *waitObj;
+    EXPECT_NO_THROW(waitObj = my_fam->fam_copy(srcItem, 0, destItem, 0, 128));
+    EXPECT_NE((void *)NULL, waitObj);
+    EXPECT_NO_THROW(my_fam->fam_copy_wait(waitObj));
+
+    // allocate local memory to receive 128 elements
+    char *local2 = (char *)malloc(128);
+    memset(local2, 'b', 128);
+
+    EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, destItem, 0, 128));
+    int stringCompareResult = strncmp(local, local2, 128);
+    EXPECT_EQ(stringCompareResult, 0);
+    EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(destItem));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(destDesc));
+
+    delete srcItem;
+    delete srcDesc;
+    delete destDesc;
+
+    free((void *)srcRegionName);
+    free((void *)srcItemName);
+    free((void *)destRegionName);
+    free((void *)destItemName);
 }
 
 int main(int argc, char **argv) {

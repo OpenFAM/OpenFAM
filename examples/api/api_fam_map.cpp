@@ -85,7 +85,7 @@ int main(void) {
             fam_array[i]++;               // increment it
         }
         myFam->fam_unmap(fam_array, descriptor); // we are done...
-        printf("fam_map and fam_unmap API successfull!!\n");
+        printf("fam_map and fam_unmap API successful!!\n");
     } catch (Fam_Exception &e) {
         printf("fam API failed: %d: %s\n", e.fam_error(), e.fam_error_msg());
         if (e.fam_error() == FAM_ERR_UNIMPL)
@@ -99,7 +99,7 @@ int main(void) {
     try {
         // we are finished. Destroy the region and everything in it
         myFam->fam_destroy_region(region);
-        // printf("fam_destroy_region successfull\n");
+        // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());

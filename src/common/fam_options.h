@@ -1,8 +1,9 @@
 /*
  * fam_options.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
- * reserved. Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
+ * Copyright (c) 2019, 2023 Hewlett Packard Enterprise Development, LP. All
+ * rights reserved. Redistribution and use in source and binary forms, with or
+ * without modification, are permitted provided that the following conditions
+ * are met:
  * 1. Redistributions of source code must retain the above copyright notice,
  * this list of conditions and the following disclaimer.
  * 2. Redistributions in binary form must reproduce the above copyright notice,
@@ -73,6 +74,10 @@ typedef enum {
     FAM_DEFAULT_MEMORY_TYPE,
     /** Interface device used by the PE for communication */
     IF_DEVICE,
+    /** Local Buffer Address passed by Application */
+    LOC_BUF_ADDR,
+    /** Local Buffer size passed by Application */
+    LOC_BUF_SIZE,
     /** END of Option keys */
     END_OPT = -1
 } Fam_Option_Key;
@@ -91,6 +96,9 @@ typedef enum {
 
 #define FAM_OPTIONS_DIRECT_STR "direct"
 #define FAM_OPTIONS_RPC_STR "rpc"
+
+#define FAM_OPTIONS_GRPC_STR "grpc"
+#define FAM_OPTIONS_THALLIUM_STR "thallium"
 
 #define FAM_OPTIONS_RUNTIME_PMIX_STR "PMIX"
 #define FAM_OPTIONS_RUNTIME_PMI2_STR "PMI2"
