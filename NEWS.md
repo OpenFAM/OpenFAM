@@ -4,6 +4,17 @@ OpenFAM Release Notes
 
 This file contains user visible OpenFAM changes
 
+v3.2.0
+------
+ - Added support for Slingshot Interconnect with cxi provider
+ - Hybrid MR support
+
+v3.1.0
+------
+ - Memory registration improvement
+ - Hugepage Support
+ - Thallium as an alternate RPC framework
+
 v3.0.0
 ------
  - Added support for volatile and persistent memory types.
