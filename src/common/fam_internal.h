@@ -415,7 +415,7 @@ inline string protocol_map(string provider) {
     std::map<std::string, int> providertypes;
     string protocol;
     providertypes["cxi"] = 1;
-    providertypes["verbs"] = 2;
+    providertypes["verbs;ofi_rxm"] = 2;
     providertypes["sockets"] = 3;
     providertypes["tcp"] = 4;
     int provider_num = providertypes[provider];
