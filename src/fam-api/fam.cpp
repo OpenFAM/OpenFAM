@@ -765,6 +765,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         (strcmp(famOptions.if_device, "") != 0)) {
         if ((strncmp(famOptions.libfabricProvider, "verbs", 5) == 0)) {
             setenv("FI_VERBS_IFACE", famOptions.if_device, 0);
+        } else if ((strncmp(famOptions.libfabricProvider, "cxi", 3) == 0)) {
+            setenv("FI_CXI_DEVICE_NAME", famOptions.if_device, 0);
         }
     }
     if (strcmp(famOptions.openFamModel, FAM_OPTIONS_SHM_STR) == 0) {

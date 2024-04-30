@@ -46,6 +46,12 @@
 #include <sstream>
 #include <unistd.h>
 
+#ifdef __has_include
+#if __has_include(<rdma/fi_cxi_ext.h>)
+#include <rdma/fi_cxi_ext.h>
+#endif
+#endif
+
 using namespace std;
 using namespace chrono;
 
@@ -282,6 +288,10 @@ int fabric_initialize(const char *name, const char *service, bool source,
         if ((strncmp(provider, "verbs", 5) == 0)) {
             setenv("FI_VERBS_IFACE", if_device, 0);
         }
+	else if((strncmp(provider, "cxi", 3) == 0)) {
+            setenv("FI_CXI_DEVICE_NAME", if_device, 0);
+        }
+
     }
 
     // Get the hints and initialize configuration
@@ -304,18 +314,23 @@ int fabric_initialize(const char *name, const char *service, bool source,
     hints->caps = FI_MSG | FI_RMA | FI_ATOMICS;
     if ((strncmp(provider, "verbs", 5) != 0))
         hints->caps |= FI_RMA_EVENT;
-    hints->mode = FI_CONTEXT;
+    if ((strncmp(provider, "cxi", 3) != 0))
+    	hints->mode = FI_CONTEXT;
 
     if (!hints->domain_attr)
         hints->domain_attr =
             (struct fi_domain_attr *)calloc(1, sizeof(struct fi_domain_attr));
-    hints->domain_attr->av_type = FI_AV_MAP;
+    if ((strncmp(provider, "cxi", 3) != 0))
+    	hints->domain_attr->av_type = FI_AV_MAP;
 
     if ((strncmp(provider, "verbs", 5) == 0)) {
         hints->domain_attr->mr_mode =
             FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR;
         if (!source)
             hints->domain_attr->data_progress = FI_PROGRESS_AUTO;
+    } else if((strncmp(provider, "cxi", 3) == 0)) {
+    	hints->domain_attr->mr_mode = FI_MR_ENDPOINT;
+    	hints->tx_attr->size = 16384;
     } else
         hints->domain_attr->mr_mode = FI_MR_SCALABLE;
 
@@ -335,8 +350,10 @@ int fabric_initialize(const char *name, const char *service, bool source,
 
     uint64_t flags = 0;
     // This flag is set only for memory service.
-    if (source)
-        flags |= FI_SOURCE;
+    if ((strncmp(provider, "cxi", 3) != 0)) {
+    	if (source)
+        	flags |= FI_SOURCE;
+    }
 
     // Initialize fi with name and service(port)
     if ((strcmp(provider, "sockets") == 0) && (source)) {
@@ -389,6 +406,20 @@ int fabric_initialize(const char *name, const char *service, bool source,
         *eq = NULL;
         return ret;
     }
+#ifdef __has_include
+#if __has_include(<rdma/fi_cxi_ext.h>)
+    if ((strncmp(provider, "cxi", 3) == 0)) {
+        struct fi_cxi_dom_ops *dom_ops;
+        FI_CALL(ret, fi_open_ops,
+                          &(*domain)->fid, FI_CXI_DOM_OPS_3,
+                          0, (void **)&dom_ops, NULL);
+        if (ret == FI_SUCCESS) {
+            FI_CALL(ret, dom_ops->enable_hybrid_mr_desc,
+                              &(*domain)->fid, true);
+        }
+    }
+#endif
+#endif
 
     FI_CALL_NO_RETURN(fi_freeinfo, hints);
     return 0;
@@ -417,7 +448,7 @@ int fabric_initialize_av(struct fi_info *fi, struct fid_domain *domain,
         return -1;
     }
 
-    if (strncmp(fi->fabric_attr->prov_name, "verbs", 5) != 0)
+    if (strncmp(fi->fabric_attr->prov_name, "sockets", 7) == 0)
         if (eq) {
             FI_CALL(ret, fi_av_bind, *av, &eq->fid, 0);
             if (ret < 0) {
@@ -527,7 +558,8 @@ int fabric_getname(struct fid_ep *ep, void *addr, size_t *addrSize) {
  * @return - {true(0), false(1), errNo(<0)}
  */
 int fabric_register_mr(void *addr, size_t size, uint64_t *key,
-                       struct fid_domain *domain, bool rw, fid_mr *&mr) {
+                       struct fid_domain *domain, struct fid_ep *ep,
+                       char *provider, bool rw, fid_mr *&mr) {
 
     int ret = 0;
     uint64_t access = FI_RECV;
@@ -547,6 +579,20 @@ int fabric_register_mr(void *addr, size_t size, uint64_t *key,
     }
 
     FI_CALL(*key, fi_mr_key, mr);
+    // For cxi provider
+    if (strncmp(provider, "cxi", 3) == 0) {
+        FI_CALL(ret, fi_mr_bind, mr, &ep->fid, 0);
+        if (ret < 0) {
+            FI_CALL_NO_RETURN(fi_close, &(mr->fid));
+            return ret;
+        }
+        FI_CALL(ret, fi_mr_enable, mr);
+        if (ret < 0) {
+            FI_CALL_NO_RETURN(fi_close, &(mr->fid));
+            return ret;
+        }
+    }
+
     return ret;
 }
 

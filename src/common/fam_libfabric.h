@@ -86,7 +86,8 @@ int fabric_enable_bind_ep(struct fi_info *fi, struct fid_av *av,
                           struct fid_eq *eq, struct fid_ep *ep);
 
 int fabric_register_mr(void *addr, size_t size, uint64_t *key,
-                       struct fid_domain *domain, bool rw, fid_mr *&mr);
+                       struct fid_domain *domain, struct fid_ep *ep,
+                       char *provider, bool rw, fid_mr *&mr);
 
 int fabric_deregister_mr(fid_mr *&mr);
 

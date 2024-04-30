@@ -83,10 +83,14 @@ Fam_Context::Fam_Context(struct fi_info *fi, struct fid_domain *domain,
     struct fi_cq_attr cq_attr;
     memset(&cq_attr, 0, sizeof(cq_attr));
     cq_attr.format = FI_CQ_FORMAT_DATA;
-    cq_attr.wait_obj = FI_WAIT_UNSPEC;
+    if((strncmp(fi->fabric_attr->prov_name, "cxi", 3) != 0)) {
+    	cq_attr.wait_obj = FI_WAIT_UNSPEC;
+    }
     cq_attr.wait_cond = FI_CQ_COND_NONE;
 
-    cq_attr.size = fi->tx_attr->size;
+    /* Set the cq size unless a default is in play. */
+    if (!getenv("FI_CXI_DEFAULT_CQ_SIZE"))
+    	cq_attr.size = fi->tx_attr->size;
     ret = fi_cq_open(domain, &cq_attr, &txcq, &txcq);
     if (ret < 0) {
         message << "Fam libfabric fi_cq_open failed: " << fabric_strerror(ret);
