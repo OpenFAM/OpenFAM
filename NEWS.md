@@ -6,13 +6,17 @@ This file contains user visible OpenFAM changes
 
 v3.2.0
 ------
- - Added support for Slingshot Interconnect with cxi provider
- - Hybrid MR support
+ - Added support for Slingshot Interconnect with cxi provider. cxi provider
+   additionally support features that improve small I/O performance. Following
+   features have been incorporated in this release:
+   - Added support for huge pages, using which application can improve performance
+     of random scatter/gather from multiple PEs.
+   - Added support for Hybrid MR, using which improves the performance of multi-
+     threaded applications.
 
 v3.1.0
 ------
- - Memory registration improvement
- - Hugepage Support
+ - Memory registration improvement.
  - Thallium as an alternate RPC framework
 
 v3.0.0
