@@ -47,7 +47,6 @@ using namespace std;
 
 namespace openfam {
 
-enum { BACKUP_READ = 0, BACKUP_WRITE, BACKUP_EXEC };
 /**
  * structure for keeping state and data information of fam copy
  */
