@@ -152,7 +152,6 @@ class Fam_CIS_Direct : public Fam_CIS {
 
     void acquire_CAS_lock(uint64_t offset, uint64_t memoryServerId);
     void release_CAS_lock(uint64_t offset, uint64_t memoryServerId);
-    uint64_t get_dataitem_id(uint64_t offset, uint64_t memoryServerId);
     size_t get_addr_size(uint64_t memoryServerId);
     void get_addr(void *memServerFabricAddr, uint64_t memoryServerId);
 

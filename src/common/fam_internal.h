@@ -42,7 +42,7 @@
  *
  * Work in progress, UNSTABLE
  * Uses _Generic and 128-bit integer types, tested under gcc 6.3.0. May require
- * “-std=c11” compiler flag if you are using the generic API as documented in
+ * ï¿½-std=c11ï¿½ compiler flag if you are using the generic API as documented in
  * OpenFAM-API-v104.
  *
  * Programming conventions used in the API:
@@ -130,6 +130,10 @@ namespace openfam {
 #define RPC_PROTOCOL_TCP "ofi+tcp://"
 
 #define ADDR_SIZE 20
+
+#define MIN_OBJ_SIZE 128
+
+#define SINGLE_ALLOC_OFFSET 65536 
 
 #define FAM_UNIMPLEMENTED_MEMSRVMODEL()                                        \
     {                                                                          \
@@ -339,6 +343,7 @@ typedef struct {
     size_t maxNameLen;
     uint64_t interleaveSize;
     Fam_Permission_Level permissionLevel;
+    Fam_Allocation_Policy allocationPolicy;
     Fam_Region_Memory_Map regionMemoryMap;
     bool itemRegistrationStatus;
 } Fam_Region_Item_Info;
@@ -435,6 +440,13 @@ inline string protocol_map(string provider) {
         break;
     }
     return protocol;
+}
+
+inline uint64_t get_dataitem_id(uint64_t offset,
+                                         uint64_t memoryServerId) {
+    uint64_t dataitemId = memoryServerId << 48;
+    dataitemId |= offset / MIN_OBJ_SIZE;
+    return dataitemId;
 }
 
 } // namespace openfam

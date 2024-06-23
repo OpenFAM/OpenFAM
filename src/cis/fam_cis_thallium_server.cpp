@@ -219,6 +219,8 @@ void Fam_CIS_Thallium_Server::create_region(
         (Fam_Interleave_Enable)cisRequest.get_interleaveenable();
     regionAttributes->permissionLevel =
         (Fam_Permission_Level)cisRequest.get_permissionlevel();
+    regionAttributes->allocationPolicy = (Fam_Allocation_Policy)cisRequest.get_allocpolicy();
+    regionAttributes->hostingNode = cisRequest.get_hostingnode();
     try {
         info = direct_CIS->create_region(
             cisRequest.get_name(), (size_t)cisRequest.get_size(),
@@ -392,6 +394,7 @@ void Fam_CIS_Thallium_Server::lookup_region(
         cisResponse.set_memorytype(info.memoryType);
         cisResponse.set_interleaveenable(info.interleaveEnable);
         cisResponse.set_permissionlevel(info.permissionLevel);
+	cisResponse.set_allocpolicy(info.allocationPolicy);
         cisResponse.set_status(ok);
     } catch (Fam_Exception &e) {
         cisResponse.set_errorcode(e.fam_error());
@@ -453,6 +456,7 @@ void Fam_CIS_Thallium_Server::check_permission_get_region_info(
         cisResponse.set_interleaveenable(info.interleaveEnable);
         cisResponse.set_interleavesize(info.interleaveSize);
         cisResponse.set_permissionlevel(info.permissionLevel);
+	cisResponse.set_allocpolicy(info.allocationPolicy);
         cisResponse.set_memsrv_list(info.memoryServerIds,
                                     (int)info.used_memsrv_cnt);
         cisResponse.set_status(ok);

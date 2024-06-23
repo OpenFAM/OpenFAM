@@ -46,7 +46,7 @@
  *
  * Work in progress, UNSTABLE
  * Uses _Generic and 128-bit integer types, tested under gcc 6.3.0. May require
- * “-std=c11” compiler flag if you are using the generic API as documented in
+ * ï¿½-std=c11ï¿½ compiler flag if you are using the generic API as documented in
  * OpenFAM-API-v104.
  *
  * Programming conventions used in the API:
@@ -115,11 +115,22 @@ typedef enum {
     DATAITEM
 } Fam_Permission_Level;
 
+typedef enum {
+    /** Deafault value **/
+    ALLOCATION_POLICY_DEFAULT = 0,
+    /** Region created in single node and only one data item can be allocated which spans entire region **/
+    SINGLE_NODE_SINGLE_ALLOC,
+    /** Region can be created in multiple node and multiple data items are supported**/
+    MULTI_NODE_MULTI_ALLOC
+} Fam_Allocation_Policy;
+
 typedef struct {
     Fam_Redundancy_Level redundancyLevel;
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
     Fam_Permission_Level permissionLevel;
+    Fam_Allocation_Policy allocationPolicy;
+    int hostingNode;
 } Fam_Region_Attributes;
 
 /**
@@ -336,10 +347,12 @@ class Fam_Region_Descriptor {
     void set_memoryType(Fam_Memory_Type memoryType);
     void set_interleaveEnable(Fam_Interleave_Enable interleaveEnable);
     void set_permissionLevel(Fam_Permission_Level permissionLevel);
+    void set_allocationPolicy(Fam_Allocation_Policy allocPolicy);
     Fam_Redundancy_Level get_redundancyLevel();
     Fam_Memory_Type get_memoryType();
     Fam_Interleave_Enable get_interleaveEnable();
     Fam_Permission_Level get_permissionLevel();
+    Fam_Allocation_Policy get_allocationPolicy();
     // get size, perm and name.
     uint64_t get_size();
     mode_t get_perm();

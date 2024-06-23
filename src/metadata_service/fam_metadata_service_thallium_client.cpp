@@ -232,6 +232,7 @@ void Fam_Metadata_Service_Thallium_Client::metadata_insert_region(
     metaRequest.set_memorytype(region->memoryType);
     metaRequest.set_interleaveenable(region->interleaveEnable);
     metaRequest.set_permission_level(region->permissionLevel);
+    metaRequest.set_allocpolicy(region->allocationPolicy);
     metaRequest.set_memsrv_cnt(region->used_memsrv_cnt);
     metaRequest.set_memsrv_list(region->memServerIds,
                                 (int)region->used_memsrv_cnt);
@@ -302,6 +303,8 @@ bool Fam_Metadata_Service_Thallium_Client::metadata_find_region(
         region.interleaveSize = metaResponse.get_interleavesize();
         region.permissionLevel =
             (Fam_Permission_Level)metaResponse.get_permission_level();
+        region.allocationPolicy =
+            (Fam_Allocation_Policy)metaResponse.get_allocpolicy();
         for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
             region.memServerIds[i] = metaResponse.get_memsrv_list()[i];
         }
@@ -340,6 +343,7 @@ bool Fam_Metadata_Service_Thallium_Client::metadata_find_region(
         region.interleaveSize = metaResponse.get_interleavesize();
         region.permissionLevel =
             (Fam_Permission_Level)metaResponse.get_permission_level();
+        region.allocationPolicy = (Fam_Allocation_Policy)metaResponse.get_allocpolicy();
         for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
             region.memServerIds[i] = metaResponse.get_memsrv_list()[i];
         }
@@ -367,6 +371,7 @@ void Fam_Metadata_Service_Thallium_Client::metadata_modify_region(
     metaRequest.set_interleaveenable(region->interleaveEnable);
     metaRequest.set_interleavesize(region->interleaveSize);
     metaRequest.set_permission_level(region->permissionLevel);
+    metaRequest.set_allocpolicy(region->allocationPolicy);
     metaRequest.set_memsrv_cnt(region->used_memsrv_cnt);
     metaRequest.set_memsrv_list(region->memServerIds,
                                 (int)region->used_memsrv_cnt);
@@ -397,6 +402,7 @@ void Fam_Metadata_Service_Thallium_Client::metadata_modify_region(
     metaRequest.set_interleaveenable(region->interleaveEnable);
     metaRequest.set_interleavesize(region->interleaveSize);
     metaRequest.set_permission_level(region->permissionLevel);
+    metaRequest.set_allocpolicy(region->allocationPolicy);
     metaRequest.set_memsrv_cnt(region->used_memsrv_cnt);
     metaRequest.set_memsrv_list(region->memServerIds,
                                 (int)region->used_memsrv_cnt);
@@ -901,6 +907,8 @@ void Fam_Metadata_Service_Thallium_Client::metadata_validate_and_create_region(
     metaRequest.set_memorytype(regionAttributes->memoryType);
     metaRequest.set_interleaveenable(regionAttributes->interleaveEnable);
     metaRequest.set_permission_level(regionAttributes->permissionLevel);
+    metaRequest.set_allocpolicy(regionAttributes->allocationPolicy);
+    metaRequest.set_hostingnode(regionAttributes->hostingNode); 
     Fam_Metadata_Thallium_Response metaResponse =
         rp_metadata_validate_and_create_region.on(ph)(metaRequest);
     RPC_STATUS_CHECK(Metadata_Service_Exception, metaResponse)
@@ -971,6 +979,7 @@ void Fam_Metadata_Service_Thallium_Client::
     region.interleaveSize = metaResponse.get_interleavesize();
     region.permissionLevel =
         (Fam_Permission_Level)metaResponse.get_permission_level();
+    region.allocationPolicy = (Fam_Allocation_Policy)metaResponse.get_allocpolicy();
     for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
         region.memServerIds[i] = metaResponse.get_memsrv_list()[i];
     }
@@ -1013,6 +1022,7 @@ void Fam_Metadata_Service_Thallium_Client::
     region.interleaveSize = metaResponse.get_interleavesize();
     region.permissionLevel =
         (Fam_Permission_Level)metaResponse.get_permission_level();
+    region.allocationPolicy = (Fam_Allocation_Policy)metaResponse.get_allocpolicy();
     for (int i = 0; i < (int)region.used_memsrv_cnt; i++) {
         region.memServerIds[i] = metaResponse.get_memsrv_list()[i];
     }

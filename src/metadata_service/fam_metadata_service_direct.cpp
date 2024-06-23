@@ -837,6 +837,25 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
         THROW_ERRNO_MSG(Metadata_Service_Exception, METADATA_ERROR,
                         message.str().c_str());
     }
+
+    if(region->allocationPolicy == SINGLE_NODE_SINGLE_ALLOC) {
+	    Fam_DataItem_Metadata dataitem;
+	    dataitem.regionId = region->regionId;
+	    dataitem.offsets[0] = SINGLE_ALLOC_OFFSET;
+	    strncpy(dataitem.name, region->name, metadata_maxkeylen());
+            dataitem.size = region->size - SINGLE_ALLOC_OFFSET;
+	    dataitem.permissionLevel = region->permissionLevel;
+	    dataitem.perm = region->perm;
+	    dataitem.gid = region->gid;
+	    dataitem.uid = region->uid;
+	    dataitem.used_memsrv_cnt = 1;
+	    dataitem.interleaveSize = region->interleaveSize;
+	    dataitem.memoryServerIds[0] = region->memServerIds[0];
+	    uint64_t dataitemId = get_dataitem_id(dataitem.offsets[0], dataitem.memoryServerIds[0]);
+	    string nameStr(region->name);
+	    cout << "memserver node : " << dataitem.memoryServerIds[0] << " offset : "<< dataitem.offsets[0] << endl;
+	    metadata_insert_dataitem(dataitemId, region->regionId, &dataitem, nameStr);
+    }
 }
 
 /**
@@ -2380,9 +2399,15 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_validate_and_create_region(
         THROW_ERRNO_MSG(Metadata_Service_Exception, NO_FREE_POOLID,
                         message.str().c_str());
     }
-    // Call find_memory_server for the size asked for and for user policy
-    *memory_server_list = find_memory_server_list_region(
-        regionname, size, regionAttributes->memoryType, user_policy);
+    // If region spanning is not enabled and if hosting node is specified in the region attributes,
+    // region is created only in the specified node
+    if(regionAttributes->allocationPolicy == SINGLE_NODE_SINGLE_ALLOC) {
+            memory_server_list->push_back(regionAttributes->hostingNode);
+    } else {
+        // Call find_memory_server for the size asked for and for user policy
+        *memory_server_list = find_memory_server_list_region(
+                regionname, size, regionAttributes->memoryType, user_policy);
+    }
     if ((*memory_server_list).size() == 0) {
         message << "Create region error : Requested Memory type not available.";
         THROW_ERRNO_MSG(Metadata_Service_Exception,
@@ -2471,6 +2496,11 @@ void Fam_Metadata_Service_Direct::Impl_::
                         message.str().c_str());
     }
 
+    if(region.allocationPolicy == SINGLE_NODE_SINGLE_ALLOC) {
+	message << "Allocate Dataitem error : Dataitem can not be created in the region, only single allocation is allowed";
+        THROW_ERRNO_MSG(Metadata_Service_Exception, REGION_NO_SPACE,
+                        message.str().c_str());
+    }
     // Check if the requested data item fits in the region
     if (region.size < size) {
         message << "Allocate Dataitem error : Requested dataitem size is "

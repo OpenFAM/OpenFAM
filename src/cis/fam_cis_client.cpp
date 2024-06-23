@@ -122,6 +122,8 @@ Fam_CIS_Client::create_region(string name, size_t nbytes, mode_t permission,
     req.set_memorytype(regionAttributes->memoryType);
     req.set_interleaveenable(regionAttributes->interleaveEnable);
     req.set_permissionlevel(regionAttributes->permissionLevel);
+    req.set_allocpolicy(regionAttributes->allocationPolicy);
+    req.set_hostingnode(regionAttributes->hostingNode);
     req.set_uid(uid);
     req.set_gid(gid);
 
@@ -297,6 +299,7 @@ Fam_Region_Item_Info Fam_CIS_Client::lookup_region(string name, uint32_t uid,
     info.memoryType = (Fam_Memory_Type)res.memorytype();
     info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     info.permissionLevel = (Fam_Permission_Level)res.permissionlevel();
+    info.allocationPolicy = (Fam_Allocation_Policy)res.allocpolicy();
     return info;
 }
 
@@ -358,6 +361,7 @@ Fam_Region_Item_Info Fam_CIS_Client::check_permission_get_region_info(
     info.interleaveEnable = (Fam_Interleave_Enable)res.interleaveenable();
     info.interleaveSize = res.interleavesize();
     info.permissionLevel = (Fam_Permission_Level)res.permissionlevel();
+    info.allocationPolicy = (Fam_Allocation_Policy)res.allocpolicy();
     info.used_memsrv_cnt = res.memsrv_list_size();
     for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
         info.memoryServerIds[i] = res.memsrv_list((int)i);

@@ -224,6 +224,7 @@ MEMSERVER_PROFILE_START(METADATA_THALLIUM_SERVER)
         region->used_memsrv_cnt = metaRequest.get_memsrv_cnt();
         region->redundancyLevel =
             (Fam_Redundancy_Level)metaRequest.get_redundancylevel();
+        region->allocationPolicy = (Fam_Allocation_Policy)metaRequest.get_allocpolicy();
         region->memoryType = (Fam_Memory_Type)metaRequest.get_memorytype();
         region->interleaveEnable =
             (Fam_Interleave_Enable)metaRequest.get_interleaveenable();
@@ -233,7 +234,7 @@ MEMSERVER_PROFILE_START(METADATA_THALLIUM_SERVER)
         for (int ndx = 0; ndx < (int)region->used_memsrv_cnt; ndx++) {
             region->memServerIds[ndx] = metaRequest.get_memsrv_list()[ndx];
         }
-
+	cout << "Allocation policy : " << region->allocationPolicy << endl;
         try {
             direct_metadataService->metadata_insert_region(
                 metaRequest.get_key_region_id(),
@@ -301,6 +302,7 @@ MEMSERVER_PROFILE_START(METADATA_THALLIUM_SERVER)
                 metaResponse.set_interleaveenable(region.redundancyLevel);
                 metaResponse.set_interleavesize(region.interleaveSize);
                 metaResponse.set_permission_level(region.permissionLevel);
+                metaResponse.set_allocpolicy(region.allocationPolicy);
                 metaResponse.set_memsrv_list(region.memServerIds,
                                              (int)region.used_memsrv_cnt);
             }
@@ -337,6 +339,8 @@ MEMSERVER_PROFILE_START(METADATA_THALLIUM_SERVER)
         region->interleaveSize = metaRequest.get_interleavesize();
         region->permissionLevel =
             (Fam_Permission_Level)metaRequest.get_permission_level();
+        region->allocationPolicy =
+            (Fam_Allocation_Policy)metaRequest.get_allocpolicy();
         for (int id = 0; id < (int)region->used_memsrv_cnt; ++id) {
             region->memServerIds[id] = metaRequest.get_memsrv_list()[id];
         }
@@ -658,7 +662,8 @@ MEMSERVER_PROFILE_START(METADATA_THALLIUM_SERVER)
             (Fam_Interleave_Enable)metaRequest.get_interleaveenable();
         regionAttributes->permissionLevel =
             (Fam_Permission_Level)metaRequest.get_permission_level();
-
+        regionAttributes->allocationPolicy = (Fam_Allocation_Policy)metaRequest.get_allocpolicy();
+        regionAttributes->hostingNode = metaRequest.get_hostingnode();        
         uint64_t regionId;
         try {
             direct_metadataService->metadata_validate_and_create_region(
@@ -825,6 +830,7 @@ MEMSERVER_PROFILE_START(METADATA_THALLIUM_SERVER)
             metaResponse.set_interleaveenable(region.redundancyLevel);
             metaResponse.set_interleavesize(region.interleaveSize);
             metaResponse.set_permission_level(region.permissionLevel);
+            metaResponse.set_allocpolicy(region.allocationPolicy);
             metaResponse.set_memsrv_list(region.memServerIds,
                                          (int)region.used_memsrv_cnt);
             metaResponse.set_status(ok);
