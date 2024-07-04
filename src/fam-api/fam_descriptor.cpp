@@ -171,7 +171,9 @@ class Fam_Descriptor::FamDescriptorImpl_ {
     void set_name(char *itemName) {
         if (name == NULL) {
             name = (char *)malloc(RadixTree::MAX_KEY_LEN);
-            memcpy(name, itemName, RadixTree::MAX_KEY_LEN);
+	    size_t length = sizeof(name);
+	    if (length < RadixTree::MAX_KEY_LEN)
+            	memcpy(name, itemName, RadixTree::MAX_KEY_LEN);
         }
     }
 
