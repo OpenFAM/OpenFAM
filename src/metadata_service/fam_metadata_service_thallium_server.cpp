@@ -234,7 +234,6 @@ MEMSERVER_PROFILE_START(METADATA_THALLIUM_SERVER)
         for (int ndx = 0; ndx < (int)region->used_memsrv_cnt; ndx++) {
             region->memServerIds[ndx] = metaRequest.get_memsrv_list()[ndx];
         }
-	cout << "Allocation policy : " << region->allocationPolicy << endl;
         try {
             direct_metadataService->metadata_insert_region(
                 metaRequest.get_key_region_id(),

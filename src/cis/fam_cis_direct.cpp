@@ -729,6 +729,13 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
         }
         throw e;
     }
+
+    if(region.allocationPolicy == SINGLE_NODE_SINGLE_ALLOC) {
+        message << "Region resize not permitted for SINGLE_NODE_SINGLE_ALLOC allocation policy";
+        THROW_ERRNO_MSG(CIS_Exception, REGION_RESIZE_NOT_PERMITTED,
+                        message.str().c_str());
+    }
+    
     used_memsrv_cnt = region.used_memsrv_cnt;
     std::list<std::shared_future<void> > resultList;
     size_t bytes_per_server = nbytes / used_memsrv_cnt;

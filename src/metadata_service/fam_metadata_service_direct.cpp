@@ -853,7 +853,6 @@ void Fam_Metadata_Service_Direct::Impl_::metadata_insert_region(
 	    dataitem.memoryServerIds[0] = region->memServerIds[0];
 	    uint64_t dataitemId = get_dataitem_id(dataitem.offsets[0], dataitem.memoryServerIds[0]);
 	    string nameStr(region->name);
-	    cout << "memserver node : " << dataitem.memoryServerIds[0] << " offset : "<< dataitem.offsets[0] << endl;
 	    metadata_insert_dataitem(dataitemId, region->regionId, &dataitem, nameStr);
     }
 }
