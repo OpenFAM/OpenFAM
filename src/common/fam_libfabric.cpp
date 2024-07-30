@@ -334,8 +334,14 @@ int fabric_initialize(const char *name, const char *service, bool source,
     } else
         hints->domain_attr->mr_mode = FI_MR_SCALABLE;
 
-    if (famTM == FAM_THREAD_SERIALIZE)
-        hints->domain_attr->threading = FI_THREAD_DOMAIN;
+    if (famTM == FAM_THREAD_SERIALIZE) {
+        //hints->domain_attr->threading = FI_THREAD_DOMAIN;
+        hints->domain_attr->threading = FI_THREAD_SAFE;
+        // It is not well-documented, but FI_THREAD_DOMAIN assumes that
+        // every endpoint will have a unique domain instance. We're not
+        // doing that right now, so use FI_THREAD_SAFE until the
+        // additional work is done.
+    }
     if (famTM == FAM_THREAD_MULTIPLE)
         hints->domain_attr->threading = FI_THREAD_SAFE;
 
