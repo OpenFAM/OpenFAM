@@ -553,7 +553,7 @@ void Fam_CIS_Thallium_Server::copy(const tl::request &req,
             cisRequest.get_src_used_memsrv_cnt(),
             cisRequest.get_src_copy_start(), srcKeys, srcBaseAddrList,
             cisRequest.get_dest_region_id(), cisRequest.get_dest_offset(),
-            cisRequest.get_src_copy_start(), cisRequest.get_copy_size(),
+            cisRequest.get_dest_copy_start(), cisRequest.get_copy_size(),
             cisRequest.get_first_src_memsrv_id(),
             cisRequest.get_first_dest_memsrv_id(), cisRequest.get_gid(),
             cisRequest.get_uid());
