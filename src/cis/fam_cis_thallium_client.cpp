@@ -562,6 +562,7 @@ void Fam_CIS_Thallium_Client::wait_for_copy(void *waitObj) {
     }
 
     Fam_CIS_Thallium_Response cisResponse = waitObjIn->wait();
+    delete waitObjIn;
     RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 }
 
@@ -595,6 +596,7 @@ void Fam_CIS_Thallium_Client::wait_for_backup(void *waitObj) {
     }
 
     Fam_CIS_Thallium_Response cisResponse = waitObjIn->wait();
+    delete waitObjIn;
     RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 }
 
@@ -628,6 +630,7 @@ void Fam_CIS_Thallium_Client::wait_for_restore(void *waitObj) {
     }
 
     Fam_CIS_Thallium_Response cisResponse = waitObjIn->wait();
+    delete waitObjIn;
     RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 }
 
@@ -675,6 +678,7 @@ void Fam_CIS_Thallium_Client::wait_for_delete_backup(void *waitObj) {
     }
 
     Fam_CIS_Thallium_Response cisResponse = waitObjIn->wait();
+    delete waitObjIn;
     RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 }
 
