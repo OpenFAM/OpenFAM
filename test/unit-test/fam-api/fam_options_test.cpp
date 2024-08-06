@@ -123,6 +123,23 @@ int main() {
 
     free(optList);
 
-    my_fam->fam_finalize("default");
-    cout << "fam finalize successful" << endl;
+    // Test fam_context_open/close after local buffer registrations
+    try {
+        fam_context *ctx = my_fam->fam_context_open();
+        ctx->fam_quiet();
+        my_fam->fam_context_close(ctx);
+    } catch (Fam_Exception &e) {
+        cout << "Exception caught" << endl;
+        cout << "Error msg: " << e.fam_error_msg() << endl;
+        cout << "Error: " << e.fam_error() << endl;
+    }
+
+    try {
+        my_fam->fam_finalize("default");
+        cout << "fam finalize successful" << endl;
+    } catch (Fam_Exception &e) {
+        cout << "Exception caught" << endl;
+        cout << "Error msg: " << e.fam_error_msg() << endl;
+        cout << "Error: " << e.fam_error() << endl;
+    }
 }
