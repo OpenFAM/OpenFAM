@@ -5402,4 +5402,9 @@ void Fam_Ops_Libfabric::context_close(uint64_t contextId) {
 void Fam_Ops_Libfabric::register_heap(void *base, size_t len) {
     get_context()->register_heap(base, len, domain, fabric_iov_limit);
 }
+
+void Fam_Ops_Libfabric::register_existing_heap(Fam_Ops_Libfabric *famOpsObj) {
+    get_context()->register_existing_heap(famOpsObj->get_context(), fabric_iov_limit);
+}
+
 } // namespace openfam

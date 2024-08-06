@@ -410,6 +410,7 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     size_t get_fabric_iov_limit() { return fabric_iov_limit; }
     size_t get_fabric_max_msg_size() { return fabric_max_msg_size; }
     void register_heap(void *base, size_t len);
+    void register_existing_heap(Fam_Ops_Libfabric *famOpsObj);
 
   protected:
     // Server_Map name;

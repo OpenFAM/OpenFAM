@@ -134,9 +134,9 @@ class fam::Impl_ {
             ctxId = famOps->get_context_id();
             pimpl->famOps->context_open(ctxId, famOps);
             if (((pimpl->famOptions).local_buf_size != 0) &&
-                    ((pimpl->famOptions).local_buf_addr != NULL))
-                famOps->register_heap((pimpl->famOptions).local_buf_addr,
-                                  (pimpl->famOptions).local_buf_size);
+                    ((pimpl->famOptions).local_buf_addr != NULL)) {
+                ((Fam_Ops_Libfabric *) famOps)->register_existing_heap((Fam_Ops_Libfabric *)pimpl->famOps);
+            }
         }
         famAllocator = pimpl->famAllocator;
         famRuntime = pimpl->famRuntime;

@@ -197,4 +197,13 @@ void Fam_Context::register_heap(void *base, size_t len,
         mr_descs[i] = fi_mr_desc(mr);
 }
 
+void Fam_Context::register_existing_heap(Fam_Context *famCtx, size_t iov_limit) {
+    local_buf_base = famCtx->local_buf_base;
+    local_buf_size = famCtx->local_buf_size;
+    mr_descs = (void **)calloc(iov_limit, sizeof(*mr_descs));
+    for (size_t i = 0; i < iov_limit; i++)
+        mr_descs[i] = famCtx->mr_descs[i];
+    mr = NULL;
+}
+
 } // namespace openfam
