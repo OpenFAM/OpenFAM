@@ -83,14 +83,14 @@ Fam_Context::Fam_Context(struct fi_info *fi, struct fid_domain *domain,
     struct fi_cq_attr cq_attr;
     memset(&cq_attr, 0, sizeof(cq_attr));
     cq_attr.format = FI_CQ_FORMAT_DATA;
-    if((strncmp(fi->fabric_attr->prov_name, "cxi", 3) != 0)) {
-    	cq_attr.wait_obj = FI_WAIT_UNSPEC;
+    if ((strncmp(fi->fabric_attr->prov_name, "cxi", 3) != 0)) {
+        cq_attr.wait_obj = FI_WAIT_UNSPEC;
     }
     cq_attr.wait_cond = FI_CQ_COND_NONE;
 
     /* Set the cq size unless a default is in play. */
     if (!getenv("FI_CXI_DEFAULT_CQ_SIZE"))
-    	cq_attr.size = fi->tx_attr->size;
+        cq_attr.size = fi->tx_attr->size;
     ret = fi_cq_open(domain, &cq_attr, &txcq, &txcq);
     if (ret < 0) {
         message << "Fam libfabric fi_cq_open failed: " << fabric_strerror(ret);
@@ -199,6 +199,16 @@ void Fam_Context::register_heap(void *base, size_t len,
     }
     for (size_t i = 0; i < iov_limit; i++)
         mr_descs[i] = fi_mr_desc(mr);
+}
+
+void Fam_Context::register_existing_heap(Fam_Context *famCtx,
+                                         size_t iov_limit) {
+    local_buf_base = famCtx->local_buf_base;
+    local_buf_size = famCtx->local_buf_size;
+    mr_descs = (void **)calloc(iov_limit, sizeof(*mr_descs));
+    for (size_t i = 0; i < iov_limit; i++)
+        mr_descs[i] = famCtx->mr_descs[i];
+    mr = NULL;
 }
 
 } // namespace openfam

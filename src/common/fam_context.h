@@ -121,6 +121,7 @@ class Fam_Context {
     }
     void register_heap(void *base, size_t len, struct fid_domain *domain,
                        size_t iov_limit);
+    void register_existing_heap(Fam_Context *famCtx, size_t iov_limit);
     void **get_mr_descs(const void *local_addr, size_t local_size) {
         if (local_buf_size != 0 &&
             (char *)local_addr >= (char *)local_buf_base &&

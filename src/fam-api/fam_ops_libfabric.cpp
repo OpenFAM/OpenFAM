@@ -30,13 +30,13 @@
  */
 
 #include <arpa/inet.h>
+#include <future>
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <future>
 
 #include "common/fam_internal.h"
 #include "common/fam_libfabric.h"
@@ -242,7 +242,8 @@ int Fam_Ops_Libfabric::initialize() {
     if (fi->ep_attr->max_msg_size > 0) {
         fabric_max_msg_size = fi->ep_attr->max_msg_size;
     } else {
-        message << "Unexpected FAM libfabric error: Fabric Info max message size 0";
+        message
+            << "Unexpected FAM libfabric error: Fabric Info max message size 0";
         THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
     }
 
@@ -5402,4 +5403,10 @@ void Fam_Ops_Libfabric::context_close(uint64_t contextId) {
 void Fam_Ops_Libfabric::register_heap(void *base, size_t len) {
     get_context()->register_heap(base, len, domain, fabric_iov_limit);
 }
+
+void Fam_Ops_Libfabric::register_existing_heap(Fam_Ops_Libfabric *famOpsObj) {
+    get_context()->register_existing_heap(famOpsObj->get_context(),
+                                          fabric_iov_limit);
+}
+
 } // namespace openfam
