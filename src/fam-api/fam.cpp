@@ -1338,7 +1338,8 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
         (regionAttributes->redundancyLevel == REDUNDANCY_LEVEL_DEFAULT) ||
         (regionAttributes->memoryType == MEMORY_TYPE_DEFAULT) ||
         (regionAttributes->interleaveEnable == INTERLEAVE_DEFAULT) ||
-        (regionAttributes->permissionLevel == PERMISSION_LEVEL_DEFAULT)) {
+        (regionAttributes->permissionLevel == PERMISSION_LEVEL_DEFAULT) ||
+	(regionAttributes->allocationPolicy == ALLOCATION_POLICY_DEFAULT)) {
         regionAttributesParam =
             (Fam_Region_Attributes *)malloc(sizeof(Fam_Region_Attributes));
         memset(regionAttributesParam, 0, sizeof(Fam_Region_Attributes));
@@ -1346,6 +1347,7 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
             regionAttributesParam->redundancyLevel = NONE;
             regionAttributesParam->interleaveEnable = ENABLE;
             regionAttributesParam->permissionLevel = REGION;
+	    regionAttributesParam->allocationPolicy = MULTI_NODE_MULTI_ALLOC;
             if (!(famOptions.fam_default_memory_type) ||
                 (strcmp(famOptions.fam_default_memory_type, "") == 0) ||
                 (strcmp(famOptions.fam_default_memory_type, "volatile") == 0)) {
@@ -1438,6 +1440,18 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
                 regionAttributesParam->permissionLevel =
                     regionAttributes->permissionLevel;
             }
+	    if (regionAttributes->allocationPolicy == ALLOCATION_POLICY_DEFAULT)
+		    regionAttributes->allocationPolicy = MULTI_NODE_MULTI_ALLOC;
+	    else {
+		    if (!(regionAttributes->allocationPolicy == SINGLE_NODE_SINGLE_ALLOC ||
+			regionAttributes->allocationPolicy == MULTI_NODE_MULTI_ALLOC)) {
+			std::ostringstream message;
+			message << "Allocation type option porvided is not valid" << endl;
+			THROW_ERR_MSG(Fam_InvalidOption_Exception,message.str().c_str());
+		    }
+		    regionAttributesParam->allocationPolicy = regionAttributes->allocationPolicy;
+	    }
+	    regionAttributesParam->hostingNode = regionAttributes->hostingNode;
         }
         region = famAllocator->create_region(name, size, permissions,
                                              regionAttributesParam);
@@ -1467,6 +1481,12 @@ fam::Impl_::fam_create_region(const char *name, uint64_t size,
             message << "Permission level option provided is not valid" << endl;
             THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
         }
+	if (!(regionAttributes->allocationPolicy == SINGLE_NODE_SINGLE_ALLOC || 
+	      regionAttributes->allocationPolicy == MULTI_NODE_MULTI_ALLOC)) {
+	    std::ostringstream message;
+	    message << "Allocation type option provided is not valid" << endl;
+	    THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+	}
         region = famAllocator->create_region(name, size, permissions,
                                              regionAttributes);
     }
@@ -1678,6 +1698,8 @@ void fam::Impl_::fam_stat(Fam_Region_Descriptor *descriptor,
         regionAttributes.redundancyLevel = regionInfo.redundancyLevel;
         regionAttributes.memoryType = regionInfo.memoryType;
         regionAttributes.interleaveEnable = regionInfo.interleaveEnable;
+        regionAttributes.permissionLevel = regionInfo.permissionLevel;
+        regionAttributes.allocationPolicy = regionInfo.allocationPolicy;       
         famInfo->region_attributes = regionAttributes;
         famInfo->num_memservers = regionInfo.used_memsrv_cnt;
         famInfo->interleaveSize = regionInfo.interleaveSize;

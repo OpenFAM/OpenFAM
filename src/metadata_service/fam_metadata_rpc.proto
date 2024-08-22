@@ -113,7 +113,9 @@ message Fam_Metadata_Region_Request {
     uint32 memorytype = 18;
     uint32 interleaveenable = 19;
     uint64 interleavesize = 20;
-    uint64 permission_level = 21;
+    uint32 permission_level = 21;
+    uint32 allocpolicy = 22; 
+    uint32 hostingnode = 23;
 }
 
 message Fam_Metadata_Region_Response {
@@ -135,7 +137,8 @@ message Fam_Metadata_Region_Response {
     uint32 memorytype = 16;
     uint32 interleaveenable = 17;
     uint64 interleavesize = 18;
-    uint64 permission_level = 19;
+    uint32 permission_level = 19;
+    uint32 allocpolicy = 20;
 }
 /*
  * Response message used by methods signal_start and signal_termination
@@ -172,6 +175,8 @@ message Fam_Metadata_Request {
     repeated uint64 memsrv_list = 20;
     uint64 memsrv_cnt = 21;
     uint64 permission_level = 22;
+    uint32 allocpolicy = 23; 
+    uint32 hostingnode = 24;
 }
 
 message Fam_Metadata_Response {

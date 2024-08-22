@@ -103,6 +103,8 @@ class Fam_CIS_Thallium_Request {
     uint64_t nbytes;
     uint64_t src_used_memsrv_cnt;
     std::vector<uint64_t> memsrv_list;
+    uint32_t allocpolicy;
+    uint32_t hostingnode;
 
   public:
     Fam_CIS_Thallium_Request() {}
@@ -155,6 +157,8 @@ class Fam_CIS_Thallium_Request {
     DECL_GETTER_SETTER(nbytes)
     DECL_GETTER_SETTER(src_used_memsrv_cnt)
     DECL_VECTOR_GETTER_SETTER(memsrv_list)
+    DECL_GETTER_SETTER(allocpolicy)
+    DECL_GETTER_SETTER(hostingnode)
 
     template <typename A>
     friend void serialize(A &ar, Fam_CIS_Thallium_Request &m) {
@@ -206,6 +210,8 @@ class Fam_CIS_Thallium_Request {
         ar &m.nbytes;
         ar &m.src_used_memsrv_cnt;
         ar &m.memsrv_list;
+        ar &m.allocpolicy;
+        ar &m.hostingnode;
     }
 };
 
@@ -248,6 +254,7 @@ class Fam_CIS_Thallium_Response {
     string diname;
     string contents;
     bool status;
+    uint32_t allocpolicy;
 
   public:
     Fam_CIS_Thallium_Response() {}
@@ -308,6 +315,7 @@ class Fam_CIS_Thallium_Response {
     DECL_GETTER_SETTER(diname)
     DECL_GETTER_SETTER(contents)
     DECL_GETTER_SETTER(status)
+    DECL_GETTER_SETTER(allocpolicy)
 
     template <typename A>
     friend void serialize(A &ar, Fam_CIS_Thallium_Response &p) {
@@ -349,6 +357,7 @@ class Fam_CIS_Thallium_Response {
         ar &p.diname;
         ar &p.contents;
         ar &p.status;
+        ar &p.allocpolicy;
     }
 };
 #endif

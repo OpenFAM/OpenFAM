@@ -179,6 +179,9 @@ Fam_CIS_Server::create_region(::grpc::ServerContext *context,
         (Fam_Interleave_Enable)request->interleaveenable();
     regionAttributes->permissionLevel =
         (Fam_Permission_Level)request->permissionlevel();
+    regionAttributes->allocationPolicy =
+        (Fam_Allocation_Policy)request->allocpolicy();
+    regionAttributes->hostingNode = request->hostingnode();
     try {
         info = famCIS->create_region(request->name(), (size_t)request->size(),
                                      (mode_t)request->perm(), regionAttributes,
@@ -377,6 +380,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     response->set_memorytype(info.memoryType);
     response->set_interleaveenable(info.interleaveEnable);
     response->set_permissionlevel(info.permissionLevel);
+    response->set_allocpolicy(info.allocationPolicy);
     CIS_SERVER_PROFILE_END_OPS(lookup_region);
     return ::grpc::Status::OK;
 }
@@ -444,6 +448,7 @@ Fam_CIS_Server::lookup_region(::grpc::ServerContext *context,
     response->set_interleaveenable(info.interleaveEnable);
     response->set_interleavesize(info.interleaveSize);
     response->set_permissionlevel(info.permissionLevel);
+    response->set_allocpolicy(info.allocationPolicy);
     for (uint64_t i = 0; i < info.used_memsrv_cnt; i++) {
         response->add_memsrv_list(info.memoryServerIds[i]);
     }

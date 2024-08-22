@@ -424,6 +424,10 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
         permissionLevel = reg_permissionLevel;
     }
 
+    void set_allocationPolicy(Fam_Allocation_Policy reg_allocationPolicy) {
+        allocationPolicy = reg_allocationPolicy;
+    }
+
     Fam_Redundancy_Level get_redundancyLevel() { return redundancyLevel; }
 
     Fam_Memory_Type get_memoryType() { return memoryType; }
@@ -431,6 +435,8 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
     Fam_Interleave_Enable get_interleaveEnable() { return interleaveEnable; }
 
     Fam_Permission_Level get_permissionLevel() { return permissionLevel; }
+
+    Fam_Allocation_Policy get_allocationPolicy() { return allocationPolicy; }
 
   private:
     Fam_Global_Descriptor gDescriptor;
@@ -443,6 +449,7 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
     Fam_Permission_Level permissionLevel;
+    Fam_Allocation_Policy allocationPolicy;
 };
 
 Fam_Region_Descriptor::Fam_Region_Descriptor(Fam_Global_Descriptor gDescriptor,
@@ -517,6 +524,11 @@ void Fam_Region_Descriptor::set_permissionLevel(
     frdimpl_->set_permissionLevel(permissionLevel);
 }
 
+void Fam_Region_Descriptor::set_allocationPolicy(
+    Fam_Allocation_Policy allocationPolicy) {
+    frdimpl_->set_allocationPolicy(allocationPolicy);
+}
+
 Fam_Redundancy_Level Fam_Region_Descriptor::get_redundancyLevel() {
     return frdimpl_->get_redundancyLevel();
 }
@@ -529,4 +541,8 @@ Fam_Interleave_Enable Fam_Region_Descriptor::get_interleaveEnable() {
 
 Fam_Permission_Level Fam_Region_Descriptor::get_permissionLevel() {
     return frdimpl_->get_permissionLevel();
+}
+
+Fam_Allocation_Policy Fam_Region_Descriptor::get_allocationPolicy() {
+    return frdimpl_->get_allocationPolicy();
 }

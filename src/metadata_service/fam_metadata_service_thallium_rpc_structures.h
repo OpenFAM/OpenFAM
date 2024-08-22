@@ -85,6 +85,8 @@ class Fam_Metadata_Thallium_Request {
     bool check_name_id;
     uint64_t type_flag;
     uint64_t permission_level;
+    uint32_t allocpolicy;
+    uint32_t hostingnode;
 
   public:
     Fam_Metadata_Thallium_Request() {}
@@ -123,6 +125,8 @@ class Fam_Metadata_Thallium_Request {
     DECL_GETTER_SETTER(check_name_id)
     DECL_GETTER_SETTER(type_flag)
     DECL_GETTER_SETTER(permission_level)
+    DECL_GETTER_SETTER(allocpolicy)
+    DECL_GETTER_SETTER(hostingnode)
 
     template <typename A>
     friend void serialize(A &ar, Fam_Metadata_Thallium_Request &m) {
@@ -160,6 +164,8 @@ class Fam_Metadata_Thallium_Request {
         ar &m.check_name_id;
         ar &m.type_flag;
         ar &m.permission_level;
+        ar &m.allocpolicy;
+        ar &m.hostingnode;
     }
 };
 
@@ -188,6 +194,7 @@ class Fam_Metadata_Thallium_Response {
     uint64_t addrnamelen;
     uint64_t permission_level;
     uint64_t region_permission;
+    uint32_t allocpolicy;
 
   public:
     Fam_Metadata_Thallium_Response() {}
@@ -222,6 +229,7 @@ class Fam_Metadata_Thallium_Response {
     DECL_GETTER_SETTER(addrnamelen)
     DECL_GETTER_SETTER(permission_level)
     DECL_GETTER_SETTER(region_permission)
+    DECL_GETTER_SETTER(allocpolicy)
 
     template <typename A>
     friend void serialize(A &ar, Fam_Metadata_Thallium_Response &p) {
@@ -251,6 +259,7 @@ class Fam_Metadata_Thallium_Response {
         ar &p.addrnamelen;
         ar &p.permission_level;
         ar &p.region_permission;
+        ar &p.allocpolicy;
     }
 };
 #endif

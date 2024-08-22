@@ -164,7 +164,9 @@ message Fam_Region_Request {
     uint32 memorytype = 10;
     uint32 interleaveenable = 11;
     uint32 permissionlevel = 12;
-    repeated uint64 memsrv_list = 13;
+    uint32 allocpolicy = 13;
+    uint32 hostingnode = 14;
+    repeated uint64 memsrv_list = 15;
 }
 
 /*
@@ -190,13 +192,14 @@ message Fam_Region_Response {
     uint32 gid = 15;
     repeated uint64 memsrv_list = 16;
     uint32 permissionlevel = 17;
+    uint32 allocpolicy = 18;
     message Region_Key_Map {
         uint64 memserver_id = 1;
         repeated uint64 region_keys = 2;
         repeated uint64 region_base = 3;
     }
-    repeated Region_Key_Map region_key_map = 18;
-    bool region_registration_status = 19;
+    repeated Region_Key_Map region_key_map = 19;
+    bool region_registration_status = 20;
 }
 
 /*

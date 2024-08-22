@@ -49,7 +49,6 @@
 #include "common/fam_internal_exception.h"
 #include "fam/fam.h"
 
-#define MIN_OBJ_SIZE 128
 #define MIN_REGION_SIZE (1UL << 20)
 #define MIN_INFO_SIZE (1UL << 8)
 #define BACKUP_META_SIZE (1UL << 12)

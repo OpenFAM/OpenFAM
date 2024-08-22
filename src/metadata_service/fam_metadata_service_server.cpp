@@ -177,7 +177,7 @@ void Fam_Metadata_Service_Server::run() {
     region->interleaveEnable =
         (Fam_Interleave_Enable)request->interleaveenable();
     region->permissionLevel = (Fam_Permission_Level)request->permission_level();
-
+    region->allocationPolicy = (Fam_Allocation_Policy)request->allocpolicy();
     for (int ndx = 0; ndx < (int)region->used_memsrv_cnt; ndx++) {
         region->memServerIds[ndx] = request->memsrv_list(ndx);
     }
@@ -246,6 +246,7 @@ void Fam_Metadata_Service_Server::run() {
         response->set_interleaveenable(region.redundancyLevel);
         response->set_interleavesize(region.interleaveSize);
         response->set_permission_level(region.permissionLevel);
+        response->set_allocpolicy(region.allocationPolicy);
         for (int id = 0; id < (int)region.used_memsrv_cnt; ++id) {
             response->add_memsrv_list(region.memServerIds[id]);
         }
@@ -275,7 +276,7 @@ void Fam_Metadata_Service_Server::run() {
         (Fam_Interleave_Enable)request->interleaveenable();
     region->interleaveSize = request->interleavesize();
     region->permissionLevel = (Fam_Permission_Level)request->permission_level();
-
+    region->allocationPolicy = (Fam_Allocation_Policy)request->allocpolicy();
     for (int ndx = 0; ndx < (int)region->used_memsrv_cnt; ndx++) {
         region->memServerIds[ndx] = request->memsrv_list(ndx);
     }
@@ -571,6 +572,9 @@ void Fam_Metadata_Service_Server::run() {
         (Fam_Interleave_Enable)request->interleaveenable();
     regionAttributes->permissionLevel =
         (Fam_Permission_Level)request->permission_level();
+    regionAttributes->allocationPolicy =
+        (Fam_Allocation_Policy)request->allocpolicy();
+    regionAttributes->hostingNode = request->hostingnode();
 
     uint64_t regionId;
     try {
@@ -717,6 +721,7 @@ Fam_Metadata_Service_Server::metadata_find_region_and_check_permissions(
     response->set_interleaveenable(region.redundancyLevel);
     response->set_interleavesize(region.interleaveSize);
     response->set_permission_level(region.permissionLevel);
+    response->set_allocpolicy(region.allocationPolicy);
     for (int id = 0; id < (int)region.used_memsrv_cnt; ++id) {
         response->add_memsrv_list(region.memServerIds[id]);
     }

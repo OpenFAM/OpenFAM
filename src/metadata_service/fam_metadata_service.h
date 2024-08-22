@@ -108,6 +108,7 @@ typedef struct {
     bool isHeapCreated;
     Fam_Redundancy_Level redundancyLevel;
     Fam_Permission_Level permissionLevel;
+    Fam_Allocation_Policy allocationPolicy;
     Fam_Memory_Type memoryType;
     Fam_Interleave_Enable interleaveEnable;
     size_t interleaveSize;

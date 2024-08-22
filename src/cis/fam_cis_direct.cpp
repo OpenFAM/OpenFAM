@@ -56,7 +56,6 @@
 #endif
 
 #define MIN_REGION_SIZE (1UL << 20)
-#define MIN_OBJ_SIZE 128
 
 using namespace std;
 using namespace chrono;
@@ -603,6 +602,7 @@ Fam_CIS_Direct::create_region(string name, size_t nbytes, mode_t permission,
     region.memoryType = regionAttributes->memoryType;
     region.interleaveEnable = regionAttributes->interleaveEnable;
     region.permissionLevel = regionAttributes->permissionLevel;
+    region.allocationPolicy = regionAttributes->allocationPolicy;
     region.used_memsrv_cnt = used_memsrv_cnt;
     memcpy(region.memServerIds, memServerIds,
            used_memsrv_cnt * sizeof(uint64_t));
@@ -729,6 +729,13 @@ void Fam_CIS_Direct::resize_region(uint64_t regionId, size_t nbytes,
         }
         throw e;
     }
+
+    if(region.allocationPolicy == SINGLE_NODE_SINGLE_ALLOC) {
+        message << "Region resize not permitted for SINGLE_NODE_SINGLE_ALLOC allocation policy";
+        THROW_ERRNO_MSG(CIS_Exception, REGION_RESIZE_NOT_PERMITTED,
+                        message.str().c_str());
+    }
+    
     used_memsrv_cnt = region.used_memsrv_cnt;
     std::list<std::shared_future<void> > resultList;
     size_t bytes_per_server = nbytes / used_memsrv_cnt;
@@ -1559,6 +1566,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::lookup_region(string name, uint32_t uid,
     info.memoryType = region.memoryType;
     info.interleaveEnable = region.interleaveEnable;
     info.permissionLevel = region.permissionLevel;
+    info.allocationPolicy = region.allocationPolicy;
     CIS_DIRECT_PROFILE_END_OPS(cis_lookup_region);
     return info;
 }
@@ -1640,6 +1648,7 @@ Fam_Region_Item_Info Fam_CIS_Direct::check_permission_get_region_info(
     info.uid = region.uid;
     info.gid = region.gid;
     info.permissionLevel = region.permissionLevel;
+    info.allocationPolicy = region.allocationPolicy;
     memcpy(info.memoryServerIds, region.memServerIds,
            region.used_memsrv_cnt * sizeof(uint64_t));
     CIS_DIRECT_PROFILE_END_OPS(cis_check_permission_get_region_info);
@@ -2287,13 +2296,6 @@ void Fam_CIS_Direct::release_CAS_lock(uint64_t offset,
     Fam_Memory_Service *memoryService = get_memory_service(memoryServerId);
     memoryService->release_CAS_lock(offset);
     CIS_DIRECT_PROFILE_END_OPS(cis_release_CAS_lock);
-}
-
-uint64_t Fam_CIS_Direct::get_dataitem_id(uint64_t offset,
-                                         uint64_t memoryServerId) {
-    uint64_t dataitemId = memoryServerId << 48;
-    dataitemId |= offset / MIN_OBJ_SIZE;
-    return dataitemId;
 }
 
 size_t Fam_CIS_Direct::get_addr_size(uint64_t memoryServerId) {

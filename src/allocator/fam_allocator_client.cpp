@@ -187,6 +187,7 @@ Fam_Allocator_Client::create_region(const char *name, uint64_t nbytes,
     region->set_memoryType(regionAttributes->memoryType);
     region->set_interleaveEnable(regionAttributes->interleaveEnable);
     region->set_permissionLevel(regionAttributes->permissionLevel);
+    region->set_allocationPolicy(regionAttributes->allocationPolicy);
     region->set_name((char *)name);
     region->set_perm(permissions);
     region->set_desc_status(DESC_INIT_DONE);
@@ -478,6 +479,7 @@ Fam_Region_Descriptor *Fam_Allocator_Client::lookup_region(const char *name) {
     region->set_memoryType(info.memoryType);
     region->set_interleaveEnable(info.interleaveEnable);
     region->set_permissionLevel(info.permissionLevel);
+    region->set_allocationPolicy(info.allocationPolicy);
     return region;
 }
 
