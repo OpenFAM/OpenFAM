@@ -84,11 +84,11 @@ class Fam_Exception : public std::exception {
 
     Fam_Exception &operator=(const Fam_Exception &other);
 
-    virtual char const *fam_error_msg();
+    virtual char const *fam_error_msg() const noexcept;
 
-    virtual int fam_error();
+    virtual int fam_error() const noexcept;
 
-    virtual char const *what();
+    virtual char const *what() const noexcept;
 
   protected:
     std::string famErrMsg;
