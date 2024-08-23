@@ -108,6 +108,132 @@ TEST(FamOption, QueryWithInavlidOption) {
     free(opt);
 }
 
+// Test case 4 - Register a client buffer to the default fam class
+TEST(FamOption, ClientBufferRegistrationToDefaultFam) {
+    Fam_Region_Descriptor *desc;
+    Fam_Descriptor *item;
+    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
+    EXPECT_NE((void *)NULL, desc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024, 0777, desc));
+    EXPECT_NE((void *)NULL, item);
+
+    char *opt;
+    opt = strdup("FAM_CLIENT_BUFFER");
+
+    Fam_Client_Buffer *bufRegInfo1 = new Fam_Client_Buffer();
+    bufRegInfo1->buffer = (void *)strdup("Test message");
+    bufRegInfo1->bufferSize = strlen((char *)bufRegInfo1->buffer) + 1;
+    bufRegInfo1->op = REGISTER;
+
+    EXPECT_NO_THROW(my_fam->fam_set_option(opt, (void *)bufRegInfo1, sizeof(Fam_Client_Buffer)));
+
+    EXPECT_NO_THROW(my_fam->fam_put_blocking(bufRegInfo1->buffer, item, 0, 13));
+
+    // allocate local memory to receive the test message
+    Fam_Client_Buffer *bufRegInfo2 = new Fam_Client_Buffer();
+    bufRegInfo2->buffer = (void *)malloc(20);
+    bufRegInfo2->bufferSize = 20;
+    bufRegInfo2->op = REGISTER;
+
+    EXPECT_NO_THROW(my_fam->fam_set_option(opt, (void *)bufRegInfo2, sizeof(Fam_Client_Buffer)));
+
+    EXPECT_NO_THROW(my_fam->fam_get_blocking(bufRegInfo2->buffer, item, 0, 13));
+
+    EXPECT_STREQ((char *)bufRegInfo1->buffer, (char *)bufRegInfo2->buffer);
+
+    bufRegInfo1->op = DEREGISTER;
+    bufRegInfo2->op = DEREGISTER;
+    EXPECT_NO_THROW(my_fam->fam_set_option(opt, (void *)bufRegInfo1, sizeof(Fam_Client_Buffer)));
+    EXPECT_NO_THROW(my_fam->fam_set_option(opt, (void *)bufRegInfo2, sizeof(Fam_Client_Buffer)));
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+    delete item;
+    delete desc;
+
+    free((void *)testRegion);
+    free((void *)firstItem);
+
+    free(bufRegInfo1->buffer);
+    free(bufRegInfo2->buffer);
+
+    delete bufRegInfo1;
+    delete bufRegInfo2;
+}
+
+// Test case 5 - Register a client buffer to the new fam context
+TEST(FamOption, ClientBufferRegistrationToFamContext) {
+    Fam_Region_Descriptor *desc;
+    Fam_Descriptor *item;
+    const char *testRegion = get_uniq_str("test", my_fam);
+    const char *firstItem = get_uniq_str("first", my_fam);
+
+    EXPECT_NO_THROW(desc = my_fam->fam_create_region(testRegion, 8192, 0777, NULL));
+    EXPECT_NE((void *)NULL, desc);
+
+    // Allocating data items in the created region
+    EXPECT_NO_THROW(item = my_fam->fam_allocate(firstItem, 1024, 0777, desc));
+    EXPECT_NE((void *)NULL, item);
+
+    fam_context *ctx = NULL;
+    EXPECT_NO_THROW(ctx = my_fam->fam_context_open());
+    EXPECT_NE((void *)NULL, ctx);
+
+    char *opt;
+    opt = strdup("FAM_CLIENT_BUFFER");
+
+    Fam_Client_Buffer *bufRegInfo1 = new Fam_Client_Buffer();
+    bufRegInfo1->buffer = (void *)strdup("Test message");
+    bufRegInfo1->bufferSize = strlen((char *)bufRegInfo1->buffer) + 1;
+    bufRegInfo1->ctx = ctx;
+    bufRegInfo1->op = REGISTER;
+
+    EXPECT_NO_THROW(my_fam->fam_set_option(opt, (void *)bufRegInfo1, sizeof(Fam_Client_Buffer)));
+
+    EXPECT_NO_THROW(ctx->fam_put_blocking(bufRegInfo1->buffer, item, 0, 13));
+
+    // allocate local memory to receive the test message
+    Fam_Client_Buffer *bufRegInfo2 = new Fam_Client_Buffer();
+    bufRegInfo2->buffer = (void *)malloc(20);
+    bufRegInfo2->bufferSize = 20;
+    bufRegInfo2->ctx = ctx;
+    bufRegInfo2->op = REGISTER;
+
+    EXPECT_NO_THROW(my_fam->fam_set_option(opt, (void *)bufRegInfo2, sizeof(Fam_Client_Buffer)));
+
+    EXPECT_NO_THROW(ctx->fam_get_blocking(bufRegInfo2->buffer, item, 0, 13));
+
+    EXPECT_STREQ((char *)bufRegInfo1->buffer, (char *)bufRegInfo2->buffer);
+
+    bufRegInfo1->op = DEREGISTER;
+    bufRegInfo2->op = DEREGISTER;
+    EXPECT_NO_THROW(my_fam->fam_set_option(opt, (void *)bufRegInfo1, sizeof(Fam_Client_Buffer)));
+    EXPECT_NO_THROW(my_fam->fam_set_option(opt, (void *)bufRegInfo2, sizeof(Fam_Client_Buffer)));
+
+    EXPECT_NO_THROW(my_fam->fam_context_close(ctx));
+
+    EXPECT_NO_THROW(my_fam->fam_deallocate(item));
+    EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
+
+    delete item;
+    delete desc;
+
+    free((void *)testRegion);
+    free((void *)firstItem);
+
+    free(bufRegInfo1->buffer);
+    free(bufRegInfo2->buffer);
+
+    delete bufRegInfo1;
+    delete bufRegInfo2;
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     my_fam = new fam();

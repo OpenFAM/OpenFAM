@@ -46,12 +46,8 @@ int main() {
     const char **optList;
     int i = 0;
     init_fam_options(&fam_opts);
-    fam_opts.grpcPort = strdup("9500");
-    fam_opts.runtime = strdup("NONE");
-    int *gBuf = (int *) malloc(sizeof(int));
-    fam_opts.local_buf_addr = gBuf;
-    fam_opts.local_buf_size = sizeof(int);
-
+    //fam_opts.grpcPort = strdup("9500");
+    //fam_opts.runtime = strdup("NONE");
 
     try {
         // Throws grpc exception because of wrong grpc port.
@@ -86,16 +82,6 @@ int main() {
                 cout << "Error msg: " << e.fam_error_msg() << endl;
                 cout << "Error: " << e.fam_error() << endl;
             }
-        } else if (strncmp(opt, "LOC_BUF_SIZE", 12) == 0) {
-            try{
-                size_t *optIntValue = (size_t *)my_fam->fam_get_option(opt);
-                cout << optList[i] << ":" << *optIntValue << endl;
-                free(optIntValue);
-            } catch (Fam_Exception &e) {
-                cout << "Exception caught" << endl;
-                cout << "Error msg: " << e.fam_error_msg() << endl;
-                cout << "Error: " << e.fam_error() << endl;
-            }
         } else {
             try{
                 char *optValue = (char *)my_fam->fam_get_option(opt);
@@ -120,6 +106,67 @@ int main() {
         cout << "Error msg: " << e.fam_error_msg() << endl;
         cout << "Error: " << e.fam_error() << endl;
     }
+
+    char bufRegOpt[20] = "FAM_CLIENT_BUFFER";
+
+    Fam_Client_Buffer *bufRegInfo1 = new Fam_Client_Buffer();
+    bufRegInfo1->buffer = malloc(4096);
+    bufRegInfo1->bufferSize = 4096;
+    bufRegInfo1->op = REGISTER;
+
+    try {
+        my_fam->fam_set_option(bufRegOpt, (void *)bufRegInfo1, sizeof(Fam_Client_Buffer));
+    } catch (Fam_Exception &e) {
+        cout << "Exception caught" << endl;
+        cout << "Error msg: " << e.fam_error_msg() << endl;
+        cout << "Error: " << e.fam_error() << endl;
+    }
+
+    bufRegInfo1->op = DEREGISTER;
+    try {
+        my_fam->fam_set_option(bufRegOpt, (void *)bufRegInfo1, sizeof(Fam_Client_Buffer));
+    } catch (Fam_Exception &e) {
+        cout << "Exception caught" << endl;
+        cout << "Error msg: " << e.fam_error_msg() << endl;
+        cout << "Error: " << e.fam_error() << endl;
+    }
+
+    free(bufRegInfo1->buffer);
+    delete bufRegInfo1;
+
+    Fam_Client_Buffer *bufRegInfo2 = new Fam_Client_Buffer();
+    bufRegInfo2->buffer = malloc(4096);
+    bufRegInfo2->bufferSize = 4096;
+    bufRegInfo2->ctx = my_fam->fam_context_open();
+    bufRegInfo2->op = REGISTER;
+
+    try {
+        my_fam->fam_set_option(bufRegOpt, (void *)bufRegInfo2, sizeof(Fam_Client_Buffer));
+    } catch (Fam_Exception &e) {
+        cout << "Exception caught" << endl;
+        cout << "Error msg: " << e.fam_error_msg() << endl;
+        cout << "Error: " << e.fam_error() << endl;
+    }
+
+    bufRegInfo2->op = DEREGISTER;
+    try {
+        my_fam->fam_set_option(bufRegOpt, (void *)bufRegInfo2, sizeof(Fam_Client_Buffer));
+    } catch (Fam_Exception &e) {
+        cout << "Exception caught" << endl;
+        cout << "Error msg: " << e.fam_error_msg() << endl;
+        cout << "Error: " << e.fam_error() << endl;
+    }
+
+    try {
+        my_fam->fam_context_close(bufRegInfo2->ctx);
+    } catch (Fam_Exception &e) {
+        cout << "Exception caught" << endl;
+        cout << "Error msg: " << e.fam_error_msg() << endl;
+        cout << "Error: " << e.fam_error() << endl;
+    }
+
+    free(bufRegInfo2->buffer);
+    delete bufRegInfo2;
 
     free(optList);
 

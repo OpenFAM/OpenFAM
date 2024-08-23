@@ -74,10 +74,8 @@ typedef enum {
     FAM_DEFAULT_MEMORY_TYPE,
     /** Interface device used by the PE for communication */
     IF_DEVICE,
-    /** Local Buffer Address passed by Application */
-    LOC_BUF_ADDR,
-    /** Local Buffer size passed by Application */
-    LOC_BUF_SIZE,
+    /** Dynamic local buffer registration by clients **/
+    FAM_CLIENT_BUFFER,
     /** END of Option keys */
     END_OPT = -1
 } Fam_Option_Key;
@@ -103,6 +101,8 @@ typedef enum {
 #define FAM_OPTIONS_RUNTIME_PMIX_STR "PMIX"
 #define FAM_OPTIONS_RUNTIME_PMI2_STR "PMI2"
 #define FAM_OPTIONS_RUNTIME_NONE_STR "NONE"
+
+#define FAM_CLIENT_BUFFER_STR "FAM_CLIENT_BUFFER"
 
 typedef enum {
     /** For single threaded applicaiton */

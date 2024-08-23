@@ -48,6 +48,12 @@ using namespace std;
 
 namespace openfam {
 
+typedef struct {
+    void **mr_descs;
+    size_t buffSize;
+    fid_mr *mr;
+} Fam_Buffer_Desc;
+
 class Fam_Context {
   public:
     Fam_Context(Fam_Thread_Model famTM);
@@ -119,17 +125,13 @@ class Fam_Context {
     void inc_num_rx_fail_cnt(uint64_t cnt) {
         __sync_fetch_and_add(&numLastRxFailCnt, cnt);
     }
+
     void register_heap(void *base, size_t len, struct fid_domain *domain,
                        size_t iov_limit);
-    void **get_mr_descs(const void *local_addr, size_t local_size) {
-        if (local_buf_size != 0 &&
-            (char *)local_addr >= (char *)local_buf_base &&
-            (char *)local_addr + local_size <=
-                (char *)local_buf_base + local_buf_size)
-            return mr_descs;
-        else
-            return 0;
-    }
+
+    void deregister_heap(void *base, size_t len);
+
+    void **get_mr_descs(const void *local_addr, size_t local_size);
 
   private:
     struct fid_ep *ep;
@@ -137,10 +139,6 @@ class Fam_Context {
     struct fid_cq *rxcq;
     struct fid_cntr *txCntr;
     struct fid_cntr *rxCntr;
-    void **mr_descs = NULL;
-    void *local_buf_base = NULL;
-    size_t local_buf_size = 0;
-    struct fid_mr *mr = NULL;
 
     uint64_t numTxOps;
     uint64_t numRxOps;
@@ -149,6 +147,9 @@ class Fam_Context {
     uint64_t numLastRxFailCnt;
     Fam_Thread_Model famThreadModel;
     pthread_rwlock_t ctxRWLock;
+
+    pthread_rwlock_t bufferMapLock;
+    std::map<uint64_t, Fam_Buffer_Desc *> bufferDescriptors;
 };
 
 } // namespace openfam
