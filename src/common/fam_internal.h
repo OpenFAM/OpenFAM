@@ -42,7 +42,7 @@
  *
  * Work in progress, UNSTABLE
  * Uses _Generic and 128-bit integer types, tested under gcc 6.3.0. May require
- * ì-std=c11î compiler flag if you are using the generic API as documented in
+ * ‚Äú-std=c11‚Äù compiler flag if you are using the generic API as documented in
  * OpenFAM-API-v104.
  *
  * Programming conventions used in the API:
@@ -414,10 +414,12 @@ inline void decode_offset(uint64_t offset, int *extentIdx, uint64_t *startPos) {
 inline string protocol_map(string provider) {
     std::map<std::string, int> providertypes;
     string protocol;
+
     providertypes["cxi"] = 1;
     providertypes["verbs;ofi_rxm"] = 2;
     providertypes["sockets"] = 3;
     providertypes["tcp"] = 4;
+
     int provider_num = providertypes[provider];
 
     switch (provider_num) {
