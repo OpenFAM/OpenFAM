@@ -195,7 +195,7 @@ my_parser.add_argument(
     action="store",
     type=str,
     help="Libfabric provider to be used for datapath operations",
-    choices=["sockets", "psm2", "verbs;ofi_rxm"],
+    choices=["sockets", "psm2", "verbs;ofi_rxm", "cxi"],
     metavar=''
 )
 

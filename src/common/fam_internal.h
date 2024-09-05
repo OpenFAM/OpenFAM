@@ -42,7 +42,7 @@
  *
  * Work in progress, UNSTABLE
  * Uses _Generic and 128-bit integer types, tested under gcc 6.3.0. May require
- * ì-std=c11î compiler flag if you are using the generic API as documented in
+ * ‚Äú-std=c11‚Äù compiler flag if you are using the generic API as documented in
  * OpenFAM-API-v104.
  *
  * Programming conventions used in the API:
@@ -100,9 +100,13 @@ namespace openfam {
 #define FAM_WRITE_KEY_SHM ((uint64_t)0x2)
 #define FAM_RW_KEY_SHM (FAM_READ_KEY_SHM | FAM_WRITE_KEY_SHM)
 
+#define FABRIC_KEY_START 4
+#define FABRIC_MAX_KEY 65536
+#define BYTE 8
+
 #define FAM_KEY_UNINITIALIZED ((uint64_t)-1)
 #define FAM_KEY_INVALID ((uint64_t)-2)
-#define FAM_FENCE_KEY ((uint64_t)-4)
+#define FAM_FENCE_KEY (FABRIC_KEY_START-1)
 #define INVALID_OFFSET ((uint64_t)-1)
 #define FAM_INVALID_REGION ((uint64_t)-1)
 #define MAX_MEMORY_SERVERS_CNT 256
@@ -120,6 +124,7 @@ namespace openfam {
 #define DATAITEMID_BITS 33
 #define DATAITEMID_MASK ((1UL << DATAITEMID_BITS) - 1)
 #define DATAITEMID_SHIFT 1
+#define RPC_PROTOCOL_CXI "ofi+cxi://"
 #define RPC_PROTOCOL_VERBS "ofi+verbs://"
 #define RPC_PROTOCOL_SOCKETS "ofi+sockets://"
 #define RPC_PROTOCOL_TCP "ofi+tcp://"
@@ -409,19 +414,25 @@ inline void decode_offset(uint64_t offset, int *extentIdx, uint64_t *startPos) {
 inline string protocol_map(string provider) {
     std::map<std::string, int> providertypes;
     string protocol;
-    providertypes["verbs;ofi_rxm"] = 1;
-    providertypes["sockets"] = 2;
-    providertypes["tcp"] = 3;
+
+    providertypes["cxi"] = 1;
+    providertypes["verbs;ofi_rxm"] = 2;
+    providertypes["sockets"] = 3;
+    providertypes["tcp"] = 4;
+
     int provider_num = providertypes[provider];
 
     switch (provider_num) {
     case 1:
-        protocol = RPC_PROTOCOL_VERBS;
+        protocol = RPC_PROTOCOL_CXI;
         break;
     case 2:
-        protocol = RPC_PROTOCOL_SOCKETS;
+        protocol = RPC_PROTOCOL_VERBS;
         break;
     case 3:
+        protocol = RPC_PROTOCOL_SOCKETS;
+        break;
+    case 4:
         protocol = RPC_PROTOCOL_TCP;
         break;
     }

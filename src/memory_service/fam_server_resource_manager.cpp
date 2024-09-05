@@ -58,12 +58,35 @@ Fam_Server_Resource_Manager::Fam_Server_Resource_Manager(
     if (!isSharedMemory) {
         fenceMr = 0;
         register_fence_memory();
+
+        if (strncmp(famOps->get_provider(), "cxi", 3) == 0) {
+            init_key_bitmap();
+        }
     }
     isBaseRequire = false;
     if (famOps) {
         if (strncmp(famOps->get_provider(), "verbs", 5) == 0)
             isBaseRequire = true;
     }
+}
+
+
+void Fam_Server_Resource_Manager::init_key_bitmap() {
+    keyMap = new bitmap();
+    keyMap->size = FABRIC_MAX_KEY / BYTE;
+    keyMap->map = calloc(1, keyMap->size);
+}
+
+uint64_t Fam_Server_Resource_Manager::get_key_from_bitmap() {
+    uint64_t key =
+        bitmap_find_and_reserve(keyMap, 0, (uint64_t)FABRIC_KEY_START);
+    if (key == (uint64_t)BITMAP_NOTFOUND) {
+        ostringstream message;
+        message << "Keys are exhausted in key pool, No key is available";
+        throw Memory_Service_Exception(DATAITEM_KEY_NOT_AVAILABLE,
+                                       message.str().c_str());
+    }
+    return key;
 }
 
 Fam_Server_Resource_Manager::~Fam_Server_Resource_Manager() {
@@ -110,7 +133,9 @@ void Fam_Server_Resource_Manager::register_fence_memory() {
     if (fenceMr == 0) {
         ret =
             fabric_register_mr(localPointer, len, &key, famOps->get_domain(),
-                               1, mr);
+
+                               (famOps->get_defaultCtx((uint64_t)0))->get_ep(),
+                               famOps->get_provider(), 1, mr);
         if (ret < 0) {
             message << "failed to register with fabric";
             throw Memory_Service_Exception(FENCE_REG_FAILED,
@@ -507,8 +532,18 @@ uint64_t Fam_Server_Resource_Manager::register_memory(
         return mrkey;
     }
 
+    if (strncmp(famOps->get_provider(), "cxi", 3) == 0) {
+        try {
+            mrkey = get_key_from_bitmap();
+        } catch (...) {
+            pthread_rwlock_unlock(&famResource->famRegionLock);
+            throw;
+        }
+    }
+
     ret = fabric_register_mr(localPointer, size, &mrkey, famOps->get_domain(),
-                             rwFlag, mr);
+                             (famOps->get_defaultCtx((uint64_t)0))->get_ep(),
+                             famOps->get_provider(), rwFlag, mr);
     if (ret < 0) {
         pthread_rwlock_unlock(&famResource->famRegionLock);
         message << "failed to register with fabric";
@@ -557,7 +592,11 @@ void Fam_Server_Resource_Manager::unregister_memory(
 
     auto rMr = famResource->famRegistrationTable->find(rKey);
     if (rMr != famResource->famRegistrationTable->end()) {
+
+	uint64_t mrkey = 0;
         Fam_Memory_Registration *famRegistration = rMr->second;
+        if (strncmp(famOps->get_provider(), "cxi", 3) == 0)
+            mrkey = fi_mr_key(famRegistration->mr);
         ret = fabric_deregister_mr(famRegistration->mr);
         if (ret < 0) {
             pthread_rwlock_unlock(&famResource->famRegionLock);
@@ -566,6 +605,9 @@ void Fam_Server_Resource_Manager::unregister_memory(
                                            message.str().c_str());
         }
         famResource->famRegistrationTable->erase(rMr);
+
+        if (strncmp(famOps->get_provider(), "cxi", 3) == 0)
+            bitmap_reset(keyMap, mrkey);
 #ifdef ENABLE_RESOURCE_RELEASE_ITEM_PERM
         if (enableResourceRelease &&
             (famResource->permissionLevel == DATAITEM)) {
@@ -579,7 +621,11 @@ void Fam_Server_Resource_Manager::unregister_memory(
 
     auto rwMr = famResource->famRegistrationTable->find(rwKey);
     if (rwMr != famResource->famRegistrationTable->end()) {
+
+	uint64_t mrkey = 0;
         Fam_Memory_Registration *famRegistration = rwMr->second;
+        if (strncmp(famOps->get_provider(), "cxi", 3) == 0)
+            mrkey = fi_mr_key(famRegistration->mr);
         ret = fabric_deregister_mr(famRegistration->mr);
         if (ret < 0) {
             pthread_rwlock_unlock(&famResource->famRegionLock);
@@ -588,6 +634,9 @@ void Fam_Server_Resource_Manager::unregister_memory(
                                            message.str().c_str());
         }
         famResource->famRegistrationTable->erase(rwMr);
+
+        if (strncmp(famOps->get_provider(), "cxi", 3) == 0)
+            bitmap_reset(keyMap, mrkey);
 #ifdef ENABLE_RESOURCE_RELEASE_ITEM_PERM
         if (enableResourceRelease &&
             (famResource->permissionLevel == DATAITEM)) {
@@ -613,11 +662,19 @@ void Fam_Server_Resource_Manager::unregister_region_memory(
     for (auto registrationObj : *(famResource->famRegistrationTable)) {
         Fam_Memory_Registration *famRegistration = registrationObj.second;
         fid_mr *mr = famRegistration->mr;
+
+        uint64_t mrkey = 0;
+        if (strncmp(famOps->get_provider(), "cxi", 3) == 0)
+            mrkey = fi_mr_key(mr);
         ret = fabric_deregister_mr(mr);
         if (ret < 0) {
             message << "Failed to unregister memory";
             throw Memory_Service_Exception(UNREGISTRATION_FAILED,
                                            message.str().c_str());
+
+        } else {
+            if (strncmp(famOps->get_provider(), "cxi", 3) == 0)
+                bitmap_reset(keyMap, mrkey);
         }
 #ifdef ENABLE_RESOURCE_RELEASE_ITEM_PERM
         if (enableResourceRelease &&
