@@ -93,9 +93,8 @@ const char *supportedOptionList[] = {
     "NUM_CONSUMER",            // index #12
     "FAM_DEFAULT_MEMORY_TYPE", // index #13
     "IF_DEVICE",               // index #14
-    "LOC_BUF_ADDR",            // index #15
-    "LOC_BUF_SIZE",            // index #16
-    NULL                       // index #17
+    "FAM_CLIENT_BUFFER",       // index #15
+    NULL                       // index #16
 };
 
 namespace openfam {
@@ -133,10 +132,6 @@ class fam::Impl_ {
             famOps = new Fam_Ops_Libfabric((Fam_Ops_Libfabric *)pimpl->famOps);
             ctxId = famOps->get_context_id();
             pimpl->famOps->context_open(ctxId, famOps);
-            if (((pimpl->famOptions).local_buf_size != 0) &&
-                    ((pimpl->famOptions).local_buf_addr != NULL))
-                famOps->register_heap((pimpl->famOptions).local_buf_addr,
-                                  (pimpl->famOptions).local_buf_size);
         }
         famAllocator = pimpl->famAllocator;
         famRuntime = pimpl->famRuntime;
@@ -169,6 +164,8 @@ class fam::Impl_ {
 
     void fam_context_close(fam_context *ctx);
 
+    uint64_t fam_get_context_id();
+
     void fam_abort(int status);
 
     void fam_barrier_all(void);
@@ -176,6 +173,8 @@ class fam::Impl_ {
     const char **fam_list_options(void);
 
     const void *fam_get_option(char *optionName);
+    
+    void fam_set_option(char *optionName, void *value, size_t valueSize);
 
     Fam_Region_Descriptor *fam_lookup_region(const char *name);
 
@@ -696,6 +695,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
 
     optValueMap->insert({supportedOptionList[VERSION], strdup(OPENFAM_VERSION)});
 
+    optValueMap->insert({supportedOptionList[FAM_CLIENT_BUFFER], strdup(FAM_CLIENT_BUFFER_STR)});
+
     // Look for options information from config file.
     std::string config_file_path;
     configFileParams file_options;
@@ -797,12 +798,6 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
                 famRuntime->runtime_fini();
             THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
         }
-        else {
-            if(famOptions.local_buf_size != 0 &&
-                    famOptions.local_buf_addr != NULL) {
-                famOps->register_heap(famOptions.local_buf_addr , famOptions.local_buf_size);
-            }
-        }
     }
     FAM_PROFILE_END_ALLOCATOR(fam_initialize);
 }
@@ -816,24 +811,6 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
 
     int ret = 0;
     std::ostringstream message;
-    if (options && options->local_buf_addr && options->local_buf_size) {
-        famOptions.local_buf_addr = options->local_buf_addr;
-        famOptions.local_buf_size = options->local_buf_size;
-    } else {
-        famOptions.local_buf_addr = NULL;
-        famOptions.local_buf_size = 0;
-    }
-    char *addr_str = (char *)malloc(20 * sizeof(char));
-    if (famOptions.local_buf_addr != NULL)
-        sprintf(addr_str, "%p", (void *)famOptions.local_buf_addr);
-    else
-        sprintf(addr_str, "0");
-    optValueMap->insert({supportedOptionList[LOC_BUF_ADDR], addr_str});
-
-    uint64_t *local_buf_size_opt = (uint64_t *)malloc(sizeof(uint64_t));
-    *local_buf_size_opt = famOptions.local_buf_size;
-    optValueMap->insert(
-        {supportedOptionList[LOC_BUF_SIZE], local_buf_size_opt});
 
     if (options && options->defaultRegionName)
         famOptions.defaultRegionName = strdup(options->defaultRegionName);
@@ -1020,6 +997,10 @@ void fam::Impl_::fam_context_close(fam_context *ctx) {
         // Delete this list during fam_finalize
         // ctxList->erase(it);
     }
+}
+
+uint64_t fam::Impl_::fam_get_context_id() {
+    return famOps->get_context_id();
 }
 
 /**
@@ -1258,13 +1239,57 @@ const void *fam::Impl_::fam_get_option(char *optionName) {
             int *optVal = (int *)malloc(sizeof(int));
             *optVal = *((int *)opt->second);
             return optVal;
-        }
-        if (strncmp(optionName, "LOC_BUF_SIZE", 12) == 0) {
-            uint64_t *optVal = (uint64_t *)malloc(sizeof(uint64_t));
-            *optVal = *((uint64_t *)opt->second);
-            return optVal;
-        } else
+        } else {
             return strdup((const char *)opt->second);
+        }
+    }
+}
+
+/**
+ * TODO: descriptions to be added
+ */
+void fam::Impl_::fam_set_option(char *optionName, void *value, size_t valueSize) {
+    auto opt = optValueMap->find(optionName);
+    if (opt == optValueMap->end()) {
+        std::ostringstream message;
+        message << "Fam Option not supported: " << optionName;
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+    } else {
+        if (strncmp(optionName, "FAM_CLIENT_BUFFER", 17) == 0) {
+            if (valueSize == sizeof(Fam_Client_Buffer)) {
+                Fam_Client_Buffer *optionValue = (Fam_Client_Buffer *)value;
+                if (optionValue->ctx == NULL) {
+                    if (optionValue->op == REGISTER) {
+                        famOps->register_heap(optionValue->buffer, optionValue->bufferSize);
+                    } else if (optionValue->op == DEREGISTER) {
+                        famOps->deregister_heap(optionValue->buffer, optionValue->bufferSize);
+                    } else {
+                        std::ostringstream message;
+                        message << "Wrong buffer registration option: " << optionValue->op;
+                        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+                    }
+                } else {
+                    uint64_t ctxId = optionValue->ctx->pimpl_->fam_get_context_id();
+                    if (optionValue->op == REGISTER) {
+                        famOps->register_heap(ctxId, optionValue->buffer, optionValue->bufferSize);
+                    } else if (optionValue->op == DEREGISTER) {
+                        famOps->deregister_heap(ctxId, optionValue->buffer, optionValue->bufferSize);
+                    } else {
+                        std::ostringstream message;
+                        message << "Wrong buffer registration option: " << optionValue->op;
+                        THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+                    }
+                }
+            } else {
+                std::ostringstream message;
+                message << "Wrong option value (size mismatch): " << valueSize;
+                THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+            }
+        } else {
+            std::ostringstream message;
+            message << "Fam Option not supported: " << optionName;
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
+        }
     }
 }
 
@@ -5506,6 +5531,15 @@ const void *fam::fam_get_option(char *optionName) {
 }
 
 /**
+ * TODO: Description to be added
+ */
+void fam::fam_set_option(char *optionName, void *value, size_t valueSize) {
+    TRY_CATCH_BEGIN
+    return pimpl_->fam_set_option(optionName, value, valueSize);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+/**
  * Look up a region in FAM by name in the name service.
  * @param name - name of the region.
  * @throws Fam_Allocator_Exception - excptObj->fam_error() may return:
@@ -7025,6 +7059,11 @@ const char **fam_context::fam_list_options(void) {
 const void *fam_context::fam_get_option(char *optionName) {
     THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
                     "fam_get_option cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_set_option(char *optionName, void *value, size_t valueSize) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_set_option cannot be invoked from fam_context object");
 }
 
 Fam_Region_Descriptor *fam_context::fam_lookup_region(const char *name) {

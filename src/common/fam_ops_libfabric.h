@@ -380,6 +380,8 @@ class Fam_Ops_Libfabric : public Fam_Ops {
 
     Fam_Context *get_context(Fam_Descriptor *descriptor);
 
+    Fam_Context *get_context(uint64_t contextID);
+
     void quiet_context(Fam_Context *context);
 
     uint64_t progress_context();
@@ -410,6 +412,9 @@ class Fam_Ops_Libfabric : public Fam_Ops {
     size_t get_fabric_iov_limit() { return fabric_iov_limit; }
     size_t get_fabric_max_msg_size() { return fabric_max_msg_size; }
     void register_heap(void *base, size_t len);
+    void register_heap(uint64_t contextID, void *base, size_t len);
+    void deregister_heap(void *base, size_t len);
+    void deregister_heap(uint64_t contextID, void *base, size_t len);
 
   protected:
     // Server_Map name;

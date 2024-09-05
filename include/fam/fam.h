@@ -70,6 +70,7 @@
 
 #include <stdint.h>   // needed for uint64_t etc.
 #include <sys/stat.h> // needed for mode_t
+#include <stddef.h>    // needed for size_t
 
 #ifdef __cplusplus
 namespace openfam {
@@ -211,12 +212,10 @@ typedef struct {
     char *fam_default_memory_type;
     /** Interface device used by the PE for communication */
     char *if_device;
-    /** Local buffer address to be registered via client */
-    void *local_buf_addr;
-    /** Local buffer size to be registered via client */
-    uint64_t local_buf_size;
-
+    /** Dynamic local buffer registration by clients**/
+    char *famClientBuffer;
 } Fam_Options;
+
 #ifdef __cplusplus
 }
 #endif
@@ -374,6 +373,26 @@ class Fam_Region_Descriptor {
 
 class fam_context;
 
+typedef enum {
+    /** Register a new client buffer **/
+    REGISTER = 0,
+    /** Deregister an existing client buffer registered previously **/
+    DEREGISTER
+} Fam_Buff_Op;
+
+typedef struct Fam_Client_Buffer {
+    /** Client buffer to register **/
+    void *buffer;
+    /** Size of the client buffer to be registered **/
+    size_t bufferSize;
+    /** Context where the buffer is registered. Unless specified, registered with the default context **/
+    fam_context *ctx;
+    /** Can take value "REGISTER" or "DEREGISTER" **/
+    Fam_Buff_Op op;
+
+    Fam_Client_Buffer() : buffer(NULL), bufferSize(0), ctx(NULL) {}
+} Fam_Client_Buffer;
+
 class fam {
   public:
     // INITIALIZE group
@@ -427,6 +446,11 @@ class fam {
      * @see #fam_list_options()
      */
     const void *fam_get_option(char *optionName);
+
+    /** 
+     * TODO: add descriptions
+     */
+    void fam_set_option(char *optionName, void *value, size_t valueSize);
 
     /**
      * Look up a region in FAM by name in the name service.
@@ -1299,6 +1323,7 @@ class fam_context : public fam {
     void fam_barrier_all();
     const char **fam_list_options(void);
     const void *fam_get_option(char *optionName);
+    void fam_set_option(char *optionName, void *value, size_t valueSize);
     Fam_Region_Descriptor *fam_lookup_region(const char *name);
     Fam_Descriptor *fam_lookup(const char *itemName, const char *regionName);
 

@@ -750,6 +750,11 @@ class Fam_Ops {
 
     /* Local Buffer heap register passed by application */
     virtual void register_heap(void *base, size_t len) = 0;
+    virtual void register_heap(uint64_t contextID, void *base, size_t len) = 0;
+
+    /* Deregister Local Buffer heap */
+    virtual void deregister_heap(void *base, size_t len) = 0;
+    virtual void deregister_heap(uint64_t contextID, void *base, size_t len) = 0;
 };
 
 #endif
