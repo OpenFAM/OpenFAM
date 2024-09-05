@@ -410,8 +410,7 @@ TEST(FamCopy, CopySameSizeSuccess) {
     memset(local2, 'b', 128);
 
     EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, destItem, 0, 128));
-    int stringCompareResult = strncmp(local, local2, 128);
-    EXPECT_EQ(stringCompareResult, 0);
+    EXPECT_EQ(0, memcmp(local, local2, 128));
     EXPECT_NO_THROW(my_fam->fam_deallocate(srcItem));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(srcDesc));
 

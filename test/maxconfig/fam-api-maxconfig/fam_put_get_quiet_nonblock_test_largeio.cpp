@@ -77,7 +77,7 @@ TEST(FamPutGetNonblock, PutGetNonblockSuccess) {
 
     EXPECT_NO_THROW(my_fam->fam_quiet());
 
-    EXPECT_STREQ(local, local2);
+    EXPECT_EQ(0, memcmp(local, local2, TEST_IO_SIZE));
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
