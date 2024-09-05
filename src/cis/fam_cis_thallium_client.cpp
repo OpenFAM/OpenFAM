@@ -550,8 +550,6 @@ void *Fam_CIS_Thallium_Client::copy(
     cisRequest.set_src_used_memsrv_cnt(srcUsedMemsrvCnt);
     cisRequest.set_src_keys(srcKeys, (int)srcUsedMemsrvCnt);
     cisRequest.set_src_base_addr(srcBaseAddrList, (int)srcUsedMemsrvCnt);
-    Fam_CIS_Thallium_Response cisResponse = rp_copy.on(ph)(cisRequest);
-    RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 
     auto my_async_response_ptr =
         new tl::async_response(rp_copy.on(ph).async(cisRequest));
@@ -567,7 +565,9 @@ void Fam_CIS_Thallium_Client::wait_for_copy(void *waitObj) {
         throw CIS_Exception(FAM_ERR_INVALID, "Copy waitObj is null");
     }
 
-    waitObjIn->wait();
+    Fam_CIS_Thallium_Response cisResponse = waitObjIn->wait();
+    delete waitObjIn;
+    RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 }
 
 void *Fam_CIS_Thallium_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
@@ -584,8 +584,6 @@ void *Fam_CIS_Thallium_Client::backup(uint64_t srcRegionId, uint64_t srcOffset,
     cisRequest.set_bname(BackupName);
     cisRequest.set_uid(uid);
     cisRequest.set_gid(gid);
-    Fam_CIS_Thallium_Response cisResponse = rp_backup.on(ph)(cisRequest);
-    RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 
     auto my_async_response_ptr =
         new tl::async_response(rp_backup.on(ph).async(cisRequest));
@@ -601,7 +599,9 @@ void Fam_CIS_Thallium_Client::wait_for_backup(void *waitObj) {
         throw CIS_Exception(FAM_ERR_INVALID, "Copy waitObj is null");
     }
 
-    waitObjIn->wait();
+    Fam_CIS_Thallium_Response cisResponse = waitObjIn->wait();
+    delete waitObjIn;
+    RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 }
 
 void *Fam_CIS_Thallium_Client::restore(uint64_t destRegionId,
@@ -618,8 +618,6 @@ void *Fam_CIS_Thallium_Client::restore(uint64_t destRegionId,
     cisRequest.set_bname(BackupName);
     cisRequest.set_uid(uid);
     cisRequest.set_gid(gid);
-    Fam_CIS_Thallium_Response cisResponse = rp_restore.on(ph)(cisRequest);
-    RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 
     auto my_async_response_ptr =
         new tl::async_response(rp_restore.on(ph).async(cisRequest));
@@ -635,7 +633,9 @@ void Fam_CIS_Thallium_Client::wait_for_restore(void *waitObj) {
         throw CIS_Exception(FAM_ERR_INVALID, "Copy waitObj is null");
     }
 
-    waitObjIn->wait();
+    Fam_CIS_Thallium_Response cisResponse = waitObjIn->wait();
+    delete waitObjIn;
+    RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 }
 
 string Fam_CIS_Thallium_Client::list_backup(string BackupName,
@@ -666,8 +666,6 @@ void *Fam_CIS_Thallium_Client::delete_backup(string BackupName,
     cisRequest.set_memserver_id(memoryServerId);
     cisRequest.set_uid(uid);
     cisRequest.set_gid(gid);
-    Fam_CIS_Thallium_Response cisResponse = rp_delete_backup.on(ph)(cisRequest);
-    RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 
     auto my_async_response_ptr =
         new tl::async_response(rp_delete_backup.on(ph).async(cisRequest));
@@ -682,7 +680,10 @@ void Fam_CIS_Thallium_Client::wait_for_delete_backup(void *waitObj) {
     if (!waitObjIn) {
         throw CIS_Exception(FAM_ERR_INVALID, "Copy waitObj is null");
     }
-    waitObjIn->wait();
+
+    Fam_CIS_Thallium_Response cisResponse = waitObjIn->wait();
+    delete waitObjIn;
+    RPC_STATUS_CHECK(CIS_Exception, cisResponse)
 }
 
 Fam_Backup_Info
