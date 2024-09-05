@@ -70,7 +70,7 @@ TEST(FamPutGet, PutGetSuccess) {
     char *local2 = (char *)malloc(TEST_IO_SIZE);
     EXPECT_NO_THROW(my_fam->fam_get_blocking(local2, item, 0, TEST_IO_SIZE));
 
-    EXPECT_STREQ(local, local2);
+    EXPECT_EQ(0, memcmp(local, local2, TEST_IO_SIZE));
 
     EXPECT_NO_THROW(my_fam->fam_deallocate(item));
     EXPECT_NO_THROW(my_fam->fam_destroy_region(desc));
