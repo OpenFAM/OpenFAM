@@ -67,7 +67,7 @@
     }
 
 #ifdef CHECK_OFFSETS
-#define is_aligned(OFFSET, BYTE_COUNT) \
+#define is_aligned(OFFSET, BYTE_COUNT)                                         \
     (((uint64_t)(OFFSET)) % (BYTE_COUNT) == 0)
 
 #endif
@@ -134,9 +134,11 @@ class fam::Impl_ {
             ctxId = famOps->get_context_id();
             pimpl->famOps->context_open(ctxId, famOps);
             if (((pimpl->famOptions).local_buf_size != 0) &&
-                    ((pimpl->famOptions).local_buf_addr != NULL))
-                famOps->register_heap((pimpl->famOptions).local_buf_addr,
-                                  (pimpl->famOptions).local_buf_size);
+                ((pimpl->famOptions).local_buf_addr != NULL)) {
+                ((Fam_Ops_Libfabric *)famOps)
+                    ->register_existing_heap(
+                        (Fam_Ops_Libfabric *)pimpl->famOps);
+            }
         }
         famAllocator = pimpl->famAllocator;
         famRuntime = pimpl->famRuntime;
@@ -694,7 +696,8 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
     optValueMap = new std::map<std::string, const void *>();
     ctxList = new std::list<fam_context *>();
 
-    optValueMap->insert({supportedOptionList[VERSION], strdup(OPENFAM_VERSION)});
+    optValueMap->insert(
+        {supportedOptionList[VERSION], strdup(OPENFAM_VERSION)});
 
     // Look for options information from config file.
     std::string config_file_path;
@@ -796,11 +799,11 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
             if (famRuntime != NULL)
                 famRuntime->runtime_fini();
             THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
-        }
-        else {
-            if(famOptions.local_buf_size != 0 &&
-                    famOptions.local_buf_addr != NULL) {
-                famOps->register_heap(famOptions.local_buf_addr , famOptions.local_buf_size);
+        } else {
+            if (famOptions.local_buf_size != 0 &&
+                famOptions.local_buf_addr != NULL) {
+                famOps->register_heap(famOptions.local_buf_addr,
+                                      famOptions.local_buf_size);
             }
         }
     }
@@ -876,7 +879,6 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
 
     optValueMap->insert({supportedOptionList[LIBFABRIC_PROVIDER],
                          famOptions.libfabricProvider});
-
 
     if (options && options->famThreadModel)
         famOptions.famThreadModel = strdup(options->famThreadModel);
@@ -962,8 +964,7 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
         famOptions.runtime = strdup(options->runtime);
     else if (!config_file_fam_options.empty() &&
              config_file_fam_options.count("runtime") > 0)
-        famOptions.runtime =
-            strdup(config_file_fam_options["runtime"].c_str());
+        famOptions.runtime = strdup(config_file_fam_options["runtime"].c_str());
     else
         famOptions.runtime = strdup("PMIX");
 
@@ -992,9 +993,10 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     else
         famOptions.if_device = strdup("");
     optValueMap->insert({supportedOptionList[IF_DEVICE], famOptions.if_device});
-    
+
     if (options && options->fam_default_memory_type)
-        famOptions.fam_default_memory_type = strdup(options->fam_default_memory_type);
+        famOptions.fam_default_memory_type =
+            strdup(options->fam_default_memory_type);
     else if (!config_file_fam_options.empty() &&
              config_file_fam_options.count("default_memory_type") > 0)
         famOptions.fam_default_memory_type =
@@ -1002,7 +1004,8 @@ int fam::Impl_::validate_fam_options(Fam_Options *options,
     else
         famOptions.fam_default_memory_type = strdup("");
 
-    optValueMap->insert({supportedOptionList[FAM_DEFAULT_MEMORY_TYPE], famOptions.fam_default_memory_type});
+    optValueMap->insert({supportedOptionList[FAM_DEFAULT_MEMORY_TYPE],
+                         famOptions.fam_default_memory_type});
     return ret;
 }
 
@@ -1808,7 +1811,7 @@ void fam::Impl_::fam_get_blocking(void *local, Fam_Descriptor *descriptor,
 
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
-    uint64_t io_size = nbytes ;
+    uint64_t io_size = nbytes;
     // Offset is of type uint64_t. So no need to check for offset < 0.
     if ((offset >= disize) || ((offset + io_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
@@ -1845,7 +1848,7 @@ void fam::Impl_::fam_get_nonblocking(void *local, Fam_Descriptor *descriptor,
     int ret = validate_item(descriptor);
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
-    uint64_t io_size = nbytes ;
+    uint64_t io_size = nbytes;
     // Offset is of type uint64_t. So no need to check for offset < 0.
     if ((offset >= disize) || ((offset + io_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
@@ -1978,7 +1981,8 @@ void fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
     int ret = validate_item(descriptor);
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
-    uint64_t last_offset = firstElement * elementSize + (nElements - 1) * stride * elementSize;
+    uint64_t last_offset =
+        firstElement * elementSize + (nElements - 1) * stride * elementSize;
     // Offset is of type uint64_t. So no need to check for offset < 0.
     if ((last_offset >= disize) || ((last_offset + elementSize) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
@@ -2022,12 +2026,12 @@ void fam::Impl_::fam_gather_blocking(void *local, Fam_Descriptor *descriptor,
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
     uint64_t offset = 0;
-    for ( uint64_t i = 0; i < nElements;i++) {
-	    offset = elementIndex[i] * elementSize;
-	    // Offset is of type uint64_t. So no need to check for offset < 0.
-	    if ((offset >= disize) || ((offset + elementSize) > disize)) {
-        	THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
-	    }
+    for (uint64_t i = 0; i < nElements; i++) {
+        offset = elementIndex[i] * elementSize;
+        // Offset is of type uint64_t. So no need to check for offset < 0.
+        if ((offset >= disize) || ((offset + elementSize) > disize)) {
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+        }
     }
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_gather_blocking);
@@ -2068,7 +2072,8 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
 
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
-    uint64_t last_offset = firstElement * elementSize + (nElements - 1) * stride * elementSize;
+    uint64_t last_offset =
+        firstElement * elementSize + (nElements - 1) * stride * elementSize;
     // Offset is of type uint64_t. So no need to check for offset < 0.
     if ((last_offset >= disize) || ((last_offset + elementSize) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
@@ -2114,12 +2119,12 @@ void fam::Impl_::fam_gather_nonblocking(void *local, Fam_Descriptor *descriptor,
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user descriptor.
     uint64_t offset = 0;
-    for ( uint64_t i = 0; i < nElements;i++) {
-	    offset = elementIndex[i] * elementSize;
-	    // Offset is of type uint64_t. So no need to check for offset < 0.
-	    if ((offset >= disize) || ((offset + elementSize) > disize)) {
-        	THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
-	    }
+    for (uint64_t i = 0; i < nElements; i++) {
+        offset = elementIndex[i] * elementSize;
+        // Offset is of type uint64_t. So no need to check for offset < 0.
+        if ((offset >= disize) || ((offset + elementSize) > disize)) {
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+        }
     }
 #endif
 
@@ -2164,7 +2169,8 @@ void fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
 
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
-    uint64_t last_offset = firstElement * elementSize + (nElements - 1) * stride * elementSize;
+    uint64_t last_offset =
+        firstElement * elementSize + (nElements - 1) * stride * elementSize;
     // Offset is of type uint64_t. So no need to check for offset < 0.
     if ((last_offset >= disize) || ((last_offset + elementSize) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
@@ -2211,12 +2217,12 @@ void fam::Impl_::fam_scatter_blocking(void *local, Fam_Descriptor *descriptor,
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
     uint64_t offset = 0;
-    for ( uint64_t i = 0; i < nElements;i++) {
-	    offset = elementIndex[i] * elementSize;
-	    // Offset is of type uint64_t. So no need to check for offset < 0.
-	    if ((offset >= disize) || ((offset + elementSize) > disize)) {
-        	THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
-	    }
+    for (uint64_t i = 0; i < nElements; i++) {
+        offset = elementIndex[i] * elementSize;
+        // Offset is of type uint64_t. So no need to check for offset < 0.
+        if ((offset >= disize) || ((offset + elementSize) > disize)) {
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+        }
     }
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_scatter_blocking);
@@ -2259,7 +2265,8 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
     int ret = validate_item(descriptor);
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
-    uint64_t last_offset = firstElement * elementSize + (nElements - 1) * stride * elementSize;
+    uint64_t last_offset =
+        firstElement * elementSize + (nElements - 1) * stride * elementSize;
     // Offset is of type uint64_t. So no need to check for offset < 0.
     if ((last_offset >= disize) || ((last_offset + elementSize) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
@@ -2305,12 +2312,12 @@ void fam::Impl_::fam_scatter_nonblocking(void *local,
 #ifdef CHECK_OFFSETS
     uint64_t disize = descriptor->get_size(); // Get size from user decriptor
     uint64_t offset = 0;
-    for ( uint64_t i = 0; i < nElements;i++) {
-	    offset = elementIndex[i] * elementSize;
-	    // Offset is of type uint64_t. So no need to check for offset < 0.
-	    if ((offset >= disize) || ((offset + elementSize) > disize)) {
-        	THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
-	    }
+    for (uint64_t i = 0; i < nElements; i++) {
+        offset = elementIndex[i] * elementSize;
+        // Offset is of type uint64_t. So no need to check for offset < 0.
+        if ((offset >= disize) || ((offset + elementSize) > disize)) {
+            THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
+        }
     }
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_scatter_nonblocking);
@@ -2402,7 +2409,7 @@ void *fam::Impl_::fam_backup(Fam_Descriptor *src, const char *BackupName,
     FAM_PROFILE_END_ALLOCATOR(fam_backup);
     FAM_PROFILE_START_OPS(fam_backup);
 
-    if (retS == 0 )
+    if (retS == 0)
         result = famOps->backup(src, BackupName);
     FAM_PROFILE_END_OPS(fam_backup);
     return result;
@@ -2455,7 +2462,7 @@ void *fam::Impl_::fam_restore(const char *BackupName,
     FAM_PROFILE_END_ALLOCATOR(fam_restore);
     FAM_PROFILE_START_OPS(fam_restore);
 
-    if (retD == 0 )
+    if (retD == 0)
         result = famOps->restore(BackupName, *dest);
 
     FAM_PROFILE_END_OPS(fam_restore);
@@ -2497,7 +2504,6 @@ void fam::Impl_::fam_backup_wait(void *waitObj) {
     famOps->wait_for_backup(waitObj);
     FAM_PROFILE_END_ALLOCATOR(fam_backup_wait);
     return;
-
 }
 
 void fam::Impl_::fam_restore_wait(void *waitObj) {
@@ -2510,8 +2516,6 @@ void fam::Impl_::fam_restore_wait(void *waitObj) {
     famOps->wait_for_restore(waitObj);
     FAM_PROFILE_END_ALLOCATOR(fam_restore_wait);
     return;
-
-
 }
 
 char *fam::Impl_::fam_list_backup(const char *BackupName) {
@@ -2550,8 +2554,8 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_set);
@@ -2582,8 +2586,9 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset provided"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception,
+                      "Misaligned Offset provided");
 #endif
 
     FAM_PROFILE_START_OPS(fam_set);
@@ -2611,8 +2616,8 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_set);
@@ -2643,8 +2648,8 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_set);
@@ -2673,8 +2678,8 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-          THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_set);
@@ -2705,8 +2710,8 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_set);
@@ -2718,7 +2723,6 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     FAM_PROFILE_END_OPS(fam_set);
     return;
 }
-
 
 void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
                          double value) {
@@ -2738,8 +2742,8 @@ void fam::Impl_::fam_set(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_set);
@@ -2777,8 +2781,8 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_add);
@@ -2808,8 +2812,8 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_add);
@@ -2839,8 +2843,8 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_add);
@@ -2870,8 +2874,8 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_add);
@@ -2901,8 +2905,8 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_add);
@@ -2932,8 +2936,8 @@ void fam::Impl_::fam_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_add);
@@ -2972,8 +2976,8 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
@@ -3003,8 +3007,8 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
@@ -3034,8 +3038,8 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
@@ -3065,8 +3069,8 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
@@ -3096,8 +3100,8 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
@@ -3127,8 +3131,8 @@ void fam::Impl_::fam_subtract(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_subtract);
@@ -3167,8 +3171,8 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_min);
@@ -3198,8 +3202,8 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_min);
@@ -3229,8 +3233,8 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_min);
@@ -3260,8 +3264,8 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_min);
@@ -3290,8 +3294,8 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_min);
 
@@ -3320,8 +3324,8 @@ void fam::Impl_::fam_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_min);
@@ -3360,8 +3364,8 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_max);
@@ -3391,8 +3395,8 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_max);
@@ -3422,8 +3426,8 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_max);
@@ -3453,8 +3457,8 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_max);
@@ -3484,8 +3488,8 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_max);
@@ -3515,8 +3519,8 @@ void fam::Impl_::fam_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_max);
@@ -3555,8 +3559,8 @@ void fam::Impl_::fam_and(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_and);
@@ -3586,8 +3590,8 @@ void fam::Impl_::fam_and(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_and);
@@ -3626,8 +3630,8 @@ void fam::Impl_::fam_or(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_or);
@@ -3657,8 +3661,8 @@ void fam::Impl_::fam_or(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_or);
@@ -3697,8 +3701,8 @@ void fam::Impl_::fam_xor(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_xor);
@@ -3728,8 +3732,8 @@ void fam::Impl_::fam_xor(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_xor);
@@ -3770,8 +3774,8 @@ int32_t fam::Impl_::fam_fetch_int32(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
@@ -3802,8 +3806,8 @@ int64_t fam::Impl_::fam_fetch_int64(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
@@ -3834,8 +3838,8 @@ int128_t fam::Impl_::fam_fetch_int128(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
@@ -3867,8 +3871,8 @@ uint32_t fam::Impl_::fam_fetch_uint32(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
@@ -3899,8 +3903,8 @@ uint64_t fam::Impl_::fam_fetch_uint64(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
@@ -3930,8 +3934,8 @@ float fam::Impl_::fam_fetch_float(Fam_Descriptor *descriptor, uint64_t offset) {
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
@@ -3962,8 +3966,8 @@ double fam::Impl_::fam_fetch_double(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch);
@@ -4004,8 +4008,8 @@ int32_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
@@ -4036,8 +4040,8 @@ int64_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
@@ -4068,8 +4072,8 @@ uint32_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
@@ -4099,8 +4103,8 @@ uint64_t fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
 
@@ -4130,8 +4134,8 @@ float fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
@@ -4162,8 +4166,8 @@ double fam::Impl_::fam_swap(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_swap);
@@ -4207,8 +4211,8 @@ int32_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
@@ -4240,8 +4244,8 @@ int64_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
@@ -4272,8 +4276,8 @@ uint32_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
 
@@ -4304,8 +4308,8 @@ uint64_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
@@ -4337,8 +4341,8 @@ int128_t fam::Impl_::fam_compare_swap(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_compare_swap);
@@ -4378,8 +4382,8 @@ int32_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
@@ -4410,8 +4414,8 @@ int64_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
@@ -4441,8 +4445,8 @@ uint32_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
 
@@ -4473,8 +4477,8 @@ uint64_t fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
@@ -4505,8 +4509,8 @@ float fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
 
@@ -4536,8 +4540,8 @@ double fam::Impl_::fam_fetch_add(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_add);
@@ -4578,8 +4582,8 @@ int32_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
@@ -4610,8 +4614,8 @@ int64_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
@@ -4643,8 +4647,8 @@ uint32_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
@@ -4676,8 +4680,8 @@ uint64_t fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
@@ -4708,8 +4712,8 @@ float fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
@@ -4740,8 +4744,8 @@ double fam::Impl_::fam_fetch_subtract(Fam_Descriptor *descriptor,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_subtract);
@@ -4783,8 +4787,8 @@ int32_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
@@ -4815,8 +4819,8 @@ int64_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
@@ -4847,8 +4851,8 @@ uint32_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
@@ -4879,8 +4883,8 @@ uint64_t fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
@@ -4911,8 +4915,8 @@ float fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
@@ -4943,8 +4947,8 @@ double fam::Impl_::fam_fetch_min(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_min);
@@ -4986,8 +4990,8 @@ int32_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
@@ -5018,8 +5022,8 @@ int64_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
@@ -5050,8 +5054,8 @@ uint32_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
@@ -5081,8 +5085,8 @@ uint64_t fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
 
@@ -5112,8 +5116,8 @@ float fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
@@ -5144,8 +5148,8 @@ double fam::Impl_::fam_fetch_max(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_max);
@@ -5187,8 +5191,8 @@ uint32_t fam::Impl_::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_and);
@@ -5219,8 +5223,8 @@ uint64_t fam::Impl_::fam_fetch_and(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_and);
@@ -5262,8 +5266,8 @@ uint32_t fam::Impl_::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_or);
@@ -5294,8 +5298,8 @@ uint64_t fam::Impl_::fam_fetch_or(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_or);
@@ -5337,8 +5341,8 @@ uint32_t fam::Impl_::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_xor);
@@ -5369,8 +5373,8 @@ uint64_t fam::Impl_::fam_fetch_xor(Fam_Descriptor *descriptor, uint64_t offset,
     if ((offset >= disize) || ((offset + value_size) > disize)) {
         THROW_ERR_MSG(Fam_InvalidOption_Exception, "Access out of bounds");
     }
-    if (!is_aligned(offset,value_size))
-	   THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset"); 
+    if (!is_aligned(offset, value_size))
+        THROW_ERR_MSG(Fam_InvalidOption_Exception, "Misaligned Offset");
 #endif
 
     FAM_PROFILE_END_ALLOCATOR(fam_fetch_xor);
