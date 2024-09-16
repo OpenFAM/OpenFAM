@@ -141,7 +141,7 @@ ubuntu20_package_list="build-essential cmake autoconf libtool pkg-config libyaml
 
 rhel8_package_list="gcc gcc-c++ python3 python3-pip cmake make kernel-devel libevent libevent-devel glibc automake epel-release boost-devel-1.66.0 libpmem libpmem-devel yaml-cpp yaml-cpp-devel flex openssl-devel"
 
-sles15_sp3_package_list="gcc gcc-c++ make cmake python3 python3-pip autoconf yaml-cpp-devel libtool libevent libevent-devel flex libpmem1 libpmem-devel libboost_system1_66_0-devel libboost_thread1_66_0-devel libboost_filesystem1_66_0-devel libboost_headers1_66_0-devel libboost_context1_66_0-devel libboost_program_options1_66_0-devel libboost_log1_66_0-devel libopenssl-devel"
+sles15_sp3_package_list="gcc gcc-c++ make cmake python3 python3-pip autoconf yaml-cpp-devel libtool libevent libevent-devel flex libpmem1 libpmem-devel libboost_system1_66_0-devel libboost_thread1_66_0-devel libboost_filesystem1_66_0-devel libboost_headers1_66_0-devel libboost_context1_66_0-devel libboost_program_options1_66_0-devel libboost_log1_66_0-devel libopenssl-devel libboost_atomic1_66_0-devel libboost_atomic1 libboost_regex1_66_0 libboost_regex1_66_0-devel"
 
 #Install dependency packages
 OS=`grep -m1 "^ID=" /etc/os-release | sed 's/"//g' | sed 's/ID=//g' `
@@ -196,7 +196,7 @@ case $OS in
 			;;
 	"opensuse-leap" | "sles")
 		case $(get_os_release_version) in
-                     *15*SP3* | *15*SP4*)
+                     *15*SP3* | *15*SP4*|*15*SP5*)
 		         if [ "$no_package_install" != "true" ]
 		         then
                             sudo zypper --non-interactive install ${sles15_sp3_package_list}
