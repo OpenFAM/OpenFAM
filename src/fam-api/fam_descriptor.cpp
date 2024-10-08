@@ -170,8 +170,11 @@ class Fam_Descriptor::FamDescriptorImpl_ {
 
     void set_name(char *itemName) {
         if (name == NULL) {
-            name = (char *)malloc(RadixTree::MAX_KEY_LEN + 1);
-            strncpy(name, (const char*)itemName, RadixTree::MAX_KEY_LEN);
+            //name = (char *)malloc(RadixTree::MAX_KEY_LEN);
+            //memcpy(name, itemName, RadixTree::MAX_KEY_LEN);
+	    name = (char *)malloc(RadixTree::MAX_KEY_LEN + 1);
+            strncpy(name, (const char *)itemName, RadixTree::MAX_KEY_LEN-1);
+	    name[RadixTree::MAX_KEY_LEN]='\0';
         }
     }
 
@@ -401,8 +404,12 @@ class Fam_Region_Descriptor::FamRegionDescriptorImpl_ {
 
     void set_name(char *itemName) {
         if (name == NULL) {
-            name = (char *)malloc(RadixTree::MAX_KEY_LEN + 1);
-            strncpy(name, (const char *)itemName, RadixTree::MAX_KEY_LEN);
+            //name = (char *)malloc(RadixTree::MAX_KEY_LEN);
+            //memcpy(name, itemName, RadixTree::MAX_KEY_LEN);
+	    name = (char *)malloc(RadixTree::MAX_KEY_LEN + 1);
+            strncpy(name, (const char *)itemName, RadixTree::MAX_KEY_LEN-1);
+            name[RadixTree::MAX_KEY_LEN]='\0';
+
         }
     }
 
