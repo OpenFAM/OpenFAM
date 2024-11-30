@@ -748,7 +748,7 @@ if args.start_service:
                     + openfam_install_path
                     + "/bin/memory_server -m "
                     + memory_server_id
-                    + "> /dev/null 2>&1 &'\""
+                    + " > /dev/null 2>&1 &'\""
                 )
             elif openfam_admin_tool_config_doc["launcher"] == "slurm":
                 command_options = openfam_admin_tool_config_doc["launcher_options"]["common"]
@@ -801,7 +801,7 @@ if args.start_service:
                     + metadata_server_addr
                     + " -r "
                     + str(metadata_server_rpc_port)
-                    + "> /dev/null 2>&1 &'\""
+                    + " > /dev/null 2>&1 &'\""
                 )
             elif openfam_admin_tool_config_doc["launcher"] == "slurm":
                 command_options = openfam_admin_tool_config_doc["launcher_options"]["common"]
@@ -855,7 +855,7 @@ if args.start_service:
                 + cis_addr
                 + " -r "
                 + str(cis_rpc_port)
-                + "> /dev/null 2>&1 &'\""
+                + " > /dev/null 2>&1 &'\""
             )
         elif openfam_admin_tool_config_doc["launcher"] == "slurm":
             cmd = (
