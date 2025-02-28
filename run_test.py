@@ -31,14 +31,31 @@ if len(sys.argv) > 2:
     openfam_test_arg=sys.argv[2]
 
 command_line = [
-    os.environ["OPENFAM_TEST_COMMAND"],
-    os.environ["OPENFAM_TEST_OPT"],
+    "",
+    "",
     openfam_test_exe,
     openfam_test_arg,
 ]
-print("Test Command:", " ".join(command_line))
 
-result = subprocess.call(command_line)
+value = os.environ.get("OPENFAM_TEST_COMMAND")
+if value:
+    command_line[0]= value
+
+value = os.environ.get("OPENFAM_TEST_OPT")
+if value:
+    command_line[1]= value
+
+
+command =""
+for i in command_line:
+    if i!="" and i!=None:
+        command += i + " "
+
+
+command = command.strip()
+print("Test Command:", command)
+
+result = subprocess.call(command)
 result >>= 8
 
 #If the return code from test is 77 return that back to gtest
