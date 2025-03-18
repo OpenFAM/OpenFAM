@@ -28,10 +28,6 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #ifndef RUNTIME_H
 #define RUNTIME_H
 

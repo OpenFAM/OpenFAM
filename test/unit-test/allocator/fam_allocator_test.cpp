@@ -37,8 +37,8 @@
 #include "common/fam_libfabric.h"
 #include "common/fam_ops_libfabric.h"
 #include "common/fam_options.h"
-#include "fam_utils.h"
 
+#include "util/fam_utils.h"
 #include "common/fam_test_config.h"
 
 using namespace std;

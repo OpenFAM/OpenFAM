@@ -32,8 +32,6 @@
 #include "common/fam_memserver_profile.h"
 #include <thread>
 
-#include <boost/atomic.hpp>
-
 #include <chrono>
 #include <iomanip>
 #include <string.h>

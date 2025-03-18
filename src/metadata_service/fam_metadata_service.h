@@ -34,7 +34,9 @@
 #ifndef FAM_METADATA_SERVICE_H
 #define FAM_METADATA_SERVICE_H
 
+#ifdef META_DEBUG
 #include <iostream>
+#endif
 #include <map>
 #include <stdio.h>
 #include <stdlib.h>
@@ -48,9 +50,9 @@
 #include "common/fam_internal.h"
 #include "common/fam_internal_exception.h"
 #include "fam/fam.h"
-#include "nvmm/epoch_manager.h"
-#include "nvmm/fam.h"
-#include "nvmm/memory_manager.h"
+#include <nvmm/epoch_manager.h>
+#include <nvmm/fam.h>
+#include <nvmm/memory_manager.h>
 
 using namespace radixtree;
 using namespace nvmm;

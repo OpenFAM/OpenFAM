@@ -31,20 +31,13 @@
 #ifndef FAM_CONTEXT_H
 #define FAM_CONTEXT_H
 
-#include <iostream>
-#include <sstream>
-#include <string.h>
-#include <vector>
-
 #include <rdma/fabric.h>
 #include <rdma/fi_domain.h>
 #include <rdma/fi_endpoint.h>
 
-#include "common/fam_internal.h"
-#include "common/fam_internal_exception.h"
-#include "common/fam_options.h"
-
-using namespace std;
+#include "fam_internal.h"
+#include "fam_internal_exception.h"
+#include "fam_options.h"
 
 namespace openfam {
 

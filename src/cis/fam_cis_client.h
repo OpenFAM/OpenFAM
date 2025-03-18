@@ -41,8 +41,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "cis/fam_cis.h"
-#include "cis/fam_cis_rpc.grpc.pb.h"
+#include "fam_cis.h"
+#include "fam_cis_rpc.grpc.pb.h"
 
 using namespace std;
 

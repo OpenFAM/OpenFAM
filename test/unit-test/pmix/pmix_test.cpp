@@ -28,10 +28,8 @@
  *
  */
 
-#include "runtime_pmix.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "pmi/runtime_pmix.h"
+#include <cstdio>
 
 int main() {
 

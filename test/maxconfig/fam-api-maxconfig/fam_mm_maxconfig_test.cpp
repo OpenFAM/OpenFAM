@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "fam_utils.h"
+#include "util/fam_utils.h"
 #include "common/fam_test_config.h"
 
 #define REG_MAX_SIZE 1099511627776

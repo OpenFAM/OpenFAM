@@ -51,6 +51,7 @@ using namespace std;
 
 namespace openfam {
 
+class Memserver_Allocator;
 class Fam_Ops_Libfabric;
 
 // Structure to represent each registration within the region(region extent or

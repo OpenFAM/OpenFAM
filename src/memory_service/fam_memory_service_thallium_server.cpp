@@ -33,7 +33,6 @@
 #include "fam_memory_service_server.h"
 #include "fam_memory_service_thallium_server.h"
 #include "fam_memory_service_thallium_rpc_structures.h"
-#include <boost/atomic.hpp>
 #include <chrono>
 #include <fstream>
 #include <iomanip>

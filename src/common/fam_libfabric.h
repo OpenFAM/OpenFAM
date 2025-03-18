@@ -32,15 +32,11 @@
 #define FAM_LIBFABRIC_H
 
 #include <arpa/inet.h>
-#include <iostream>
-#include <map>
-#include <pthread.h>
-#include <stdlib.h>
+#include <cstdlib>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/uio.h>
-#include <thread>
 #include <unistd.h>
 #include <vector>
 
@@ -52,10 +48,9 @@
 #include <rdma/fi_eq.h>
 #include <rdma/fi_rma.h>
 
-#include "cis/fam_cis_rpc.grpc.pb.h"
-#include "common/fam_context.h"
-#include "common/fam_internal.h"
-#include "common/fam_options.h"
+#include "fam_context.h"
+#include "fam_internal.h"
+#include "fam_options.h"
 #include "fam/fam_exception.h"
 
 namespace openfam {

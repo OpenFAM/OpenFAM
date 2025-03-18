@@ -1,6 +1,6 @@
 /*
  * bitmap.h
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2019-2024 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -30,13 +30,8 @@
 #ifndef BITMAP_H
 #define BITMAP_H
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <iostream>
-
-#include "nvmm/nvmm_fam_atomic.h"
+#include <cstdint>
+#include <cstdbool>
 
 #define BITSIZE (8 * sizeof(uint64_t))
 #define BITMAP_NOTFOUND -1

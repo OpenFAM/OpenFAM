@@ -33,19 +33,18 @@
 #define FAM_CLIENT_RESOURCE_MANAGER_H
 
 #include <boost/lockfree/queue.hpp>
-#include <iostream>
 #include <map>
-#include <thread>
+#include <pthread.h>
 #include <unistd.h>
 
-#include "cis/fam_cis.h"
 #include "common/fam_internal.h"
 #include "common/fam_internal_exception.h"
 #include "common/fam_options.h"
 
-using namespace std;
-
 namespace openfam {
+
+class Fam_CIS;
+
 typedef struct {
     // An 64 bit atomic value to store status and reference count
     std::atomic<uint64_t> statusAndRefcount;

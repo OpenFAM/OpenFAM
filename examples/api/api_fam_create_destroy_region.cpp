@@ -36,6 +36,7 @@ using namespace openfam;
 
 int main(void) {
     int ret = 0;
+    Fam_Region_Descriptor *rd =NULL;
     fam *myFam = new fam();
     Fam_Options *fm = (Fam_Options *)malloc(sizeof(Fam_Options));
     memset((void *)fm, 0, sizeof(Fam_Options));
@@ -49,12 +50,12 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
 
     try {
         // create a 100 MB region with 0777 permissions and RAID5 redundancy
-        Fam_Region_Descriptor *rd = myFam->fam_create_region(
+        rd = myFam->fam_create_region(
             "myRegion", (uint64_t)10000000, 0777, NULL);
         // use the created region...
         if (rd != NULL)
@@ -78,7 +79,12 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
+
+    fam_free_pointers(
+        Fam_Ptr<Fam_Region_Descriptor>(rd,  Fam_Allocator::NEW),
+        Fam_Ptr<Fam_Options>(fm,Fam_Allocator::MALLOC),
+        Fam_Ptr<fam>(myFam, Fam_Allocator::NEW));   
     return (ret);
 }

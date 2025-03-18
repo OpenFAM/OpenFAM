@@ -29,11 +29,7 @@
  */
 
 #include "fam_runtime.h"
-#include <iostream>
 #include <pmi2.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 class Pmi2_Runtime : public Fam_Runtime {
 

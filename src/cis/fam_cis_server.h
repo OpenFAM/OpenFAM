@@ -32,15 +32,10 @@
 #ifndef FAM_CIS_SERVER_H
 #define FAM_CIS_SERVER_H
 
-#include <iostream>
-#include <map>
-#include <thread>
-#include <unistd.h>
+#include <grpcpp/grpcpp.h>
 
-#include "grpcpp/grpcpp.h"
-
-#include "cis/fam_cis_direct.h"
-#include "cis/fam_cis_rpc.grpc.pb.h"
+#include "fam_cis_direct.h"
+#include "fam_cis_rpc.grpc.pb.h"
 
 #include "common/fam_internal.h"
 #include "common/fam_internal_exception.h"
@@ -48,16 +43,12 @@
 #include "common/fam_ops_libfabric.h"
 #include "common/fam_options.h"
 
-#include <boost/atomic.hpp>
-#include <nvmm/heap.h>
-
 namespace openfam {
 
 #define CAS_LOCK_CNT 128
 #define LOCKHASH(offset) (offset >> 7) % CAS_LOCK_CNT
 
 using namespace std;
-using namespace nvmm;
 using namespace metadata;
 
 using grpc::Server;

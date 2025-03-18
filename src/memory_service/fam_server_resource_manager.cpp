@@ -30,9 +30,8 @@
  */
 
 #include "fam_server_resource_manager.h"
-#include <boost/atomic.hpp>
+#include "allocator/memserver_allocator.h"
 
-#include <iomanip>
 #include <string.h>
 #include <unistd.h>
 

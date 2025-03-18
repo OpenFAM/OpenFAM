@@ -29,7 +29,7 @@
  *
  */
 
-#include "cis/fam_cis_client.h"
+#include "fam_cis_client.h"
 #include "common/atomic_queue.h"
 
 namespace openfam {
@@ -71,6 +71,22 @@ Fam_CIS_Client::~Fam_CIS_Client() {
     ::grpc::ClientContext ctx;
 
     stub->signal_termination(&ctx, req, &res);
+    if(copycq)
+    {
+        delete copycq;
+    }
+    if(backupcq)
+    {
+        delete backupcq;
+    }
+    if(restorecq)
+    {
+        delete restorecq;
+    }
+    if(delbackupcq)
+    {
+        delete delbackupcq;
+    }
 }
 
 void Fam_CIS_Client::reset_profile() {

@@ -34,6 +34,7 @@
  * to validate. For the same matrix it should show zero difference.
  */
 
+#include <cstdint>
 #include <iostream>
 #include <algorithm>
 #include <ctime>

@@ -46,7 +46,7 @@
  *
  * Work in progress, UNSTABLE
  * Uses _Generic and 128-bit integer types, tested under gcc 6.3.0. May require
- * “-std=c11” compiler flag if you are using the generic API as documented in
+ * ï¿½-std=c11ï¿½ compiler flag if you are using the generic API as documented in
  * OpenFAM-API-v104.
  *
  * Programming conventions used in the API:
@@ -69,7 +69,9 @@
 #define FAM_H_
 
 #include <stdint.h>   // needed for uint64_t etc.
-#include <sys/stat.h> // needed for mode_t
+#include <sys/stat.h> // needed for mode_tÃŸ
+#include <sys/types.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 namespace openfam {
@@ -1307,6 +1309,58 @@ class fam_context : public fam {
     void fam_context_close(fam_context *);
 };
 
+
+enum class Fam_Allocator 
+{
+    NEW,
+    MALLOC
+};
+
+
+
+template <typename T>
+struct Fam_Ptr 
+{
+    T* ptr;
+    Fam_Allocator type;
+    Fam_Ptr(T* p, Fam_Allocator t) : ptr(p), type(t) {}
+};
+
+inline void fam_free_pointers()
+{
+
+} 
+
+/**
+ * free given pointers. 
+ * Since the base code mixes between malloc and new to allocate memory,
+ * this function free each give pointer based on the allocator type (new, malloc)
+ * item in FAM with the logical XOR of that value and the given value
+ * @tparam T type of a given pointer
+ * @tparam Args Fam_Ptr
+ * @param  input  Fam_Ptr to be freed
+ * @param  args  variadic list of Fam_Ptr to be freed.
+ * @return - none
+*/
+template <typename T, typename... Args>
+inline void fam_free_pointers(Fam_Ptr<T> input, Args... args) 
+{
+    if(input.ptr)
+    {
+        if (input.type == Fam_Allocator::NEW) 
+        {
+            delete input.ptr;
+            input.ptr=NULL;
+        } 
+        else if (input.type == Fam_Allocator::MALLOC)
+        {
+            free(input.ptr);
+            input.ptr=NULL; 
+        }
+    } 
+    fam_free_pointers(args...);
+}
+
 } // namespace openfam
 
 using Fam_Global_Descriptor=openfam::Fam_Global_Descriptor;
@@ -1318,6 +1372,7 @@ using Fam_Permission_Level=openfam::Fam_Permission_Level;
 using Fam_Region_Attributes=openfam::Fam_Region_Attributes;
 using Fam_Stat=openfam::Fam_Stat;
 using Fam_Backup_Options=openfam::Fam_Backup_Options;
+
 #endif /* end of C/C11 Headers */
 
 #endif /* end of FAM_H_ */

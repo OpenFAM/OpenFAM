@@ -1,6 +1,6 @@
 /*
  *   fam_metadata_service_direct.cpp
- *   Copyright (c) 2019-2020,2023 Hewlett Packard Enterprise Development, LP.
+ *   Copyright (c) 2019-2024 Hewlett Packard Enterprise Development, LP.
  * All rights reserved. Redistribution and use in source and binary forms, with
  * or without modification, are permitted provided that the following conditions
  *   are met:
@@ -33,9 +33,6 @@
 
 #include "fam_metadata_service_direct.h"
 
-#include <boost/atomic.hpp>
-
-#include <atomic>
 #include <bits/stdc++.h>
 #include <chrono>
 #include <iomanip>

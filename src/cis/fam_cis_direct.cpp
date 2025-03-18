@@ -1,6 +1,6 @@
 /*
  * fam_cis_direct.cpp
- * Copyright (c) 2020-2023 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2024 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -28,31 +28,31 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-#include "cis/fam_cis_direct.h"
+
+#include "fam_cis_direct.h"
 #include "common/fam_config_info.h"
 #include "common/fam_internal.h"
 #include "common/fam_memserver_profile.h"
 #include <boost/atomic.hpp>
-#include <boost/thread.hpp>
-#include <chrono>
-#include <cis/fam_cis_client.h>
 #include <future>
-#include <iomanip>
-#include <iostream>
-#include <memory_service/fam_memory_service_client.h>
-#include <metadata_service/fam_metadata_service_client.h>
-#include <stdlib.h>
-#include <string.h>
+#include <sstream>
 #include <string>
-#include <thread>
 #include <unistd.h>
 
+#include "memory_service/fam_memory_service.h"
+#include "memory_service/fam_memory_service_direct.h"
+#include "memory_service/fam_memory_service_client.h"
+
+#include "metadata_service/fam_metadata_service_direct.h"
+#include "metadata_service/fam_metadata_service_client.h"
+
 #ifdef USE_THALLIUM
-#include <common/fam_thallium_engine_helper.h>
-#include <memory_service/fam_memory_service_thallium_client.h>
-#include <metadata_service/fam_metadata_service_thallium_client.h>
+#include "common/fam_thallium_engine_helper.h"
+#include "memory_service/fam_memory_service_thallium_client.h"
+#include "metadata_service/fam_metadata_service_thallium_client.h"
 #include <thallium.hpp>
 #include <thallium/serialization/stl/string.hpp>
+namespace tl = thallium;
 #endif
 
 #define MIN_REGION_SIZE (1UL << 20)
@@ -60,6 +60,8 @@
 
 using namespace std;
 using namespace chrono;
+using namespace metadata;
+
 namespace openfam {
 MEMSERVER_PROFILE_START(CIS_DIRECT)
 #ifdef MEMSERVER_PROFILE

@@ -28,16 +28,15 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-#include "allocator/memserver_allocator.h"
-#include "common/atomic_queue.h"
+#include "memserver_allocator.h"
 #include "common/fam_memserver_profile.h"
-#include <boost/atomic.hpp>
-#include <chrono>
+#include "common/fam_config_info.h"
+#include "common/atomic_queue.h"
 #include <dirent.h>
-#include <iomanip>
 #include <libgen.h>
 #include <string.h>
 #include <unistd.h>
+
 using namespace std;
 using namespace chrono;
 

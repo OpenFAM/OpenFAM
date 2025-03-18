@@ -49,7 +49,7 @@ int main() {
     const char* regionName = strdup("CWrapperRegion");
     const char* dataitem1 = strdup("dataitem1");
     size_t regionSize = 1024 * 1024 * 1024LLU;
-    int rlevel = 1;
+    // int rlevel = 1; // unused variable
     // fam initialize
     int ret = c_fam_initialize(fam_inst, groupName, &fam_opts);
     if (ret != 0) {

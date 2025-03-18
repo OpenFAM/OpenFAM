@@ -34,6 +34,7 @@
 #include <sys/types.h>
 
 #include "allocator/memserver_allocator.h"
+#include "common/fam_config_info.h"
 #include "memory_service/fam_memory_service.h"
 #include "memory_service/fam_server_resource_manager.h"
 

@@ -29,18 +29,17 @@
  *
  */
 
-#include <iostream>
+
 #include <sstream>
-#include <string.h>
-#include <vector>
+#include <cstring>
 
 #include <rdma/fabric.h>
 #include <rdma/fi_domain.h>
 #include <rdma/fi_endpoint.h>
 
-#include "common/fam_context.h"
-#include "common/fam_libfabric.h"
-#include "common/fam_options.h"
+#include "fam_context.h"
+#include "fam_libfabric.h"
+#include "fam_options.h"
 
 namespace openfam {
 

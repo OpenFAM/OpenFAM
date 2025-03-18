@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python3.11
 # openfam_adm.py
 # Copyright (c) 2022-2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
 # Redistribution and use in source and binary forms, with or without modification, are permitted provided
@@ -335,30 +335,40 @@ if args.create_config_files:
 
     # Open all config file templates
     with open(openfam_install_path + "/config/fam_pe_config.yaml") as pe_config_infile:
-        pe_config_doc = ruamel.yaml.load(
-            pe_config_infile, ruamel.yaml.RoundTripLoader)
+        yaml = ruamel.yaml.YAML(typ='rt')
+        yaml.RoundTripLoader = True
+        pe_config_doc = yaml.load(
+            pe_config_infile)
     with open(
         openfam_install_path + "/config/fam_client_interface_config.yaml"
     ) as cis_config_infile:
-        cis_config_doc = ruamel.yaml.load(
-            cis_config_infile, ruamel.yaml.RoundTripLoader)
+        yaml = ruamel.yaml.YAML(typ='rt')
+        yaml.RoundTripLoader = True
+        cis_config_doc = yaml.load(
+            cis_config_infile)
     with open(
         openfam_install_path + "/config/fam_memoryserver_config.yaml"
     ) as memservice_config_infile:
-        memservice_config_doc = ruamel.yaml.load(
-            memservice_config_infile, ruamel.yaml.RoundTripLoader
+        yaml = ruamel.yaml.YAML(typ='rt')
+        yaml.RoundTripLoader = True
+        memservice_config_doc = yaml.load(
+            memservice_config_infile
         )
     with open(
         openfam_install_path + "/config/fam_metadata_config.yaml"
     ) as metaservice_config_infile:
-        metaservice_config_doc = ruamel.yaml.load(
-            metaservice_config_infile, ruamel.yaml.RoundTripLoader
+        yaml = ruamel.yaml.YAML(typ='rt')
+        yaml.RoundTripLoader = True
+        metaservice_config_doc = yaml.load(
+            metaservice_config_infile
         )
     with open(
         openfam_install_path + "/config/openfam_admin_tool.yaml"
     ) as openfam_admin_tool_config_infile:
-        openfam_admin_tool_config_doc = ruamel.yaml.load(
-            openfam_admin_tool_config_infile, ruamel.yaml.RoundTripLoader
+        yaml = ruamel.yaml.YAML(typ='rt')
+        yaml.RoundTripLoader = True
+        openfam_admin_tool_config_doc = yaml.load(
+            openfam_admin_tool_config_infile
         )
 
     if args.model is not None:
@@ -616,38 +626,45 @@ if args.create_config_files:
     cmd = "mkdir -p " + args.config_file_path + "/config"
     os.system(cmd)
     with open(args.config_file_path + "/config/fam_pe_config.yaml", "w") as pe_config_outfile:
-        ruamel.yaml.dump(
-            pe_config_doc, pe_config_outfile, Dumper=ruamel.yaml.RoundTripDumper
+        yaml = ruamel.yaml.YAML()
+        yaml.RoundTripDumper = True
+        yaml.dump(
+            pe_config_doc, pe_config_outfile
         )
     with open(
         args.config_file_path + "/config/fam_client_interface_config.yaml", "w"
     ) as cis_config_outfile:
-        ruamel.yaml.dump(
-            cis_config_doc, cis_config_outfile, Dumper=ruamel.yaml.RoundTripDumper
+        yaml = ruamel.yaml.YAML()
+        yaml.RoundTripDumper = True
+        yaml.dump(
+            cis_config_doc, cis_config_outfile
         )
     with open(
         args.config_file_path + "/config/fam_memoryserver_config.yaml", "w"
     ) as memservice_config_outfile:
-        ruamel.yaml.dump(
+        yaml = ruamel.yaml.YAML()
+        yaml.RoundTripDumper = True
+        yaml.dump(
             memservice_config_doc,
-            memservice_config_outfile,
-            Dumper=ruamel.yaml.RoundTripDumper,
+            memservice_config_outfile
         )
     with open(
         args.config_file_path + "/config/fam_metadata_config.yaml", "w"
     ) as metaservice_config_outfile:
-        ruamel.yaml.dump(
+        yaml = ruamel.yaml.YAML()
+        yaml.RoundTripDumper = True
+        yaml.dump(
             metaservice_config_doc,
-            metaservice_config_outfile,
-            Dumper=ruamel.yaml.RoundTripDumper,
+            metaservice_config_outfile
         )
     with open(
         args.config_file_path + "/config/openfam_admin_tool.yaml", "w"
     ) as openfam_admin_tool_config_outfile:
-        ruamel.yaml.dump(
+        yaml = ruamel.yaml.YAML()
+        yaml.RoundTripDumper = True
+        yaml.dump(
             openfam_admin_tool_config_doc,
-            openfam_admin_tool_config_outfile,
-            Dumper=ruamel.yaml.RoundTripDumper,
+            openfam_admin_tool_config_outfile
         )
 
     if not args.start_service:
@@ -686,30 +703,40 @@ else:
     else:
         openfam_config_path = os.environ["OPENFAM_ROOT"]
 with open(openfam_config_path + "/config/fam_pe_config.yaml") as pe_config_infile:
-    pe_config_doc = ruamel.yaml.load(
-        pe_config_infile, ruamel.yaml.RoundTripLoader)
+    yaml = ruamel.yaml.YAML(typ='rt')
+    yaml.RoundTripLoader = True
+    pe_config_doc = yaml.load(
+        pe_config_infile)
 with open(
     openfam_config_path + "/config/fam_client_interface_config.yaml"
 ) as cis_config_infile:
-    cis_config_doc = ruamel.yaml.load(
-        cis_config_infile, ruamel.yaml.RoundTripLoader)
+    yaml = ruamel.yaml.YAML(typ='rt')
+    yaml.RoundTripLoader = True
+    cis_config_doc = yaml.load(
+        cis_config_infile)
 with open(
     openfam_config_path + "/config/fam_memoryserver_config.yaml"
 ) as memservice_config_infile:
-    memservice_config_doc = ruamel.yaml.load(
-        memservice_config_infile, ruamel.yaml.RoundTripLoader
+    yaml = ruamel.yaml.YAML(typ='rt')
+    yaml.RoundTripLoader = True
+    memservice_config_doc = yaml.load(
+        memservice_config_infile
     )
 with open(
     openfam_config_path + "/config/fam_metadata_config.yaml"
 ) as metaservice_config_infile:
-    metaservice_config_doc = ruamel.yaml.load(
-        metaservice_config_infile, ruamel.yaml.RoundTripLoader
+    yaml = ruamel.yaml.YAML(typ='rt')
+    yaml.RoundTripLoader = True
+    metaservice_config_doc = yaml.load(
+        metaservice_config_infile
     )
 with open(
     openfam_config_path + "/config/openfam_admin_tool.yaml"
 ) as openfam_admin_tool_config_infile:
-    openfam_admin_tool_config_doc = ruamel.yaml.load(
-        openfam_admin_tool_config_infile, ruamel.yaml.RoundTripLoader
+    yaml = ruamel.yaml.YAML(typ='rt')
+    yaml.RoundTripLoader = True
+    openfam_admin_tool_config_doc = yaml.load(
+        openfam_admin_tool_config_infile
     )
 
 # Assign values to config options if corresponding argument is set
@@ -748,7 +775,7 @@ if args.start_service:
                     + openfam_install_path
                     + "/bin/memory_server -m "
                     + memory_server_id
-                    + "> /dev/null 2>&1 &'\""
+                    + " > /dev/null 2>&1 &'\""
                 )
             elif openfam_admin_tool_config_doc["launcher"] == "slurm":
                 command_options = openfam_admin_tool_config_doc["launcher_options"]["common"]
@@ -801,7 +828,7 @@ if args.start_service:
                     + metadata_server_addr
                     + " -r "
                     + str(metadata_server_rpc_port)
-                    + "> /dev/null 2>&1 &'\""
+                    + " > /dev/null 2>&1 &'\""
                 )
             elif openfam_admin_tool_config_doc["launcher"] == "slurm":
                 command_options = openfam_admin_tool_config_doc["launcher_options"]["common"]
@@ -855,7 +882,7 @@ if args.start_service:
                 + cis_addr
                 + " -r "
                 + str(cis_rpc_port)
-                + "> /dev/null 2>&1 &'\""
+                + " > /dev/null 2>&1 &'\""
             )
         elif openfam_admin_tool_config_doc["launcher"] == "slurm":
             cmd = (

@@ -38,9 +38,12 @@ using namespace openfam;
 int main(void) {
     int ret = 0;
     Fam_Descriptor *descriptor = NULL;
+    fam_context *ctx = NULL;
 
     fam *myFam = new fam();
     Fam_Options *fm = (Fam_Options *)malloc(sizeof(Fam_Options));
+    Fam_Region_Descriptor *rd = NULL;
+    Fam_Region_Descriptor *rd2 = NULL;
     memset((void *)fm, 0, sizeof(Fam_Options));
     // assume that no specific options are needed by the implementation
     fm->runtime = strdup("NONE");
@@ -54,11 +57,12 @@ int main(void) {
         // so we must terminate with the same value
         return -1;
     }
-    fam_context *ctx = myFam->fam_context_open();
+
+    ctx = myFam->fam_context_open();
 
     try {
         // create a 100 MB region with 0777 permissions
-        Fam_Region_Descriptor *rd = myFam->fam_create_region(
+        rd = myFam->fam_create_region(
             "myRegion", (uint64_t)10000000, 0777, NULL);
         // use the created region...
         if (rd != NULL)
@@ -83,7 +87,7 @@ int main(void) {
     } catch (Fam_Exception &e) {
         printf("Create/Destroy region failed: %d: %s\n", e.fam_error(),
                e.fam_error_msg());
-        Fam_Region_Descriptor *rd = myFam->fam_lookup_region("myRegion");
+        rd2 = myFam->fam_lookup_region("myRegion");
         myFam->fam_destroy_region(rd);
         ret = -1;
     }
@@ -97,7 +101,14 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
+
+    fam_free_pointers(
+        Fam_Ptr<Fam_Region_Descriptor>(rd,  Fam_Allocator::NEW),
+        Fam_Ptr<Fam_Region_Descriptor>(rd2,  Fam_Allocator::NEW),
+        Fam_Ptr<Fam_Descriptor>(descriptor, Fam_Allocator::NEW),
+        Fam_Ptr<Fam_Options>(fm,Fam_Allocator::MALLOC),
+        Fam_Ptr<fam>(myFam, Fam_Allocator::NEW)); 
     return (ret);
 }

@@ -30,7 +30,7 @@
  */
 #include "common/fam_options.h"
 #include "common/fam_test_config.h"
-#include "fam_utils.h"
+#include "util/fam_utils.h"
 #include "pagerank_common.h"
 #include <fam/fam.h>
 #include <fam/fam_exception.h>

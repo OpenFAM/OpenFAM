@@ -1,6 +1,6 @@
 /*
  * bitmap.cpp
- * Copyright (c) 2019 Hewlett Packard Enterprise Development, LP. All rights
+ * Copyright (c) 2019-2024 Hewlett Packard Enterprise Development, LP. All rights
  * reserved. Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  * 1. Redistributions of source code must retain the above copyright notice,
@@ -28,8 +28,8 @@
  *
  */
 #include "bitmap.h"
-
-using namespace std;
+#include <nvmm/nvmm_fam_atomic.h>
+#include <iostream>
 
 /* bitwise functions */
 static bool get(uint64_t, uint64_t);
@@ -43,7 +43,7 @@ int bitmap_init(bitmap *bmap) {
     int fd = -1;
 
     if (fam_atomic_register_region(bmap->map, size, fd, 0)) {
-        cout << "unable to register atomic region" << endl;
+        std::cout << "unable to register atomic region" << std::endl;
         return -1;
     }
     // Intialize the bitmap with zero

@@ -1,5 +1,3 @@
-enable_testing()
-include_directories(${PROJECT_BINARY_DIR}/test) # private headers (test)
 add_custom_target(multi-memnode-test ${CMAKE_CTEST_COMMAND} --force-new-ctest-process)
 function (add_fam_test file_name)
     add_executable(${file_name} ${file_name}.cpp)

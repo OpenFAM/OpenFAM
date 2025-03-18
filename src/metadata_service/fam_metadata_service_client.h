@@ -36,19 +36,11 @@
 
 #include <grpc/impl/codegen/log.h>
 #include <grpcpp/grpcpp.h>
-#include <iostream>
-#include <map>
-#include <sstream>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <string>
 #include <unistd.h>
 
-#include "fam_metadata_rpc.grpc.pb.h"
 #include "fam_metadata_service.h"
-
-using namespace std;
+#include "fam_metadata_rpc.grpc.pb.h"
 
 namespace metadata {
 

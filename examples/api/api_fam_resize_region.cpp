@@ -48,8 +48,8 @@ int main(void) {
         printf("FAM Initialization failed: %s\n", e.fam_error_msg());
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
-        // so we must terminate with the same value
-        return -1;
+        // so we must terminate with the same value   
+        ret = -1;
     }
 
     try {
@@ -81,7 +81,10 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
-    }
+        ret = -1;
+    }     
+    fam_free_pointers(
+        Fam_Ptr<Fam_Options>(fm,Fam_Allocator::MALLOC),
+        Fam_Ptr<fam>(myFam, Fam_Allocator::NEW));  
     return (ret);
 }

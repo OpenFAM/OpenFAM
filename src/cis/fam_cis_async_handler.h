@@ -34,7 +34,6 @@
 #include "cis/fam_cis_server.h"
 #include "common/fam_memserver_profile.h"
 
-#include <boost/atomic.hpp>
 #include <chrono>
 #include <iomanip>
 #include <string.h>

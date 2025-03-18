@@ -37,7 +37,7 @@
 #include <grpc/impl/codegen/log.h>
 #include <grpcpp/grpcpp.h>
 
-#include "cis/fam_cis_rpc.grpc.pb.h"
+#include "fam_cis_rpc.grpc.pb.h"
 #include "common/fam_async_qhandler.h"
 #include "common/fam_internal.h"
 #include "common/fam_internal_exception.h"
@@ -47,7 +47,6 @@ using namespace std;
 
 namespace openfam {
 
-enum { BACKUP_READ = 0, BACKUP_WRITE, BACKUP_EXEC };
 /**
  * structure for keeping state and data information of fam copy
  */

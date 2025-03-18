@@ -29,5 +29,4 @@ add_executable(fam_pagerank_parmat fam_pagerank_parmat.cpp)
 target_link_libraries(fam_pagerank_parmat openfam)
 add_executable(pagerank_standalone pagerank_standalone.cpp)
 
-include_directories(${PROJECT_BINARY_DIR}/test) # private headers (test)
 

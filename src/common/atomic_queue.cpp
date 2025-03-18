@@ -30,8 +30,8 @@
 
 #include "atomic_queue.h"
 #include "fam_libfabric.h"
-#include <allocator/memserver_allocator.h>
-#include <atomic>
+#include "allocator/memserver_allocator.h"
+
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
 #include <map>

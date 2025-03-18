@@ -1,0 +1,25 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4e30829..d9da0ef 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -124,7 +124,7 @@ set(cxx_flags
+   -Wconversion
+   -Wunreachable-code
+ )
+-set(debug_flags -g -Og -fsanitize=address -fsanitize=leak)
++set(debug_flags -g -O0 -fsanitize=address -fsanitize=leak)
+ # --coverage enables required flags on both GCC and LLVM and works with both compilation and linking
+ set(coverage_flags --coverage)
+ add_compile_options(
+diff --git a/include/cluster/config.h b/include/cluster/config.h
+index 848b3d0..d84928d 100644
+--- a/include/cluster/config.h
++++ b/include/cluster/config.h
+@@ -31,6 +31,7 @@
+ #include <iostream>
+ #include <assert.h>
+ #include <string>
++#include <cstdint>
+ 
+ namespace radixtree {
+ 

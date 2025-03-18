@@ -37,8 +37,6 @@
 #include "common/fam_config_info.h"
 #include "common/fam_memserver_profile.h"
 
-#include <boost/atomic.hpp>
-
 #include <chrono>
 #include <fstream>
 #include <iomanip>

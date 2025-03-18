@@ -151,3 +151,32 @@ $ cd OpenFAM
  	```
 
 Note: cmake command should be re-run if fam\_rpc.proto file is modified to generate updated fam\_rpc.grpc.pb.cc and fam_rpc.pb.cc files
+
+## Building with containers
+Assuming the repository has been cloned into opencube-openfam
+```
+   $ cd opencube-openfam 
+   $ git checkout opencube-stable-release
+   $ cd ..
+   $ podman build -t openfam-test -f opencube-openfam/Dockerfile .
+   $ podman run --shm-size=1g  --name openfam-conatiner --rm -it openfam-test /bin/bash
+   <containerId>:/ # openfam_adm --start
+   ----------------------------
+   Details of OpenFAM Services:
+   ----------------------------
+   Service             Id  Host         RPC Port
+   ----------------  ----  ---------  ----------
+   memory service       0  127.0.0.1        8793
+   metadata service     0  127.0.0.1        8788
+   CIS                  0  127.0.0.1        8787
+   <containerId>:/ # opencube-openfam/build/examples/api/api_fam_add
+   FAM initialized
+   [2024-11-30 01:05:42.738790] [0x0000ffff0b000040] [trace]   (/radixtreeß/src/kvs_radix_tree.cc:609)   successfully inserted myRegion = 21
+
+   [2024-11-30 01:05:42.841846] [0x0000ffff0b000040] [trace]   (/radixtree/src/kvs_radix_tree.cc:609)   successfully inserted 21 = 
+   [2024-11-30 01:05:42.846976] [0x0000ffff09a00040] [trace]   (/radixtree/src/kvs_radix_tree.cc:609)   successfully inserted myItem = 2
+
+   [2024-11-30 01:05:42.847036] [0x0000ffff09a00040] [trace]   (/radixtree/src/kvs_radix_tree.cc:609)   successfully inserted 2 = 
+   fam_add successful!!
+   FAM finalized
+```

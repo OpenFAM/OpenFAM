@@ -1,6 +1,6 @@
 /*
  * fam_ops.h
- * Copyright (c) 2019-2021, 2023 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2019-2024 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -34,14 +34,12 @@
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 
-#include "common/fam_internal.h"
-#include "common/fam_internal_exception.h"
-#include "common/fam_options.h"
+#include "fam_internal.h"
+#include "fam_internal_exception.h"
+#include "fam_options.h"
 
-#include <iostream>
 #include <sstream>
 
-using namespace std;
 using namespace openfam;
 
 #define int__ true

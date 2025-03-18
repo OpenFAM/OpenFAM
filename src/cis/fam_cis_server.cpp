@@ -28,11 +28,9 @@
  * See https://spdx.org/licenses/BSD-3-Clause
  *
  */
-#include "cis/fam_cis_server.h"
+#include "fam_cis_server.h"
 #include "common/fam_memserver_profile.h"
 #include <thread>
-
-#include <boost/atomic.hpp>
 
 #include <chrono>
 #include <iomanip>

@@ -41,4 +41,3 @@
  #
 add_executable(fam_GUPS fam_GUPS.cpp)
 target_link_libraries(fam_GUPS openfam   -lpmi -lm)
-include_directories(${PROJECT_BINARY_DIR}/test)

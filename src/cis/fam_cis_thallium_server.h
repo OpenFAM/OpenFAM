@@ -32,11 +32,6 @@
 #ifndef FAM_CIS_THALLIUM_SERVER_H
 #define FAM_CIS_THALLIUM_SERVER_H
 
-#include <iostream>
-#include <map>
-#include <thread>
-#include <unistd.h>
-
 #include "cis/fam_cis_direct.h"
 #include "fam_cis_thallium_rpc_structures.h"
 #include <thallium/serialization/stl/string.hpp>
@@ -47,9 +42,6 @@
 #include "common/fam_ops_libfabric.h"
 #include "common/fam_options.h"
 
-#include <boost/atomic.hpp>
-#include <nvmm/heap.h>
-
 namespace tl = thallium;
 namespace openfam {
 
@@ -57,7 +49,6 @@ namespace openfam {
 #define LOCKHASH(offset) (offset >> 7) % CAS_LOCK_CNT
 
 using namespace std;
-using namespace nvmm;
 using namespace metadata;
 
 class Fam_CIS_Thallium_Server : public tl::provider<Fam_CIS_Thallium_Server> {

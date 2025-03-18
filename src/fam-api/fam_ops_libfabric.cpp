@@ -54,9 +54,23 @@ namespace openfam {
 Fam_Ops_Libfabric::~Fam_Ops_Libfabric() {
 
     delete contexts;
-    delete defContexts;
+    if(defContexts)
+    {
+        delete defContexts;
+    }
     delete fiAddrs;
-    delete memServerAddrs;
+    if(memServerAddrs)
+    {
+        for(auto it=memServerAddrs->begin(); it != memServerAddrs->end();++it)
+        {
+            if(it->second.first)
+            {
+                free(it->second.first);
+            }
+        }
+        memServerAddrs->clear();
+        delete memServerAddrs;
+    }
     delete fiMemsrvMap;
     free(service);
     free(provider);
@@ -336,6 +350,9 @@ void Fam_Ops_Libfabric::populate_address_vector(void *memServerInfoBuffer,
             THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
         }
     }
+
+    if(memServerInfoBuffer)
+        free(memServerInfoBuffer);
 }
 
 Fam_Context *Fam_Ops_Libfabric::get_context(Fam_Descriptor *descriptor) {
@@ -427,7 +444,8 @@ int Fam_Ops_Libfabric::put_blocking(void *local, Fam_Descriptor *descriptor,
             famCtx->acquire_RDLock();
             try {
                 ret = fabric_completion_wait(famCtx, ctx, 0);
-                delete ctx;
+                struct fam_fi_context * dCTX= (struct fam_fi_context *) ctx;
+                delete dCTX;
             } catch (...) {
                 famCtx->inc_num_tx_fail_cnt(1l);
                 // Release Fam_Context read lock
@@ -729,7 +747,8 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
         famCtx->acquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
-            delete ctx;
+            struct fam_fi_context * dCTX = (struct fam_fi_context *)ctx;
+            delete dCTX;
         } catch (...) {
             famCtx->inc_num_tx_fail_cnt(1l);
             // Release Fam_Context read lock
@@ -1025,7 +1044,8 @@ int Fam_Ops_Libfabric::scatter_blocking(void *local, Fam_Descriptor *descriptor,
         famCtx->acquire_RDLock();
         try {
             ret = fabric_completion_wait(famCtx, ctx, 0);
-            delete ctx;
+            struct fam_fi_context * dCTX = (struct fam_fi_context *) ctx;
+            delete dCTX;
         } catch (...) {
             famCtx->inc_num_tx_fail_cnt(1l);
             // Release Fam_Context read lock

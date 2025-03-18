@@ -29,21 +29,17 @@
  *
  */
 
-#include "common/fam_libfabric.h"
-#include "common/fam_context.h"
-#include "common/fam_internal.h"
-#include "common/fam_internal_exception.h"
-#include "common/fam_options.h"
+#include <sstream>
+#include "fam_libfabric.h"
+#include "fam_context.h"
+#include "fam_internal.h"
+#include "fam_internal_exception.h"
+#include "fam_options.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 #include "string.h"
-#include <atomic>
 #include <boost/atomic.hpp>
-#include <chrono>
-#include <iomanip>
 #include <limits.h>
-#include <list>
-#include <sstream>
 #include <unistd.h>
 
 #ifdef __has_include
@@ -53,7 +49,6 @@
 #endif
 
 using namespace std;
-using namespace chrono;
 
 using namespace std;
 

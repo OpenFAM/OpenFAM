@@ -30,11 +30,11 @@
 
 #ifndef ATOMIC_QUEUE_H_
 #define ATOMIC_QUEUE_H_
+
 #include "fam_ops_libfabric.h"
-#include <allocator/memserver_allocator.h>
-#include <atomic>
-#include <fam/fam.h>
-#include <fam/fam_exception.h>
+#include "allocator/memserver_allocator.h"
+#include "fam/fam.h"
+#include "fam/fam_exception.h"
 
 #define MAX_NODE_ADDR_SIZE 64 //#define FT_MAX_CTRL_MSG 64
 #define MAX_DATA_IN_MSG 128

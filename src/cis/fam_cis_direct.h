@@ -35,27 +35,20 @@
 #include <sys/types.h>
 #include <unordered_map>
 
+#include "fam/fam.h"
 #include "cis/fam_cis.h"
 #include "common/fam_config_info.h"
-#include "memory_service/fam_memory_service.h"
-#include "memory_service/fam_memory_service_client.h"
-#include "memory_service/fam_memory_service_direct.h"
-#include "metadata_service/fam_metadata_service.h"
-#include "metadata_service/fam_metadata_service_client.h"
-#include "metadata_service/fam_metadata_service_direct.h"
 
-#ifdef USE_THALLIUM
-#include "memory_service/fam_memory_service_thallium_client.h"
-#include "metadata_service/fam_metadata_service_thallium_client.h"
-#include <thallium.hpp>
-namespace tl = thallium;
-#endif
+#include "metadata_service/fam_metadata_service.h"
 
 using namespace metadata;
 
 namespace openfam {
 
+class Fam_Memory_Service;
+
 class Fam_CIS_Direct : public Fam_CIS {
+
   public:
     Fam_CIS_Direct(char *cisName, bool useAsyncCopy_ = false,
                    bool isSharedMemory = false);
@@ -68,7 +61,7 @@ class Fam_CIS_Direct : public Fam_CIS {
 
     Fam_Memory_Service *get_memory_service(uint64_t memoryServerId);
 
-    Fam_Metadata_Service *get_metadata_service(uint64_t metadataServerId);
+    metadata::Fam_Metadata_Service *get_metadata_service(uint64_t metadataServerId);
 
     uint64_t get_num_memory_servers();
     Fam_Region_Item_Info create_region(string name, size_t nbytes,
@@ -95,10 +88,10 @@ class Fam_CIS_Direct : public Fam_CIS {
                                     mode_t permission, uint64_t memoryServerId,
                                     uint32_t uid, uint32_t gid);
     bool check_region_permission(Fam_Region_Metadata region, bool op,
-                                 Fam_Metadata_Service *metadataService,
+                                 metadata::Fam_Metadata_Service *metadataService,
                                  uint32_t uid, uint32_t gid);
     bool check_dataitem_permission(Fam_DataItem_Metadata dataitem, bool op,
-                                   Fam_Metadata_Service *metadataService,
+                                   metadata::Fam_Metadata_Service *metadataService,
                                    uint32_t uid, uint32_t gid);
     Fam_Region_Item_Info lookup_region(string name, uint32_t uid, uint32_t gid);
 
@@ -263,12 +256,12 @@ class Fam_CIS_Direct : public Fam_CIS {
         uint64_t *offsets);
 
     void register_region_memory(
-        Fam_Region_Metadata region, Fam_Metadata_Service *metadataService,
+        Fam_Region_Metadata region, metadata::Fam_Metadata_Service *metadataService,
         std::vector<Fam_Memory_Service *> regionMemoryServiceList, uint32_t uid,
         uint32_t gid);
 
     void register_dataitem_memory(
-        Fam_DataItem_Metadata dataitem, Fam_Metadata_Service *metadataService,
+        Fam_DataItem_Metadata dataitem, metadata::Fam_Metadata_Service *metadataService,
         std::vector<Fam_Memory_Service *> memoryServiceList, uint32_t uid,
         uint32_t gid, Fam_Region_Item_Info *info);
 

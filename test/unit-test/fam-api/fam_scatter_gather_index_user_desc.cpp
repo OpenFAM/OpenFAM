@@ -31,8 +31,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "common/fam_libfabric.h"
-#include "common/fam_ops_libfabric.h"
 #include <fam/fam.h>
 #include <fam/fam_exception.h>
 

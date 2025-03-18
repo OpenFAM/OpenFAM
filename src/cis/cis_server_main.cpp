@@ -1,5 +1,5 @@
 /*
- * metadata_server_main.cpp
+ * cis_server_main.cpp
  * Copyright (c) 2020,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
@@ -33,74 +33,82 @@
 #include <signal.h>
 #endif
 
-#include "common/fam_options.h"
-#include "metadata_service/fam_metadata_service_direct.h"
-#include "metadata_service/fam_metadata_service_server.h"
+#include "fam_cis_async_handler.h"
+#include "fam_cis_direct.h"
+#include "fam_cis_server.h"
+#include "common/fam_config_info.h"
 #include <iostream>
-#include <thread>
-using namespace std;
-using namespace metadata;
+#include <string>
 
 #ifdef USE_THALLIUM
-#include "metadata_service/fam_metadata_service_thallium_server.h"
+#include "fam_cis_thallium_server.h"
+#include "common/fam_thallium_engine_helper.h"
 #include <thallium.hpp>
+#include <thread>
 namespace tl = thallium;
 #endif
+using namespace std;
+using namespace openfam;
 
 #ifdef OPENFAM_VERSION
-#define METADATASERVER_VERSION OPENFAM_VERSION
+#define CIS_SERVER_VERSION OPENFAM_VERSION
 #else
-#define METADATASERVER_VERSION "0.0.0"
+#define CIS_SERVER_VERSION "0.0.0"
 #endif
 
 #ifdef COVERAGE
 extern "C" void __gcov_flush();
 void signal_handler(int signum) {
-    cout << "Shutting down metadata server!! signal #" << signum << endl;
+    cout << "Shutting down CIS server!! signal #" << signum << endl;
     __gcov_flush();
     exit(1);
 }
 #endif
 
-Fam_Metadata_Service_Server *metadataService;
-Fam_Metadata_Service_Direct *direct_metadataService;
+#ifdef MEMSERVER_PROFILE
+void profile_dump_handler(int signum) {
+    cout << "Dumping CIS server profile data....!! #" << signum << endl;
+    cisServer->dump_profile();
+}
+#endif
+
+Fam_CIS_Direct *direct_CIS;
+Fam_CIS_Async_Handler *cisServer;
 
 #ifdef USE_THALLIUM
-Fam_Metadata_Service_Thallium_Server *metadataThalliumService;
+Fam_CIS_Thallium_Server *ThalliumCIS;
 void thallium_server() {
-    tl::engine myEngine(direct_metadataService->get_rpc_protocol_type(),
-                        THALLIUM_SERVER_MODE, false, -1);
-    metadataThalliumService = new Fam_Metadata_Service_Thallium_Server(
-        direct_metadataService, myEngine);
-    metadataThalliumService->run();
+    Thallium_Engine *thal_engine_gen =
+        Thallium_Engine::get_instance(direct_CIS->get_rpc_protocol_type());
+    tl::engine engine = thal_engine_gen->get_engine();
+    ThalliumCIS = new Fam_CIS_Thallium_Server(direct_CIS, engine);
+    ThalliumCIS->run();
 }
 #endif
 
 int main(int argc, char *argv[]) {
-    uint64_t rpcPort = 8788;
+    uint64_t rpcPort = 8787;
     char *name = strdup("127.0.0.1");
 
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
             (std::string(argv[i]) == "--version")) {
-            cout << "Metadata Server version : " << METADATASERVER_VERSION
-                 << "\n";
+            cout << "CIS Server version : " << CIS_SERVER_VERSION << "\n";
             exit(0);
         } else if ((std::string(argv[i]) == "-h") ||
                    (std::string(argv[i]) == "--help")) {
-            cout
-                << "Usage : \n"
-                << "\t./metadataserver <options> \n"
-                << "\n"
-                << "Options : \n"
-                << "\t-a/--address   : Address of the metadata server "
-                   "(default value is localhost) \n"
-                << "\n"
-                << "\t-r/--rpcport        : RPC port (default value is 8787)\n"
-                << "\n"
-                << "\t-v/--version        : Display metadata server version  \n"
-                << "\n"
-                << endl;
+            cout << "Usage : \n"
+                 << "\t./cis_server <options> \n"
+                 << "\n"
+                 << "Options : \n"
+                 << "\t-a/--address   : Address of the CIS server "
+                    "(default value is localhost) \n"
+                 << "\n"
+                 << "\t-r/--rpcport        : RPC port (default value is 8787)\n"
+                 << "\n"
+                 << "\t-v/--version        : Display CIS server version  \n"
+                 << "\n"
+                 << endl;
             exit(0);
         } else if ((std::string(argv[i]) == "-a") ||
                    (std::string(argv[i]) == "--address")) {
@@ -117,41 +125,42 @@ int main(int argc, char *argv[]) {
     signal(SIGTERM, signal_handler);
 #endif
 
+#ifdef MEMSERVER_PROFILE
+    signal(SIGINT, profile_dump_handler);
+#endif
     try {
-        direct_metadataService = new Fam_Metadata_Service_Direct(false);
-        metadataService = new Fam_Metadata_Service_Server(
-            rpcPort, name, direct_metadataService);
+        direct_CIS = new Fam_CIS_Direct(NULL);
+        cisServer = new Fam_CIS_Async_Handler(rpcPort, name, direct_CIS);
 #ifdef USE_THALLIUM
+        // check rpc and start thallium server
+        ThalliumCIS = NULL;
         std::thread thread_1;
-        if (strcmp(direct_metadataService->get_rpc_framework_type().c_str(),
+        if (strcmp(direct_CIS->get_rpc_framework_type().c_str(),
                    FAM_OPTIONS_THALLIUM_STR) == 0) {
-            // start thallium server on a new thread
             thread_1 = std::thread(&thallium_server);
         }
 #endif
         // start grpc server
-        metadataService->run();
+        cisServer->run();
     } catch (Fam_Exception &e) {
-        if (metadataService) {
-            delete metadataService;
+        if (cisServer) {
+            delete cisServer;
         }
 #ifdef USE_THALLIUM
-        else if (metadataThalliumService) {
-            delete metadataThalliumService;
+        else if (ThalliumCIS) {
+            delete ThalliumCIS;
         }
 #endif
         cout << "Error code: " << e.fam_error() << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
     }
 
-    if (metadataService) {
-        delete metadataService;
-        metadataService = NULL;
+    if (cisServer) {
+        delete cisServer;
     }
 #ifdef USE_THALLIUM
-    else if (metadataThalliumService) {
-        delete metadataThalliumService;
-        metadataThalliumService = NULL;
+    else if (ThalliumCIS) {
+        delete ThalliumCIS;
     }
 #endif
     return 0;

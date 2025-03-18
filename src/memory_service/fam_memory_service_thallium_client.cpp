@@ -37,8 +37,6 @@
 #include "fam_memory_service_client.h"
 #include "fam_memory_service_direct.h"
 
-#include <boost/atomic.hpp>
-
 #include <chrono>
 #include <iomanip>
 #include <string.h>

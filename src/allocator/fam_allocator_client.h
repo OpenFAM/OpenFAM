@@ -31,11 +31,12 @@
 #ifndef FAM_ALLOCATOR_CLIENT_H_
 #define FAM_ALLOCATOR_CLIENT_H_
 
-#include "allocator/fam_client_resource_manager.h"
-#include "cis/fam_cis_client.h"
-#include "cis/fam_cis_direct.h"
+#include "fam_client_resource_manager.h"
 
 namespace openfam {
+
+class Fam_Client_Resource_Manager;
+class Fam_CIS;
 
 class Fam_Allocator_Client {
   public:

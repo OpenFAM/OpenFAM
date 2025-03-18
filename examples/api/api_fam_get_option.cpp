@@ -49,7 +49,7 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
 
     try {
@@ -62,10 +62,14 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
 
     myFam->fam_finalize("myApplication");
     printf("FAM finalized\n");
+
+    fam_free_pointers(
+            Fam_Ptr<Fam_Options>(fm, Fam_Allocator::MALLOC),
+            Fam_Ptr<fam>(myFam, Fam_Allocator::NEW));  
     return (ret);
 }

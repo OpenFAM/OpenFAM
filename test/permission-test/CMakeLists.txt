@@ -20,8 +20,6 @@
  #
  #
 
-enable_testing()
-include_directories(${PROJECT_BINARY_DIR}/test) # private headers (test)
 add_custom_target(permission-test ${CMAKE_CTEST_COMMAND} --force-new-ctest-process)
 add_subdirectory(fam-mm-permission-multi-user)
 

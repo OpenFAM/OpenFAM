@@ -1,6 +1,6 @@
 /*
  * fam_memory_service_client.h
- * Copyright (c) 2020-2021,2023 Hewlett Packard Enterprise Development, LP. All
+ * Copyright (c) 2020-2024 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
  * are met:
@@ -35,15 +35,12 @@
 
 #include <grpc/impl/codegen/log.h>
 #include <grpcpp/grpcpp.h>
-#include <iostream>
 #include <sstream>
-#include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "memory_service/fam_memory_service.h"
-#include "memory_service/fam_memory_service_rpc.grpc.pb.h"
-using namespace std;
+#include "fam_memory_service.h"
+#include "fam_memory_service_rpc.grpc.pb.h"
 
 namespace openfam {
 

@@ -29,7 +29,8 @@
  *
  */
 
-#include "allocator/fam_client_resource_manager.h"
+#include "fam_client_resource_manager.h"
+#include "cis/fam_cis_client.h"
 
 using namespace std;
 namespace openfam {
@@ -50,6 +51,19 @@ Fam_Client_Resource_Manager::~Fam_Client_Resource_Manager() {
         famClientResourceGarbageQ->pop(famResource);
         if (famResource)
             delete famResource;
+    }
+    delete famClientResourceGarbageQ;
+
+    if(famResourceTable)
+    {
+        for (auto it = famResourceTable->begin();it != famResourceTable->end();++it) {
+            if(it->second)
+            {
+                delete it->second; 
+            }
+        }
+        famResourceTable->clear();
+        delete famResourceTable;
     }
 }
 

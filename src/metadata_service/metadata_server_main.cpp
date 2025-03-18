@@ -1,5 +1,5 @@
 /*
- * memory_server_main.cpp
+ * metadata_server_main.cpp
  * Copyright (c) 2020,2023 Hewlett Packard Enterprise Development, LP. All
  * rights reserved. Redistribution and use in source and binary forms, with or
  * without modification, are permitted provided that the following conditions
@@ -33,108 +33,82 @@
 #include <signal.h>
 #endif
 
-#include "memory_service/fam_memory_service_direct.h"
-#include "memory_service/fam_memory_service_server.h"
+#include "common/fam_options.h"
+#include "fam_metadata_service_direct.h"
+#include "fam_metadata_service_server.h"
 #include <iostream>
-
-#ifdef USE_THALLIUM
-#include "memory_service/fam_memory_service_thallium_server.h"
-#include <thallium.hpp>
 #include <thread>
-namespace tl = thallium;
-#endif
-
 using namespace std;
 using namespace metadata;
 
+#ifdef USE_THALLIUM
+#include "metadata_service/fam_metadata_service_thallium_server.h"
+#include <thallium.hpp>
+namespace tl = thallium;
+#endif
+
 #ifdef OPENFAM_VERSION
-#define MEMORYSERVER_VERSION OPENFAM_VERSION
+#define METADATASERVER_VERSION OPENFAM_VERSION
 #else
-#define MEMORYSERVER_VERSION "0.0.0"
+#define METADATASERVER_VERSION "0.0.0"
 #endif
 
 #ifdef COVERAGE
 extern "C" void __gcov_flush();
 void signal_handler(int signum) {
-    cout << "Shutting down memory server!! signal #" << signum << endl;
+    cout << "Shutting down metadata server!! signal #" << signum << endl;
     __gcov_flush();
     exit(1);
 }
 #endif
 
-Fam_Memory_Service_Server *memoryService;
-Fam_Memory_Service_Direct *direct_memoryService;
+Fam_Metadata_Service_Server *metadataService;
+Fam_Metadata_Service_Direct *direct_metadataService;
 
 #ifdef USE_THALLIUM
-Fam_Memory_Service_Thallium_Server *memoryThalliumService;
+Fam_Metadata_Service_Thallium_Server *metadataThalliumService;
 void thallium_server() {
-    tl::engine myEngine(direct_memoryService->get_rpc_protocol_type(),
+    tl::engine myEngine(direct_metadataService->get_rpc_protocol_type(),
                         THALLIUM_SERVER_MODE, false, -1);
-    memoryThalliumService =
-        new Fam_Memory_Service_Thallium_Server(direct_memoryService, myEngine);
-    memoryThalliumService->run();
+    metadataThalliumService = new Fam_Metadata_Service_Thallium_Server(
+        direct_metadataService, myEngine);
+    metadataThalliumService->run();
 }
 #endif
 
 int main(int argc, char *argv[]) {
-    uint64_t memserver_id = 0;
-    // char *name = strdup("127.0.0.1");
-    char *fam_path = NULL;
-    bool initFlag = false;
-    ostringstream message;
-    int startNvmmStatus = 0;
+    uint64_t rpcPort = 8788;
+    char *name = strdup("127.0.0.1");
 
     for (int i = 1; i < argc; i++) {
         if ((std::string(argv[i]) == "-v") ||
             (std::string(argv[i]) == "--version")) {
-            cout << "Memory Server version : " << MEMORYSERVER_VERSION << "\n";
+            cout << "Metadata Server version : " << METADATASERVER_VERSION
+                 << "\n";
             exit(0);
         } else if ((std::string(argv[i]) == "-h") ||
                    (std::string(argv[i]) == "--help")) {
             cout
                 << "Usage : \n"
-                << "\t./memory_server <options> \n"
+                << "\t./metadataserver <options> \n"
                 << "\n"
                 << "Options : \n"
-                << "\t-f/--fam_path       : Location of FAM (default value "
-                   "is /dev/shm/<username>)\n"
+                << "\t-a/--address   : Address of the metadata server "
+                   "(default value is localhost) \n"
                 << "\n"
-                << "\t-m/--memserver_id   : MemoryServer Id (default value is "
-                   "0)\n"
+                << "\t-r/--rpcport        : RPC port (default value is 8787)\n"
                 << "\n"
                 << "\t-v/--version        : Display metadata server version  \n"
                 << "\n"
-                << "\t-i/--init                   : Initialize the root shelf "
-                   "\n"
-                << "\n"
                 << endl;
             exit(0);
-        } else if ((std::string(argv[i]) == "-i") ||
-                   (std::string(argv[i]) == "--init")) {
-            initFlag = true;
-        } else if ((std::string(argv[i]) == "-f") ||
-                   (std::string(argv[i]) == "--fam_path")) {
-            fam_path = strdup(argv[++i]);
-        } else if ((std::string(argv[i]) == "-m") ||
-                   (std::string(argv[i]) == "--memserver_id")) {
-            memserver_id = atoi(argv[++i]);
+        } else if ((std::string(argv[i]) == "-a") ||
+                   (std::string(argv[i]) == "--address")) {
+            name = strdup(argv[++i]);
+        } else if ((std::string(argv[i]) == "-r") ||
+                   (std::string(argv[i]) == "--rpcport")) {
+            rpcPort = atoi(argv[++i]);
         }
-    }
-
-    if(initFlag) {
-        std::string userName = login_username();
-        if (fam_path == NULL || (strcmp(fam_path, "") == 0)) {
-            startNvmmStatus = StartNVMM();
-        } else {
-            startNvmmStatus = StartNVMM(fam_path, userName);
-        }
-        if (startNvmmStatus != 0) {
-            message << "Starting of memory server failed";
-            THROW_ERRNO_MSG(Memory_Service_Exception,
-                            MEMORY_SERVER_START_FAILED, message.str().c_str());
-        }
-
-        exit(0);
     }
 
 #ifdef COVERAGE
@@ -144,43 +118,41 @@ int main(int argc, char *argv[]) {
 #endif
 
     try {
-        direct_memoryService =
-            new Fam_Memory_Service_Direct(memserver_id, false);
-        memoryService = new Fam_Memory_Service_Server(direct_memoryService);
+        direct_metadataService = new Fam_Metadata_Service_Direct(false);
+        metadataService = new Fam_Metadata_Service_Server(
+            rpcPort, name, direct_metadataService);
 #ifdef USE_THALLIUM
         std::thread thread_1;
-        // check rpc_framework_type and start server
-        if (strcmp(direct_memoryService->get_rpc_framework_type().c_str(),
+        if (strcmp(direct_metadataService->get_rpc_framework_type().c_str(),
                    FAM_OPTIONS_THALLIUM_STR) == 0) {
-            // starting thallium server on a new thread
+            // start thallium server on a new thread
             thread_1 = std::thread(&thallium_server);
         }
 #endif
-        // starting only grpc server
-        memoryService->run();
+        // start grpc server
+        metadataService->run();
     } catch (Fam_Exception &e) {
-        if (memoryService) {
-            delete memoryService;
+        if (metadataService) {
+            delete metadataService;
         }
 #ifdef USE_THALLIUM
-        else if (memoryThalliumService) {
-            delete memoryThalliumService;
+        else if (metadataThalliumService) {
+            delete metadataThalliumService;
         }
 #endif
         cout << "Error code: " << e.fam_error() << endl;
         cout << "Error msg: " << e.fam_error_msg() << endl;
     }
 
-    if (memoryService) {
-        delete memoryService;
-        memoryService = NULL;
+    if (metadataService) {
+        delete metadataService;
+        metadataService = NULL;
     }
 #ifdef USE_THALLIUM
-    else if (memoryThalliumService) {
-        delete memoryThalliumService;
-        memoryThalliumService = NULL;
+    else if (metadataThalliumService) {
+        delete metadataThalliumService;
+        metadataThalliumService = NULL;
     }
 #endif
-
     return 0;
 }

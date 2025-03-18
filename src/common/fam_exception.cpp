@@ -29,7 +29,7 @@
  */
 
 #include "fam/fam_exception.h"
-#include "common/fam_internal.h"
+
 namespace openfam {
 
 Fam_Exception::Fam_Exception() : Fam_Exception("Unknown error") {}
@@ -57,7 +57,7 @@ Fam_Exception &Fam_Exception::operator=(const Fam_Exception &other) {
 
 char const *Fam_Exception::fam_error_msg() { return famErrMsg.c_str(); }
 
-char const *Fam_Exception::what() { return famErrMsg.c_str(); }
+char const *Fam_Exception::what() const noexcept { return famErrMsg.c_str(); }
 
 int Fam_Exception::fam_error() { return famErr; }
 

@@ -34,8 +34,6 @@
 #include "fam_cis_thallium_rpc_structures.h"
 #include <thread>
 
-#include <boost/atomic.hpp>
-
 #include <chrono>
 #include <fstream>
 #include <iomanip>

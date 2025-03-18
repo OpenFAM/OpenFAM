@@ -29,7 +29,7 @@
  *
  */
 
-#include "common/fam_internal_exception.h"
+#include "fam_internal_exception.h"
 
 namespace openfam {
 

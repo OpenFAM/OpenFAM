@@ -34,7 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "fam_utils.h"
+#include "util/fam_utils.h"
 
 #include <fam/fam.h>
 

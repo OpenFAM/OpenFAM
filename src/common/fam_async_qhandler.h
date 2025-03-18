@@ -32,22 +32,17 @@
 #ifndef FAM_ASYNC_QHANDLER_H
 #define FAM_ASYNC_QHANDLER_H
 
-#include <nvmm/fam.h>
-
 #include <boost/atomic.hpp>
 
-#include "common/fam_context.h"
-#include "common/fam_internal.h"
+#include "fam_context.h"
+#include "fam_internal.h"
 #include "fam/fam.h"
 #include "fam/fam_exception.h"
 #include "memory_service/fam_memory_service.h"
 #include "metadata_service/fam_metadata_service.h"
 
-using namespace std;
-using namespace metadata;
-
 using memoryServerMap = std::map<uint64_t, Fam_Memory_Service *>;
-using metadataServerMap = std::map<uint64_t, Fam_Metadata_Service *>;
+using metadataServerMap = std::map<uint64_t, metadata::Fam_Metadata_Service *>;
 
 namespace openfam {
 

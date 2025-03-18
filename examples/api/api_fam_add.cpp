@@ -42,7 +42,7 @@ int main(void) {
     Fam_Options *fm = (Fam_Options *)malloc(sizeof(Fam_Options));
     memset((void *)fm, 0, sizeof(Fam_Options));
     // assume that no specific options are needed by the implementation
-    fm->runtime = strdup("NONE");
+    fm->runtime = (char *)std::string("NONE").c_str();//strdup("NONE");
     try {
         myFam->fam_initialize("myApplication", fm);
         printf("FAM initialized\n");
@@ -51,7 +51,7 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
 
     // ... Initialization code here
@@ -70,7 +70,9 @@ int main(void) {
     } catch (Fam_Exception &e) {
         printf("Create region/Allocate Data item failed: %d: %s\n",
                e.fam_error(), e.fam_error_msg());
-        return -1;
+
+        myFam->fam_abort(-1);
+        ret = -1;
     }
 
     try {
@@ -98,7 +100,7 @@ int main(void) {
         // printf("fam_destroy_region successful\n");
     } catch (Fam_Exception &e) {
         printf("Destroy region failed: %d: %s\n", e.fam_error(),
-               e.fam_error_msg());
+               e.fam_error_msg());     
         ret = -1;
     }
 
@@ -111,7 +113,13 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
+    openfam::fam_free_pointers(
+        Fam_Ptr<Fam_Region_Descriptor>(region,  Fam_Allocator::NEW),
+        Fam_Ptr<Fam_Descriptor>(descriptor, Fam_Allocator::NEW),
+        Fam_Ptr<Fam_Options>(fm,Fam_Allocator::MALLOC),
+        Fam_Ptr<fam>(myFam, Fam_Allocator::NEW));
+    
     return (ret);
 }

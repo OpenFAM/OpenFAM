@@ -32,21 +32,12 @@
 #ifndef FAM_MEMORY_SERVICE_SERVER_H
 #define FAM_MEMORY_SERVICE_SERVER_H
 
-#include <iostream>
-#include <map>
-#include <thread>
-#include <unistd.h>
+#include <grpcpp/grpcpp.h>
 
-#include "grpcpp/grpcpp.h"
-
-#include "memory_service/fam_memory_service_direct.h"
-#include "memory_service/fam_memory_service_rpc.grpc.pb.h"
+#include "fam_memory_service_direct.h"
+#include "fam_memory_service_rpc.grpc.pb.h"
 
 namespace openfam {
-
-using namespace std;
-using namespace nvmm;
-using namespace metadata;
 
 using grpc::Server;
 using grpc::ServerAsyncResponseWriter;

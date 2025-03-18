@@ -88,7 +88,7 @@ class Fam_Exception : public std::exception {
 
     virtual int fam_error();
 
-    virtual char const *what();
+    virtual char const *what() const noexcept;
 
   protected:
     std::string famErrMsg;

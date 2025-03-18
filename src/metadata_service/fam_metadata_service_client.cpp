@@ -33,6 +33,7 @@
 
 #include "fam_metadata_service_client.h"
 #include "common/fam_memserver_profile.h"
+
 using namespace openfam;
 
 namespace metadata {

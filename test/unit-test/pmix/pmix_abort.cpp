@@ -29,10 +29,9 @@
  */
 
 // Test program to  check abort functionality
-#include "runtime_pmix.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include "pmi/runtime_pmix.h"
+#include <cstdio>
+
 int main() {
 
     Pmix_Runtime obj;

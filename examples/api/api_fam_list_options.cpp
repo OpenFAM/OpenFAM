@@ -49,13 +49,16 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
 
-    const char **optionName = myFam->fam_list_options();
-    while (*optionName != NULL) {    // while we have more names
-        printf("%s\n", *optionName); // print the name
-        optionName++;
+    if (ret == 0)
+    {
+        const char **optionName = myFam->fam_list_options();
+        while (*optionName != NULL) {    // while we have more names
+            printf("%s\n", *optionName); // print the name
+            optionName++;
+        }
     }
 
     // ... Finalization code follows
@@ -67,7 +70,11 @@ int main(void) {
         myFam->fam_abort(-1); // abort the program
         // note that fam_abort currently returns after signaling
         // so we must terminate with the same value
-        return -1;
+        ret = -1;
     }
+
+    fam_free_pointers(
+        Fam_Ptr<Fam_Options>(fm,Fam_Allocator::MALLOC),
+        Fam_Ptr<fam>(myFam, Fam_Allocator::NEW));    
     return (ret);
 }
