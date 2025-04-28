@@ -59,6 +59,8 @@ using namespace std;
 using namespace nvmm;
 
 namespace openfam {
+enum { BACKUP_READ = 0, BACKUP_WRITE, BACKUP_EXEC };
+
 typedef struct Fam_Heap_Info {
     Heap *heap;
     bool isValid;

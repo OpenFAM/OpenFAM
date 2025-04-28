@@ -31,10 +31,11 @@
 #ifndef FAM_CONFIG_INFO_H
 #define FAM_CONFIG_INFO_H
 
+#include "fam_internal_exception.h"
+
 #include <yaml-cpp/node/type.h>
 #include <yaml-cpp/yaml.h>
 
-#include "common/fam_internal_exception.h"
 #include <iostream>
 #include <map>
 #include <pwd.h>
@@ -139,15 +140,15 @@ inline std::string login_username(void) {
     loginName = getlogin();
 
     if (loginName != NULL)
-        return std::string(strdup(loginName));
+        return std::string(loginName);
 
     loginUid = getuid();
     loginPwName = getpwuid(loginUid);
 
     if (loginPwName != NULL)
-        return std::string(strdup(loginPwName->pw_name));
+        return std::string(loginPwName->pw_name);
     else
-        return std::string(strdup(""));
+        return std::string("");
 }
 } // namespace openfam
 #endif
