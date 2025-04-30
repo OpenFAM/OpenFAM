@@ -1,6 +1,6 @@
  #
  # CMakeLists.txt
- # Copyright (c) 2019-2023 Hewlett Packard Enterprise Development, LP. All rights reserved.
+ # Copyright (c) 2019-2023,2025 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
  # that the following conditions are met:
  # 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
@@ -220,6 +220,47 @@ configure_file( ${PROJECT_SOURCE_DIR}/test/common/fam_test_config.h.in ${PROJECT
 # Read version number from VERSION file
 file(STRINGS "VERSION" VERSION_STR)
 add_definitions(-DOPENFAM_VERSION="${VERSION_STR}")
+
+# Find Python3 from system PATH
+find_program(Python3_EXECUTABLE python3)
+
+# Ensure Python3_EXECUTABLE is found
+if(NOT Python3_EXECUTABLE)
+    message(FATAL_ERROR "Python3 executable not found in the system PATH.")
+endif()
+
+# Debug message to verify the detected Python3 executable
+message(STATUS "System default Python3 executable: ${Python3_EXECUTABLE}")
+
+# Ensure the detected Python version meets the minimum requirement
+find_package(Python3 REQUIRED)
+if(Python3_VERSION VERSION_LESS "3.6")
+    message(FATAL_ERROR "Python 3.6 or higher is required. Detected version: ${Python3_VERSION}")
+endif()
+
+# Get the Python version
+execute_process(
+    COMMAND ${Python3_EXECUTABLE} --version
+    OUTPUT_VARIABLE PYTHON_VERSION_OUTPUT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+# Extract the Python version from output
+string(REGEX MATCH "[0-9]+\\.[0-9]+" PYTHON_FULL_VERSION "${PYTHON_VERSION_OUTPUT}")
+
+# Construct the full Python executable path
+get_filename_component(PYTHON_EXECUTABLE_DIR ${Python3_EXECUTABLE} DIRECTORY)
+set(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE_DIR}/python${PYTHON_FULL_VERSION}")
+
+# Debug message to verify the full Python executable path
+message(STATUS "Full Python executable: ${PYTHON_EXECUTABLE}")
+
+# Configure the Python script with the detected Python executable
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/openfam_adm_template.py
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/openfam_adm.py
+    @ONLY
+)
 
 #
 # add source code
