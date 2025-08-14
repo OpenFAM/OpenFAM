@@ -308,6 +308,7 @@ class Fam_Ops_SHM : public Fam_Ops {
     void context_close(uint64_t contextId);
     uint64_t get_context_id();
     void register_heap(void *base, size_t len) {}
+    void deregister_heap(void *base, size_t len) {}
 
   protected:
     Fam_Async_QHandler *asyncQHandler;

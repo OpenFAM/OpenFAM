@@ -44,6 +44,8 @@
 #include "common/fam_internal_exception.h"
 #include "common/fam_options.h"
 
+#include <boost/thread.hpp>
+
 using namespace std;
 
 namespace openfam {
@@ -119,18 +121,14 @@ class Fam_Context {
     void inc_num_rx_fail_cnt(uint64_t cnt) {
         __sync_fetch_and_add(&numLastRxFailCnt, cnt);
     }
+
     void register_heap(void *base, size_t len, struct fid_domain *domain,
                        size_t iov_limit);
-    void register_existing_heap(Fam_Context *famCtx, size_t iov_limit);
-    void **get_mr_descs(const void *local_addr, size_t local_size) {
-        if (local_buf_size != 0 &&
-            (char *)local_addr >= (char *)local_buf_base &&
-            (char *)local_addr + local_size <=
-                (char *)local_buf_base + local_buf_size)
-            return mr_descs;
-        else
-            return 0;
-    }
+
+    void deregister_heap(void *base, size_t len);
+
+    std::unique_ptr<void *, std::function<void(void **)>>
+    get_mr_descs(const void *local_addr, size_t local_size);
 
   private:
     struct fid_ep *ep;
@@ -138,10 +136,6 @@ class Fam_Context {
     struct fid_cq *rxcq;
     struct fid_cntr *txCntr;
     struct fid_cntr *rxCntr;
-    void **mr_descs = NULL;
-    void *local_buf_base = NULL;
-    size_t local_buf_size = 0;
-    struct fid_mr *mr = NULL;
 
     uint64_t numTxOps;
     uint64_t numRxOps;

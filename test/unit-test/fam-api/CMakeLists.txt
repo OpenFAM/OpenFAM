@@ -1,4 +1,4 @@
- #
+#
  # CMakeLists.txt
  # Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
@@ -71,3 +71,4 @@ add_fam_test(fam_compare_swap_atomics_nvmm_test)
 add_fam_test(fam_fetch_arithmatic_atomics_nvmm_test)
 add_fam_test(fam_context_open_close)
 add_fam_test(fam_progress_mt)
+add_fam_test(fam_register_local_buffer_test)

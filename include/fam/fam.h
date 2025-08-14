@@ -68,6 +68,7 @@
 #ifndef FAM_H_
 #define FAM_H_
 
+#include <stddef.h>   // needed for size_t
 #include <stdint.h>   // needed for uint64_t etc.
 #include <sys/stat.h> // needed for mode_t
 
@@ -396,6 +397,29 @@ class fam {
      * @see #fam_initialize()
      */
     void fam_finalize(const char *groupName);
+
+    /**
+     * Register a local buffer.
+     * This function allows the application to register a local memory buffer
+     * that can be used for FAM operations. The buffer is associated with the
+     * specified context, if provided.
+     *
+     * @param buf - Pointer to the local memory buffer to be registered.
+     * @param size - Size of the buffer in bytes.
+     * @return - none
+     */
+    void fam_register_local_buffer(void *buf, size_t size);
+
+    /**
+     * Deregister a previously registered local buffer.
+     * This function removes the association of a local memory buffer with the
+     * FAM library, making it unavailable for further FAM operations.
+     *
+     * @param buf - Pointer to the local memory buffer to be deregistered.
+     * @param size - Size of the buffer in bytes.
+     * @return - none
+     */
+    void fam_deregister_local_buffer(void *buf, size_t size);
 
     /**
      * Forcibly terminate all PEs in the same group as the caller
@@ -1295,6 +1319,8 @@ class fam_context : public fam {
     ~fam_context();
     void fam_initialize(const char *groupName, Fam_Options *options);
     void fam_finalize(const char *groupName);
+    void fam_register_local_buffer(void *buf, size_t size);
+    void fam_deregister_local_buffer(void *buf, size_t size);
     void fam_abort(int status);
     void fam_barrier_all();
     const char **fam_list_options(void);

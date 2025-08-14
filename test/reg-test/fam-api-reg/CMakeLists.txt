@@ -1,4 +1,4 @@
- #
+#
  # CMakeLists.txt
  # Copyright (c) 2019-2021 Hewlett Packard Enterprise Development, LP. All rights reserved.
  # Redistribution and use in source and binary forms, with or without modification, are permitted provided
@@ -70,6 +70,7 @@ add_fam_test(fam_put_get_mt_reg_test)
 add_fam_test(fam_scatter_gather_blocking_mt_reg_test)
 add_fam_test(fam_stat_reg_test)
 add_fam_test(fam_control_path_reg_test)
+add_fam_test(fam_register_local_buffer_reg_test)
 
 add_fam_test(fam_put_get_negative_test)
 if (${TEST_ENABLE_KNOWN_ISSUES} STREQUAL "yes")

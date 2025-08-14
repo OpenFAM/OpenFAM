@@ -24,6 +24,8 @@ if(ENABLE_THALLIUM)
 	set(THALLIUM_ENGINE_HELPER ${CMAKE_CURRENT_SOURCE_DIR}/fam_thallium_engine_helper.cpp)
 endif()
 
+set(LOCAL_BUF_REG_HELPER ${CMAKE_CURRENT_SOURCE_DIR}/fam_local_buf_reg_helper.cpp)
+
 set(LIBOPENFAM_SRC
   ${LIBOPENFAM_SRC}
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_context.cpp
@@ -34,6 +36,7 @@ set(LIBOPENFAM_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
   ${THALLIUM_ENGINE_HELPER}
+  ${LOCAL_BUF_REG_HELPER}
   PARENT_SCOPE
   )
 
@@ -47,6 +50,7 @@ set(CIS_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
   ${THALLIUM_ENGINE_HELPER}
+  ${LOCAL_BUF_REG_HELPER}
   PARENT_SCOPE
 )
 
@@ -60,6 +64,7 @@ set(MEMORY_SERVER_SRC
   ${CMAKE_CURRENT_SOURCE_DIR}/fam_config_info.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/atomic_queue.cpp
   ${THALLIUM_ENGINE_HELPER}
+  ${LOCAL_BUF_REG_HELPER}
   PARENT_SCOPE
   )
 

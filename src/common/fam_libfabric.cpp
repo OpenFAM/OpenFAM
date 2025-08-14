@@ -770,8 +770,10 @@ int fabric_write(uint64_t key, const void *local, size_t nbytes,
     memset(ctx, 0, sizeof(struct fam_fi_context));
     ctx->fam_internal[2] = (void *)1;
 
+    // Hold the unique_ptr to keep the memory registration descriptors valid
+    auto mr_descs_holder = famCtx->get_mr_descs(local, nbytes);
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = famCtx->get_mr_descs(local, nbytes),
+                             .desc = mr_descs_holder.get(),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -792,6 +794,7 @@ int fabric_write(uint64_t key, const void *local, size_t nbytes,
                     FI_COMPLETION | FI_DELIVERY_COMPLETE);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
 
+        mr_descs_holder.reset();
         famCtx->inc_num_tx_ops();
         incr++;
         ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
@@ -831,8 +834,10 @@ int fabric_read(uint64_t key, const void *local, size_t nbytes, uint64_t offset,
     memset(ctx, 0, sizeof(struct fam_fi_context));
     ctx->fam_internal[2] = (void *)1;
 
+    // Hold the unique_ptr to keep the memory registration descriptors valid
+    auto mr_descs_holder = famCtx->get_mr_descs(local, nbytes);
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = famCtx->get_mr_descs(local, nbytes),
+                             .desc = mr_descs_holder.get(),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -852,6 +857,7 @@ int fabric_read(uint64_t key, const void *local, size_t nbytes, uint64_t offset,
             FI_CALL(ret, fi_readmsg, famCtx->get_ep(), &msg, FI_COMPLETION);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
 
+        mr_descs_holder.reset();
         famCtx->inc_num_rx_ops();
         incr++;
         ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
@@ -906,10 +912,13 @@ struct fi_context *fabric_read_write_multi_msg(
 
     for (int64_t j = 0; j < iteration; j++) {
         size_t len_count = std::min<size_t>(iov_limit, count_remain);
+        // Hold the unique_ptr to keep the memory registration descriptors valid
+        auto mr_descs_holder =
+            famCtx->get_mr_descs(iov[j * iov_limit].iov_base,
+                                 (iov[j * iov_limit].iov_len) * (len_count));
         struct fi_msg_rma msg = {
             .msg_iov = &iov[j * iov_limit],
-            .desc = famCtx->get_mr_descs(iov[j * iov_limit].iov_base,
-                                         (iov[j * iov_limit].iov_len)*(len_count)),
+            .desc = mr_descs_holder.get(),
             .iov_count = std::min<size_t>(iov_limit, count_remain),
             .addr = fiAddr,
             .rma_iov = &rma_iov[j * iov_limit],
@@ -927,6 +936,7 @@ struct fi_context *fabric_read_write_multi_msg(
                 }
             } while (fabric_retry(famCtx, ret, &retry_cnt));
 
+            mr_descs_holder.reset();
             if (write)
                 famCtx->inc_num_tx_ops();
             else
@@ -1040,8 +1050,10 @@ struct fi_context *fabric_write(uint64_t key, const void *local, size_t nbytes,
         ctx->fam_internal[2] = (void *)1;
     }
 
+    // Hold the unique_ptr to keep the memory registration descriptors valid
+    auto mr_descs_holder = famCtx->get_mr_descs(local, nbytes);
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = famCtx->get_mr_descs(local, nbytes),
+                             .desc = mr_descs_holder.get(),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -1061,6 +1073,7 @@ struct fi_context *fabric_write(uint64_t key, const void *local, size_t nbytes,
             FI_CALL(ret, fi_writemsg, famCtx->get_ep(), &msg, flags);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
 
+        mr_descs_holder.reset();
         famCtx->inc_num_tx_ops();
         incr++;
     } catch (...) {
@@ -1113,8 +1126,10 @@ struct fi_context *fabric_read(uint64_t key, const void *local, size_t nbytes,
         ctx->fam_internal[2] = (void *)1;
     }
 
+    // Hold the unique_ptr to keep the memory registration descriptors valid
+    auto mr_descs_holder = famCtx->get_mr_descs(local, nbytes);
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = famCtx->get_mr_descs(local, nbytes),
+                             .desc = mr_descs_holder.get(),
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -1134,6 +1149,7 @@ struct fi_context *fabric_read(uint64_t key, const void *local, size_t nbytes,
             FI_CALL(ret, fi_readmsg, famCtx->get_ep(), &msg, flags);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
 
+        mr_descs_holder.reset();
         famCtx->inc_num_rx_ops();
         incr++;
     } catch (...) {
@@ -1339,8 +1355,11 @@ void fabric_fence(fi_addr_t fiAddr, Fam_Context *famCtx) {
 
     struct fi_context *ctx = new struct fi_context();
 
+    // TODO: To improve fabric operation performance, we may need per-thread
+    // buffers that are allocated and registered for local variables/buffers.
+    // This optimization is planned for future implementation.
     struct fi_msg_rma msg = {.msg_iov = &iov,
-                             .desc = famCtx->get_mr_descs(local, nbytes),
+                             .desc = nullptr,
                              .iov_count = 1,
                              .addr = fiAddr,
                              .rma_iov = &rma_iov,
@@ -1357,6 +1376,7 @@ void fabric_fence(fi_addr_t fiAddr, Fam_Context *famCtx) {
         do {
             FI_CALL(ret, fi_writemsg, famCtx->get_ep(), &msg, FI_FENCE);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
+
         famCtx->inc_num_tx_ops();
     } catch (...) {
         // Release Fam_Context Write lock
@@ -1564,17 +1584,19 @@ void fabric_atomic(uint64_t key, void *value, uint64_t offset, enum fi_op op,
 
     struct fi_rma_ioc rma_iov = {.addr = offset, .count = 1, .key = key};
 
-    struct fi_msg_atomic msg = {
-        .msg_iov = &iov,
-        .desc = famCtx->get_mr_descs(value, sizeof(datatype)),
-        .iov_count = 1,
-        .addr = fiAddr,
-        .rma_iov = &rma_iov,
-        .rma_iov_count = 1,
-        .datatype = datatype,
-        .op = op,
-        .context = NULL,
-        .data = 0};
+    // TODO: To improve fabric operation performance, we may need per-thread
+    // buffers that are allocated and registered for local variables/buffers.
+    // This optimization is planned for future implementation.
+    struct fi_msg_atomic msg = {.msg_iov = &iov,
+                                .desc = nullptr,
+                                .iov_count = 1,
+                                .addr = fiAddr,
+                                .rma_iov = &rma_iov,
+                                .rma_iov_count = 1,
+                                .datatype = datatype,
+                                .op = op,
+                                .context = NULL,
+                                .data = 0};
 
     ssize_t ret;
     uint32_t retry_cnt = 0;
@@ -1586,6 +1608,7 @@ void fabric_atomic(uint64_t key, void *value, uint64_t offset, enum fi_op op,
         do {
             FI_CALL(ret, fi_atomicmsg, famCtx->get_ep(), &msg, FI_INJECT);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
+
         famCtx->inc_num_tx_ops();
     } catch (...) {
         // Release Fam_Context read lock
@@ -1613,17 +1636,19 @@ void fabric_fetch_atomic(uint64_t key, void *value, void *result,
     memset(ctx, 0, sizeof(struct fam_fi_context));
     ctx->fam_internal[2] = (void *)1;
 
-    struct fi_msg_atomic msg = {
-        .msg_iov = &iov,
-        .desc = famCtx->get_mr_descs(value, sizeof(datatype)),
-        .iov_count = 1,
-        .addr = fiAddr,
-        .rma_iov = &rma_iov,
-        .rma_iov_count = 1,
-        .datatype = datatype,
-        .op = op,
-        .context = (struct fi_context *)ctx,
-        .data = 0};
+    // TODO: To improve fabric operation performance, we may need per-thread
+    // buffers that are allocated and registered for local variables/buffers.
+    // This optimization is planned for future implementation.
+    struct fi_msg_atomic msg = {.msg_iov = &iov,
+                                .desc = nullptr,
+                                .iov_count = 1,
+                                .addr = fiAddr,
+                                .rma_iov = &rma_iov,
+                                .rma_iov_count = 1,
+                                .datatype = datatype,
+                                .op = op,
+                                .context = (struct fi_context *)ctx,
+                                .data = 0};
 
     ssize_t ret;
     uint32_t retry_cnt = 0;
@@ -1637,6 +1662,7 @@ void fabric_fetch_atomic(uint64_t key, void *value, void *result,
             FI_CALL(ret, fi_fetch_atomicmsg, famCtx->get_ep(), &msg,
                     &result_iov, 0, 1, FI_COMPLETION);
         } while (fabric_retry(famCtx, ret, &retry_cnt));
+
         famCtx->inc_num_rx_ops();
         incr++;
         ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);
@@ -1671,17 +1697,19 @@ void fabric_compare_atomic(uint64_t key, void *compare, void *result,
     memset(ctx, 0, sizeof(struct fam_fi_context));
     ctx->fam_internal[2] = (void *)1;
 
-    struct fi_msg_atomic msg = {
-        .msg_iov = &iov,
-        .desc = famCtx->get_mr_descs(value, sizeof(datatype)),
-        .iov_count = 1,
-        .addr = fiAddr,
-        .rma_iov = &rma_iov,
-        .rma_iov_count = 1,
-        .datatype = datatype,
-        .op = op,
-        .context = (struct fi_context *)ctx,
-        .data = 0};
+    // TODO: To improve fabric operation performance, we may need per-thread
+    // buffers that are allocated and registered for local variables/buffers.
+    // This optimization is planned for future implementation.
+    struct fi_msg_atomic msg = {.msg_iov = &iov,
+                                .desc = nullptr,
+                                .iov_count = 1,
+                                .addr = fiAddr,
+                                .rma_iov = &rma_iov,
+                                .rma_iov_count = 1,
+                                .datatype = datatype,
+                                .op = op,
+                                .context = (struct fi_context *)ctx,
+                                .data = 0};
 
     ssize_t ret;
     uint32_t retry_cnt = 0;
@@ -1694,8 +1722,8 @@ void fabric_compare_atomic(uint64_t key, void *compare, void *result,
         do {
             FI_CALL(ret, fi_compare_atomicmsg, famCtx->get_ep(), &msg,
                     &compare_iov, 0, 1, &result_iov, 0, 1, FI_COMPLETION);
-
         } while (fabric_retry(famCtx, ret, &retry_cnt));
+
         famCtx->inc_num_rx_ops();
         incr++;
         ret = fabric_completion_wait(famCtx, (struct fi_context *)ctx, 0);

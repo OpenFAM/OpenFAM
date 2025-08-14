@@ -40,6 +40,7 @@
 
 #include "common/fam_context.h"
 #include "common/fam_libfabric.h"
+#include "common/fam_local_buf_reg_helper.h"
 #include "common/fam_options.h"
 
 namespace openfam {
@@ -144,9 +145,6 @@ Fam_Context::Fam_Context(struct fi_info *fi, struct fid_domain *domain,
 
 Fam_Context::~Fam_Context() {
     if (!isNVMM) {
-        free(mr_descs);
-        if (mr != NULL)
-            fi_close(&mr->fid);
         fi_close(&ep->fid);
         fi_close(&txcq->fid);
         fi_close(&rxcq->fid);
@@ -179,36 +177,80 @@ int Fam_Context::initialize_cntr(struct fid_domain *domain,
 void Fam_Context::register_heap(void *base, size_t len,
                                 struct fid_domain *domain, size_t iov_limit) {
     std::ostringstream message;
-    int ret;
-    local_buf_base = base;
-    local_buf_size = len;
 
-    if (mr || mr_descs) {
-        message << "Fam_Context register_heap() called more than once";
+    std::unique_lock<std::mutex> lock(globalBufMapMutex);
+
+    size_t start = (size_t)base, end = (size_t)base + len;
+
+    // Test for overlap in the currently published map.
+    auto result = test_overlap(globalBufMaps[currentBufMapIndex], start, end);
+    if (result.first != 0) {
+        int error_code = result.first;
+        size_t conflict_start = 0, conflict_end = 0;
+        if (error_code == -1 && result.second) {
+            conflict_start = result.second->start_;
+            conflict_end = result.second->end_;
+        }
+        lock.unlock();
+        
+        if (error_code == -1) {
+            message << "Fam_Context register_heap() failed: Overlapping range ["
+                    << start << ", " << end << ") overlaps with ["
+                    << conflict_start << ", " << conflict_end << ")";
+        } else if (error_code == -2) {
+            message << "Fam_Context register_heap() failed: Invalid memory "
+                       "range, start must be less than end.";
+        }
         THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
     }
-    mr_descs = (void **)calloc(iov_limit, sizeof(*mr_descs));
-    if (!mr_descs) {
-        message << "Fam_Context register_heap() failed to allocate memory";
-        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
-    }
-    ret = fi_mr_reg(domain, base, len, FI_READ | FI_WRITE, 0, 0, 0, &mr, 0);
-    if (ret < 0) {
-        message << "Fam libfabric fi_mr_reg failed: " << fabric_strerror(ret);
-        THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
-    }
-    for (size_t i = 0; i < iov_limit; i++)
-        mr_descs[i] = fi_mr_desc(mr);
+
+    auto buffer = create_new_buffer(base, len, domain, iov_limit);
+    auto insert_buffer = [&buffer](MapPtr mapPtr) {
+        mapPtr->operator[](buffer.get()->start_) = buffer;
+    };
+    publish_map(insert_buffer);
+    lock.unlock();
 }
 
-void Fam_Context::register_existing_heap(Fam_Context *famCtx,
-                                         size_t iov_limit) {
-    local_buf_base = famCtx->local_buf_base;
-    local_buf_size = famCtx->local_buf_size;
-    mr_descs = (void **)calloc(iov_limit, sizeof(*mr_descs));
-    for (size_t i = 0; i < iov_limit; i++)
-        mr_descs[i] = famCtx->mr_descs[i];
-    mr = NULL;
+void Fam_Context::deregister_heap(void *base, size_t len) {
+    std::ostringstream message;
+
+    std::unique_lock<std::mutex> lock(globalBufMapMutex);
+
+    size_t start = (size_t)base, end = (size_t)base + len;
+
+    auto mapPtr = globalBufMaps[currentBufMapIndex];
+    auto search = mapPtr->find(start);
+    if (search != mapPtr->end()) {
+        auto buffer = search->second.get();
+        if (buffer->start_ == start && buffer->end_ == end) {
+            // Erase the RegisteredBuffer from the maps.
+            auto erase_buffer = [&buffer](MapPtr mapPtr) {
+                mapPtr->erase(buffer->start_);
+            };
+            publish_map(erase_buffer);
+            lock.unlock();
+            // Free the only reference left to the RegisteredBuffer to free it.
+            search->second.reset();
+        }
+    }
+}
+
+std::unique_ptr<void *, std::function<void(void **)>>
+Fam_Context::get_mr_descs(const void *local_addr, size_t local_size) {
+    void **ret = nullptr;
+    size_t start = (size_t)local_addr, end = (size_t)local_addr + local_size;
+
+    auto mapPtr = thread_acquire_local_mapptr();
+    auto result = test_overlap(mapPtr, start, end);
+    if (result.first == 1) {
+        ret = result.second->mr_descs_;
+    }
+
+    // Releases the thread-local map pointer when unique_ptr goes out of scope
+    auto deleter = [](void **) { thread_release_local_mapptr(); };
+
+    return std::unique_ptr<void *, std::function<void(void **)>>(ret, deleter);
 }
 
 } // namespace openfam

@@ -133,12 +133,6 @@ class fam::Impl_ {
             famOps = new Fam_Ops_Libfabric((Fam_Ops_Libfabric *)pimpl->famOps);
             ctxId = famOps->get_context_id();
             pimpl->famOps->context_open(ctxId, famOps);
-            if (((pimpl->famOptions).local_buf_size != 0) &&
-                ((pimpl->famOptions).local_buf_addr != NULL)) {
-                ((Fam_Ops_Libfabric *)famOps)
-                    ->register_existing_heap(
-                        (Fam_Ops_Libfabric *)pimpl->famOps);
-            }
         }
         famAllocator = pimpl->famAllocator;
         famRuntime = pimpl->famRuntime;
@@ -167,9 +161,15 @@ class fam::Impl_ {
 
     void fam_finalize(const char *groupName);
 
+    void fam_register_local_buffer(void *buf, size_t size);
+
+    void fam_deregister_local_buffer(void *buf, size_t size);
+
     fam_context *fam_context_open();
 
     void fam_context_close(fam_context *ctx);
+
+    uint64_t fam_get_context_id();
 
     void fam_abort(int status);
 
@@ -691,6 +691,7 @@ void fam::Impl_::fam_initialize(const char *grpName, Fam_Options *options) {
         message << "Fam Invalid Option specified: GroupName";
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
+
     // Initialize Options
     //
     optValueMap = new std::map<std::string, const void *>();
@@ -1025,6 +1026,8 @@ void fam::Impl_::fam_context_close(fam_context *ctx) {
     }
 }
 
+uint64_t fam::Impl_::fam_get_context_id() { return famOps->get_context_id(); }
+
 /**
  * Clean Fam_Options
  */
@@ -1191,6 +1194,28 @@ void fam::Impl_::fam_finalize(const char *groupName) {
         famOps->finalize();
     if (famRuntime != NULL)
         famRuntime->runtime_fini();
+}
+
+/**
+ * Register a local memory buffer.
+ *
+ * @param buf - Pointer to the local memory buffer to be registered.
+ * @param size - Size of the buffer in bytes.
+ * @return - None
+ */
+void fam::Impl_::fam_register_local_buffer(void *buf, size_t size) {
+    famOps->register_heap(buf, size);
+}
+
+/**
+ * Deregister a previously registered local memory buffer.
+ *
+ * @param buf - Pointer to the local memory buffer to be deregistered.
+ * @param size - Size of the buffer in bytes.
+ * @return - None
+ */
+void fam::Impl_::fam_deregister_local_buffer(void *buf, size_t size) {
+    famOps->deregister_heap(buf, size);
 }
 
 /**
@@ -5464,6 +5489,32 @@ void fam::fam_finalize(const char *groupName) {
 }
 
 /**
+ * Register a local memory buffer.
+ *
+ * @param buf - Pointer to the local memory buffer to be registered.
+ * @param size - Size of the buffer in bytes.
+ * @return - None
+ */
+void fam::fam_register_local_buffer(void *buf, size_t size) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_register_local_buffer(buf, size);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+/**
+ * Deregister a previously registered local memory buffer.
+ *
+ * @param buf - Pointer to the local memory buffer to be deregistered.
+ * @param size - Size of the buffer in bytes.
+ * @return - None
+ */
+void fam::fam_deregister_local_buffer(void *buf, size_t size) {
+    TRY_CATCH_BEGIN
+    pimpl_->fam_deregister_local_buffer(buf, size);
+    RETURN_WITH_FAM_EXCEPTION
+}
+
+/**
  * Forcibly terminate all PEs in the same group as the caller
  * @param status - termination status to be returned by the program.
  */
@@ -7007,6 +7058,18 @@ void fam_context::fam_initialize(const char *groupName, Fam_Options *options) {
 void fam_context::fam_finalize(const char *groupName) {
     THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
                     "fam_finalize cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_register_local_buffer(void *buf, size_t size) {
+    THROW_ERRNO_MSG(
+        Fam_Exception, FAM_ERR_NOPERM,
+        "fam_register_local_buffer cannot be invoked from fam_context object");
+}
+
+void fam_context::fam_deregister_local_buffer(void *buf, size_t size) {
+    THROW_ERRNO_MSG(Fam_Exception, FAM_ERR_NOPERM,
+                    "fam_deregister_local_buffer cannot be invoked from "
+                    "fam_context object");
 }
 
 void fam_context::fam_abort(int status) {

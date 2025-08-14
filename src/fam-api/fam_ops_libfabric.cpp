@@ -40,6 +40,7 @@
 
 #include "common/fam_internal.h"
 #include "common/fam_libfabric.h"
+#include "common/fam_local_buf_reg_helper.h"
 #include "common/fam_memserver_profile.h"
 #include "common/fam_ops.h"
 #include "common/fam_ops_libfabric.h"
@@ -189,6 +190,11 @@ int Fam_Ops_Libfabric::initialize() {
 
     // Initialize the mutex lock
     (void)pthread_mutex_init(&ctxLock, NULL);
+
+    // Initialize maps to manage registered local buffers
+    for (size_t i = 0; i < numGlobalBufMaps; ++i) {
+        globalBufMaps.push_back(new MapType());
+    }
 
     if ((ret = fabric_initialize(memoryServerName, service, isSource, provider,
                                  if_device, &fi, &fabric, &eq, &domain,
@@ -350,6 +356,24 @@ Fam_Context *Fam_Ops_Libfabric::get_context(Fam_Descriptor *descriptor) {
     }
 }
 
+Fam_Context *Fam_Ops_Libfabric::get_context(uint64_t contextID) {
+    // ctx mutex lock
+    (void)pthread_mutex_lock(&ctxLock);
+    // Lookup context from defContexts map
+    auto obj = defContexts->find(contextID);
+    if (obj == defContexts->end()) {
+        // ctx mutex unlock
+        (void)pthread_mutex_unlock(&ctxLock);
+        THROW_ERR_MSG(Fam_Datapath_Exception, "Context not found");
+    } else {
+        // ctx mutex unlock
+        (void)pthread_mutex_unlock(&ctxLock);
+        return obj->second;
+    }
+
+    return NULL;
+}
+
 void Fam_Ops_Libfabric::finalize() {
     fabric_finalize();
 
@@ -365,6 +389,13 @@ void Fam_Ops_Libfabric::finalize() {
             delete fam_ctx.second;
         }
         defContexts->clear();
+    }
+
+    // Deregister all the registered local buffers
+    auto mapPtr = globalBufMaps[currentBufMapIndex];
+    for (const auto &entry : *mapPtr) {
+        deregister_heap((void *)entry.second->start_,
+                        entry.second->end_ - entry.second->start_);
     }
 
     if (fi) {
@@ -2005,7 +2036,7 @@ void Fam_Ops_Libfabric::fence(Fam_Region_Descriptor *descriptor) {
     if (famContextModel == FAM_CONTEXT_DEFAULT) {
         for (auto memServers : *memServerAddrs) {
             nodeId = memServers.first;
-            fabric_fence((*fiAddr)[nodeId], get_context(NULL));
+            fabric_fence((*fiAddr)[nodeId], get_context());
         }
     }
 }
@@ -5404,9 +5435,8 @@ void Fam_Ops_Libfabric::register_heap(void *base, size_t len) {
     get_context()->register_heap(base, len, domain, fabric_iov_limit);
 }
 
-void Fam_Ops_Libfabric::register_existing_heap(Fam_Ops_Libfabric *famOpsObj) {
-    get_context()->register_existing_heap(famOpsObj->get_context(),
-                                          fabric_iov_limit);
+void Fam_Ops_Libfabric::deregister_heap(void *base, size_t len) {
+    get_context()->deregister_heap(base, len);
 }
 
 } // namespace openfam
