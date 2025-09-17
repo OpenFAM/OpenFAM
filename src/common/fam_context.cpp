@@ -245,8 +245,6 @@ Fam_Context::get_mr_descs(const void *local_addr, size_t local_size) {
     auto result = test_overlap(mapPtr, start, end);
     if (result.first == 1) {
         ret = result.second->mr_descs_;
-    } else {
-        thread_release_local_mapptr();
     }
 
     // Releases the thread-local map pointer when unique_ptr goes out of scope
