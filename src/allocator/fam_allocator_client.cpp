@@ -52,6 +52,7 @@ Fam_Allocator_Client::Fam_Allocator_Client(const char *name, uint64_t port,
 
     if (strcmp(rpc_framework_type.c_str(), FAM_OPTIONS_GRPC_STR) == 0) {
         famCIS = new Fam_CIS_Client(name, port);
+        this->isSharedMemory = false;
     }
 #ifdef USE_THALLIUM
     else if (strcmp(rpc_framework_type.c_str(), FAM_OPTIONS_THALLIUM_STR) ==
@@ -62,15 +63,18 @@ Fam_Allocator_Client::Fam_Allocator_Client(const char *name, uint64_t port,
             Thallium_Engine::get_instance(provider_protocol);
         tl::engine engine = thal_engine_gen->get_engine();
         famCIS = new Fam_CIS_Thallium_Client(engine, name, port);
+        this->isSharedMemory = false;
     }
 #endif
+    else if (strcmp(rpc_framework_type.c_str(), FAM_OPTIONS_DIRECT_STR) == 0 ) {
+        this->isSharedMemory = true;
+    }
     else {
         // Raise an exception
         message << "Invalid value specified for Fam config "
                    "option:rpc_framework_type.";
         THROW_ERR_MSG(Fam_InvalidOption_Exception, message.str().c_str());
     }
-    this->isSharedMemory = false;
     this->enableResourceRelease = enableResourceRelease;
     uid = (uint32_t)getuid();
     gid = (uint32_t)getgid();
