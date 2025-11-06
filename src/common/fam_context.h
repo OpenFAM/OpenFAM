@@ -93,7 +93,8 @@ class Fam_Context {
 
     uint64_t get_num_rx_ops() { return numRxOps; }
 
-    int initialize_cntr(struct fid_domain *domain, struct fid_cntr **cntr);
+    int initialize_cntr(struct fi_info *fi, struct fid_domain *domain,
+			struct fid_cntr **cntr);
 
     void acquire_RDLock() {
         if (famThreadModel == FAM_THREAD_MULTIPLE)

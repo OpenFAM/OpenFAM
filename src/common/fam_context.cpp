@@ -38,6 +38,12 @@
 #include <rdma/fi_domain.h>
 #include <rdma/fi_endpoint.h>
 
+#ifdef __has_include
+#if __has_include(<rdma/fi_cxi_ext.h>)
+#include <rdma/fi_cxi_ext.h>
+#endif
+#endif
+
 #include "common/fam_context.h"
 #include "common/fam_libfabric.h"
 #include "common/fam_local_buf_reg_helper.h"
@@ -110,7 +116,7 @@ Fam_Context::Fam_Context(struct fi_info *fi, struct fid_domain *domain,
         THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
     }
 
-    ret = initialize_cntr(domain, &txCntr);
+    ret = initialize_cntr(fi, domain, &txCntr);
     if (ret < 0) {
         // print_fierr("initialize_cntr", ret);
         // return -1;
@@ -129,7 +135,7 @@ Fam_Context::Fam_Context(struct fi_info *fi, struct fid_domain *domain,
         THROW_ERR_MSG(Fam_Datapath_Exception, message.str().c_str());
     }
 
-    ret = initialize_cntr(domain, &rxCntr);
+    ret = initialize_cntr(fi, domain, &rxCntr);
     if (ret < 0) {
         // print_fierr("initialize_cntr", ret);
         // return -1;
@@ -154,17 +160,33 @@ Fam_Context::~Fam_Context() {
     pthread_rwlock_destroy(&ctxRWLock);
 }
 
-int Fam_Context::initialize_cntr(struct fid_domain *domain,
+static void initialize_cntr_attr(struct fi_cntr_attr &cntrAttr,
+                                 bool is_cxi, bool cached) {
+    memset(&cntrAttr, 0, sizeof(cntrAttr));
+    cntrAttr.events = FI_CNTR_EVENTS_COMP;
+    cntrAttr.wait_obj = FI_WAIT_UNSPEC;
+#ifdef FI_CXI_CNTR_CACHED
+    if (is_cxi && cached)
+        cntrAttr.flags |= FI_CXI_CNTR_CACHED;
+#endif
+}
+
+int Fam_Context::initialize_cntr(struct fi_info *fi, struct fid_domain *domain,
                                  struct fid_cntr **cntr) {
     int ret = 0;
     struct fi_cntr_attr cntrAttr;
     std::ostringstream message;
+    bool is_cxi = !strcmp(fi->fabric_attr->prov_name, "cxi");
 
-    memset(&cntrAttr, 0, sizeof(cntrAttr));
-    cntrAttr.events = FI_CNTR_EVENTS_COMP;
-    cntrAttr.wait_obj = FI_WAIT_UNSPEC;
+    initialize_cntr_attr(cntrAttr, is_cxi, true);
 
     ret = fi_cntr_open(domain, &cntrAttr, cntr, cntr);
+    // Try for some backwards compatibility
+    if (ret == -FI_ENOSYS && is_cxi) {
+        // The fi_cntr_open() API does not make attr a const.
+        initialize_cntr_attr(cntrAttr, is_cxi, false);
+        ret = fi_cntr_open(domain, &cntrAttr, cntr, cntr);
+    }
     if (ret < 0) {
         message << "Fam libfabric fi_cntr_open failed: "
                 << fabric_strerror(ret);
