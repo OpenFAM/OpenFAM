@@ -119,6 +119,17 @@ int main(int argc, char **argv) {
 
     EXPECT_NO_THROW(my_fam->fam_initialize("default", &fam_opts));
 
+    char *openFamModel =
+        (char *)my_fam->fam_get_option(strdup("OPENFAM_MODEL"));
+
+    if (strcmp(openFamModel, "memory_server") != 0) {
+        my_fam->fam_finalize("default");
+        std::cout << "Test case valid only in memory server model, "
+                     "skipping with status : "
+                  << TEST_SKIP_STATUS << std::endl;
+        return TEST_SKIP_STATUS;
+    }
+
     EXPECT_NO_THROW(testRegionDesc = my_fam->fam_create_region(
                         "test_region", REGION_SIZE, REGION_PERM, NULL));
     EXPECT_NE((void *)NULL, testRegionDesc);
